@@ -1,0 +1,375 @@
+!_TAG_FILE_SORTED	2	/0=unsorted, 1=sorted, 2=foldcase/
+action	/home/ilex/work/fire/src/core.hpp	/^        std::function<void(void)> action;$/;"	m	language:C++	struct:Hook
+action	/home/ilex/work/fire/src/core.hpp	/^    std::function<void(Context)> action;$/;"	m	language:C++	struct:Binding
+action	/home/ilex/work/fire/src/core.hpp	/^    std::function<void(SignalListenerData)> action;$/;"	m	language:C++	struct:SignalListener
+activate_owner	/home/ilex/work/fire/src/core.cpp	/^bool Core::activateOwner(Ownership owner) {$/;"	f	language:C++	class:Core
+activate_owner	/home/ilex/work/fire/src/core.hpp	/^        bool activateOwner  (Ownership owner);$/;"	p	language:C++	class:Core
+active	/home/ilex/work/fire/src/core.hpp	/^        bool active;$/;"	m	language:C++	struct:Hook
+active	/home/ilex/work/fire/src/core.hpp	/^    bool active = false;$/;"	m	language:C++	struct:Binding
+addClient	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::addClient(FireWindow win) {$/;"	f	language:C++	class:WinStack
+add_default_signals	/home/ilex/work/fire/src/core.cpp	/^void Core::addDefaultSignals() {$/;"	f	language:C++	class:Core
+add_default_signals	/home/ilex/work/fire/src/core.hpp	/^        void addDefaultSignals();$/;"	p	language:C++	class:Core
+add_signal	/home/ilex/work/fire/src/core.cpp	/^void Core::addSignal(std::string name) {$/;"	f	language:C++	class:Core
+add_signal	/home/ilex/work/fire/src/core.hpp	/^        void addSignal(std::string name);$/;"	p	language:C++	class:Core
+addWindow	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::addWindow(FireWindow win) {$/;"	f	language:C++	class:WinStack
+add_but	/home/ilex/work/fire/src/core.cpp	/^void Core::add_but(ButtonBinding *bb, bool grab) {$/;"	f	language:C++	class:Core
+add_but	/home/ilex/work/fire/src/core.hpp	/^        void add_but (ButtonBinding *bb, bool grab = false);$/;"	p	language:C++	class:Core
+add_effect	/home/ilex/work/fire/src/core.cpp	/^void Core::add_effect(EffectHook *hook){$/;"	f	language:C++	class:Core
+add_effect	/home/ilex/work/fire/src/core.hpp	/^        void add_effect(EffectHook *);$/;"	p	language:C++	class:Core
+add_hook	/home/ilex/work/fire/src/core.cpp	/^void Core::add_hook(Hook *hook){$/;"	f	language:C++	class:Core
+add_hook	/home/ilex/work/fire/src/core.hpp	/^        void add_hook(Hook*);$/;"	p	language:C++	class:Core
+add_key	/home/ilex/work/fire/src/core.cpp	/^void Core::add_key(KeyBinding *kb, bool grab) {$/;"	f	language:C++	class:Core
+add_key	/home/ilex/work/fire/src/core.hpp	/^        void add_key (KeyBinding *kb, bool grab = false);$/;"	p	language:C++	class:Core
+add_window	/home/ilex/work/fire/src/core.cpp	/^void Core::add_window(wlc_handle view) {$/;"	f	language:C++	class:Core
+add_window	/home/ilex/work/fire/src/core.hpp	/^        void add_window(wlc_handle view);$/;"	p	language:C++	class:Core
+AllModifiers	/home/ilex/work/fire/src/commonincludes.hpp	/^#define AllModifiers /;"	d	language:C++
+background	/home/ilex/work/fire/src/core.hpp	/^        GLuint background = -1;$/;"	m	language:C++	class:Core
+backgrounds	/home/ilex/work/fire/src/core.hpp	/^        std::vector<std::vector<FireWindow> > backgrounds;$/;"	m	language:C++	class:Core
+bgraID	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint depthID, colorID, bgraID;$/;"	m	language:C++	namespace:__anon1	file:
+Binding	/home/ilex/work/fire/src/core.hpp	/^struct Binding{$/;"	s	language:C++
+BindingType	/home/ilex/work/fire/src/core.hpp	/^enum BindingType {$/;"	g	language:C++
+BindingTypePress	/home/ilex/work/fire/src/core.hpp	/^    BindingTypePress,$/;"	e	language:C++	enum:BindingType
+BindingTypeRelease	/home/ilex/work/fire/src/core.hpp	/^    BindingTypeRelease$/;"	e	language:C++	enum:BindingType
+button	/home/ilex/work/fire/src/core.hpp	/^    uint32_t button;$/;"	m	language:C++	struct:ButtonBinding
+ButtonBinding	/home/ilex/work/fire/src/core.hpp	/^struct ButtonBinding : Binding {$/;"	s	language:C++
+Buttons	/home/ilex/work/fire/src/config.cpp	/^    int Buttons [] = {0, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, BTN_GEAR_DOWN, BTN_GEAR_UP};$/;"	m	language:C++	namespace:__anon1	file:
+buttons	/home/ilex/work/fire/src/core.hpp	/^        std::vector<ButtonBinding*> buttons;$/;"	m	language:C++	class:Core
+cb_log	/home/ilex/work/fire/src/main.cpp	/^cb_log(enum wlc_log_type type, const char *str)$/;"	f	language:C++	file:
+checkAddClient	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::checkAddClient(FireWindow win) {$/;"	f	language:C++	class:WinStack
+checkRemoveClient	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::checkRemoveClient(FireWindow win) {$/;"	f	language:C++	class:WinStack
+check_but_press	/home/ilex/work/fire/src/core.cpp	/^bool Core::check_but_press(ButtonBinding *bb, uint32_t button, uint32_t mod) {$/;"	f	language:C++	class:Core
+check_but_press	/home/ilex/work/fire/src/core.hpp	/^        bool check_but_press  (ButtonBinding *bb, uint32_t button, uint32_t mod);$/;"	p	language:C++	class:Core
+check_but_release	/home/ilex/work/fire/src/core.cpp	/^bool Core::check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod) {$/;"	f	language:C++	class:Core
+check_but_release	/home/ilex/work/fire/src/core.hpp	/^        bool check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod);$/;"	p	language:C++	class:Core
+check_key	/home/ilex/work/fire/src/core.cpp	/^bool Core::check_key(KeyBinding *kb, uint32_t key, uint32_t mod) {$/;"	f	language:C++	class:Core
+check_key	/home/ilex/work/fire/src/core.hpp	/^        bool check_key(KeyBinding *kb, uint32_t key, uint32_t mod);$/;"	p	language:C++	class:Core
+close_window	/home/ilex/work/fire/src/core.cpp	/^void Core::close_window(FireWindow win) {$/;"	f	language:C++	class:Core
+close_window	/home/ilex/work/fire/src/core.hpp	/^        void close_window(FireWindow win);$/;"	p	language:C++	class:Core
+cntHooks	/home/ilex/work/fire/src/core.hpp	/^        int cntHooks = 0;$/;"	m	language:C++	class:Core
+color	/home/ilex/work/fire/src/opengl.cpp	/^glm::vec4 OpenGL::color;$/;"	m	language:C++	class:OpenGL	file:
+colorID	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint depthID, colorID, bgraID;$/;"	m	language:C++	namespace:__anon1	file:
+COMMON_INCLUDES	/home/ilex/work/fire/src/commonincludes.hpp	/^#define COMMON_INCLUDES$/;"	d	language:C++
+compileShader	/home/ilex/work/fire/src/glx.cpp	/^GLuint compileShader(const char *src, GLuint type) {$/;"	f	language:C++	namespace:GLXUtils
+compileShader	/home/ilex/work/fire/src/glx.hpp	/^    GLuint compileShader(const char* src, GLuint type);$/;"	p	language:C++	namespace:GLXUtils
+compose	/home/ilex/work/fire/src/window.cpp	/^glm::mat4 Transform::compose() {$/;"	f	language:C++	class:Transform
+Config	/home/ilex/work/fire/src/config.cpp	/^Config::Config() : Config(get_home_dir() + "\/.config\/firerc") { }$/;"	f	language:C++	class:Config
+Config	/home/ilex/work/fire/src/config.cpp	/^Config::Config(std::string path) {$/;"	f	language:C++	class:Config
+config	/home/ilex/work/fire/src/core.hpp	/^        Config *config;$/;"	m	language:C++	class:Core
+connect_signal	/home/ilex/work/fire/src/core.cpp	/^void Core::connectSignal(std::string name, SignalListener *callback){$/;"	f	language:C++	class:Core
+connect_signal	/home/ilex/work/fire/src/core.hpp	/^        void connectSignal(std::string name, SignalListener *callback);$/;"	p	language:C++	class:Core
+constrainNewWindowPosition	/home/ilex/work/fire/src/window.cpp	/^    bool constrainNewWindowPosition(int &x, int &y) {$/;"	f	language:C++	namespace:WinUtil
+Context	/home/ilex/work/fire/src/core.hpp	/^    Context(int x, int y, int key, int mod) {$/;"	f	language:C++	struct:Context
+Context	/home/ilex/work/fire/src/core.hpp	/^struct Context{$/;"	s	language:C++
+copyInto	/home/ilex/work/fire/src/config.cpp	/^#define copyInto(/;"	d	language:C++	file:
+core	/home/ilex/work/fire/src/core.cpp	/^Core *core;$/;"	v	language:C++
+Core	/home/ilex/work/fire/src/core.cpp	/^Core::Core(int vx, int vy) {$/;"	f	language:C++	class:Core
+Core	/home/ilex/work/fire/src/core.hpp	/^        Core(int vx, int vy);$/;"	p	language:C++	class:Core
+Core	/home/ilex/work/fire/src/core.hpp	/^class Core {$/;"	c	language:C++
+CorePlugin	/home/ilex/work/fire/src/core.cpp	/^class CorePlugin : public Plugin {$/;"	c	language:C++	file:
+create_plugin	/home/ilex/work/fire/src/core.cpp	/^PluginPtr Core::createPlugin() {$/;"	f	language:C++	class:Core
+create_plugin	/home/ilex/work/fire/src/core.hpp	/^        template<class T> PluginPtr createPlugin();$/;"	p	language:C++	class:Core
+Data	/home/ilex/work/fire/src/plugin.cpp	/^Data::Data(){}$/;"	f	language:C++	class:Data
+deactivate_owner	/home/ilex/work/fire/src/core.cpp	/^bool Core::deactivate_owner(Ownership owner) {$/;"	f	language:C++	class:Core
+deactivate_owner	/home/ilex/work/fire/src/core.hpp	/^        bool deactivate_owner(Ownership owner);$/;"	p	language:C++	class:Core
+depth	/home/ilex/work/fire/src/opengl.cpp	/^int  OpenGL::depth;$/;"	m	language:C++	class:OpenGL	file:
+depthID	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint depthID, colorID, bgraID;$/;"	m	language:C++	namespace:__anon1	file:
+disable	/home/ilex/work/fire/src/core.cpp	/^void ButtonBinding::disable() {$/;"	f	language:C++	class:ButtonBinding
+disable	/home/ilex/work/fire/src/core.cpp	/^void Hook::disable() {$/;"	f	language:C++	class:Hook
+disable	/home/ilex/work/fire/src/core.cpp	/^void KeyBinding::disable() {$/;"	f	language:C++	class:KeyBinding
+disable	/home/ilex/work/fire/src/core.hpp	/^        virtual void disable();$/;"	p	language:C++	struct:Hook
+disable	/home/ilex/work/fire/src/core.hpp	/^    void disable();$/;"	p	language:C++	struct:ButtonBinding
+disable	/home/ilex/work/fire/src/core.hpp	/^    void disable();$/;"	p	language:C++	struct:KeyBinding
+disconnect_signal	/home/ilex/work/fire/src/core.cpp	/^void Core::disconnect_signal(std::string name, uint id) {$/;"	f	language:C++	class:Core
+disconnect_signal	/home/ilex/work/fire/src/core.hpp	/^        void disconnect_signal(std::string name, uint id);$/;"	p	language:C++	class:Core
+DRIVER_H	/home/ilex/work/fire/src/opengl.hpp	/^#define DRIVER_H$/;"	d	language:C++
+EffectHook	/home/ilex/work/fire/src/core.hpp	/^struct EffectHook : public Hook {$/;"	s	language:C++
+effects	/home/ilex/work/fire/src/core.hpp	/^        std::vector<EffectHook*> effects;$/;"	m	language:C++	class:Core
+EffectType	/home/ilex/work/fire/src/core.hpp	/^enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };$/;"	g	language:C++
+EFFECT_OVERLAY	/home/ilex/work/fire/src/core.hpp	/^enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };$/;"	e	language:C++	enum:EffectType
+EFFECT_WINDOW	/home/ilex/work/fire/src/core.hpp	/^enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };$/;"	e	language:C++	enum:EffectType
+enable	/home/ilex/work/fire/src/core.cpp	/^void ButtonBinding::enable() {$/;"	f	language:C++	class:ButtonBinding
+enable	/home/ilex/work/fire/src/core.cpp	/^void Hook::enable() {$/;"	f	language:C++	class:Hook
+enable	/home/ilex/work/fire/src/core.cpp	/^void KeyBinding::enable() {$/;"	f	language:C++	class:KeyBinding
+enable	/home/ilex/work/fire/src/core.hpp	/^        virtual void enable();$/;"	p	language:C++	struct:Hook
+enable	/home/ilex/work/fire/src/core.hpp	/^    void enable();$/;"	p	language:C++	struct:ButtonBinding
+enable	/home/ilex/work/fire/src/core.hpp	/^    void enable();$/;"	p	language:C++	struct:KeyBinding
+endStage	/home/ilex/work/fire/src/opengl.cpp	/^    void endStage() {$/;"	f	language:C++	namespace:OpenGL
+endStage	/home/ilex/work/fire/src/opengl.hpp	/^    void endStage();$/;"	p	language:C++	namespace:OpenGL
+fd	/home/ilex/work/fire/src/core.hpp	/^        pollfd fd;$/;"	m	language:C++	class:Core
+findWindow	/home/ilex/work/fire/src/winstack.cpp	/^FireWindow WinStack::findWindow(Window win) {$/;"	f	language:C++	class:WinStack
+findWindowAtCursorPosition	/home/ilex/work/fire/src/winstack.cpp	/^FireWindow WinStack::findWindowAtCursorPosition(int x, int y) {$/;"	f	language:C++	class:WinStack
+find_window	/home/ilex/work/fire/src/core.cpp	/^FireWindow Core::find_window(wlc_handle handle) {$/;"	f	language:C++	class:Core
+find_window	/home/ilex/work/fire/src/core.hpp	/^        FireWindow find_window(wlc_handle handle);$/;"	p	language:C++	class:Core
+fini	/home/ilex/work/fire/src/plugin.cpp	/^void Plugin::fini() {}$/;"	f	language:C++	class:Plugin
+FireWin	/home/ilex/work/fire/src/window.cpp	/^FireWin::FireWin(wlc_handle _view) {$/;"	f	language:C++	class:FireWin
+FIRE_H	/home/ilex/work/fire/src/core.hpp	/^#define FIRE_H$/;"	d	language:C++
+focusWindow	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::focusWindow(FireWindow win) {$/;"	f	language:C++	class:WinStack
+focus_window	/home/ilex/work/fire/src/core.cpp	/^void Core::focus_window(FireWindow win) {$/;"	f	language:C++	class:Core
+focus_window	/home/ilex/work/fire/src/core.hpp	/^        void focus_window(FireWindow win);$/;"	p	language:C++	class:Core
+forEachWindow	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::forEachWindow(WindowProc proc) {$/;"	f	language:C++	class:WinStack
+for_each_window	/home/ilex/work/fire/src/core.cpp	/^void Core::for_each_window(WindowCallbackProc call) {$/;"	f	language:C++	class:Core
+for_each_window	/home/ilex/work/fire/src/core.hpp	/^        void for_each_window(WindowCallbackProc);$/;"	p	language:C++	class:Core
+framebuffer	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint framebuffer;$/;"	m	language:C++	namespace:__anon1	file:
+framebufferTexture	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint framebufferTexture;$/;"	m	language:C++	namespace:__anon1	file:
+fullRedraw	/home/ilex/work/fire/src/core.cpp	/^    int fullRedraw = 0;$/;"	m	language:C++	namespace:__anon1	file:
+fullVAO	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint fullVAO, fullVBO;$/;"	m	language:C++	namespace:__anon1	file:
+fullVBO	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint fullVAO, fullVBO;$/;"	m	language:C++	namespace:__anon1	file:
+getAncestor	/home/ilex/work/fire/src/winstack.cpp	/^FireWindow WinStack::getAncestor(FireWindow win) {$/;"	f	language:C++	class:WinStack
+getFilledTexture	/home/ilex/work/fire/src/core.cpp	/^    GLuint getFilledTexture(int w, int h, uchar r, uchar g, uchar b, uchar a) {$/;"	f	language:C++	namespace:__anon2
+getIOTFromString	/home/ilex/work/fire/src/config.cpp	/^    InternalOptionType getIOTFromString(std::string str) {$/;"	f	language:C++	namespace:__anon1
+getIOTNameFromString	/home/ilex/work/fire/src/config.cpp	/^    InternalOptionType getIOTNameFromString(std::string str,$/;"	f	language:C++	namespace:__anon1
+getIteratorPositionForWindow	/home/ilex/work/fire/src/winstack.cpp	/^StackIterator WinStack::getIteratorPositionForWindow(FireWindow win) {$/;"	f	language:C++	class:WinStack
+getModFromStr	/home/ilex/work/fire/src/config.cpp	/^    uint32_t getModFromStr(std::string value) {$/;"	f	language:C++	namespace:__anon1
+getModsFromString	/home/ilex/work/fire/src/config.cpp	/^    uint getModsFromString(std::string value) {$/;"	f	language:C++	namespace:__anon1
+get_pointer_position	/home/ilex/work/fire/src/core.cpp	/^std::tuple<int, int> Core::getMouseCoord() {$/;"	f	language:C++	class:Core
+get_pointer_position	/home/ilex/work/fire/src/core.hpp	/^        std::tuple<int, int> getMouseCoord();$/;"	p	language:C++	class:Core
+getRefreshRate	/home/ilex/work/fire/src/core.cpp	/^int Core::getRefreshRate() {$/;"	f	language:C++	class:Core
+getRefreshRate	/home/ilex/work/fire/src/core.hpp	/^        int getRefreshRate();$/;"	p	language:C++	class:Core
+getScreenSize	/home/ilex/work/fire/src/core.cpp	/^std::tuple<int, int> Core::getScreenSize() {$/;"	f	language:C++	class:Core
+getScreenSize	/home/ilex/work/fire/src/core.hpp	/^        std::tuple<int, int> getScreenSize();$/;"	p	language:C++	class:Core
+getStackType	/home/ilex/work/fire/src/winstack.cpp	/^StackType WinStack::getStackType(FireWindow win1, FireWindow win2) {$/;"	f	language:C++	class:WinStack
+getState	/home/ilex/work/fire/src/core.cpp	/^bool Hook::getState() { return this->active; }$/;"	f	language:C++	class:Hook
+getState	/home/ilex/work/fire/src/core.hpp	/^        bool getState();$/;"	p	language:C++	struct:Hook
+getTargetLayerForWindow	/home/ilex/work/fire/src/winstack.cpp	/^Layer WinStack::getTargetLayerForWindow(FireWindow win) {$/;"	f	language:C++	class:WinStack
+getTex	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint getTex() {return framebufferTexture;}$/;"	f	language:C++	namespace:OpenGL
+getTex	/home/ilex/work/fire/src/opengl.hpp	/^    GLuint getTex();$/;"	p	language:C++	namespace:OpenGL
+getTopmostToplevel	/home/ilex/work/fire/src/winstack.cpp	/^FireWindow WinStack::getTopmostToplevel() {$/;"	f	language:C++	class:WinStack
+GetTuple	/home/ilex/work/fire/src/core.hpp	/^#define GetTuple(/;"	d	language:C++
+texture_from_viewport	/home/ilex/work/fire/src/core.cpp	/^void Core::getViewportTexture(std::tuple<int, int> vp,$/;"	f	language:C++	class:Core
+texture_from_viewport	/home/ilex/work/fire/src/core.hpp	/^        void getViewportTexture(std::tuple<int, int>, GLuint& fbuff,$/;"	p	language:C++	class:Core
+get_view_at_point	/home/ilex/work/fire/src/core.cpp	/^FireWindow Core::getWindowAtPoint(int x, int y) {$/;"	f	language:C++	class:Core
+get_view_at_point	/home/ilex/work/fire/src/core.hpp	/^        FireWindow getWindowAtPoint(int x, int y);$/;"	p	language:C++	class:Core
+get_windows_on_viewport	/home/ilex/work/fire/src/core.cpp	/^std::vector<FireWindow> Core::getWindowsOnViewport(std::tuple<int, int> vp) {$/;"	f	language:C++	class:Core
+get_windows_on_viewport	/home/ilex/work/fire/src/core.hpp	/^        std::vector<FireWindow> getWindowsOnViewport(std::tuple<int, int>);$/;"	p	language:C++	class:Core
+get_viewport_grid_size	/home/ilex/work/fire/src/core.cpp	/^std::tuple<int, int> Core::getWorksize() {$/;"	f	language:C++	class:Core
+get_viewport_grid_size	/home/ilex/work/fire/src/core.hpp	/^        std::tuple<int, int> getWorksize  ();$/;"	p	language:C++	class:Core
+get_current_viewport	/home/ilex/work/fire/src/core.cpp	/^std::tuple<int, int> Core::getWorkspace() {$/;"	f	language:C++	class:Core
+get_current_viewport	/home/ilex/work/fire/src/core.hpp	/^        std::tuple<int, int> getWorkspace ();$/;"	p	language:C++	class:Core
+get_active_window	/home/ilex/work/fire/src/core.cpp	/^FireWindow Core::get_active_window() {$/;"	f	language:C++	class:Core
+get_active_window	/home/ilex/work/fire/src/core.hpp	/^        FireWindow get_active_window();$/;"	p	language:C++	class:Core
+get_background	/home/ilex/work/fire/src/core.cpp	/^GLuint Core::get_background() {$/;"	f	language:C++	class:Core
+get_background	/home/ilex/work/fire/src/core.hpp	/^        GLuint get_background();$/;"	p	language:C++	class:Core
+get_background_texture	/home/ilex/work/fire/src/main.cpp	/^uint32_t get_background_texture() {$/;"	f	language:C++
+get_home_dir	/home/ilex/work/fire/src/config.cpp	/^std::string get_home_dir() {$/;"	f	language:C++
+get_top_window	/home/ilex/work/fire/src/core.cpp	/^wlc_handle Core::get_top_window(wlc_handle output, size_t offset) {$/;"	f	language:C++	class:Core
+get_top_window	/home/ilex/work/fire/src/core.hpp	/^        wlc_handle get_top_window(wlc_handle output, size_t offset);$/;"	p	language:C++	class:Core
+GLM_FORCE_RADIANS	/home/ilex/work/fire/src/commonincludes.hpp	/^#define GLM_FORCE_RADIANS$/;"	d	language:C++
+GLXUtils	/home/ilex/work/fire/src/glx.cpp	/^namespace GLXUtils {$/;"	n	language:C++	file:
+GLXUtils	/home/ilex/work/fire/src/glx.hpp	/^namespace GLXUtils {$/;"	n	language:C++
+GLXWORKER_H	/home/ilex/work/fire/src/glx.hpp	/^#define GLXWORKER_H$/;"	d	language:C++
+GL_CALL	/home/ilex/work/fire/src/opengl.cpp	/^#define GL_CALL(/;"	d	language:C++	file:
+gl_call	/home/ilex/work/fire/src/opengl.cpp	/^void gl_call(const char *func, uint32_t line, const char *glfunc) {$/;"	f	language:C++
+gl_error_string	/home/ilex/work/fire/src/opengl.cpp	/^const char* gl_error_string(const GLenum error) {$/;"	f	language:C++
+GL_GLEXT_PROTOTYPES	/home/ilex/work/fire/src/commonincludes.hpp	/^#define GL_GLEXT_PROTOTYPES$/;"	d	language:C++
+grab	/home/ilex/work/fire/src/plugin.cpp	/^void _Ownership::grab() {$/;"	f	language:C++	class:_Ownership
+grabCount	/home/ilex/work/fire/src/plugin.cpp	/^    int grabCount = 0;$/;"	m	language:C++	namespace:__anon1	file:
+grab_keyboard	/home/ilex/work/fire/src/core.cpp	/^void Core::grab_keyboard() {}$/;"	f	language:C++	class:Core
+grab_keyboard	/home/ilex/work/fire/src/core.hpp	/^        void grab_keyboard();$/;"	p	language:C++	class:Core
+grab_pointer	/home/ilex/work/fire/src/core.cpp	/^void Core::grab_pointer() {}$/;"	f	language:C++	class:Core
+grab_pointer	/home/ilex/work/fire/src/core.hpp	/^        void grab_pointer();$/;"	p	language:C++	class:Core
+grot	/home/ilex/work/fire/src/window.cpp	/^glm::mat4 Transform::grot;$/;"	m	language:C++	class:Transform	file:
+gscl	/home/ilex/work/fire/src/window.cpp	/^glm::mat4 Transform::gscl;$/;"	m	language:C++	class:Transform	file:
+gtrs	/home/ilex/work/fire/src/window.cpp	/^glm::mat4 Transform::gtrs;$/;"	m	language:C++	class:Transform	file:
+has_rotation	/home/ilex/work/fire/src/window.cpp	/^bool Transform::has_rotation = false;$/;"	m	language:C++	class:Transform	file:
+height	/home/ilex/work/fire/src/core.hpp	/^        uint32_t width, height;$/;"	m	language:C++	class:Core
+Hook	/home/ilex/work/fire/src/core.cpp	/^Hook::Hook() : active(false) {}$/;"	f	language:C++	class:Hook
+Hook	/home/ilex/work/fire/src/core.hpp	/^        Hook();$/;"	p	language:C++	struct:Hook
+Hook	/home/ilex/work/fire/src/core.hpp	/^struct Hook {$/;"	s	language:C++
+hooks	/home/ilex/work/fire/src/core.hpp	/^        std::vector<Hook*> hooks;$/;"	m	language:C++	class:Core
+id	/home/ilex/work/fire/src/core.hpp	/^        uint id;$/;"	m	language:C++	struct:Hook
+id	/home/ilex/work/fire/src/core.hpp	/^    uint id;$/;"	m	language:C++	struct:Binding
+id	/home/ilex/work/fire/src/core.hpp	/^    uint id;$/;"	m	language:C++	struct:SignalListener
+ILUT_USE_OPENGL	/home/ilex/work/fire/src/commonincludes.hpp	/^#define ILUT_USE_OPENGL$/;"	d	language:C++
+init	/home/ilex/work/fire/src/core.cpp	/^        void init() {$/;"	f	language:C++	class:CorePlugin
+init	/home/ilex/work/fire/src/core.cpp	/^void Core::init() {$/;"	f	language:C++	class:Core
+init	/home/ilex/work/fire/src/core.hpp	/^        void init();$/;"	p	language:C++	class:Core
+init	/home/ilex/work/fire/src/wm.cpp	/^void Close::init() {$/;"	f	language:C++	class:Close
+init	/home/ilex/work/fire/src/wm.cpp	/^void Exit::init() {$/;"	f	language:C++	class:Exit
+init	/home/ilex/work/fire/src/wm.cpp	/^void Focus::init() {$/;"	f	language:C++	class:Focus
+init	/home/ilex/work/fire/src/wm.cpp	/^void Refresh::init() {$/;"	f	language:C++	class:Refresh
+init_default_plugins	/home/ilex/work/fire/src/core.cpp	/^void Core::initDefaultPlugins() {$/;"	f	language:C++	class:Core
+init_default_plugins	/home/ilex/work/fire/src/core.hpp	/^        void initDefaultPlugins();$/;"	p	language:C++	class:Core
+initOpenGL	/home/ilex/work/fire/src/opengl.cpp	/^    void initOpenGL(const char *shaderSrcPath) {$/;"	f	language:C++	namespace:OpenGL
+initOpenGL	/home/ilex/work/fire/src/opengl.hpp	/^    void initOpenGL(const char *shaderSrcPath);$/;"	p	language:C++	namespace:OpenGL
+initOwnership	/home/ilex/work/fire/src/core.cpp	/^        void initOwnership() {$/;"	f	language:C++	class:CorePlugin
+initOwnership	/home/ilex/work/fire/src/plugin.cpp	/^void Plugin::initOwnership() {$/;"	f	language:C++	class:Plugin
+isAncestorTo	/home/ilex/work/fire/src/winstack.cpp	/^bool WinStack::isAncestorTo(FireWindow parent, FireWindow win) {$/;"	f	language:C++	class:WinStack
+isClientWindow	/home/ilex/work/fire/src/winstack.cpp	/^bool WinStack::isClientWindow(FireWindow win) {$/;"	f	language:C++	class:WinStack
+isTransientInGroup	/home/ilex/work/fire/src/winstack.cpp	/^bool WinStack::isTransientInGroup(FireWindow transient, FireWindow parent) {$/;"	f	language:C++	class:WinStack
+isValidToRead	/home/ilex/work/fire/src/config.cpp	/^    bool isValidToRead(InternalOptionType itype, DataType type) {$/;"	f	language:C++	namespace:__anon1
+is_visible	/home/ilex/work/fire/src/window.cpp	/^bool FireWin::is_visible() {$/;"	f	language:C++	class:FireWin
+key	/home/ilex/work/fire/src/core.hpp	/^            uint32_t key;$/;"	m	language:C++	struct:Context::__anon1::__anon3
+key	/home/ilex/work/fire/src/core.hpp	/^    uint32_t key;$/;"	m	language:C++	struct:KeyBinding
+KeyBinding	/home/ilex/work/fire/src/core.hpp	/^struct KeyBinding : Binding {$/;"	s	language:C++
+keyboard_key	/home/ilex/work/fire/src/main.cpp	/^bool keyboard_key(wlc_handle view, uint32_t time,$/;"	f	language:C++
+keys	/home/ilex/work/fire/src/core.hpp	/^        std::vector<KeyBinding*> keys;$/;"	m	language:C++	class:Core
+keyToString	/home/ilex/work/fire/src/config.cpp	/^        std::string keyToString(uint32_t value) {$/;"	f	language:C++	namespace:__anon1::__anon2
+load_dynamic_plugins	/home/ilex/work/fire/src/core.cpp	/^void Core::loadDynamicPlugins() {$/;"	f	language:C++	class:Core
+load_dynamic_plugins	/home/ilex/work/fire/src/core.hpp	/^        void loadDynamicPlugins();$/;"	p	language:C++	class:Core
+load_plugin_from_file	/home/ilex/work/fire/src/core.cpp	/^PluginPtr Core::loadPluginFromFile(std::string path, void **h) {$/;"	f	language:C++	class:Core
+load_plugin_from_file	/home/ilex/work/fire/src/core.hpp	/^        PluginPtr loadPluginFromFile(std::string path, void **handle);$/;"	p	language:C++	class:Core
+loadShader	/home/ilex/work/fire/src/glx.cpp	/^GLuint loadShader(const char *path, GLuint type) {$/;"	f	language:C++	namespace:GLXUtils
+loadShader	/home/ilex/work/fire/src/glx.hpp	/^    GLuint loadShader(const char *path, GLuint type);$/;"	p	language:C++	namespace:GLXUtils
+log	/home/ilex/work/fire/src/config.cpp	/^#define log /;"	d	language:C++	file:
+log	/home/ilex/work/fire/src/config.cpp	/^#undef log$/;"	d	language:C++	file:
+log	/home/ilex/work/fire/src/main.cpp	/^void log(wlc_log_type type, const char *msg) {$/;"	f	language:C++
+main	/home/ilex/work/fire/src/main.cpp	/^int main(int argc, char *argv[]) {$/;"	f	language:C++
+MaxDelay	/home/ilex/work/fire/src/core.cpp	/^#define MaxDelay /;"	d	language:C++	file:
+MinRR	/home/ilex/work/fire/src/core.cpp	/^#define MinRR /;"	d	language:C++	file:
+mod	/home/ilex/work/fire/src/core.hpp	/^            uint32_t mod;$/;"	m	language:C++	struct:Context::__anon1::__anon3
+mod	/home/ilex/work/fire/src/core.hpp	/^    uint32_t mod;$/;"	m	language:C++	struct:Binding
+Mod	/home/ilex/work/fire/src/window.cpp	/^#define Mod(/;"	d	language:C++	file:
+mousex	/home/ilex/work/fire/src/core.hpp	/^        int mousex, mousey; \/\/ pointer x, y$/;"	m	language:C++	class:Core
+mousey	/home/ilex/work/fire/src/core.hpp	/^        int mousex, mousey; \/\/ pointer x, y$/;"	m	language:C++	class:Core
+move	/home/ilex/work/fire/src/window.cpp	/^void FireWin::move(int x, int y) {$/;"	f	language:C++	class:FireWin
+moveResize	/home/ilex/work/fire/src/window.cpp	/^void FireWin::moveResize(int x, int y, int w, int h) {$/;"	f	language:C++	class:FireWin
+MVP	/home/ilex/work/fire/src/opengl.cpp	/^    glm::mat4 MVP;$/;"	m	language:C++	namespace:__anon1	file:
+mvpID	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint mvpID;$/;"	m	language:C++	namespace:__anon1	file:
+newBoolOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newBoolOption(std::string name, bool defaultVal) {$/;"	f	language:C++
+newButtonOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newButtonOption(std::string name, Button defaultVal) {$/;"	f	language:C++
+newColorOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newColorOption(std::string name, Color defaultVal) {$/;"	f	language:C++
+newFloatOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newFloatOption(std::string name, float defaultVal) {$/;"	f	language:C++
+newIntOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newIntOption(std::string name, int defaultVal) {$/;"	f	language:C++
+newKeyOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newKeyOption(std::string name, Key defaultVal) {$/;"	f	language:C++
+newStringOption	/home/ilex/work/fire/src/plugin.cpp	/^DataPair newStringOption(std::string name, std::string defaultVal) {$/;"	f	language:C++
+nextID	/home/ilex/work/fire/src/core.hpp	/^        uint nextID = 0;$/;"	m	language:C++	class:Core
+OpenGL	/home/ilex/work/fire/src/opengl.cpp	/^namespace OpenGL {$/;"	n	language:C++	file:
+OpenGL	/home/ilex/work/fire/src/opengl.hpp	/^namespace OpenGL {$/;"	n	language:C++
+output_created	/home/ilex/work/fire/src/main.cpp	/^bool output_created(wlc_handle output) {$/;"	f	language:C++
+output_post_paint	/home/ilex/work/fire/src/main.cpp	/^void output_post_paint(wlc_handle output) {$/;"	f	language:C++
+output_pre_paint	/home/ilex/work/fire/src/main.cpp	/^void output_pre_paint(wlc_handle output) {$/;"	f	language:C++
+output_render	/home/ilex/work/fire/src/main.cpp	/^void output_render(wlc_handle output) {$/;"	f	language:C++
+owners	/home/ilex/work/fire/src/core.hpp	/^        std::unordered_set<Ownership> owners;$/;"	m	language:C++	class:Core
+plug	/home/ilex/work/fire/src/core.cpp	/^PluginPtr plug; \/\/ used to get core options$/;"	v	language:C++
+plugins	/home/ilex/work/fire/src/core.hpp	/^        std::vector<PluginPtr> plugins;$/;"	m	language:C++	class:Core
+pointer_button	/home/ilex/work/fire/src/main.cpp	/^bool pointer_button(wlc_handle view, uint32_t time,$/;"	f	language:C++
+pointer_motion	/home/ilex/work/fire/src/main.cpp	/^bool pointer_motion(wlc_handle handle, uint32_t time, const struct wlc_point *position) {$/;"	f	language:C++
+point_inside	/home/ilex/work/fire/src/window.cpp	/^bool point_inside(wlc_point point, wlc_geometry rect) {$/;"	f	language:C++
+prepareFramebuffer	/home/ilex/work/fire/src/opengl.cpp	/^    void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {$/;"	f	language:C++	namespace:OpenGL
+prepareFramebuffer	/home/ilex/work/fire/src/opengl.hpp	/^    void prepareFramebuffer(GLuint &fbuff, GLuint &texture);$/;"	p	language:C++	namespace:OpenGL
+preStage	/home/ilex/work/fire/src/opengl.cpp	/^    void preStage() {$/;"	f	language:C++	namespace:OpenGL
+preStage	/home/ilex/work/fire/src/opengl.cpp	/^    void preStage(GLuint fbuff) {$/;"	f	language:C++	namespace:OpenGL
+preStage	/home/ilex/work/fire/src/opengl.hpp	/^    void preStage();$/;"	p	language:C++	namespace:OpenGL
+preStage	/home/ilex/work/fire/src/opengl.hpp	/^    void preStage(GLuint fbuff);$/;"	p	language:C++	namespace:OpenGL
+private	/home/ilex/work/fire/src/commonincludes.hpp	/^#define private /;"	d	language:C++
+process_button_event	/home/ilex/work/fire/src/core.cpp	/^bool Core::process_button_event(uint32_t button, uint32_t mod,$/;"	f	language:C++	class:Core
+process_button_event	/home/ilex/work/fire/src/core.hpp	/^        bool process_button_event(uint32_t button, uint32_t mods, wlc_button_state state, wlc_po/;"	p	language:C++	class:Core
+process_key_event	/home/ilex/work/fire/src/core.cpp	/^bool Core::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state) {$/;"	f	language:C++	class:Core
+process_key_event	/home/ilex/work/fire/src/core.hpp	/^        bool process_key_event(uint32_t key, uint32_t mods, wlc_key_state state);$/;"	p	language:C++	class:Core
+process_pointer_motion_event	/home/ilex/work/fire/src/core.cpp	/^bool Core::process_pointer_motion_event(wlc_point point) {$/;"	f	language:C++	class:Core
+process_pointer_motion_event	/home/ilex/work/fire/src/core.hpp	/^        bool process_pointer_motion_event(wlc_point point);$/;"	p	language:C++	class:Core
+program	/home/ilex/work/fire/src/opengl.cpp	/^    GLuint program;$/;"	m	language:C++	namespace:__anon1	file:
+Proj	/home/ilex/work/fire/src/opengl.cpp	/^    glm::mat4 Proj;$/;"	m	language:C++	namespace:__anon1	file:
+readConfig	/home/ilex/work/fire/src/config.cpp	/^void Config::readConfig() {$/;"	f	language:C++	class:Config
+readValue	/home/ilex/work/fire/src/config.cpp	/^    template<> Color  readValue<Color>(std::string value) {$/;"	f	language:C++	namespace:__anon1
+readValue	/home/ilex/work/fire/src/config.cpp	/^    template<>Button readValue<Button>(std::string value) {$/;"	f	language:C++	namespace:__anon1
+readValue	/home/ilex/work/fire/src/config.cpp	/^    template<>Key readValue<Key>(std::string value) {$/;"	f	language:C++	namespace:__anon1
+readValue	/home/ilex/work/fire/src/config.cpp	/^    template<class T> T readValue(std::string val) {$/;"	f	language:C++	namespace:__anon1
+readXKBKeyFromString	/home/ilex/work/fire/src/config.cpp	/^        uint32_t readXKBKeyFromString(std::string value) {$/;"	f	language:C++	namespace:__anon1::__anon2
+recalcWindowLayer	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::recalcWindowLayer(FireWindow win) {$/;"	f	language:C++	class:WinStack
+rect_inside	/home/ilex/work/fire/src/window.cpp	/^bool rect_inside(wlc_geometry screen, wlc_geometry win) {$/;"	f	language:C++
+recurseFocus	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::recurseFocus(FireWindow win) {$/;"	f	language:C++	class:WinStack
+recurseIsAncestor	/home/ilex/work/fire/src/winstack.cpp	/^bool WinStack::recurseIsAncestor(FireWindow parent, FireWindow win) {$/;"	f	language:C++	class:WinStack
+redraw_timer	/home/ilex/work/fire/src/core.hpp	/^        int redraw_timer = 0;$/;"	m	language:C++	class:Core
+refreshrate	/home/ilex/work/fire/src/core.cpp	/^int refreshrate;$/;"	v	language:C++
+regOwner	/home/ilex/work/fire/src/core.cpp	/^void Core::regOwner(Ownership owner) {$/;"	f	language:C++	class:Core
+regOwner	/home/ilex/work/fire/src/core.hpp	/^        void regOwner(Ownership owner);$/;"	p	language:C++	class:Core
+removeClient	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::removeClient(FireWindow win) {$/;"	f	language:C++	class:WinStack
+removeWindow	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::removeWindow(FireWindow win) {$/;"	f	language:C++	class:WinStack
+remove_window	/home/ilex/work/fire/src/core.cpp	/^void Core::remove_window(FireWindow win) {$/;"	f	language:C++	class:Core
+remove_window	/home/ilex/work/fire/src/core.hpp	/^        void remove_window(FireWindow win);$/;"	p	language:C++	class:Core
+rem_but	/home/ilex/work/fire/src/core.cpp	/^void Core::rem_but(uint key) {$/;"	f	language:C++	class:Core
+rem_but	/home/ilex/work/fire/src/core.hpp	/^        void rem_but (uint key);$/;"	p	language:C++	class:Core
+rem_effect	/home/ilex/work/fire/src/core.cpp	/^void Core::rem_effect(uint key, FireWindow w) {$/;"	f	language:C++	class:Core
+rem_effect	/home/ilex/work/fire/src/core.hpp	/^        void rem_effect(uint key, FireWindow win = nullptr);$/;"	p	language:C++	class:Core
+rem_hook	/home/ilex/work/fire/src/core.cpp	/^void Core::rem_hook(uint key) {$/;"	f	language:C++	class:Core
+rem_hook	/home/ilex/work/fire/src/core.hpp	/^        void rem_hook(uint key);$/;"	p	language:C++	class:Core
+rem_key	/home/ilex/work/fire/src/core.cpp	/^void Core::rem_key(uint key) {$/;"	f	language:C++	class:Core
+rem_key	/home/ilex/work/fire/src/core.hpp	/^        void rem_key (uint key);$/;"	p	language:C++	class:Core
+render	/home/ilex/work/fire/src/core.cpp	/^void Core::render(wlc_handle output) {$/;"	f	language:C++	class:Core
+render	/home/ilex/work/fire/src/core.hpp	/^        void render(wlc_handle output);$/;"	p	language:C++	class:Core
+RenderHook	/home/ilex/work/fire/src/core.hpp	/^using RenderHook = std::function<void()>;$/;"	t	language:C++
+renderTexture	/home/ilex/work/fire/src/opengl.cpp	/^    void renderTexture(GLuint tex, const wlc_geometry& g) {$/;"	f	language:C++	namespace:OpenGL
+renderTexture	/home/ilex/work/fire/src/opengl.hpp	/^    void renderTexture(GLuint text, const wlc_geometry& g);$/;"	p	language:C++	namespace:OpenGL
+renderTransformedTexture	/home/ilex/work/fire/src/opengl.cpp	/^    void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model) {$/;"	f	language:C++	namespace:OpenGL
+renderTransformedTexture	/home/ilex/work/fire/src/opengl.hpp	/^    void renderTransformedTexture(GLuint text, const wlc_geometry& g, glm::mat4 transform);$/;"	p	language:C++	namespace:OpenGL
+renderWindows	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::renderWindows() {$/;"	f	language:C++	class:WinStack
+reset	/home/ilex/work/fire/src/config.cpp	/^void Config::reset() {$/;"	f	language:C++	class:Config
+reset_gl	/home/ilex/work/fire/src/opengl.hpp	/^    void reset_gl();$/;"	p	language:C++	namespace:OpenGL
+resize	/home/ilex/work/fire/src/window.cpp	/^void FireWin::resize(int w, int h) {$/;"	f	language:C++	class:FireWin
+restackAbove	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::restackAbove(FireWindow above, FireWindow below, bool rstTransients) {$/;"	f	language:C++	class:WinStack
+restackTransients	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::restackTransients(FireWindow win) {$/;"	f	language:C++	class:WinStack
+run	/home/ilex/work/fire/src/core.cpp	/^void Core::run(const char *command) {$/;"	f	language:C++	class:Core
+run	/home/ilex/work/fire/src/core.hpp	/^        void run(const char *command);$/;"	p	language:C++	class:Core
+run_hooks	/home/ilex/work/fire/src/core.cpp	/^void Core::run_hooks() {$/;"	f	language:C++	class:Core
+run_hooks	/home/ilex/work/fire/src/core.hpp	/^        void run_hooks();$/;"	p	language:C++	class:Core
+Second	/home/ilex/work/fire/src/core.cpp	/^#define Second /;"	d	language:C++	file:
+set_background	/home/ilex/work/fire/src/core.hpp	/^        void setBackground(const char *path);$/;"	p	language:C++	class:Core
+setDefaultOptions	/home/ilex/work/fire/src/config.cpp	/^    void setDefaultOptions(PluginPtr p) {$/;"	f	language:C++	namespace:__anon1
+reset_renderer	/home/ilex/work/fire/src/core.hpp	/^        void setDefaultRenderer();$/;"	p	language:C++	class:Core
+setNetClientList	/home/ilex/work/fire/src/winstack.cpp	/^void WinStack::setNetClientList() {$/;"	f	language:C++	class:WinStack
+setOptionsForPlugin	/home/ilex/work/fire/src/config.cpp	/^void Config::setOptionsForPlugin(PluginPtr p) {$/;"	f	language:C++	class:Config
+set_renderer	/home/ilex/work/fire/src/core.hpp	/^        bool setRenderer(RenderHook rh);$/;"	p	language:C++	class:Core
+set_redraw_everything	/home/ilex/work/fire/src/core.hpp	/^        void set_redraw_everything(bool state) {$/;"	f	language:C++	class:Core
+should_redraw	/home/ilex/work/fire/src/core.hpp	/^        bool should_redraw() { return redraw_timer > 0 || cntHooks > 0; }$/;"	f	language:C++	class:Core
+should_repaint_everything	/home/ilex/work/fire/src/core.hpp	/^        bool should_repaint_everything() { return redraw_timer > 0; }$/;"	f	language:C++	class:Core
+should_repaint_everything	/home/ilex/work/fire/src/main.cpp	/^bool should_repaint_everything() {$/;"	f	language:C++
+SignalListener	/home/ilex/work/fire/src/core.hpp	/^struct SignalListener {$/;"	s	language:C++
+SignalListenerData	/home/ilex/work/fire/src/core.hpp	/^using SignalListenerData = std::vector<void*>;$/;"	t	language:C++
+signals	/home/ilex/work/fire/src/core.hpp	/^            std::vector<SignalListener*>> signals;$/;"	m	language:C++	class:Core
+StackIterator	/home/ilex/work/fire/src/winstack.cpp	/^using StackIterator = std::list<FireWindow>::iterator;$/;"	t	language:C++	file:
+SubData	/home/ilex/work/fire/src/plugin.cpp	/^SubData::SubData() {}$/;"	f	language:C++	class:SubData
+switch_workspace	/home/ilex/work/fire/src/core.cpp	/^void Core::switchWorkspace(std::tuple<int, int> nPos) {$/;"	f	language:C++	class:Core
+switch_workspace	/home/ilex/work/fire/src/core.hpp	/^        void switchWorkspace(std::tuple<int, int>);$/;"	p	language:C++	class:Core
+theMachine	/home/ilex/work/fire/src/config.cpp	/^    std::stringstream theMachine;$/;"	m	language:C++	namespace:__anon1	file:
+Transform	/home/ilex/work/fire/src/window.cpp	/^Transform::Transform() {$/;"	f	language:C++	class:Transform
+trigger_signal	/home/ilex/work/fire/src/core.cpp	/^void Core::triggerSignal(std::string name, SignalListenerData data) {$/;"	f	language:C++	class:Core
+trigger_signal	/home/ilex/work/fire/src/core.hpp	/^        void triggerSignal(std::string name, SignalListenerData data);$/;"	p	language:C++	class:Core
+trim	/home/ilex/work/fire/src/config.cpp	/^    std::string trim(std::string line) {$/;"	f	language:C++	namespace:__anon1
+type	/home/ilex/work/fire/src/core.hpp	/^    BindingType type;$/;"	m	language:C++	struct:Binding
+type	/home/ilex/work/fire/src/core.hpp	/^    EffectType type;$/;"	m	language:C++	struct:EffectHook
+uchar	/home/ilex/work/fire/src/core.cpp	/^#define uchar /;"	d	language:C++	file:
+uchar	/home/ilex/work/fire/src/glx.cpp	/^#define uchar /;"	d	language:C++	file:
+ungrab	/home/ilex/work/fire/src/plugin.cpp	/^void _Ownership::ungrab() {$/;"	f	language:C++	class:_Ownership
+ungrab_pointer	/home/ilex/work/fire/src/core.cpp	/^void Core::ungrab_pointer() {}$/;"	f	language:C++	class:Core
+ungrab_pointer	/home/ilex/work/fire/src/core.hpp	/^        void ungrab_pointer();$/;"	p	language:C++	class:Core
+ungrad_keyboard	/home/ilex/work/fire/src/core.cpp	/^void Core::ungrad_keyboard() {}$/;"	f	language:C++	class:Core
+ungrad_keyboard	/home/ilex/work/fire/src/core.hpp	/^        void ungrad_keyboard();$/;"	p	language:C++	class:Core
+unionCast	/home/ilex/work/fire/src/core.cpp	/^    template<class A, class B> B unionCast(A object) {$/;"	f	language:C++	namespace:__anon3
+updateConfiguration	/home/ilex/work/fire/src/core.cpp	/^        void updateConfiguration() {$/;"	f	language:C++	class:CorePlugin
+updateConfiguration	/home/ilex/work/fire/src/plugin.cpp	/^void Plugin::updateConfiguration() {}$/;"	f	language:C++	class:Plugin
+useDefaultProgram	/home/ilex/work/fire/src/opengl.cpp	/^    void useDefaultProgram() {$/;"	f	language:C++	namespace:OpenGL
+useDefaultProgram	/home/ilex/work/fire/src/opengl.hpp	/^    void useDefaultProgram();$/;"	p	language:C++	namespace:OpenGL
+vao	/home/ilex/work/fire/src/core.cpp	/^GLuint vao, vbo;$/;"	v	language:C++
+vbo	/home/ilex/work/fire/src/core.cpp	/^GLuint vao, vbo;$/;"	v	language:C++
+VersionMajor	/home/ilex/work/fire/src/opengl.cpp	/^    int VersionMinor, VersionMajor;$/;"	m	language:C++	namespace:OpenGL	file:
+VersionMinor	/home/ilex/work/fire/src/opengl.cpp	/^    int VersionMinor, VersionMajor;$/;"	m	language:C++	namespace:OpenGL	file:
+vheight	/home/ilex/work/fire/src/core.hpp	/^        int vwidth, vheight; \/\/ viewport size$/;"	m	language:C++	class:Core
+View	/home/ilex/work/fire/src/opengl.cpp	/^    glm::mat4 View;$/;"	m	language:C++	namespace:__anon1	file:
+ViewProj	/home/ilex/work/fire/src/window.cpp	/^glm::mat4 Transform::ViewProj;$/;"	m	language:C++	class:Transform	file:
+view_created	/home/ilex/work/fire/src/main.cpp	/^bool view_created(wlc_handle view) {$/;"	f	language:C++
+view_destroyed	/home/ilex/work/fire/src/main.cpp	/^void view_destroyed(wlc_handle view) {$/;"	f	language:C++
+view_focus	/home/ilex/work/fire/src/main.cpp	/^void view_focus(wlc_handle view, bool focus) {$/;"	f	language:C++
+view_request_move	/home/ilex/work/fire/src/main.cpp	/^void view_request_move(wlc_handle view, const struct wlc_point *origin) {$/;"	f	language:C++
+view_request_resize	/home/ilex/work/fire/src/main.cpp	/^void view_request_resize(wlc_handle view, uint32_t edges, const struct wlc_point *origin) {$/;"	f	language:C++
+vwidth	/home/ilex/work/fire/src/core.hpp	/^        int vwidth, vheight; \/\/ viewport size$/;"	m	language:C++	class:Core
+vx	/home/ilex/work/fire/src/core.hpp	/^        int vx, vy;          \/\/ viewport position$/;"	m	language:C++	class:Core
+vy	/home/ilex/work/fire/src/core.hpp	/^        int vx, vy;          \/\/ viewport position$/;"	m	language:C++	class:Core
+width	/home/ilex/work/fire/src/core.hpp	/^        uint32_t width, height;$/;"	m	language:C++	class:Core
+win	/home/ilex/work/fire/src/core.hpp	/^    FireWindow win;$/;"	m	language:C++	struct:EffectHook
+WindowCallbackProc	/home/ilex/work/fire/src/core.hpp	/^using WindowCallbackProc = std::function<void(FireWindow)>;$/;"	t	language:C++
+windows	/home/ilex/work/fire/src/core.hpp	/^        std::unordered_map<wlc_handle, FireWindow> windows;$/;"	m	language:C++	class:Core
+windows	/home/ilex/work/fire/src/winstack.cpp	/^std::unordered_map<Window, FireWindow> windows;$/;"	v	language:C++
+WinStack	/home/ilex/work/fire/src/winstack.cpp	/^WinStack::WinStack() {$/;"	f	language:C++	class:WinStack
+WinUtil	/home/ilex/work/fire/src/window.cpp	/^namespace WinUtil {$/;"	n	language:C++	file:
+wmDetected	/home/ilex/work/fire/src/core.cpp	/^bool wmDetected;$/;"	v	language:C++
+xbutton	/home/ilex/work/fire/src/core.hpp	/^        } xbutton;$/;"	m	language:C++	struct:Context::__anon1	typeref:struct:Context::__anon1::__anon2
+xev	/home/ilex/work/fire/src/core.hpp	/^    } xev;$/;"	m	language:C++	struct:Context	typeref:struct:Context::__anon1
+xkey	/home/ilex/work/fire/src/core.hpp	/^        } xkey;$/;"	m	language:C++	struct:Context::__anon1	typeref:struct:Context::__anon1::__anon3
+x_root	/home/ilex/work/fire/src/core.hpp	/^            int x_root, y_root;$/;"	m	language:C++	struct:Context::__anon1::__anon2
+y_root	/home/ilex/work/fire/src/core.hpp	/^            int x_root, y_root;$/;"	m	language:C++	struct:Context::__anon1::__anon2
+__STRING	/home/ilex/work/fire/src/opengl.cpp	/^#  define __STRING(/;"	d	language:C++	file:
+~Core	/home/ilex/work/fire/src/core.cpp	/^Core::~Core(){$/;"	f	language:C++	class:Core
+~Core	/home/ilex/work/fire/src/core.hpp	/^        ~Core();$/;"	p	language:C++	class:Core
+~FireWin	/home/ilex/work/fire/src/window.cpp	/^FireWin::~FireWin() {$/;"	f	language:C++	class:FireWin
+~SubData	/home/ilex/work/fire/src/plugin.cpp	/^SubData::~SubData() {}$/;"	f	language:C++	class:SubData

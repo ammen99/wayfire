@@ -1,0 +1,140 @@
+!_TAG_FILE_SORTED	2	/0=unsorted, 1=sorted, 2=foldcase/
+active	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    bool active, block = false; \/\/ block is waiting to exit$/;"	m	language:C++	class:ATSwitcher	file:
+actKey	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    Key actKey;$/;"	m	language:C++	class:ATSwitcher	file:
+angle	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^        float angle = M_PI \/ 6.;$/;"	m	language:C++	struct:ATSwitcher::__anon1	file:
+ATSwitcher	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^class ATSwitcher : public Plugin {$/;"	c	language:C++	file:
+attribs	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    } attribs;$/;"	m	language:C++	class:ATSwitcher	typeref:struct:ATSwitcher::__anon1	file:
+back	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^        float back = 0.3f;$/;"	m	language:C++	struct:ATSwitcher::__anon1	file:
+backward	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    KeyBinding backward;$/;"	m	language:C++	class:ATSwitcher	file:
+beginSwitch	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void beginSwitch() {$/;"	f	language:C++	class:VSwitch
+block	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    bool active, block = false; \/\/ block is waiting to exit$/;"	m	language:C++	class:ATSwitcher	file:
+codes	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    uint32_t codes[10];$/;"	m	language:C++	class:Grid	file:
+currentWin	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    GridWindow currentWin;$/;"	m	language:C++	class:Grid	file:
+curstep	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    int curstep;$/;"	m	language:C++	class:Grid	file:
+curstep	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    int curstep = 0;$/;"	m	language:C++	class:ATSwitcher	file:
+cx	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        int cx, cy; \/\/ coordinates of the center of the window$/;"	m	language:C++	class:Resize	file:
+cy	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        int cx, cy; \/\/ coordinates of the center of the window$/;"	m	language:C++	class:Resize	file:
+dirs	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    std::queue<int> dirs;$/;"	m	language:C++	class:ATSwitcher	file:
+dirs	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        std::queue<std::tuple<int, int> >dirs; \/\/ series of moves we have to do$/;"	m	language:C++	class:VSwitch	file:
+dirx	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int dirx, diry;$/;"	m	language:C++	class:VSwitch	file:
+diry	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int dirx, diry;$/;"	m	language:C++	class:VSwitch	file:
+dx	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int dx, dy;$/;"	m	language:C++	class:VSwitch	file:
+dy	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int dx, dy;$/;"	m	language:C++	class:VSwitch	file:
+edges	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        uint32_t edges;$/;"	m	language:C++	class:Resize	file:
+exit	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    Hook exit;$/;"	m	language:C++	class:ATSwitcher	file:
+exitHook	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void exitHook() {$/;"	f	language:C++	class:ATSwitcher
+forward	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    KeyBinding forward;$/;"	m	language:C++	class:ATSwitcher	file:
+getFactor	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^float getFactor(int x, int y, float percent) {$/;"	f	language:C++
+getOffsetStepForWindow	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^void getOffsetStepForWindow(FireWindow win, float c,$/;"	f	language:C++
+GetProgress	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^#define GetProgress(/;"	d	language:C++	file:
+getSlot	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void getSlot(int n, int &x, int &y, int &w, int &h) {$/;"	f	language:C++	class:Grid
+Grid	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    Grid() {$/;"	f	language:C++	class:Grid
+Grid	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^class Grid : public Plugin {$/;"	c	language:C++	file:
+GridWindow	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    GridWindow(){}$/;"	f	language:C++	struct:GridWindow
+GridWindow	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    GridWindow(FireWindow id, int x, int y, int w, int h) {$/;"	f	language:C++	struct:GridWindow
+GridWindow	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^struct GridWindow {$/;"	s	language:C++	file:
+handleKey	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void handleKey(Context ctx) {$/;"	f	language:C++	class:Grid
+handleKey	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void handleKey(Context ctx) {$/;"	f	language:C++	class:ATSwitcher
+handleKey	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void handleKey(Context ctx) {$/;"	f	language:C++	class:VSwitch
+height	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    struct {int x, y, width, height;} size;$/;"	m	language:C++	struct:GridWindow::__anon1	file:
+hook	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        Hook hook;$/;"	m	language:C++	class:Move	file:
+hook	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        Hook hook;$/;"	m	language:C++	class:Resize	file:
+hook	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        Hook hook;$/;"	m	language:C++	class:VSwitch	file:
+index	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    int index;$/;"	m	language:C++	class:ATSwitcher	file:
+ini	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    Hook ini;$/;"	m	language:C++	class:ATSwitcher	file:
+iniButton	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        Button iniButton;$/;"	m	language:C++	class:Move	file:
+iniButton	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        Button iniButton;$/;"	m	language:C++	class:Resize	file:
+init	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void init() {$/;"	f	language:C++	class:Grid
+init	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void init() {$/;"	f	language:C++	class:Move
+init	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void init() {$/;"	f	language:C++	class:Resize
+init	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void init() {$/;"	f	language:C++	class:ATSwitcher
+init	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void init() {$/;"	f	language:C++	class:VSwitch
+initHook	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void initHook() {$/;"	f	language:C++	class:ATSwitcher
+Initiate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Initiate(Context ctx, FireWindow pwin) {$/;"	f	language:C++	class:Move
+initiate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void initiate(Context ctx, FireWindow pwin) {$/;"	f	language:C++	class:Resize
+initiate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    KeyBinding initiate;$/;"	m	language:C++	class:ATSwitcher	file:
+Initiate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void Initiate() {$/;"	f	language:C++	class:ATSwitcher
+initOwnership	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void initOwnership(){$/;"	f	language:C++	class:Grid
+initOwnership	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void initOwnership() {$/;"	f	language:C++	class:Move
+initOwnership	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void initOwnership() {$/;"	f	language:C++	class:Resize
+initOwnership	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void initOwnership() {$/;"	f	language:C++	class:ATSwitcher
+initOwnership	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void initOwnership() {$/;"	f	language:C++	class:VSwitch
+initsteps	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    int initsteps;$/;"	m	language:C++	class:ATSwitcher	file:
+insertNextDirection	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void insertNextDirection(int ddx, int ddy) {$/;"	f	language:C++	class:VSwitch
+Intermediate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Intermediate() {$/;"	f	language:C++	class:Move
+intermediate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void intermediate() {$/;"	f	language:C++	class:Resize
+kbs	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        KeyBinding kbs[4];$/;"	m	language:C++	class:VSwitch	file:
+keys	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    KeyBinding keys[10];$/;"	m	language:C++	class:Grid	file:
+MAXDIRS	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^#define MAXDIRS /;"	d	language:C++	file:
+MAXDIRS	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^#define MAXDIRS /;"	d	language:C++	file:
+Move	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^class Move : public Plugin {$/;"	c	language:C++	file:
+moveLeft	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void moveLeft() {$/;"	f	language:C++	class:ATSwitcher
+moveRight	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void moveRight() {$/;"	f	language:C++	class:ATSwitcher
+move_request	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        SignalListener sigScl, move_request;$/;"	m	language:C++	class:Move	file:
+newInstance	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    Plugin *newInstance() {$/;"	f	language:C++
+newInstance	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^    Plugin *newInstance() {$/;"	f	language:C++
+newInstance	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    Plugin *newInstance() {$/;"	f	language:C++
+newInstance	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    Plugin *newInstance() {$/;"	f	language:C++
+newInstance	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    Plugin *newInstance() {$/;"	f	language:C++
+nx	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int nx, ny;$/;"	m	language:C++	class:VSwitch	file:
+ny	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int nx, ny;$/;"	m	language:C++	class:VSwitch	file:
+offset	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^        float offset = 0.6f;$/;"	m	language:C++	struct:ATSwitcher::__anon1	file:
+offX	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    float offX;$/;"	m	language:C++	struct:WinAttrib	file:
+offY	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    float offY;$/;"	m	language:C++	struct:WinAttrib	file:
+offZ	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    float offZ;$/;"	m	language:C++	struct:WinAttrib	file:
+onScaleChanged	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void onScaleChanged(SignalListenerData data) {$/;"	f	language:C++	class:Move
+on_move_request	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void on_move_request(SignalListenerData data) {$/;"	f	language:C++	class:Move
+on_resize_request	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void on_resize_request(SignalListenerData data) {$/;"	f	language:C++	class:Resize
+press	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        ButtonBinding press;$/;"	m	language:C++	class:Move	file:
+press	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        ButtonBinding press;$/;"	m	language:C++	class:Resize	file:
+release	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        ButtonBinding release;$/;"	m	language:C++	class:Move	file:
+release	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        ButtonBinding release;$/;"	m	language:C++	class:Resize	file:
+reset	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void reset(int dir) {$/;"	f	language:C++	class:ATSwitcher
+Resize	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^class Resize : public Plugin {$/;"	c	language:C++	file:
+resize_request	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        SignalListener resize_request;$/;"	m	language:C++	class:Resize	file:
+rnd	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    Hook rnd;$/;"	m	language:C++	class:Grid	file:
+rnd	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    Hook rnd; \/\/ used to render windows$/;"	m	language:C++	class:ATSwitcher	file:
+rotateAngle	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    float rotateAngle;$/;"	m	language:C++	struct:WinAttrib	file:
+scale	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    bool scale = false;$/;"	m	language:C++	struct:WinAttrib	file:
+scaleEnd	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    float scaleEnd = -1;$/;"	m	language:C++	struct:WinAttrib	file:
+scaleStart	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    float scaleStart = -1;$/;"	m	language:C++	struct:WinAttrib	file:
+scX	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        int scX = 1, scY = 1;$/;"	m	language:C++	class:Move	file:
+scY	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        int scX = 1, scY = 1;$/;"	m	language:C++	class:Move	file:
+setTransform	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void setTransform(int dir) {$/;"	f	language:C++	class:ATSwitcher
+sigScl	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        SignalListener sigScl, move_request;$/;"	m	language:C++	class:Move	file:
+size	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    struct {int x, y, width, height;} size;$/;"	m	language:C++	struct:GridWindow	typeref:struct:GridWindow::__anon1	file:
+step	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void step() {$/;"	f	language:C++	class:Grid
+step	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void step() {$/;"	f	language:C++	class:ATSwitcher
+Step	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void Step() {$/;"	f	language:C++	class:VSwitch
+stepNum	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int stepNum;$/;"	m	language:C++	class:VSwitch	file:
+steps	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    int steps = 1;$/;"	m	language:C++	class:Grid	file:
+steps	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    int steps = 20;$/;"	m	language:C++	class:ATSwitcher	file:
+switch_workspaceBindings	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        uint32_t switchWorkspaceBindings[4];$/;"	m	language:C++	class:VSwitch	file:
+sx	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Move	file:
+sx	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Resize	file:
+sy	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Move	file:
+sy	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Resize	file:
+Terminate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Terminate(Context ctx) {$/;"	f	language:C++	class:Move
+terminate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void terminate(Context ctx) {$/;"	f	language:C++	class:Resize
+terminate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    KeyBinding terminate;$/;"	m	language:C++	class:ATSwitcher	file:
+Terminate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void Terminate() {$/;"	f	language:C++	class:ATSwitcher
+toggleMaxim	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void toggleMaxim(FireWindow win, int &x, int &y, int &w, int &h) {$/;"	f	language:C++	class:Grid
+tr	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    bool tr = false;$/;"	m	language:C++	struct:WinAttrib	file:
+updateConfiguration	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void updateConfiguration() {$/;"	f	language:C++	class:Grid
+updateConfiguration	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void updateConfiguration() {$/;"	f	language:C++	class:Move
+updateConfiguration	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void updateConfiguration(){$/;"	f	language:C++	class:Resize
+updateConfiguration	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void updateConfiguration() {$/;"	f	language:C++	class:ATSwitcher
+updateConfiguration	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void updateConfiguration() {$/;"	f	language:C++	class:VSwitch
+vstep	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^        int vstep;$/;"	m	language:C++	class:VSwitch	file:
+VSwitch	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^class VSwitch : public Plugin {$/;"	c	language:C++	file:
+width	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    struct {int x, y, width, height;} size;$/;"	m	language:C++	struct:GridWindow::__anon1	file:
+win	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    FireWindow win;$/;"	m	language:C++	struct:GridWindow	file:
+win	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        FireWindow win; \/\/ window we're operating on$/;"	m	language:C++	class:Move	file:
+win	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        FireWindow win; \/\/ window we're operating on$/;"	m	language:C++	class:Resize	file:
+win	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    FireWindow win;$/;"	m	language:C++	struct:WinAttrib	file:
+WinAttrib	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^struct WinAttrib {$/;"	s	language:C++	file:
+windows	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    std::vector<FireWindow> windows;$/;"	m	language:C++	class:ATSwitcher	file:
+wins	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    std::vector<GridWindow> wins;$/;"	m	language:C++	class:Grid	file:
+winsToMove	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    std::vector<WinAttrib> winsToMove;$/;"	m	language:C++	class:ATSwitcher	file:
+x	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    struct {int x, y, width, height;} size;$/;"	m	language:C++	struct:GridWindow::__anon1	file:
+y	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    struct {int x, y, width, height;} size;$/;"	m	language:C++	struct:GridWindow::__anon1	file:
