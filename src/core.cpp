@@ -502,6 +502,8 @@ void Core::reset_renderer() {
     for_each_window([] (View v) {
                 v->restore_mask();
             });
+
+    wlc_output_schedule_render(wlc_get_focused_output());
 }
 
 void Core::set_renderer(uint32_t vis_mask, RenderHook rh) {

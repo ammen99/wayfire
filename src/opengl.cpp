@@ -88,7 +88,7 @@ namespace OpenGL {
 
     GLuint getTex() {return framebufferTexture;}
 
-    void renderTexture(GLuint tex, const wlc_geometry& g) {
+    void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits) {
 
 
         float w2 = float(1366) / 2.;
@@ -99,6 +99,11 @@ namespace OpenGL {
 
         float w = g.size.w;
         float h = g.size.h;
+
+        if(bits & TEXTURE_TRANSFORM_INVERT_Y) {
+            h   *= -1;
+            tly += h;
+        }
 
         GLfloat vertexData[] = {
             tlx    , tly - h, 0.f, // 1
@@ -118,11 +123,8 @@ namespace OpenGL {
             0.0f, 1.0f,
         };
 
-        std::cout << g.origin.x << " " << g.origin.y << std::endl;
-
         GLint position   = GL_CALL(glGetAttribLocation(program, "position"));
         GLint uvPosition = GL_CALL(glGetAttribLocation(program, "uvPosition"));
- //       GLint texID      = GL_CALL(glGetAttribLocation(program, "smp"));
 
         auto w2ID = GL_CALL(glGetUniformLocation(program, "w2"));
         auto h2ID = GL_CALL(glGetUniformLocation(program, "h2"));
@@ -130,12 +132,12 @@ namespace OpenGL {
         glUniform1f(w2ID, 1366. / 2);
         glUniform1f(h2ID, 768. / 2);
 
+        GL_CALL(glActiveTexture(GL_TEXTURE0));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
 
-        GL_CALL(glActiveTexture(GL_TEXTURE0));
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
-//        GL_CALL(glUniform1i(texID, 0));
+
 
         GL_CALL(glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));
         GL_CALL(glVertexAttribPointer(uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
@@ -143,19 +145,12 @@ namespace OpenGL {
         GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
     }
 
-    void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model) {
-//        if(transformed)
-//            MVP = Proj * ViewMat * Model;
-//        else
+    void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model, uint32_t bits) {
             MVP = Model;
 
         glUseProgram(program);
-
         glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
-//        glUniform1i(depthID, depth);
-//        glUniform4fv(colorID, 1, &color[0]);
-
-        renderTexture(tex, g);
+        renderTexture(tex, g, bits);
     }
 
     void preStage() {

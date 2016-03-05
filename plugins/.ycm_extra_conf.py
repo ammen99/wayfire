@@ -8,7 +8,7 @@ flags = [
 'c++',
 '-DYCM',
 '-isystem/usr/include',
-'-isystem/home/ilex/work/fire/src',
+'-isystem/home/ilex/work/wayfire/src',
 '-DUSE_CLANG_COMPLETER',
 '-I/usr/include/dbus-1.0',
 '-I/usr/lib64/dbus-1.0/include',

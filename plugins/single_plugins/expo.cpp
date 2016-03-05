@@ -1,9 +1,6 @@
 #include <core.hpp>
 #include <opengl.hpp>
 
-// TODO: do not just hack window scaling/offsetting,
-// but fetch each viewport independently
-
 void triggerScaleChange(int scX, int scY) {
         SignalListenerData sigData;
         sigData.push_back(&scX);
@@ -126,6 +123,11 @@ class Expo : public Plugin {
                 core->set_redraw_everything(false);
                 core->reset_renderer();
             }
+
+            render_params.scale_x = zoom_target.scale_x.end;
+            render_params.scale_y = zoom_target.scale_y.end;
+            render_params.off_x   = zoom_target.off_x.end;
+            render_params.off_y   = zoom_target.off_y.end;
         } else {
             render_params.scale_x = GetProgress(zoom_target.scale_x.begin,
                     zoom_target.scale_x.end, zoom_target.steps, max_steps);
@@ -151,9 +153,6 @@ class Expo : public Plugin {
         auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
-        GL_CALL(glClearColor(1, 0, 0, 0));
-        GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
-
         OpenGL::useDefaultProgram();
 
         for(int i = 0; i < vw; i++) {
@@ -165,7 +164,7 @@ class Expo : public Plugin {
                     .origin = {(i - vx) * w, (j - vy) * h},
                     .size = {(uint32_t) w, (uint32_t) h}};
 
-                OpenGL::renderTransformedTexture(textures[i][j], g, matrix);
+                OpenGL::renderTransformedTexture(textures[i][j], g, matrix, TEXTURE_TRANSFORM_INVERT_Y);
             }
         }
     }

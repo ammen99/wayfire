@@ -13,6 +13,8 @@ void gl_call(const char*, uint32_t, const char*);
 /* This macro is taken from WLC source code */
 #define GL_CALL(x) x; gl_call(__PRETTY_FUNCTION__, __LINE__, __STRING(x))
 
+#define TEXTURE_TRANSFORM_INVERT_Y 1
+
 namespace OpenGL {
     extern bool      transformed;
     extern int       depth;
@@ -21,8 +23,8 @@ namespace OpenGL {
     extern int VersionMinor, VersionMajor;
 
     void initOpenGL(const char *shaderSrcPath);
-    void renderTransformedTexture(GLuint text, const wlc_geometry& g, glm::mat4 transform);
-    void renderTexture(GLuint text, const wlc_geometry& g);
+
+    void renderTransformedTexture(GLuint text, const wlc_geometry& g, glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
 
     void preStage();
     void preStage(GLuint fbuff);
