@@ -61,9 +61,6 @@ void Core::init() {
 
     load_dynamic_plugins();
 
-    //OpenGL::initOpenGL((*plug->options["shadersrc"]->data.sval).c_str());
-    //core->set_background((*plug->options["background"]->data.sval).c_str());
-
     for(auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
         p->initOwnership();
@@ -521,15 +518,23 @@ void Core::set_renderer(uint32_t vis_mask, RenderHook rh) {
 }
 
 void Core::render() {
+    if (renderer) {
+        renderer();
+    } else {
+        OpenGL::useDefaultProgram();
+        GLuint bg = get_background();
+        const wlc_geometry g = {{0, 0}, {1366, 768}};
+        OpenGL::renderTransformedTexture(bg, g, glm::mat4());
+    }
+}
+
+void Core::transformation_renderer() {
+
+    OpenGL::useDefaultProgram();
     GLuint bg = get_background();
     const wlc_geometry g = {{0, 0}, {1366, 768}};
     OpenGL::renderTransformedTexture(bg, g, glm::mat4());
 
-    if (renderer)
-        renderer();
-}
-
-void Core::transformation_renderer() {
     for_each_window_reverse([=](View w) {
         if(w->default_mask & visibility_mask) {
             wlc_geometry g;
@@ -673,12 +678,10 @@ void Core::texture_from_viewport(std::tuple<int, int> vp,
     if (fbuff == -1 || texture == -1)
         OpenGL::prepareFramebuffer(fbuff, texture);
 
-    //GL_CALL(glViewport(0, 0, width, height));
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
-
-    auto bg = get_background();
-    const wlc_geometry g = {{0, 0}, {1366, 768}};
-    OpenGL::renderTransformedTexture(bg, g, glm::mat4());
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
+    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
+    GL_CALL(glBlitFramebuffer(0, 0, background.w, background.h,
+                0, 768, 1366, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR));
 
     GetTuple(x, y, vp);
     uint32_t mask = get_mask_for_viewport(x, y);
@@ -693,8 +696,7 @@ void Core::texture_from_viewport(std::tuple<int, int> vp,
             g.origin.x += dx;
             g.origin.y += dy;
 
-            auto surf = wlc_view_get_surface(v->get_id());
-            render_surface(surf, g, v->transform.compose());
+            render_surface(v->get_surface(), g, v->transform.compose());
         }
     });
 
@@ -733,10 +735,24 @@ namespace {
 #include "jpeg.hpp"
 
 GLuint Core::get_background() {
-    if(background != -1) return background;
+    if(background.tex != -1) return background.tex;
 
     OpenGL::initOpenGL("/usr/share/wayfire/shaders/");
-    return (background = texture_from_jpeg(plug->options["background"]->data.sval->c_str()));
+    background.tex = texture_from_jpeg(plug->options["background"]->data.sval->c_str(), background.w, background.h);
+
+    GL_CALL(glGenFramebuffers(1, &background.fbuff));
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, background.fbuff));
+
+
+    GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                background.tex, 0));
+
+    auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+        std::cout << "Error in background framebuffer !!!" << std::endl;
+
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    return background.tex;
 }
 
 //void Core::set_background(const char *path) {

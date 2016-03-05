@@ -25,6 +25,8 @@ namespace OpenGL {
     void initOpenGL(const char *shaderSrcPath);
 
     void renderTransformedTexture(GLuint text, const wlc_geometry& g, glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
+    void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits);
+    void set_transform(glm::mat4 tr);
 
     void preStage();
     void preStage(GLuint fbuff);

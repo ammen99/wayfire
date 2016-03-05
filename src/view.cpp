@@ -50,6 +50,8 @@ FireView::FireView(wlc_handle _view) {
     view = _view;
     auto geom = wlc_view_get_geometry(view);
     std::memcpy(&attrib, geom, sizeof(attrib));
+
+    surface = wlc_view_get_surface(view);
 }
 
 FireView::~FireView() {
@@ -91,11 +93,11 @@ void FireView::set_geometry(int x, int y, int w, int h) {
 #include <wlc/wlc-wayland.h>
 #include <wlc/wlc-render.h>
 
-void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform) {
+void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
     uint32_t tex[3];
     wlc_surface_get_textures(surface, tex);
     for(int i = 0; i < 3 && tex[i]; i++)
-        OpenGL::renderTransformedTexture(tex[i], g, transform);
+        OpenGL::renderTransformedTexture(tex[i], g, transform, bits);
 
     size_t num_subsurfaces;
 
@@ -109,7 +111,7 @@ void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform) {
         sub_g.origin.x += g.origin.x;
         sub_g.origin.y += g.origin.y;
 
-        render_surface(subsurfaces[i], sub_g, transform);
+        render_surface(subsurfaces[i], sub_g, transform, bits);
     }
 }
 

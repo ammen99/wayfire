@@ -12,8 +12,7 @@
 #include <GLES2/gl2.h>
 #include <cstdio>
 
-GLuint texture_from_jpeg(const char* FileName)  {
-  unsigned long x, y;
+GLuint texture_from_jpeg(const char* FileName, unsigned long &x, unsigned long &y)  {
   unsigned int texture_id;
   unsigned long data_size;     // length of the file
   int channels;               //  3 =>RGB   4 =>RGBA

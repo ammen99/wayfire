@@ -33,6 +33,7 @@ bool rect_inside(wlc_geometry screen, wlc_geometry win);
 
 class FireView {
     wlc_handle view;
+    wlc_resource surface;
 
     public:
 
@@ -75,9 +76,10 @@ class FireView {
         void set_geometry(wlc_geometry g);
 
         wlc_handle get_id() {return view;}
+        wlc_resource get_surface() {return surface;}
 };
 
-void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform);
+void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits = 0);
 
 typedef std::shared_ptr<FireView> View;
 

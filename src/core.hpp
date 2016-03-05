@@ -136,7 +136,11 @@ class Core {
         PluginPtr load_plugin_from_file(std::string path, void **handle);
         void load_dynamic_plugins();
 
-        GLuint background = -1;
+        struct {
+            GLuint tex = -1;
+            GLuint fbuff;
+            unsigned long w, h;
+        } background;
 
     public:
         Core(int vx, int vy);

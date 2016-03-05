@@ -142,18 +142,15 @@ class Expo : public Plugin {
     }
 
     void render() {
-        std::cout << "render " << std::endl;
         GetTuple(vw, vh, core->get_viewport_grid_size());
         GetTuple(vx, vy, core->get_current_viewport());
         GetTuple(w,  h,  core->getScreenSize());
-
-        std::cout << render_params.off_x << " " << render_params.off_y << " "
-            << render_params.scale_x << " " << render_params.scale_y << std::endl;
 
         auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
         OpenGL::useDefaultProgram();
+        //OpenGL::set_transform(matrix);
 
         for(int i = 0; i < vw; i++) {
             for(int j = 0; j < vh; j++) {

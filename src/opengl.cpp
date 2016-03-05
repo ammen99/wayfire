@@ -45,6 +45,7 @@ void gl_call(const char *func, uint32_t line, const char *glfunc) {
 
 namespace OpenGL {
     int VersionMinor, VersionMajor;
+    GLuint position, uvPosition;
 #define uchar unsigned char
     GLuint compileShader(const char *src, GLuint type) {
         printf("compile shader\n");
@@ -89,8 +90,6 @@ namespace OpenGL {
     GLuint getTex() {return framebufferTexture;}
 
     void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits) {
-
-
         float w2 = float(1366) / 2.;
         float h2 = float(768) / 2.;
 
@@ -122,22 +121,14 @@ namespace OpenGL {
             0.0f, 0.0f,
             0.0f, 1.0f,
         };
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
 
-        GLint position   = GL_CALL(glGetAttribLocation(program, "position"));
-        GLint uvPosition = GL_CALL(glGetAttribLocation(program, "uvPosition"));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-        auto w2ID = GL_CALL(glGetUniformLocation(program, "w2"));
-        auto h2ID = GL_CALL(glGetUniformLocation(program, "h2"));
-
-        glUniform1f(w2ID, 1366. / 2);
-        glUniform1f(h2ID, 768. / 2);
-
-        GL_CALL(glActiveTexture(GL_TEXTURE0));
+//        GL_CALL(glActiveTexture(GL_TEXTURE0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
-
-
 
         GL_CALL(glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));
         GL_CALL(glVertexAttribPointer(uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
@@ -146,11 +137,12 @@ namespace OpenGL {
     }
 
     void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model, uint32_t bits) {
-            MVP = Model;
-
-        glUseProgram(program);
-        glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]);
+        set_transform(Model);
         renderTexture(tex, g, bits);
+    }
+
+    void set_transform(glm::mat4 tr) {
+         glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tr[0][0]);
     }
 
     void preStage() {
@@ -218,8 +210,17 @@ namespace OpenGL {
                 glm::vec3(0., 0., 0.),
                 glm::vec3(0., 1., 0.));
         Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
-
         MVP = glm::mat4();
+
         GL_CALL(glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]));
+
+        auto w2ID = GL_CALL(glGetUniformLocation(program, "w2"));
+        auto h2ID = GL_CALL(glGetUniformLocation(program, "h2"));
+
+        glUniform1f(w2ID, 1366. / 2);
+        glUniform1f(h2ID, 768. / 2);
+
+        position   = GL_CALL(glGetAttribLocation(program, "position"));
+        uvPosition = GL_CALL(glGetAttribLocation(program, "uvPosition"));
     }
 }
