@@ -686,7 +686,7 @@ void Core::texture_from_viewport(std::tuple<int, int> vp,
     GetTuple(x, y, vp);
     uint32_t mask = get_mask_for_viewport(x, y);
 
-    for_each_window([=] (View v) {
+    for_each_window_reverse([=] (View v) {
         if (v->default_mask & mask) {
             int dx = (v->vx - x) * width;
             int dy = (v->vy - y) * height;

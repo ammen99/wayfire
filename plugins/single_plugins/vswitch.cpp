@@ -37,17 +37,17 @@ class VSwitch : public Plugin {
         dx = (vx - nx) * sw;
         dy = (vy - ny) * sh;
 
-        auto views = core->get_windows_on_viewport(std::make_tuple(nx, ny));
-        for(auto v : views) {
-            v->transform.translation =
-                glm::translate(glm::mat4(),
-                    glm::vec3(2 * (nx - vx),
-                              2 * (vy - ny),
-                              0));
-        }
+        uint32_t new_mask = core->get_mask_for_viewport(nx, ny);
+        uint32_t old_mask = core->get_mask_for_viewport(vx, vy);
+
+        core->for_each_window([=] (View v) {
+            if(!(v->default_mask & old_mask) && (v->default_mask & new_mask))
+                v->transform.translation =
+                    glm::translate(glm::mat4(), glm::vec3(2.f * (nx - vx), 2.f * (vy - ny), 0));
+        });
 
         core->set_redraw_everything(true);
-        core->set_renderer(core->get_mask_for_viewport(nx, ny) | core->get_mask_for_viewport(vx, vy));
+        core->set_renderer(new_mask | old_mask);
         core->activate_owner(owner);
         stepNum = 0;
     }
