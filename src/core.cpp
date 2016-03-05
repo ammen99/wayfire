@@ -650,10 +650,12 @@ void Core::switch_workspace(std::tuple<int, int> nPos) {
     vx = nx;
     vy = ny;
 
-    auto ws = get_windows_on_viewport(get_current_viewport());
+    auto new_mask = get_mask_for_viewport(vx, vy);
 
-    for(int i = ws.size() - 1; i >= 0; i--)
-        focus_window(ws[i]);
+    for_each_window_reverse([=] (View v) {
+        if(v->default_mask & new_mask)
+            focus_window(v);
+    });
 }
 
 std::vector<View> Core::get_windows_on_viewport(std::tuple<int, int> vp) {

@@ -1,6 +1,6 @@
 #version 100
 
-varying mediump vec2 uvpos;
+varying highp vec2 uvpos;
 
 
 uniform sampler2D smp;

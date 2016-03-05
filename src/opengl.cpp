@@ -127,7 +127,6 @@ namespace OpenGL {
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-//        GL_CALL(glActiveTexture(GL_TEXTURE0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
 
         GL_CALL(glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));

@@ -1,9 +1,9 @@
 #version 100
 
 attribute mediump vec3 position;
-attribute mediump vec2 uvPosition;
+attribute highp vec2 uvPosition;
 
-varying mediump vec2 uvpos;
+varying highp vec2 uvpos;
 
 uniform mat4 MVP;
 uniform float w2;
