@@ -118,7 +118,7 @@ namespace OpenGL {
             0.0f, 1.0f,
         };
 
-        glUseProgram(program);
+        std::cout << g.origin.x << " " << g.origin.y << std::endl;
 
         GLint position   = GL_CALL(glGetAttribLocation(program, "position"));
         GLint uvPosition = GL_CALL(glGetAttribLocation(program, "uvPosition"));

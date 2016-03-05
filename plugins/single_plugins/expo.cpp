@@ -1,4 +1,5 @@
 #include <core.hpp>
+#include <opengl.hpp>
 
 // TODO: do not just hack window scaling/offsetting,
 // but fetch each viewport independently
@@ -15,24 +16,19 @@ class Expo : public Plugin {
         KeyBinding toggle;
         ButtonBinding press, release;
 
-        int stepNum;
-        int expostep;
-
-        float offXtarget, offYtarget;
-        float offXcurrent, offYcurrent;
-        float sclXtarget, sclYtarget;
-        float sclXcurrent, sclYcurrent;
-
-        float stepoffX, stepoffY, stepsclX, stepsclY;
+        int max_steps;
 
         Hook hook;
         bool active;
         std::function<View(int, int)> save; // used to restore
 
         Key toggleKey;
+
+        /* maximal viewports are 32, so these are enough for making it */
+        GLuint fbuffs[32][32], textures[32][32];
     public:
     void updateConfiguration() {
-        expostep = getSteps(options["duration"]->data.ival);
+        max_steps = getSteps(options["duration"]->data.ival);
 
         toggleKey = *options["activate"]->data.key;
         if(toggleKey.key == 0)
@@ -42,24 +38,24 @@ class Expo : public Plugin {
         toggle.key = toggleKey.key;
         toggle.mod = toggleKey.mod;
         toggle.action = std::bind(std::mem_fn(&Expo::Toggle), this, _1);
-        core->addKey(&toggle, true);
+        core->add_key(&toggle, true);
 
-        release.action =
-            std::bind(std::mem_fn(&Expo::buttonRelease), this, _1);
-        release.type = BindingTypeRelease;
-        release.mod = AnyModifier;
-        release.button = Button1;
-        core->addBut(&release, false);
-
-        press.action =
-            std::bind(std::mem_fn(&Expo::buttonPress), this, _1);
-        press.type = BindingTypePress;
-        press.mod = Mod4Mask;
-        press.button = Button1;
-        core->addBut(&press, false);
+//        release.action =
+//            std::bind(std::mem_fn(&Expo::buttonRelease), this, _1);
+//        release.type = BindingTypeRelease;
+//        release.mod = AnyModifier;
+//        release.button = Button1;
+//        core->add_but(&release, false);
+//
+//        press.action =
+//            std::bind(std::mem_fn(&Expo::buttonPress), this, _1);
+//        press.type = BindingTypePress;
+//        press.mod = Mod4Mask;
+//        press.button = Button1;
+//        core->add_but(&press, false);
 
         hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
-        core->addHook(&hook);
+        core->add_hook(&hook);
     }
 
     void init() {
@@ -68,6 +64,8 @@ class Expo : public Plugin {
         core->add_signal("screen-scale-changed");
         active = false;
 
+        std::memset(fbuffs, -1, sizeof(fbuffs));
+        std::memset(textures, -1, sizeof(textures));
     }
     void initOwnership() {
         owner->name = "expo";
@@ -75,148 +73,100 @@ class Expo : public Plugin {
         owner->compat.insert("move");
     }
 
-    void buttonRelease(Context *ctx) {
+    struct tup {
+        float begin, end;
+    };
 
-        GetTuple(w, h, core->getScreenSize());
+    struct {
+        int steps = 0;
+        tup scale_x, scale_y,
+            off_x, off_y;
+    } zoom_target;
+
+    struct {
+        float scale_x, scale_y,
+              off_x, off_y;
+    } render_params;
+
+    void Toggle(Context ctx) {
         GetTuple(vw, vh, core->get_viewport_grid_size());
-
-        auto xev = ctx->xev.xbutton;
-
-        int vpw = w / vw;
-        int vph = h / vh;
-
-        int vx = xev.x_root / vpw;
-        int vy = xev.y_root / vph;
-
-        core->switch_workspace(std::make_tuple(vx, vy));
-
-        recalc();
-        finalizeZoom();
-    }
-
-    void buttonPress(Context *ctx) {
-        buttonRelease(ctx);
-        Toggle(ctx);
-    }
-
-    void recalc() {
-
         GetTuple(vx, vy, core->get_current_viewport());
-        GetTuple(vwidth, vheight, core->get_viewport_grid_size());
 
-        float midx = vwidth / 2;
-        float midy = vheight / 2;
+        float center_w = vw / 2.f;
+        float center_h = vh / 2.f;
 
-        float offX = float(vx - midx) * 2.f / float(vwidth );
-        float offY = float(midy - vy) * 2.f / float(vheight);
+        if (!active) {
+            core->set_renderer(0, std::bind(std::mem_fn(&Expo::render), this));
 
-        if(vwidth % 2 == 0)
-            offX += 1.f / float(vwidth);
-        if(vheight % 2 == 0)
-            offY += -1.f / float(vheight);
 
-        float scaleX = 1.f / float(vwidth);
-        float scaleY = 1.f / float(vheight);
-
-        triggerScaleChange(vwidth, vheight);
-
-        offXtarget = offX;
-        offYtarget = offY;
-        sclXtarget = scaleX;
-        sclYtarget = scaleY;
-    }
-
-    void finalizeZoom() {
-        Transform::gtrs = glm::translate(glm::mat4(),
-                glm::vec3(offXtarget, offYtarget, 0.f));
-        Transform::gscl = glm::scale(glm::mat4(),
-                glm::vec3(sclXtarget, sclYtarget, 0.f));
-    }
-
-    void Toggle(Context *ctx) {
-        using namespace std::placeholders;
-
-        if(!active) {
-           if(!core->activate_owner(owner))
-                return;
-
-            press.enable();
-            release.enable();
-            owner->grab();
-            active = !active;
-
-            save = core->get_view_at_point;
-            core->get_view_at_point =
-                std::bind(std::mem_fn(&Expo::findWindow), this, _1, _2);
-
-            hook.enable();
-
-            core->setRedrawEverything(true);
-            stepNum = expostep;
-            recalc();
-
-            offXcurrent = 0;
-            offYcurrent = 0;
-            sclXcurrent = 1;
-            sclYcurrent = 1;
-        }else {
-            active = !active;
-            core->get_view_at_point = save;
-
-            press.disable();
-            release.disable();
-
-            core->deactivate_owner(owner);
-            triggerScaleChange(1, 1);
-
-            if(hook.getState()) {
-                core->setRedrawEverything(false);
-                hook.disable();
-            }
-            hook.enable();
-            stepNum = expostep;
-
-            sclXcurrent = sclXtarget;
-            sclYcurrent = sclYtarget;
-            offXcurrent = offXtarget;
-            offYcurrent = offYtarget;
-
-            sclXtarget = 1;
-            sclYtarget = 1;
-            offXtarget = 0;
-            offYtarget = 0;
+            zoom_target.steps = 0;
+            zoom_target.scale_x = {1, 1.f / vw};
+            zoom_target.scale_y = {1, 1.f / vh};
+            zoom_target.off_x   = {0, ((vx - center_w) * 2.f + 1.f) / vw};
+            zoom_target.off_y   = {0, ((center_h - vy) * 2.f - 1.f) / vh};
+        } else {
+            zoom_target.steps = 0;
+            zoom_target.scale_x = {1.f / vw, 1};
+            zoom_target.scale_y = {1.f / vh, 1};
+            zoom_target.off_x   = {((vx - center_w) * 2.f + 1.f) / vw, 0};
+            zoom_target.off_y   = {((center_h - vy) * 2.f - 1.f) / vh, 0};
         }
+
+        active = !active;
+        hook.enable();
     }
 
+
+#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
+                                            *((steps)-(curstep)))/(steps))
     void zoom() {
-
-        if(stepNum == expostep) {
-            stepoffX = (offXtarget - offXcurrent) / float(expostep);
-            stepoffY = (offYtarget - offYcurrent) / float(expostep);
-            stepsclX = (sclXtarget - sclXcurrent) / float(expostep);
-            stepsclY = (sclYtarget - sclYcurrent) / float(expostep);
-        }
-
-        if(stepNum--) {
-            offXcurrent += stepoffX;
-            offYcurrent += stepoffY;
-            sclYcurrent += stepsclY;
-            sclXcurrent += stepsclX;
-
-            Transform::gtrs = glm::translate(glm::mat4(),
-                    glm::vec3(offXcurrent, offYcurrent, 0.f));
-            Transform::gscl = glm::scale(glm::mat4(),
-                    glm::vec3(sclXcurrent, sclYcurrent, 0.f));
-        }
-        else {
-            finalizeZoom();
+        if(zoom_target.steps == max_steps) {
             hook.disable();
-            if(!active) {
-                output = core->getMaximisedRegion();
-                core->setRedrawEverything(false);
-                core->dmg = core->getMaximisedRegion();
+            if (!active) {
+                core->set_redraw_everything(false);
+                core->reset_renderer();
             }
+        } else {
+            render_params.scale_x = GetProgress(zoom_target.scale_x.begin,
+                    zoom_target.scale_x.end, zoom_target.steps, max_steps);
+            render_params.scale_y = GetProgress(zoom_target.scale_y.begin,
+                    zoom_target.scale_y.end, zoom_target.steps, max_steps);
+            render_params.off_x = GetProgress(zoom_target.off_x.begin,
+                    zoom_target.off_x.end, zoom_target.steps, max_steps);
+            render_params.off_y = GetProgress(zoom_target.off_y.begin,
+                    zoom_target.off_y.end, zoom_target.steps, max_steps);
+            ++zoom_target.steps;
+        }
+    }
 
+    void render() {
+        std::cout << "render " << std::endl;
+        GetTuple(vw, vh, core->get_viewport_grid_size());
+        GetTuple(vx, vy, core->get_current_viewport());
+        GetTuple(w,  h,  core->getScreenSize());
+
+        std::cout << render_params.off_x << " " << render_params.off_y << " "
+            << render_params.scale_x << " " << render_params.scale_y << std::endl;
+
+        auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
+        matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
+
+        GL_CALL(glClearColor(1, 0, 0, 0));
+        GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
+
+        OpenGL::useDefaultProgram();
+
+        for(int i = 0; i < vw; i++) {
+            for(int j = 0; j < vh; j++) {
+                core->texture_from_viewport(std::make_tuple(i, j),
+                        fbuffs[i][j], textures[i][j]);
+
+                wlc_geometry g = {
+                    .origin = {(i - vx) * w, (j - vy) * h},
+                    .size = {(uint32_t) w, (uint32_t) h}};
+
+                OpenGL::renderTransformedTexture(textures[i][j], g, matrix);
+            }
         }
     }
 

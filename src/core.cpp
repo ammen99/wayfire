@@ -671,8 +671,8 @@ void Core::texture_from_viewport(std::tuple<int, int> vp,
     if (fbuff == -1 || texture == -1)
         OpenGL::prepareFramebuffer(fbuff, texture);
 
+    //GL_CALL(glViewport(0, 0, width, height));
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
-    GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
     auto bg = get_background();
     const wlc_geometry g = {{0, 0}, {1366, 768}};
@@ -734,7 +734,7 @@ GLuint Core::get_background() {
     if(background != -1) return background;
 
     OpenGL::initOpenGL("/usr/share/wayfire/shaders/");
-    return (background = LoadJPEG(plug->options["background"]->data.sval->c_str()));
+    return (background = texture_from_jpeg(plug->options["background"]->data.sval->c_str()));
 }
 
 //void Core::set_background(const char *path) {

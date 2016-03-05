@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(simple_plugins CXX)
 
-#add_library(expo     SHARED "expo.cpp")
+add_library(expo     SHARED "expo.cpp")
 add_library(grid     SHARED "grid.cpp")
 add_library(move     SHARED "move.cpp")
 add_library(resize   SHARED "resize.cpp")
@@ -9,11 +9,11 @@ add_library(resize   SHARED "resize.cpp")
 add_library(vswitch  SHARED "vswitch.cpp")
 #add_library(command  SHARED "command.cpp")
 
-#install(TARGETS expo     DESTINATION lib/fireman/)
+install(TARGETS expo     DESTINATION lib/wayfire/)
 install(TARGETS grid     DESTINATION lib/wayfire/)
 install(TARGETS move     DESTINATION lib/wayfire/)
 install(TARGETS resize   DESTINATION lib/wayfire/)
 #install(TARGETS switcher DESTINATION lib/wayfire/)
 install(TARGETS vswitch  DESTINATION lib/wayfire/)
-#install(TARGETS command  DESTINATION lib/fireman/)
+#install(TARGETS command  DESTINATION lib/wayfire/)
 
