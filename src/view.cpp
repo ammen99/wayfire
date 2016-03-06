@@ -77,6 +77,7 @@ void FireView::resize(int w, int h) {
 }
 
 void FireView::set_geometry(wlc_geometry g) {
+    std::cout << g.origin.x << " " << g.origin.y << " " << g.size.w << " " << g.size.h << std::endl;
     attrib = g;
     wlc_view_set_geometry(view, 0, &attrib);
 }

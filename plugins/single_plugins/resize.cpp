@@ -85,6 +85,8 @@ class Resize : public Plugin {
             (sy < halfh ? WLC_RESIZE_EDGE_TOP : (sy >= halfh ? WLC_RESIZE_EDGE_BOTTOM : 0));
 
         if(!edges) terminate(ctx);
+
+        wlc_view_set_state(win->get_id(), WLC_BIT_RESIZING, true);
     }
 
     void terminate(Context ctx) {
@@ -92,6 +94,7 @@ class Resize : public Plugin {
         release.disable();
         core->deactivate_owner(owner);
 
+        wlc_view_set_state(win->get_id(), WLC_BIT_RESIZING, false);
         win->set_mask(core->get_mask_for_view(win));
     }
 

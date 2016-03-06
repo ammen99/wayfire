@@ -77,6 +77,7 @@ class Grid : public Plugin {
         if (curstep == steps) {
             currentWin.v->set_geometry(currentWin.target_geometry);
 
+            wlc_view_set_state(currentWin.v->get_id(), WLC_BIT_RESIZING, false);
             core->set_redraw_everything(false);
             rnd.disable();
         }
@@ -145,6 +146,7 @@ class Grid : public Plugin {
 
         curstep = 0;
         rnd.enable();
+        wlc_view_set_state(view->get_id(), WLC_BIT_RESIZING, true);
         core->set_redraw_everything(true);
     }
 };
