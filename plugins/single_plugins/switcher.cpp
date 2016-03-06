@@ -1,66 +1,41 @@
 #include <core.hpp>
 #include <opengl.hpp>
 
-
-float getFactor(int x, int y, float percent) {
-    GetTuple(width, height, core->getScreenSize());
-
-    float d = std::sqrt(x * x + y * y);
-    float d1 = std::sqrt(width * width + height *height);
-    if(d != 0)
-        return percent * d1 / d;
-    else
-        return 0;
+float clamp(float min, float x, float max) {
+    if (x < min) return min;
+    if (x > max) return max;
+    return x;
 }
 
-void getOffsetStepForWindow(View win, float c,
-        float &offX, float &offY) {
-    GetTuple(sw, sh, core->getScreenSize());
 
-    int newposX = sw / 2 - win->attrib.size.w / (2.f);
-    int newposY = sh / 2 - win->attrib.size.h / (2.f);
+float get_scale_factor(float w, float h, float sw, float sh, float c) {
+    float d = w * w + h * h;
+    float sd = sw * sw + sh * sh;
 
-    offX =  2 * c * float(win->attrib.origin.x - newposX) / float(sw);
-    offY = -2 * c * float(win->attrib.origin.y - newposY) / float(sh);
+    return clamp(0.8, std::sqrt((sd / d) * c), 1.3);
 }
 
-struct WinAttrib {
-    View win;
-    bool tr = false;
-    float rotateAngle;
-    float offX;
-    float offY;
-    float offZ;
-    bool scale = false;
-    float scaleStart = -1;
-    float scaleEnd = -1;
-};
+class Switcher : public Plugin {
 
-class ATSwitcher : public Plugin {
-
-    KeyBinding initiate;
+    KeyBinding init_binding;
     KeyBinding forward;
     KeyBinding backward;
-    KeyBinding terminate;
+    KeyBinding term;
 
     Key actKey;
-    std::vector<View> windows;
+    std::vector<View> views;
 
-#define MAXDIRS 10
+#define MAXDIRS 4
     std::queue<int> dirs;
 
-    bool active, block = false; // block is waiting to exit
+    bool active = false, block = false; // block is waiting to exit
     int index;
 
-    Hook rnd; // used to render windows
-    Hook ini;
-    Hook exit;
+    Hook center, place, rotate, exit;
 
     int initsteps;
-    int steps = 20;
+    int maxsteps = 20;
     int curstep = 0;
-    /* windows that should be animated in step() */
-    std::vector<WinAttrib> winsToMove;
 
     struct {
         float offset = 0.6f;
@@ -77,7 +52,7 @@ class ATSwitcher : public Plugin {
     }
 
     void updateConfiguration() {
-        steps = getSteps(options["duration"]->data.ival);
+        maxsteps = getSteps(options["duration"]->data.ival);
         initsteps = getSteps(options["init"]->data.ival);
 
         actKey = *options["activate"]->data.key;
@@ -86,39 +61,39 @@ class ATSwitcher : public Plugin {
 
         using namespace std::placeholders;
 
-        active = true;
-        initiate.mod = actKey.mod;
-        initiate.key = actKey.key;
-        initiate.type = BindingTypePress;
-        initiate.action =
-            std::bind(std::mem_fn(&ATSwitcher::handleKey), this, _1);
-        core->add_key(&initiate, true);
+        init_binding.mod = actKey.mod;
+        init_binding.key = actKey.key;
+        init_binding.type = BindingTypePress;
+        init_binding.action =
+            std::bind(std::mem_fn(&Switcher::handle_key), this, _1);
+        core->add_key(&init_binding, true);
 
         forward.mod = 0;
         forward.key = XKB_KEY_Right;
         forward.type = BindingTypePress;
-        forward.action = initiate.action;
+        forward.action = init_binding.action;
         core->add_key(&forward, false);
 
         backward.mod = 0;
         backward.key = XKB_KEY_Left;
         backward.type = BindingTypePress;
-        backward.action = initiate.action;
+        backward.action = init_binding.action;
         core->add_key(&backward, false);
 
-        terminate.mod = 0;
-        terminate.key = XKB_KEY_Return;
-        terminate.type = BindingTypePress;
-        terminate.action = initiate.action;
-        core->add_key(&terminate, false);
+        term.mod = 0;
+        term.key = XKB_KEY_Return;
+        term.type = BindingTypePress;
+        term.action = init_binding.action;
+        core->add_key(&term, false);
 
-        rnd.action = std::bind(std::mem_fn(&ATSwitcher::step), this);
-        core->add_hook(&rnd);
+        center.action = std::bind(std::mem_fn(&Switcher::center_hook), this);
+        place.action  = std::bind(std::mem_fn(&Switcher::place_hook), this);
+        rotate.action = std::bind(std::mem_fn(&Switcher::rotate_hook), this);
+        exit.action   = std::bind(std::mem_fn(&Switcher::exit_hook), this);
 
-        ini.action = std::bind(std::mem_fn(&ATSwitcher::initHook), this);
-        core->add_hook(&ini);
-
-        exit.action = std::bind(std::mem_fn(&ATSwitcher::exitHook), this);
+        core->add_hook(&center);
+        core->add_hook(&place);
+        core->add_hook(&rotate);
         core->add_hook(&exit);
     }
 
@@ -128,60 +103,69 @@ class ATSwitcher : public Plugin {
         options.insert(newKeyOption("activate", Key{0, 0}));
     }
 
-    void handleKey(Context ctx) {
+    void handle_key(Context ctx) {
         auto xev = ctx.xev.xkey;
-
-
-
-        if(xev.key == XKB_KEY_Tab) {
-            if(active) {
-                if(ini.getState() || rnd.getState()) {
-                    if(!block)
-                        dirs.push(0), block = true;
-                } else
-                    Terminate();
-            }
-            else {
-                if(ini.getState() || rnd.getState() || exit.getState())
-                    return;
-                else
-                    Initiate();
+        if (xev.key == XKB_KEY_Tab) {
+            if (active) {
+                if (rotate.getState()) {
+                    if (!block) {
+                        dirs.push(0),
+                        block = true;
+                     }
+                } else {
+                    terminate();
+                }
+            } else if (!place.getState() && !center.getState()) {
+                initiate();
             }
         }
 
-        if(xev.key == XKB_KEY_Left) {
-            if(rnd.getState() || ini.getState())
-                dirs.push(1);
-            else
-                moveLeft();
+        if (xev.key == XKB_KEY_Left) {
+            if (place.getState() || center.getState() || rotate.getState()) {
+                if (dirs.size() < MAXDIRS)
+                    dirs.push(1);
+            } else {
+                move(1);
+            }
         }
 
-        if(xev.key == XKB_KEY_Right) {
-            if(rnd.getState() || ini.getState())
+        if (xev.key == XKB_KEY_Right) {
+            if (place.getState() || center.getState() || rotate.getState()) {
+                if (dirs.size() < MAXDIRS)
                 dirs.push(-1);
-            else
-                moveRight();
+            } else {
+                move(-1);
+            }
         }
 
-        if(xev.key == XKB_KEY_Return)
-            if(active) {
-                if(ini.getState() || rnd.getState()) {
-                    if(!block)
-                        dirs.push(0), block = true;
-                } else
-                    Terminate();
+        if (xev.key == XKB_KEY_Return) {
+            if (active && !block) {
+                dirs.push(0);
+                block = true;
+            } else if (active) {
+                terminate();
             }
+        }
     }
 
-    void Initiate() {
+    struct duple {
+        float start, end;
+    };
 
-        if(!core->activate_owner(owner))
+    struct view_paint_attribs {
+        View v;
+        duple scale_x, scale_y, off_x, off_y, off_z;
+        duple rot;
+    };
+
+    std::vector<view_paint_attribs> active_views;
+
+    void initiate() {
+        if (!core->activate_owner(owner))
             return;
 
-        //owner->grab();
-
-        windows.clear();
-        windows = core->get_windows_on_viewport(core->get_current_viewport());
+        owner->grab();
+        active = true;
 
         auto view = glm::lookAt(glm::vec3(0., 0., 1.67),
                 glm::vec3(0., 0., 0.),
@@ -189,400 +173,390 @@ class ATSwitcher : public Plugin {
         auto proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
         Transform::ViewProj = proj * view;
-        //
-        active = true;
 
-        for(auto w : windows) {
-            WinAttrib wia;
-            wia.win = w;
+        views = core->get_windows_on_viewport(core->get_current_viewport());
 
-            float offx, offy;
-            getOffsetStepForWindow(w, 0.5, offx, offy);
-
-            wia.offX = -offx;
-            wia.offY = -offy;
-
-            wia.scale = true;
-            wia.scaleStart = 1;
-            wia.scaleEnd = 0.5;
-
-            winsToMove.push_back(wia);
-
-            w->transform.translation = glm::translate(
-                    glm::mat4(), glm::vec3(0, 0, 0));
+        if (!views.size()) {
+            owner->ungrab();
+            core->deactivate_owner(owner);
+            return;
         }
-////
-        backward.enable(); forward.enable(); terminate.enable();
+        std::reverse(views.begin(), views.end());
 
-        attribs.offset = 0.6f;
-        attribs.angle = M_PI / 6.;
-        attribs.back = 0.3f;
+        GetTuple(sw, sh, core->getScreenSize());
 
-        if(windows.size() == 2)
-            attribs.offset = 0.4f,
-            attribs.angle = M_PI / 5.,
+        for (auto v : views) {
+
+            /* center of screen minus center of view */
+            float cx = -(sw / 2 - (v->attrib.origin.x + v->attrib.size.w / 2.f)) / sw * 2.f;
+            float cy =  (sh / 2 - (v->attrib.origin.y + v->attrib.size.h / 2.f)) / sh * 2.f;
+
+            float scale_factor = get_scale_factor(v->attrib.size.w, v->attrib.size.h, sw, sh, 0.28888);
+
+            active_views.push_back(
+                    { .v = v,
+                      .off_x = {cx, 0},
+                      .off_y = {cy, 0},
+                      .scale_x = {1, scale_factor},
+                      .scale_y = {1, scale_factor}});
+        }
+
+        if (views.size() == 2) {
+            attribs.offset = 0.4f;
+            attribs.angle = M_PI / 5.;
             attribs.back = 0.;
+        } else {
+            attribs.offset = 0.6f;
+            attribs.angle = M_PI / 6.;
+            attribs.back = 0.3f;
+        }
 
         index = 0;
+
         core->set_redraw_everything(true);
+        core->set_renderer(0, std::bind(std::mem_fn(&Switcher::render), this));
+
         curstep = 0;
-        ini.enable();
+
+        center.enable();
     }
 
-    void initHook() {
-        for(auto attrib : winsToMove) {
-            auto c2 = (float(curstep) * attrib.scaleEnd +
-                    float(initsteps - curstep) * attrib.scaleStart) / float(initsteps);
+    void render_view(View v) {
+        GetTuple(sw, sh, core->getScreenSize());
 
-            attrib.win->transform.translation =
-                glm::translate(attrib.win->transform.translation,
-                        glm::vec3(attrib.offX / float(initsteps),
-                                  attrib.offY / float(initsteps), 0));
+        int cx = sw / 2;
+        int cy = sh / 2;
 
-            attrib.win->transform.scalation =
-                glm::scale(glm::mat4(), glm::vec3(c2, c2, 1));
+        wlc_geometry g;
+        wlc_view_get_visible_geometry(v->get_id(), &g);
+
+        int mx = cx - g.size.w / 2;
+        int my = cy - g.size.h / 2;
+
+        g.origin.x = mx;
+        g.origin.y = my;
+
+        render_surface(v->get_surface(), g, v->transform.compose());
+    }
+
+    void render() {
+        OpenGL::useDefaultProgram();
+        GL_CALL(glDisable(GL_DEPTH_TEST));
+
+        auto bg = core->get_background();
+        wlc_geometry g = {.origin = {0, 0}, .size = {1366, 768}};
+        OpenGL::color = glm::vec4(0.7, 0.7, 0.7, 1.0);
+        OpenGL::renderTransformedTexture(bg, g, glm::mat4(), TEXTURE_TRANSFORM_USE_COLOR);
+
+        for(int i = active_views.size() - 1; i >= 0; i--)
+            render_view(active_views[i].v);
+    }
+
+#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
+                                            *((steps)-(curstep)))/(steps))
+
+    void center_hook() {
+        curstep++;
+        for (auto v : active_views) {
+            if (curstep < initsteps) {
+                v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                            GetProgress(v.off_x.start, v.off_x.end, curstep, initsteps),
+                            GetProgress(v.off_y.start, v.off_y.end, curstep, initsteps),
+                            GetProgress(v.off_z.start, v.off_z.end, curstep, initsteps)));
+
+                v.v->transform.scalation = glm::scale(glm::mat4(), glm::vec3(
+                            GetProgress(v.scale_x.start, v.scale_x.end, curstep, initsteps),
+                            GetProgress(v.scale_y.start, v.scale_y.end, curstep, initsteps), 1));
+            } else {
+                v.v->transform.translation = glm::mat4();
+            }
         }
 
-        curstep++;
         if(curstep == initsteps) {
-            winsToMove.clear();
-            for(auto w : this->windows) {
-                w->norender = true;
-            }
-            ini.disable();
-            rnd.enable();
+            center.disable();
+
+            if (views.size() == 1)
+                return;
+
+            place.enable();
             curstep = 0;
 
-            auto size = windows.size();
-            if(size <= 1) {
-                return;
-                rnd.disable();
+            active_views.clear();
+
+            if (views.size() == 2) {
+                active_views.push_back({
+                        .v = views[0],
+                        .off_x = {0, attribs.offset},
+                        .off_y = {0, 0},
+                        .off_z = {0, -attribs.back},
+                        .rot= {0, -attribs.angle}});
+
+                active_views.push_back({
+                        .v = views[1],
+                        .off_x = {0, -attribs.offset},
+                        .off_y = {0, 0},
+                        .off_z = {0, -attribs.back},
+                        .rot = {0, attribs.angle}});
+            } else {
+                int prev = views.size() - 1;
+                int next = 1;
+                active_views.push_back({
+                        .v = views[0],
+                        .off_x = {0, 0},
+                        .off_y = {0, 0},
+                        .off_z = {0, 0},
+                        .rot = {0, 0}});
+
+
+                active_views.push_back({
+                        .v = views[prev],
+                        .off_x = {0, -attribs.offset},
+                        .off_y = {0, 0},
+                        .off_z = {0, -attribs.back},
+                        .rot = {0, +attribs.angle}});
+
+                active_views.push_back({
+                        .v = views[next],
+                        .off_x = {0, +attribs.offset},
+                        .off_y = {0, 0},
+                        .off_z = {0, -attribs.back},
+                        .rot = {0, -attribs.angle}});
             }
+        }
+    }
 
-            auto prev = (index + size - 1) % size;
-            auto next = (index + size + 1) % size;
+    void place_hook() {
+        ++curstep;
+        for (auto v : active_views) {
+            v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                        GetProgress(v.off_x.start, v.off_x.end, curstep, maxsteps),
+                        0,
+                        GetProgress(v.off_z.start, v.off_z.end, curstep, maxsteps)));
 
-            windows[index]->norender = false;
-            windows[next ]->norender = false;
-            windows[prev ]->norender = false;
+            v.v->transform.rotation = glm::rotate(glm::mat4(),
+                    GetProgress(v.rot.start, v.rot.end, curstep, maxsteps),
+                    glm::vec3(0, 1, 0));
+        }
 
-            WinAttrib prv;
-            prv.win = windows[prev];
-            prv.offX = -attribs.offset;
-            prv.offZ = -attribs.back;
-            prv.rotateAngle = attribs.angle;
+        if (curstep == maxsteps) {
+            place.disable();
+            forward.enable();
+            backward.enable();
+            active = true;
+        }
+    }
 
-            prv.scale = true;
-            prv.scaleStart = 0.5;
-            prv.scaleEnd = getFactor(windows[prev]->attrib.size.w,
-                    windows[prev]->attrib.size.h, 0.5);
-            winsToMove.push_back(prv);
+    void rotate_hook() {
+         ++curstep;
+        for (auto v : active_views) {
+            v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                        GetProgress(v.off_x.start, v.off_x.end, curstep, maxsteps),
+                        0,
+                        GetProgress(v.off_z.start, v.off_z.end, curstep, maxsteps)));
 
-            if(prev == next)
-                next = index;
-            else {
-                WinAttrib ind;
-                ind.win = windows[index];
+            v.v->transform.rotation = glm::rotate(glm::mat4(),
+                    GetProgress(v.rot.start, v.rot.end, curstep, maxsteps),
+                    glm::vec3(0, 1, 0));
+        }
 
-                ind.rotateAngle = 0;
-                ind.offX = 0;
-                ind.offZ = 0;
+        if (curstep == maxsteps) {
+            rotate.disable();
+            if (!dirs.empty()) {
+                int next_dir = dirs.front();
+                dirs.pop();
 
-                ind.scale = true;
-                ind.scaleStart = 0.5;
-                ind.scaleEnd = getFactor(windows[index]->attrib.size.w,
-                        windows[index]->attrib.size.h,
-                        0.5);
-
-                winsToMove.push_back(ind);
-            }
-
-            WinAttrib nxt;
-            nxt.win = windows[next];
-            nxt.offX = attribs.offset;
-            nxt.offZ = -attribs.back;
-            nxt.rotateAngle = -attribs.angle;
-
-            nxt.scale = true;
-            nxt.scaleStart = 0.5;
-            nxt.scaleEnd = getFactor(windows[next]->attrib.size.w,
-                    windows[next]->attrib.size.h, 0.5);
-
-            winsToMove.push_back(nxt);
-            for(int i = 0; i < windows.size(); i++) {
-                if(i != next && i != prev && i != index) {
-                    auto c = getFactor(windows[i]->attrib.size.w,
-                                  windows[i]->attrib.size.h, 0.5);
-                    windows[i]->transform.scalation =
-                        glm::scale(glm::mat4(), glm::vec3(c, c, 1));
+                if(next_dir == 0) {
+                    terminate();
+                } else {
+                    move(next_dir);
                 }
             }
         }
     }
 
-    void exitHook() {
-        for(auto attr : winsToMove) {
-            if(attr.scale) {
-                auto c = (attr.scaleEnd * float(curstep) +
-                        attr.scaleStart * float(initsteps - curstep))
-                    / float(initsteps);
-                attr.win->transform.scalation =
-                    glm::scale(glm::mat4(), glm::vec3(c, c, 1));
+    void move(int dir) {
+        int sz = views.size();
+
+        index    = ((index + dir) % sz + sz) % sz;
+        int next = ((index + 1  ) % sz + sz) % sz;
+        int prev = ((index - 1  ) % sz + sz) % sz;
+
+        active_views.clear();
+        /* only two views */
+        if (next == prev) {
+            active_views.push_back({
+                        .v = views[index],
+                        .off_x = {-attribs.offset, attribs.offset},
+                        .off_z = {attribs.back, attribs.back},
+                        .rot   = {attribs.angle, -attribs.angle},
+                    });
+
+            active_views.push_back({
+                        .v = views[next],
+                        .off_x = {attribs.offset, -attribs.offset},
+                        .off_z = {attribs.back, attribs.back},
+                        .rot   = {-attribs.angle, attribs.angle},
+                    });
+        } else {
+            active_views.push_back({
+                        .v = views[index],
+                        .off_x = {attribs.offset * dir, 0},
+                        .off_z = {-attribs.back, 0},
+                        .rot   = {-attribs.angle * dir, 0},
+                    });
+
+            if (dir == 1) {
+                active_views.push_back({
+                            .v = views[prev],
+                            .off_x = {0, -attribs.offset},
+                            .off_z = {0, -attribs.back},
+                            .rot   = {0, attribs.angle},
+                        });
+
+                active_views.push_back({
+                            .v = views[next],
+                            .off_x = {attribs.offset, attribs.offset},
+                            .off_z = {-attribs.back, -attribs.back},
+                            .rot   = {-attribs.angle, -attribs.angle}
+                        });
+
+            } else {
+                 active_views.push_back({
+                            .v = views[next],
+                            .off_x = {0, attribs.offset},
+                            .off_z = {0, attribs.back},
+                            .rot   = {0, -attribs.angle}
+                        });
+
+                active_views.push_back({
+                            .v = views[prev],
+                            .off_x = {-attribs.offset, -attribs.offset},
+                            .off_z = {-attribs.back, -attribs.back},
+                            .rot   = {attribs.angle, attribs.angle}
+                        });
             }
-
-            attr.win->transform.translation = glm::translate(
-                    attr.win->transform.translation,
-                    glm::vec3(attr.offX / initsteps,
-                              attr.offY / initsteps,
-                              attr.offZ / initsteps));
-
-            attr.win->transform.rotation = glm::rotate(
-                    attr.win->transform.rotation,
-                    attr.rotateAngle / initsteps,
-                    glm::vec3(0, 1, 0));
         }
-        curstep++;
-        if(curstep == initsteps) {
-            exit.disable();
-            block = false;
-            for(auto w : windows)
-                w->norender = false,
-                w->transform.scalation   =
-                w->transform.translation =
-                w->transform.rotation    = glm::mat4(),
-                w->transform.color[3] = 1;
 
-            Transform::ViewProj = glm::mat4();
-            core->set_redraw_everything(false);
-
-            winsToMove.clear();
-        }
+        rotate.enable();
+        curstep = 0;
     }
 
+    void move_right() {
+        if(views.size() == 1)
+            return;
 
-    void step() {
-        for(auto attr : winsToMove) {
-            attr.win->transform.translation =
-                glm::translate(attr.win->transform.translation,
-                glm::vec3(attr.offX / float(steps), 0.f,
-                          attr.offZ / float(steps)));
+        move(-1);
 
-            attr.win->transform.rotation =
-                glm::rotate(attr.win->transform.rotation,
-                        attr.rotateAngle / float(steps),
+    }
+
+    void move_left() {
+        if(views.size() == 1)
+            return;
+
+        move(1);
+    }
+
+    void exit_hook() {
+        ++curstep;
+
+        for(auto v : active_views) {
+            v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                        GetProgress(v.off_x.start, v.off_x.end, curstep, maxsteps),
+                        GetProgress(v.off_y.start, v.off_y.end, curstep, maxsteps),
+                        GetProgress(v.off_z.start, v.off_z.end, curstep, maxsteps)));
+
+            v.v->transform.rotation = glm::rotate(glm::mat4(),
+                        GetProgress(v.rot.start, v.rot.end, curstep, maxsteps),
                         glm::vec3(0, 1, 0));
 
-            if(attr.scale) {
-                auto c = (float(curstep) * attr.scaleEnd +
-                        float(steps - curstep) * attr.scaleStart)
-                    /float(steps);
-
-                attr.win->transform.scalation =
-                    glm::scale(glm::mat4(), glm::vec3(c, c, 1));
-            }
+            v.v->transform.scalation = glm::scale(glm::mat4(), glm::vec3(
+                        GetProgress(v.scale_x.start, v.scale_x.end, curstep, maxsteps),
+                        GetProgress(v.scale_y.start, v.scale_y.end, curstep, maxsteps), 1));
         }
-        curstep++;
-        if(curstep == steps) {
-            rnd.disable();
-            winsToMove.clear();
-            if(!dirs.empty()) {
-                auto ndir = dirs.front();
-                dirs.pop();
-                if(ndir == 1)
-                    moveLeft();
-                else if(ndir == -1)
-                    moveRight();
-                else
-                    Terminate();
-            }
+
+
+        if (curstep == maxsteps) {
+             active = false;
+             core->reset_renderer();
+             core->set_redraw_everything(false);
+
+             core->focus_window(views[index]);
+
+             exit.disable();
+
+             for(auto v : views) {
+                v->transform.scalation = v->transform.translation = v->transform.rotation = glm::mat4();
+             }
         }
     }
 
-    void setTransform(int dir) {
-        rnd.enable();
-        curstep = 0;
-
-        auto size = windows.size();
-        if(size <= 1)
-            return;
-
-        auto prev = (index + size - 1) % size;
-        auto next = (index + size + 1) % size;
-
-        windows[index]->norender = false;
-        windows[next ]->norender = false;
-        windows[prev ]->norender = false;
-
-        float factor = 1;
-
-        if(prev == next)
-            factor = 2;
-
-        WinAttrib prv;
-        prv.win = windows[prev];
-        prv.offX = -attribs.offset * factor;
-        prv.offZ = -attribs.back;
-        prv.rotateAngle = attribs.angle * factor;
-
-        winsToMove.push_back(prv);
-
-        if(prev == next)
-            next = index;
-        else {
-            WinAttrib ind;
-            ind.win = windows[index];
-
-            ind.rotateAngle = attribs.angle * dir;
-            ind.offX = -attribs.offset * dir;
-            ind.offZ = attribs.back;
-
-            winsToMove.push_back(ind);
-        }
-
-        WinAttrib nxt;
-        nxt.win = windows[next];
-        nxt.offX = attribs.offset * factor;
-        nxt.offZ = -attribs.back;
-        nxt.rotateAngle = -attribs.angle * factor;
-        winsToMove.push_back(nxt);
-
-        core->focus_window(windows[index]);
-
-        if(!active) {
-        }
-    }
-
-    void reset(int dir) {
-        auto size = windows.size();
-        auto prev = (index + size - 1) % size;
-        auto next = (index + size + 1) % size;
-
-        windows[index]->norender = true;
-        windows[next ]->norender = true;
-        windows[prev ]->norender = true;
-
-        if(prev == next)
-            return;
-
-        int clear;
-        if(dir == 1)
-            clear = prev;
-        else
-            clear = next;
-
-        windows[clear]->transform.translation =
-        windows[clear]->transform.rotation    = glm::mat4();
-
-    }
-
-    void moveRight() {
-        if(windows.size() == 1)
-            return;
-
-        reset(-1);
-        index = (index - 1 + windows.size()) % windows.size();
-        setTransform(-1);
-    }
-
-    void moveLeft() {
-        if(windows.size() == 1)
-            return;
-
-        reset(1);
-        index = (index + 1) % windows.size();
-        setTransform(1);
-    }
-
-    void Terminate() {
-
+    void terminate() {
+        exit.enable();
         core->deactivate_owner(owner);
         owner->ungrab();
 
-        active = false;
-        backward.disable(); forward.disable(); terminate.disable();
+        GetTuple(sw, sh, core->getScreenSize());
+
+        int sz = views.size();
+
+        if (!sz) return;
+
+        int next = ((index + 1  ) % sz + sz) % sz;
+        int prev = ((index - 1  ) % sz + sz) % sz;
+
+        active_views.clear();
+
+        for (int i = 0; i < views.size(); i++) {
+
+            const auto& v = views[i];
+            /* center of screen minus center of view */
+            float cx = -(sw / 2 - (v->attrib.origin.x + v->attrib.size.w / 2.f)) / sw * 2.f;
+            float cy =  (sh / 2 - (v->attrib.origin.y + v->attrib.size.h / 2.f)) / sh * 2.f;
+
+            float scale_factor = get_scale_factor(v->attrib.size.w, v->attrib.size.h, sw, sh, 0.28888);
+
+            if (i != next && i != prev && prev != next) {
+                view_paint_attribs attr = { .v = v,
+                          .off_x = {0, cx},
+                          .off_y = {0, cy},
+                          .scale_x = {scale_factor, 1},
+                          .scale_y = {scale_factor, 1},
+                          .rot     = {0, 0}};
+
+                if (i == index) {
+                    active_views.insert(active_views.begin(), attr);
+                } else {
+                    active_views.push_back(attr);
+                }
+            } else if ((prev != next && prev == i) || (prev == next && i == prev)) {
+                active_views.push_back(
+                        { .v = v,
+                          .off_x = {-attribs.offset, cx},
+                          .off_y = {0, cy},
+                          .scale_x = {scale_factor, 1},
+                          .scale_y = {scale_factor, 1},
+                          .rot     = {attribs.angle, 0}});
+            } else if ((prev != next && next == i) || (prev == next && i == index)) {
+                active_views.insert(active_views.begin(),
+                        { .v = v,
+                          .off_x = {attribs.offset, cx},
+                          .off_y = {0, cy},
+                          .scale_x = {scale_factor, 1},
+                          .scale_y = {scale_factor, 1},
+                          .rot     = {-attribs.angle, 0}});
+            }
+        }
 
         curstep = 0;
-        exit.enable();
 
-        auto size = windows.size();
-
-        if(!size) return;
-
-        WinAttrib ind;
-        ind.win = windows[index];
-        ind.scale = true;
-        ind.scaleStart = getFactor(ind.win->attrib.size.w,
-                ind.win->attrib.size.h, 0.5);
-        ind.scaleEnd = 1;
-
-        float offx, offy;
-        getOffsetStepForWindow(ind.win, 0.5, offx, offy);
-        ind.offX = offx;
-        ind.offY = offy;
-        ind.offZ = 0;
-        ind.rotateAngle = 0;
-        if(size == 1) {
-            winsToMove.push_back(ind);
-            return;
-        }
-
-        auto prev = (index + size - 1) % size;
-        auto next = (index + size + 1) % size;
-
-        for(int i = 0; i < size; i++) {
-            WinAttrib wia;
-            wia.win = windows[i];
-
-            if(i != prev && i != next && i != index) {
-
-                windows[i]->transform.translation =
-                windows[i]->transform.scalation =
-                windows[i]->transform.rotation = glm::mat4();
-
-                wia.tr = true;
-                windows[i]->transform.color[3] = 0;
-                wia.offX = 0;
-                wia.offY = 0;
-                wia.offZ = 0;
-                winsToMove.push_back(wia);
-
-                continue;
-            }
-
-            wia.scale = true;
-            wia.scaleStart = getFactor(ind.win->attrib.size.w,
-                    ind.win->attrib.size.h, 0.5);
-            wia.scaleEnd = 1;
-
-
-            float offx, offy;
-            getOffsetStepForWindow(windows[i], 0.5, offx, offy);
-
-            if(i == prev)
-                wia.rotateAngle = -attribs.angle,
-                wia.offX = attribs.offset + offx,
-                wia.offY = offy,
-                wia.offZ = attribs.back;
-
-            if(i == index) {
-                if(prev != next)
-                    winsToMove.push_back(ind);
-                else
-                    next = index;
-            }
-
-            if(i == next)
-                wia.rotateAngle = attribs.angle,
-                wia.offX = -attribs.offset + offx,
-                wia.offY = offy,
-                wia.offZ = attribs.back;
-            winsToMove.push_back(wia);
-        }
+        backward.disable();
+        forward.disable();
+        term.disable();
     }
 };
 
 extern "C" {
     Plugin *newInstance() {
-        return new ATSwitcher();
+        return new Switcher();
     }
 }

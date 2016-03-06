@@ -10,12 +10,8 @@ namespace {
 
     GLuint framebuffer;
     GLuint framebufferTexture;
-
-    GLuint fullVAO, fullVBO;
 }
 
-bool OpenGL::transformed = false;
-int  OpenGL::depth;
 glm::vec4 OpenGL::color;
 
 const char* gl_error_string(const GLenum error) {
@@ -104,6 +100,13 @@ namespace OpenGL {
             tly += h;
         }
 
+        auto no_color_vector = glm::vec4(1, 1, 1, 1);
+        if(bits & TEXTURE_TRANSFORM_USE_COLOR) {
+            GL_CALL(glUniform4fv(colorID, 1, &color[0]));
+        } else {
+            GL_CALL(glUniform4fv(colorID, 1, &no_color_vector[0]));
+        }
+
         GLfloat vertexData[] = {
             tlx    , tly - h, 0.f, // 1
             tlx + w, tly - h, 0.f, // 2
@@ -133,6 +136,7 @@ namespace OpenGL {
         GL_CALL(glVertexAttribPointer(uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
 
         GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
+
     }
 
     void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model, uint32_t bits) {

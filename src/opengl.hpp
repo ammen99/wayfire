@@ -14,10 +14,9 @@ void gl_call(const char*, uint32_t, const char*);
 #define GL_CALL(x) x; gl_call(__PRETTY_FUNCTION__, __LINE__, __STRING(x))
 
 #define TEXTURE_TRANSFORM_INVERT_Y 1
+#define TEXTURE_TRANSFORM_USE_COLOR (1 << 1)
 
 namespace OpenGL {
-    extern bool      transformed;
-    extern int       depth;
     extern glm::vec4 color;
 
     extern int VersionMinor, VersionMajor;

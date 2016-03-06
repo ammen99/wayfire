@@ -199,6 +199,8 @@ class Core {
         int getRefreshRate();
 
         GLuint get_background();
+        void blit_background(GLuint destination_fbuff);
+
         void set_background(const char *path);
 
 #define ALL_VISIBLE 4294967295 // All 32 bits are on
