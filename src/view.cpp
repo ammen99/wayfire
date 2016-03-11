@@ -96,7 +96,8 @@ void FireView::set_geometry(int x, int y, int w, int h) {
 
 void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
     uint32_t tex[3];
-    wlc_surface_get_textures(surface, tex);
+    wlc_surface_format fmt;
+    wlc_surface_get_textures(surface, tex, &fmt);
     for(int i = 0; i < 3 && tex[i]; i++)
         OpenGL::renderTransformedTexture(tex[i], g, transform, bits);
 

@@ -174,7 +174,6 @@ void KeyBinding::enable() {
 
 void KeyBinding::disable() {
     if(!active) return;
-
     active = false;
 }
 
@@ -257,6 +256,14 @@ bool Core::deactivate_owner(Ownership owner) {
     owner->ungrab();
     owner->active = false;
     return true;
+}
+
+bool Core::is_owner_active(std::string name) {
+    for (auto act : owners)
+        if (act && act->active && act->name == name)
+            return true;
+
+    return false;
 }
 
 //TODO: implement grab/ungrab keyboard and pointer
@@ -461,22 +468,23 @@ bool Core::process_button_event(uint32_t button, uint32_t mod,
     mousex = point.x;
     mousey = point.y;
 
+    bool processed = false;
+
     for(auto but : buttons) {
         if(state == WLC_BUTTON_STATE_PRESSED && check_but_press(but, button, mod)) {
             but->action(Context(mousex, mousey, 0, 0));
-            if(mod != 0) /* disable grabbing of pointer button without mod */
-                return true;
-            else
-                break;
+
+            if (but->mod != 0)
+                processed = true;
         }
 
         if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button, mod)) {
             but->action(Context(mousex, mousey, 0, 0));
-            return true;
+            processed = true;
         }
     }
 
-    return false;
+    return processed;
 }
 
 bool Core::process_pointer_motion_event(wlc_point point) {

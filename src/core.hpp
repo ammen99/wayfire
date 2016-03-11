@@ -187,6 +187,7 @@ class Core {
 
 
         bool should_redraw() { return redraw_timer > 0 || cntHooks > 0 || renderer; }
+        bool should_render_view(wlc_handle view) { return renderer == nullptr; }
         bool should_repaint_everything() { return redraw_timer > 0; }
         void set_redraw_everything(bool state) {
             if(state) ++redraw_timer;
@@ -235,6 +236,7 @@ class Core {
 
         bool activate_owner  (Ownership owner);
         bool deactivate_owner(Ownership owner);
+        bool is_owner_active (std::string owner_name);
 
         /* this function renders a viewport and
          * saves the image in texture which is returned */

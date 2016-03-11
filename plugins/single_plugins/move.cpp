@@ -48,10 +48,9 @@ class Move : public Plugin {
         }
 
         void init() {
-            printf("move init\n");
-
             using namespace std::placeholders;
             options.insert(newButtonOption("activate", Button{0, 0}));
+
             sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
             core->connect_signal("screen-scale-changed", &sigScl);
 
@@ -60,22 +59,18 @@ class Move : public Plugin {
         }
 
         void Initiate(Context ctx, View pwin) {
-
             auto xev = ctx.xev.xbutton;
-            if (!pwin) {
-                auto w = core->get_view_at_point(xev.x_root, xev.y_root);
+            std::cout << "here" << std::endl;
 
-                if (!w) {
-                    return;
-                } else {
-                    win = w;
-                }
-            } else {
-                win = pwin;
-            }
-
-            if(!core->activate_owner(owner))
+            win = (pwin == nullptr ? core->get_view_at_point(xev.x_root, xev.y_root) : pwin);
+            if (!win)
                 return;
+
+            /* Do not deny request if expo is active and has requested moving a window */
+            if(!(core->is_owner_active("expo") && pwin) && !core->activate_owner(owner))
+                return;
+
+            std::cout << "activating" << std::endl;
 
             owner->grab();
 
@@ -105,6 +100,7 @@ class Move : public Plugin {
             int nx = win->attrib.origin.x + (cmx - sx) * scX;
             int ny = win->attrib.origin.y + (cmy - sy) * scY;
 
+            std::cout << "moving " << nx << " " << ny << std::endl;
             win->move(nx, ny);
 
             sx = cmx;
@@ -114,15 +110,16 @@ class Move : public Plugin {
         void onScaleChanged(SignalListenerData data) {
             scX = *(int*)data[0];
             scY = *(int*)data[1];
+            std::cout << "scale is " << scX << " " << scY << std::endl;
         }
 
         void on_move_request(SignalListenerData data) {
-            View w = *(View*)data[0];
-            if(!w) return;
+            View v = *(View*)data[0];
+            if(!v) return;
 
             wlc_point origin = *(wlc_point*)data[1];
 
-            Initiate(Context(origin.x, origin.y, 0, 0), w);
+            Initiate(Context(origin.x, origin.y, 0, 0), v);
         }
 };
 

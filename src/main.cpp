@@ -130,8 +130,13 @@ void output_post_paint(wlc_handle output) {
 
     core->run_hooks();
 
-    if(core->should_redraw())
+    if (core->should_redraw()) {
         wlc_output_schedule_render(output);
+        core->for_each_window([] (View v) {
+            //if (core->should_render_view(v->get_id()))
+                wlc_surface_flush_frame_callbacks(v->get_surface());
+        });
+    }
 }
 
 bool should_repaint_everything() {
@@ -171,7 +176,6 @@ void view_request_state(wlc_handle view, wlc_view_state_bit state, bool toggle) 
     else
         wlc_view_set_state(view, state, toggle);
 }
-
 
 int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
