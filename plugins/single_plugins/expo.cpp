@@ -13,6 +13,8 @@ class Expo : public Plugin {
         KeyBinding toggle;
         ButtonBinding press, move;
 
+        SignalListener viewport_changed;
+
         int max_steps;
 
         Hook hook, move_hook;
@@ -74,6 +76,10 @@ class Expo : public Plugin {
 
         std::memset(fbuffs, -1, sizeof(fbuffs));
         std::memset(textures, -1, sizeof(textures));
+
+        using namespace std::placeholders;
+        viewport_changed.action = std::bind(std::mem_fn(&Expo::on_viewport_changed), this, _1);
+        core->connect_signal("viewport-change-notify", &viewport_changed);
     }
     void initOwnership() {
         owner->name = "expo";
@@ -159,6 +165,7 @@ class Expo : public Plugin {
             render_params.scale_y = zoom_target.scale_y.end;
             render_params.off_x   = zoom_target.off_x.end;
             render_params.off_y   = zoom_target.off_y.end;
+
         } else {
             render_params.scale_x = GetProgress(zoom_target.scale_x.begin,
                     zoom_target.scale_x.end, zoom_target.steps, max_steps);
@@ -239,6 +246,20 @@ class Expo : public Plugin {
         int realy = (vy - cvy) * h + y * vh;
 
         return core->get_view_at_point(realx, realy);
+    }
+
+    void on_viewport_changed(SignalListenerData data) {
+        GetTuple(vw, vh, core->get_viewport_grid_size());
+        std::cout << "vp changed" << std::endl;
+
+        float center_w = vw / 2.f;
+        float center_h = vh / 2.f;
+
+        target_vx = *(int*)data[2];
+        target_vy = *(int*)data[3];
+
+        render_params.off_x   = ((target_vx - center_w) * 2.f + 1.f) / vw;
+        render_params.off_y   = ((center_h - target_vy) * 2.f - 1.f) / vh;
     }
 };
 
