@@ -44,6 +44,7 @@ void Focus::init() {
     focus.active = true;
 
     focus.action = [] (Context ctx){
+        std::cout << "focus" << std::endl;
         auto xev = ctx.xev.xbutton;
         auto w = core->get_view_at_point(xev.x_root, xev.y_root);
         if(w) core->focus_window(w);

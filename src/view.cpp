@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "opengl.hpp"
+#include <wlc/wlc-wayland.h>
 
 
 /* misc definitions */
@@ -46,10 +47,26 @@ bool rect_inside(wlc_geometry screen, wlc_geometry win) {
     return true;
 }
 
+/* ensure that new window is on current viewport */
+void constrain_position_for_view(int32_t &x, int32_t &y) {
+    GetTuple(sw, sh, core->getScreenSize());
+    auto nx = (x % sw + sw) % sw;
+    auto ny = (y % sh + sh) % sh;
+
+    if (nx != x || ny != y)
+        x = nx, y = ny;
+}
+
+
 FireView::FireView(wlc_handle _view) {
     view = _view;
     auto geom = wlc_view_get_geometry(view);
-    std::memcpy(&attrib, geom, sizeof(attrib));
+
+    int32_t x = geom->origin.x, y = geom->origin.y;
+    constrain_position_for_view(x, y);
+
+    attrib.origin = {x, y};
+    attrib.size = geom->size;
 
     surface = wlc_view_get_surface(view);
 }
@@ -66,7 +83,25 @@ bool FireView::is_visible() {
 }
 
 void FireView::move(int x, int y) {
+        auto v = core->find_window(view);
+//
+//    int nvx, nvy;
+//    core->get_viewport_for_view(v, vx, vy);
+    std::cout << x << " -- " << y << std::endl;
+//
+//    GetTuple(sw, sh, core->getScreenSize());
+//
+//    int dx = (vx - nvx) * sw;
+//    int dy = (vy - nvy) * sh;
+//
     attrib.origin = {x, y};
+//
+//    vx = nvx;
+//    vy = nvy;
+//
+//    std::cout << attrib.origin.x << " -- " << attrib.origin.y << std::endl;
+    set_mask(core->get_mask_for_view(v));
+
     wlc_view_set_geometry(view, 0, &attrib);
 }
 

@@ -30,7 +30,7 @@ void _Ownership::ungrab() {
 
     if(grabCount == 0) {
         core->ungrab_pointer();
-        core->grab_keyboard();
+        core->ungrab_keyboard();
     }
 
     if(grabCount < 0)

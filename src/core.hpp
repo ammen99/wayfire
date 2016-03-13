@@ -108,7 +108,7 @@ class Core {
 
         int cntHooks = 0, redraw_timer = 0;
 
-        uint32_t width, height;
+        int32_t width, height;
         int mousex, mousey; // pointer x, y
         int vwidth, vheight, vx, vy;
 
@@ -153,7 +153,7 @@ class Core {
 
         wlc_handle get_top_window(wlc_handle output, size_t offset);
 
-        View get_view_at_point(int x, int y);
+        View get_view_at_point(int x, int y, uint32_t mask = 0);
 
         uint32_t get_mask_for_viewport(int x, int y) {
             return (1 << (x + y * vheight));
@@ -181,7 +181,7 @@ class Core {
         bool process_pointer_motion_event(wlc_point point);
 
         void grab_keyboard();
-        void ungrad_keyboard();
+        void ungrab_keyboard();
         void grab_pointer();
         void ungrab_pointer();
 

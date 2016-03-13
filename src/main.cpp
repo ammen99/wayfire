@@ -1,13 +1,5 @@
 #include "core.hpp"
-
-#include <GL/glext.h>
-#include <EGL/egl.h>
 #include <stdio.h>
-
-extern "C" {
-#include <wlc/wlc.h>
-#include <wlc/wlc-render.h>
-}
 
 bool keyboard_key(wlc_handle view, uint32_t time,
         const struct wlc_modifiers *modifiers, uint32_t key,
@@ -18,9 +10,8 @@ bool keyboard_key(wlc_handle view, uint32_t time,
 
     bool grabbed = core->process_key_event(sym, modifiers->mods, state);
 
-    if (core->should_redraw()) {
+    if (core->should_redraw())
         wlc_output_schedule_render(wlc_get_focused_output());
-    }
 
     return grabbed;
 }
@@ -102,6 +93,8 @@ void view_request_resize(wlc_handle view, uint32_t edges, const struct wlc_point
     data.push_back((void*)(&w));
     data.push_back((void*)(origin));
 
+    std::cout << "resize request" << std::endl;
+
     core->trigger_signal("resize-request", data);
 }
 
@@ -162,8 +155,10 @@ void view_request_geometry(wlc_handle view, const wlc_geometry *g) {
     auto win = core->find_window(view);
     if (!win) return;
 
+    std::cout << "geometry" << std::endl;
+
     /* TODO: add pending changes for views that are not visible */
-    if(win->is_visible()) {
+    if(win->is_visible() || win->default_mask == 0) {
         win->set_geometry(g->origin.x, g->origin.y, g->size.w, g->size.h);
         win->set_mask(core->get_mask_for_view(win));
     }

@@ -46,7 +46,7 @@ Core::Core(int vx, int vy) {
 
 }
 void Core::init() {
-
+    add_default_signals();
     init_default_plugins();
 
     /* load core options */
@@ -61,7 +61,7 @@ void Core::init() {
 
     load_dynamic_plugins();
 
-    for(auto p : plugins) {
+    for (auto p : plugins) {
         p->owner = std::make_shared<_Ownership>();
         p->initOwnership();
         regOwner(p->owner);
@@ -69,8 +69,6 @@ void Core::init() {
         config->setOptionsForPlugin(p);
         p->updateConfiguration();
     }
-
-    add_default_signals();
 }
 
 Core::~Core(){
@@ -180,6 +178,7 @@ void KeyBinding::disable() {
 void Core::add_key(KeyBinding *kb, bool grab) {
     if(!kb) return;
     keys.push_back(kb);
+    kb->id = ++nextID;
     if(grab) kb->enable();
 }
 
@@ -206,6 +205,7 @@ void Core::add_but(ButtonBinding *bb, bool grab) {
     if(!bb) return;
 
     buttons.push_back(bb);
+    bb->id = ++nextID;
     if(grab) bb->enable();
 }
 
@@ -265,12 +265,16 @@ bool Core::is_owner_active(std::string name) {
 
     return false;
 }
+namespace {
+    int keyboard_grab_count = 0;
+    int pointer_grab_count = 0;
+}
 
 //TODO: implement grab/ungrab keyboard and pointer
-void Core::grab_pointer() {}
-void Core::ungrab_pointer() {}
-void Core::grab_keyboard() {}
-void Core::ungrad_keyboard() {}
+void Core::grab_pointer() {++pointer_grab_count;}
+void Core::ungrab_pointer() {pointer_grab_count = std::max(0, pointer_grab_count - 1);}
+void Core::grab_keyboard() {++keyboard_grab_count;}
+void Core::ungrab_keyboard() {keyboard_grab_count = std::max(0, keyboard_grab_count - 1);}
 
 void Core::add_signal(std::string name) {
     if(signals.find(name) == signals.end())
@@ -305,21 +309,19 @@ void Core::disconnect_signal(std::string name, uint id) {
 
 void Core::add_default_signals() {
 
-    /* single element: the window */
-    add_signal("create-window");
-    add_signal("destroy-window");
-
-    /* move-window is triggered when a window is moved
-     * Data contains 3 elements:
-     * 1. raw pointer to FireView
-     * 2. dx
-     * 3. dy */
-
-    add_signal("move-window");
+    add_signal("create-view");
+    add_signal("destroy-view");
 
     add_signal("move-request");
     add_signal("resize-request");
 
+    /* Doesn't actually change anything,
+     * connected listeners should do it */
+    add_signal("change-viewport-request");
+
+    /* Emitted when viewport is changed,
+     * contains the old and the new viewport */
+    add_signal("change-viewport-notify");
 }
 
 void Core::add_window(wlc_handle view) {
@@ -329,10 +331,11 @@ void Core::add_window(wlc_handle view) {
     wlc_view_bring_to_front(view);
     wlc_view_focus(view);
 
-    wlc_view_set_state(view, WLC_BIT_MAXIMIZED, false);
-    wlc_view_set_state(view, WLC_BIT_FULLSCREEN, false);
+//    wlc_view_set_state(view, WLC_BIT_MAXIMIZED, false);
+//    wlc_view_set_state(view, WLC_BIT_FULLSCREEN, false);
 
     v->set_mask(get_mask_for_view(v));
+
     v->vx = vx;
     v->vy = vy;
 }
@@ -445,7 +448,8 @@ bool Core::check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod) {
 }
 
 bool Core::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state) {
-    if (state == WLC_KEY_STATE_RELEASED) return false;
+    if (state == WLC_KEY_STATE_RELEASED)
+        return false;
 
     if (key_in == XKB_KEY_r && (mod & WLC_BIT_MOD_ALT)) {
         run("dmenu_run");
@@ -454,11 +458,13 @@ bool Core::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state)
     for(auto key : keys) {
         if(check_key(key, key_in, mod)) {
             key->action(Context(0, 0, key_in, mod));
+            std::cout << "grabbed " << std::endl;
             return true;
         }
     }
 
-    return false;
+    std::cout << keyboard_grab_count << std::endl;
+    return keyboard_grab_count > 0;
 }
 
 
@@ -473,9 +479,9 @@ bool Core::process_button_event(uint32_t button, uint32_t mod,
     for(auto but : buttons) {
         if(state == WLC_BUTTON_STATE_PRESSED && check_but_press(but, button, mod)) {
             but->action(Context(mousex, mousey, 0, 0));
-
             if (but->mod != 0)
                 processed = true;
+            std::cout << "run" << std::endl;
         }
 
         if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button, mod)) {
@@ -484,14 +490,14 @@ bool Core::process_button_event(uint32_t button, uint32_t mod,
         }
     }
 
-    return processed;
+    return processed || pointer_grab_count > 0;
 }
 
 bool Core::process_pointer_motion_event(wlc_point point) {
     mousex = point.x;
     mousey = point.y;
 
-    return false;
+    return pointer_grab_count > 0;
 }
 
 #define Second 1000000
@@ -571,12 +577,14 @@ std::tuple<int, int> Core::get_pointer_position() {
     return std::make_tuple(mousex, mousey);
 }
 
-View Core::get_view_at_point(int x, int y) {
+View Core::get_view_at_point(int x, int y, uint32_t mask) {
 
     View chosen = nullptr;
 
-    for_each_window([x,y, &chosen] (View w) {
-            if(w->is_visible() && point_inside({x, y}, w->attrib)) {
+    for_each_window([x,y, &chosen, mask] (View w) {
+            if((!mask && w->is_visible() && point_inside({x, y}, w->attrib)) ||
+                    (mask && (w->default_mask & mask) && point_inside({x, y}, w->attrib))) {
+
                 if(chosen == nullptr) chosen = w;
 
             }
@@ -585,58 +593,83 @@ View Core::get_view_at_point(int x, int y) {
     return chosen;
 }
 
+int clamp(int x, int min, int max) {
+    if(x < min) return min;
+    if(x > max) return max;
+    return x;
+}
+
 uint32_t Core::get_mask_for_view(View v) {
-    uint32_t mask = get_mask_for_viewport(vx, vy);
+    int sdx, sdy, edx, edy;
 
-    if (vx > 0) {
-        wlc_geometry viewp = {.origin = {-(int)width, 0}, .size = {width, height}};
-
-        if (rect_inside(viewp, v->attrib))
-            mask |= get_mask_for_viewport(vx - 1, vy);
+    if (v->attrib.origin.x < 0) {
+        sdx = v->attrib.origin.x / width - 1;
+    } else {
+        sdx = v->attrib.origin.x / width;
     }
 
-    if (vx < vwidth - 1) {
-        wlc_geometry viewp = {.origin = {(int)width, 0}, .size = {width, height}};
-
-        if (rect_inside(viewp, v->attrib))
-            mask |= get_mask_for_viewport(vx + 1, vy);
+    if (v->attrib.origin.y < 0) {
+        sdy = v->attrib.origin.y / height - 1;
+    } else {
+        sdy = v->attrib.origin.y / height;
     }
 
-    if (vy > 0) {
-        wlc_geometry viewp = {.origin = {0, -(int)height}, .size = {width, height}};
+    int sx = v->vx + sdx;
+    int sy = v->vy + sdy;
 
-        if (rect_inside(viewp, v->attrib))
-            mask |= get_mask_for_viewport(vx, vy - 1);
+    int bottom_right_x = v->attrib.origin.x + (int32_t)v->attrib.size.w;
+    int bottom_right_y = v->attrib.origin.y + (int32_t)v->attrib.size.h;
+
+    if (bottom_right_x < 0) {
+        edx = bottom_right_x / width - 1;
+    } else {
+        edx = bottom_right_x / width;
     }
 
-    if (vy < vheight - 1) {
-        wlc_geometry viewp = {.origin = {0, (int)height}, .size = {width, height}};
-
-        if (rect_inside(viewp, v->attrib))
-            mask |= get_mask_for_viewport(vx, vy + 1);
+    if (bottom_right_y < 0) {
+        edy = bottom_right_y / height - 1;
+    } else {
+        edy = bottom_right_y / height;
     }
+
+    int ex = v->vx + edx;
+    int ey = v->vy + edy;
+
+    uint32_t mask = 0;
+
+    for (int i = sx; i <= ex; i++)
+        for (int j = sy; j <= ey; j++)
+            mask |= get_mask_for_viewport(i, j);
 
     return mask;
 }
 
 void Core::get_viewport_for_view(View v, int &x, int &y) {
-    if(0 <= v->attrib.origin.x && v->attrib.origin.x < width) {
-        x = vx;
-    } else if(v->attrib.origin.x < 0) {
-        x = vx - 1;
+    int dx, dy;
+    if (v->attrib.origin.x < 0) {
+        dx = v->attrib.origin.x / width - 1;
+    } else {
+        dx = v->attrib.origin.x / width;
+    }
+    if (v->attrib.origin.y < 0) {
+        dy = v->attrib.origin.y / height - 1;
+    } else {
+        dy = v->attrib.origin.y / height;
     }
 
-    if(0 <= v->attrib.origin.y && v->attrib.origin.y < height) {
-        y = vy;
-    } else if(v->attrib.origin.y < 0) {
-        y = vy - 1;
-    }
+    x = vx + dx;
+    y = vy + dy;
+
+    std::cout << dx << " ** " << dy << std::endl;
+
+    x = clamp(x, 0, vwidth - 1);
+    y = clamp(y, 0, vheight - 1);
 }
 
 void Core::switch_workspace(std::tuple<int, int> nPos) {
     GetTuple(nx, ny, nPos);
 
-    if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0)
+    if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
         return;
 
     auto dx = (vx - nx) * width;
@@ -653,7 +686,15 @@ void Core::switch_workspace(std::tuple<int, int> nPos) {
     });
 
     wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_viewport(nx, ny));
-    std::cout << wlc_get_focused_output() << std::endl;
+
+    /* TODO: use tuples for SignalListenerData, this is just an ugly hack */
+    SignalListenerData data;
+    data.push_back(&vx);
+    data.push_back(&vy);
+    data.push_back(&nx);
+    data.push_back(&ny);
+
+    trigger_signal("viewport-change-notify", data);
 
     vx = nx;
     vy = ny;

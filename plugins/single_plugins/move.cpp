@@ -59,16 +59,18 @@ class Move : public Plugin {
         }
 
         void Initiate(Context ctx, View pwin) {
-            auto xev = ctx.xev.xbutton;
-            std::cout << "here" << std::endl;
-
-            win = (pwin == nullptr ? core->get_view_at_point(xev.x_root, xev.y_root) : pwin);
-            if (!win)
-                return;
-
             /* Do not deny request if expo is active and has requested moving a window */
+            /* TODO: this is a workaround, should add caller name to signals */
             if(!(core->is_owner_active("expo") && pwin) && !core->activate_owner(owner))
                 return;
+
+            auto xev = ctx.xev.xbutton;
+            win = (pwin == nullptr ? core->get_view_at_point(xev.x_root, xev.y_root) : pwin);
+
+            if (!win) {
+                core->deactivate_owner(owner);
+                return;
+            }
 
             std::cout << "activating" << std::endl;
 
@@ -92,16 +94,43 @@ class Move : public Plugin {
             core->set_redraw_everything(false);
 
             win->set_mask(core->get_mask_for_view(win));
+            std::cout << "new mask is " << win->default_mask << std::endl;
+        }
+
+        int clamp(int x, int min, int max) {
+            if(x < min) return min;
+            if(x > max) return max;
+            return x;
         }
 
         void Intermediate() {
             GetTuple(cmx, cmy, core->get_pointer_position());
+            GetTuple(sw, sh, core->getScreenSize());
+            GetTuple(vx, vy, core->get_current_viewport());
 
             int nx = win->attrib.origin.x + (cmx - sx) * scX;
             int ny = win->attrib.origin.y + (cmy - sy) * scY;
 
-            std::cout << "moving " << nx << " " << ny << std::endl;
             win->move(nx, ny);
+
+            /* TODO: make edge offset configurable */
+#define EDGE_OFFSET 50
+
+            if (nx > sw - EDGE_OFFSET)
+                ++vx;
+            if (nx + (int32_t)win->attrib.size.w < EDGE_OFFSET)
+                --vx;
+
+            if (ny > sh - EDGE_OFFSET)
+                ++vy;
+            if (ny + (int32_t)win->attrib.size.h < EDGE_OFFSET)
+                --vy;
+
+            SignalListenerData data;
+            data.push_back(&vx);
+            data.push_back(&vy);
+
+            core->trigger_signal("viewport-change-request", data);
 
             sx = cmx;
             sy = cmy;

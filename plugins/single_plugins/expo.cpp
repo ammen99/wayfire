@@ -11,15 +11,16 @@ void trigger_scale_change(int scX, int scY) {
 class Expo : public Plugin {
     private:
         KeyBinding toggle;
-        ButtonBinding press, move_release, move;
+        ButtonBinding press, move;
 
         int max_steps;
 
         Hook hook, move_hook;
         bool active;
-        std::function<View(int, int)> save; // used to restore
 
         Key toggleKey;
+
+        int target_vx, target_vy;
 
         /* maximal viewports are 32, so these are enough for making it */
         GLuint fbuffs[32][32], textures[32][32];
@@ -28,7 +29,8 @@ class Expo : public Plugin {
         max_steps = getSteps(options["duration"]->data.ival);
 
         toggleKey = *options["activate"]->data.key;
-        if(toggleKey.key == 0)
+
+        if (toggleKey.key == 0)
             return;
 
         using namespace std::placeholders;
@@ -38,41 +40,25 @@ class Expo : public Plugin {
         core->add_key(&toggle, true);
 
         auto move_button = *options["activate"]->data.but;
-        if (move_button.button != 0) {
-            std::cout << "enabling move " << std::endl;
 
-            move.button = move_button.button;
-            move.mod = move_button.mod;
-            move.type = BindingTypePress;
+        if (move_button.button != 0) {
             move.action = std::bind(std::mem_fn(&Expo::on_move), this, _1);
+            move.type = BindingTypePress;
+            move.mod = move_button.mod;
+            move.button = move_button.button;
+
+            move.mod = WLC_BIT_MOD_ALT;
+            move.button = BTN_LEFT;
 
             core->add_but(&move, false);
-//
-//            move_hook.action = std::bind(std::mem_fn(&Expo::on_pointer_moved), this);
-//            core->add_hook(&move_hook);
-//            move_hook.disable();
-//
-//            move_release.button = move_button.button;
-//            move_release.mod = 0;
-//            move_release.type = BindingTypeRelease;
-//            move_release.action = std::bind(std::mem_fn(&Expo::on_button_release), this, _1);
-//
-//            core->add_but(&move_release, false);
+            std::cout << "move id is " << move.id << std::endl;
         }
 
-//        release.action =
-//            std::bind(std::mem_fn(&Expo::buttonRelease), this, _1);
-//        release.type = BindingTypeRelease;
-//        release.mod = AnyModifier;
-//        release.button = Button1;
-//        core->add_but(&release, false);
-//
-//        press.action =
-//            std::bind(std::mem_fn(&Expo::buttonPress), this, _1);
-//        press.type = BindingTypePress;
-//        press.mod = Mod4Mask;
-//        press.button = Button1;
-//        core->add_but(&press, false);
+        press.action = std::bind(std::mem_fn(&Expo::on_press), this, _1);
+        press.type = BindingTypePress;
+        press.mod = 0;
+        press.button = BTN_LEFT;
+        core->add_but(&press, false);
 
         hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
         core->add_hook(&hook);
@@ -120,8 +106,13 @@ class Expo : public Plugin {
             if (!core->activate_owner(owner))
                 return;
 
+            owner->grab();
             core->set_renderer(0, std::bind(std::mem_fn(&Expo::render), this));
             move.enable();
+            press.enable();
+
+            target_vx = vx;
+            target_vy = vy;
 
             zoom_target.steps = 0;
             zoom_target.scale_x = {1, 1.f / vw};
@@ -130,11 +121,15 @@ class Expo : public Plugin {
             zoom_target.off_y   = {0, ((center_h - vy) * 2.f - 1.f) / vh};
 
         } else {
+            move.disable();
+            press.disable();
+            core->switch_workspace(std::make_tuple(target_vx, target_vy));
+
             zoom_target.steps = 0;
             zoom_target.scale_x = {1.f / vw, 1};
             zoom_target.scale_y = {1.f / vh, 1};
-            zoom_target.off_x   = {((vx - center_w) * 2.f + 1.f) / vw, 0};
-            zoom_target.off_y   = {((center_h - vy) * 2.f - 1.f) / vh, 0};
+            zoom_target.off_x   = {((target_vx - center_w) * 2.f + 1.f) / vw, 0};
+            zoom_target.off_y   = {((center_h - target_vy) * 2.f - 1.f) / vh, 0};
         }
 
         active = !active;
@@ -148,10 +143,10 @@ class Expo : public Plugin {
         if(zoom_target.steps == max_steps) {
             hook.disable();
             if (!active) {
-
+                core->deactivate_owner(owner);
                 core->set_redraw_everything(false);
                 core->reset_renderer();
-                core->deactivate_owner(owner);
+
                 move.disable();
                 trigger_scale_change(1, 1);
 
@@ -202,43 +197,29 @@ class Expo : public Plugin {
         }
     }
 
+    void on_press(Context ctx) {
+        GetTuple(vw, vh, core->get_viewport_grid_size());
+        GetTuple(sw, sh, core->getScreenSize());
+        std::cout << "pressed " << std::endl;
 
-    View moving_view = nullptr;
-    int32_t start_x, start_y;
+        int vpw = sw / vw;
+        int vph = sh / vh;
+
+        target_vx = ctx.xev.xbutton.x_root / vpw;
+        target_vy = ctx.xev.xbutton.y_root / vph;
+        Toggle(ctx);
+    }
 
     void on_move(Context ctx) {
-        std::cout << "on move" << std::endl;
-        moving_view = find_view_at_point(ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root);
-
-        if (!moving_view)
-            return;
+        auto v = find_view_at_point(ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root);
+        if (!v) return;
 
         SignalListenerData data;
-        data.push_back(&moving_view);
+        data.push_back(&v);
         wlc_point p = {ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root};
         data.push_back(&p);
+
         core->trigger_signal("move-request", data);
-//        move_hook.enable();
-//        move_release.enable();
-//
-//        start_x = ctx.xev.xbutton.x_root;
-//        start_y = ctx.xev.xbutton.y_root;
-    }
-
-    void on_pointer_moved() {
-        GetTuple(cmx, cmy, core->get_pointer_position());
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-
-        int32_t dx = (cmx - start_x) * vw;
-        int32_t dy = (cmy - start_y) * vh;
-
-        moving_view->move(dx + moving_view->attrib.origin.x, dy + moving_view->attrib.origin.y);
-    }
-
-    void on_button_release(Context ctx) {
-        move_release.disable();
-        move_hook.disable();
-        moving_view = nullptr;
     }
 
     View find_view_at_point(int px, int py) {
@@ -256,8 +237,6 @@ class Expo : public Plugin {
 
         int realx = (vx - cvx) * w + x * vw;
         int realy = (vy - cvy) * h + y * vh;
-
-        std::cout << realx << " " << realy << std::endl;
 
         return core->get_view_at_point(realx, realy);
     }

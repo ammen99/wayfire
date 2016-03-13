@@ -86,9 +86,4 @@ class FireView {
 void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits = 0);
 
 typedef std::shared_ptr<FireView> View;
-
 class Core;
-
-namespace WinUtil {
-    bool        constrainNewWindowPosition(int &x, int &y);
-}

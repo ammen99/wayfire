@@ -24,23 +24,20 @@
 #include <algorithm>
 
 #define GL_GLEXT_PROTOTYPES
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define ILUT_USE_OPENGL
-#include <IL/ilut.h>
 
 #include <fstream>
 
-extern "C"{
 #include <wlc/wlc.h>
 #include <wlc/wlc-render.h>
 #include <wlc/wlc-wayland.h>
-}
+
 #include <linux/input.h>
 
 #ifdef YCM
