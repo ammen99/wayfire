@@ -141,6 +141,7 @@ using PluginPtr = std::shared_ptr<Plugin>;
  * an instance of the plugin */
 typedef Plugin *(*LoadFunction)();
 
+/* TODO: make EventContext saner */
 struct EventContext {
     struct {
         struct {
@@ -150,8 +151,11 @@ struct EventContext {
         struct {
             uint32_t key;
             uint32_t mod;
-        } xkey;
+        } xkey; /* represents both button click and key press */
     } xev;
+
+    /* used for scroll events */
+    double amount[2];
 
     EventContext(int x, int y, int key, int mod) {
         xev.xbutton.x_root = x;
@@ -159,6 +163,11 @@ struct EventContext {
 
         xev.xkey.key = key;
         xev.xkey.mod = mod;
+    }
+
+    EventContext(double x, double y) {
+        amount[0] = x;
+        amount[1] = y;
     }
 };
 

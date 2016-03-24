@@ -86,6 +86,7 @@ class Output {
             bool process_key_event(uint32_t key, uint32_t mods, wlc_key_state state);
             bool process_button_event(uint32_t button, uint32_t mods, wlc_button_state state, wlc_point point);
             bool process_pointer_motion_event(wlc_point point);
+            bool process_scroll_event(uint32_t mods, double amount[2]);
 
             std::tuple<int, int> get_pointer_position();
     } *input;

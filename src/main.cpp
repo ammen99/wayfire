@@ -156,6 +156,18 @@ void view_move_to_output(wlc_handle view, wlc_handle old, wlc_handle new_output)
     core->move_view_to_output(core->find_view(view), core->get_output(old), core->get_output(new_output));
 }
 
+bool on_scroll(wlc_handle view, uint32_t time, const struct wlc_modifiers* mods,
+        uint8_t axis, double amount[2]) {
+
+    std::cout << "scrolling" << std::endl;
+    auto output = core->get_active_output();
+    if (output) {
+        return output->input->process_scroll_event(mods->mods, amount);
+    } else {
+        return false;
+    }
+}
+
 int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
     wlc_log_set_handler(log);
@@ -179,6 +191,7 @@ int main(int argc, char *argv[]) {
 
     interface.pointer.button = pointer_button;
     interface.pointer.motion = pointer_motion;
+    interface.pointer.scroll = on_scroll;
 
     core = new Core();
     core->init();

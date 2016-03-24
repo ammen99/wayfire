@@ -268,6 +268,16 @@ bool Output::InputManager::process_key_event(uint32_t key_in, uint32_t mod, wlc_
     return keyboard_grab_count > 0;
 }
 
+bool Output::InputManager::process_scroll_event(uint32_t mod, double amount[2]) {
+    for (auto but : hook_mgr->buttons) {
+        if (but->button == BTN_SCROLL && but->mod == mod && but->active) {
+            but->action(EventContext{amount[0], amount[1]});
+            return true;
+        }
+    }
+
+    return pointer_grab_count > 0;
+}
 
 bool Output::InputManager::process_button_event(uint32_t button, uint32_t mod,
         wlc_button_state state, wlc_point point) {
@@ -478,7 +488,7 @@ uint32_t Output::ViewportManager::get_mask_for_view(View v) {
     int sdx, sdy, edx, edy;
 
     if (v->attrib.origin.x < 0) {
-        sdx = v->attrib.origin.x / width - 1;
+        sdx = v->attrib.origin.x + 1 / width - 1;
     } else {
         sdx = v->attrib.origin.x / width;
     }
@@ -492,8 +502,9 @@ uint32_t Output::ViewportManager::get_mask_for_view(View v) {
     int sx = v->vx + sdx;
     int sy = v->vy + sdy;
 
-    int bottom_right_x = v->attrib.origin.x + (int32_t)v->attrib.size.w;
-    int bottom_right_y = v->attrib.origin.y + (int32_t)v->attrib.size.h;
+    /* We must substract a bit to prevent having windows with only 5 pixels visible */
+    int bottom_right_x = v->attrib.origin.x + (int32_t)v->attrib.size.w - 5;
+    int bottom_right_y = v->attrib.origin.y + (int32_t)v->attrib.size.h - 5;
 
     if (bottom_right_x < 0) {
         edx = bottom_right_x / width - 1;

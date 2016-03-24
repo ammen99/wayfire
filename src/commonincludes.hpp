@@ -44,8 +44,8 @@
 #define private public
 #endif
 
-#define AllModifiers (ControlMask | ShiftMask | Mod1Mask \
-        | Mod2Mask | Mod3Mask | Mod4Mask)
+#define MAGIC 1023444 // A random number, used for scroll up/down. Hopefully won't collide with other button!
+#define BTN_SCROLL (MAGIC)
 
 #endif
 
