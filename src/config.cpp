@@ -1,6 +1,10 @@
 #include "config.hpp"
 #include "core.hpp"
 
+/* Stuff recarding configuration file
+ * Note that this file is a mess
+ * TODO: clean up and fix naming */
+
 #define copyInto(x,y) std::memcpy(&(y), &(x), sizeof((y)))
 
 #ifdef log
@@ -21,7 +25,6 @@ namespace {
         return line.substr(i, j - i + 1);
     }
 
-    /* self-explanatory */
     void setDefaultOptions(PluginPtr p) {
         for(auto o : p->options)
             copyInto(o.second->def, o.second->data);
@@ -593,8 +596,10 @@ void Config::reset() {
 
 void Config::setOptionsForPlugin(PluginPtr p) {
     auto name = p->owner->name;
+    std::cout << "set options for " << name << std::endl;
     auto it = tree.find(name);
     if(it == tree.end()) {
+        std::cout << "[WW] Plugin " << p->owner->name << " has no entry in config file." << std::endl;
         setDefaultOptions(p);
         return;
     }
@@ -604,6 +609,7 @@ void Config::setOptionsForPlugin(PluginPtr p) {
         auto it = tree[name].find(oname);
 
         if(it == tree[name].end()) {
+            std::cout << "copy default data" << std::endl;
             copyInto(p->options[oname]->def,
                     p->options[oname]->data);
             continue;
@@ -622,6 +628,7 @@ void Config::setOptionsForPlugin(PluginPtr p) {
             continue;
         }
 
+        std::cout << "reading " << oname << std::endl;
         auto data = opt.value;
 
         switch(reqType) {

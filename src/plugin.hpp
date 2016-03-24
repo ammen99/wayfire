@@ -1,6 +1,8 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
-#include "commonincludes.hpp"
+
+#include "view.hpp"
+
 using std::string;
 /* a useful macro for making animation/hook duration
  * independent of refresh rate
@@ -26,23 +28,20 @@ using std::string;
  * in the init() function it registers a hook(disabled)
  * and then a key/button binding to activate it
  *
- * For example see viewexpo.cpp or movres.cpp
+ * For example see expo.cpp, move.cpp, resize.cpp
  */
 
-class Core;
+class Output;
 
 using Owner = string;
+
 /* owners are used to acquire screen grab and to activate */
 struct _Ownership {
     Owner name;
-    /* list of plugins which we are compatible with */
     std::unordered_set<Owner> compat;
-    bool active;
-    bool special = false; // set this if the plugin can bypass all checks
-    // if we are compatible with all plugins
     bool compatAll = true;
+    Output *output;
 
-    // call these functions to (un)grab keyboard and mouse
     void grab();
     void ungrab();
     bool grabbed;
@@ -109,6 +108,9 @@ void readButton (string value, Key   &butval  );
 
 class Plugin {
     public:
+        /* Output this plugin is running on */
+        Output *output;
+
         std::unordered_map<string, Data*> options;
 
         /* initOwnership() should set all values in own */
@@ -138,5 +140,99 @@ using PluginPtr = std::shared_ptr<Plugin>;
 /* each dynamic plugin should have the symbol loadFunction() which returns
  * an instance of the plugin */
 typedef Plugin *(*LoadFunction)();
+
+struct EventContext {
+    struct {
+        struct {
+            int x_root, y_root;
+        } xbutton;
+
+        struct {
+            uint32_t key;
+            uint32_t mod;
+        } xkey;
+    } xev;
+
+    EventContext(int x, int y, int key, int mod) {
+        xev.xbutton.x_root = x;
+        xev.xbutton.y_root = y;
+
+        xev.xkey.key = key;
+        xev.xkey.mod = mod;
+    }
+};
+
+enum BindingType {
+    BindingTypePress,
+    BindingTypeRelease
+};
+
+struct Binding{
+    bool active = false;
+    BindingType type;
+    uint32_t mod;
+    uint id;
+    std::function<void(EventContext)> action;
+};
+
+struct KeyBinding : Binding {
+    uint32_t key;
+
+    void enable();
+    void disable();
+};
+
+struct ButtonBinding : Binding {
+    uint32_t button;
+
+    void enable();
+    void disable();
+};
+
+// hooks are used to handle pointer motion
+struct Hook {
+    protected:
+        bool active = false;
+    public:
+        uint id;
+        std::function<void(void)> action;
+
+        virtual void enable();
+        virtual void disable();
+        bool getState();
+        Hook();
+};
+
+/* render hooks are used to replace the renderAllWindows()
+ * when necessary, i.e to render completely custom
+ * image */
+using RenderHook = std::function<void()>;
+
+/* Effects are used to draw over the screen, e.g when animating window actions */
+/* Effects render directly to Core's framebuffer
+ * They are either as overlays, which means they are always drawn
+ * or they are on per-window basis */
+
+enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };
+struct EffectHook : public Hook {
+    EffectType type;
+
+    /* used only if type == EFFECT_WINDOW */
+    View win;
+};
+
+using SignalListenerData = std::vector<void*>;
+
+struct SignalListener {
+    std::function<void(SignalListenerData)> action;
+    uint id;
+};
+
+#define GetTuple(x,y,t) auto x = std::get<0>(t); \
+                        auto y = std::get<1>(t)
+
+using WindowCallbackProc = std::function<void(View)>;
+
+
 
 #endif

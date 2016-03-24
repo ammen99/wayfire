@@ -1,4 +1,5 @@
 #include <wm.hpp>
+#include <output.hpp>
 
 class Resize : public Plugin {
     private:
@@ -29,22 +30,22 @@ class Resize : public Plugin {
 
         using namespace std::placeholders;
         hook.action = std::bind(std::mem_fn(&Resize::intermediate), this);
-        core->add_hook(&hook);
+        output->hook->add_hook(&hook);
         press.type   = BindingTypePress;
         press.mod    = iniButton.mod;
         press.button = iniButton.button;
         press.action = std::bind(std::mem_fn(&Resize::initiate), this, _1, nullptr);
-        core->add_but(&press, true);
+        output->hook->add_but(&press, true);
 
 
         release.type   = BindingTypeRelease;
         release.mod    = 0;
         release.button = iniButton.button;
         release.action = std::bind(std::mem_fn(&Resize::terminate), this, _1);
-        core->add_but(&release, false);
+        output->hook->add_but(&release, false);
 
         resize_request.action = std::bind(std::mem_fn(&Resize::on_resize_request), this, _1);
-        core->connect_signal("resize-request", &resize_request);
+        output->signal->connect_signal("resize-request", &resize_request);
     }
 
     void init() {
@@ -52,25 +53,24 @@ class Resize : public Plugin {
         using namespace std::placeholders;
     }
 
-    void initiate(Context ctx, View pwin) {
+    void initiate(EventContext ctx, View pwin) {
 
         auto xev = ctx.xev.xbutton;
 
         if(!pwin) {
-            auto win_at_coord = core->get_view_at_point(xev.x_root,xev.y_root);
+            auto win_at_coord = output->get_view_at_point(xev.x_root,xev.y_root);
 
             if(!win_at_coord) return;
             else win = win_at_coord;
         }
         else win = pwin;
 
-        if(!core->activate_owner(owner)) {
+        if(!output->input->activate_owner(owner)) {
             return;
         }
 
         owner->grab();
-
-        core->focus_window(win);
+        core->focus_view(win);
 
         hook.enable();
         release.enable();
@@ -89,18 +89,18 @@ class Resize : public Plugin {
         wlc_view_set_state(win->get_id(), WLC_BIT_RESIZING, true);
     }
 
-    void terminate(Context ctx) {
+    void terminate(EventContext ctx) {
         hook.disable();
         release.disable();
-        core->deactivate_owner(owner);
+        output->input->deactivate_owner(owner);
 
         wlc_view_set_state(win->get_id(), WLC_BIT_RESIZING, false);
-        win->set_mask(core->get_mask_for_view(win));
+        win->set_mask(output->viewport->get_mask_for_view(win));
     }
 
     void intermediate() {
 
-        GetTuple(cmx, cmy, core->get_pointer_position());
+        GetTuple(cmx, cmy, output->input->get_pointer_position());
 
         const int32_t dx = cmx - sx;
         const int32_t dy = cmy - sy;
@@ -138,7 +138,7 @@ class Resize : public Plugin {
         View w = *(View*)data[0];
         wlc_point point = *(wlc_point*)data[1];
 
-        initiate(Context(point.x, point.y, 0, 0), w);
+        initiate(EventContext(point.x, point.y, 0, 0), w);
     }
 
 };

@@ -1,4 +1,4 @@
-#include <core.hpp>
+#include <output.hpp>
 
 class VSwitch : public Plugin {
     private:
@@ -20,7 +20,7 @@ class VSwitch : public Plugin {
     }
 
     void updateConfiguration() {
-        vstep = getSteps(options["duration"]->data.ival);
+        vstep = options["duration"]->data.ival;
     }
 
     void beginSwitch() {
@@ -28,29 +28,31 @@ class VSwitch : public Plugin {
         dirs.pop();
 
         GetTuple(ddx, ddy, tup);
-        GetTuple(vx, vy, core->get_current_viewport());
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-        GetTuple(sw, sh, core->getScreenSize());
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(sw, sh, output->get_screen_size());
 
         nx = (vx - ddx + vw) % vw;
         ny = (vy - ddy + vh) % vh;
-        core->switch_workspace(std::make_tuple(nx, ny));
+        output->viewport->switch_workspace(std::make_tuple(nx, ny));
 
         dx = (vx - nx) * sw;
         dy = (vy - ny) * sh;
 
-        uint32_t new_mask = core->get_mask_for_viewport(nx, ny);
-        uint32_t old_mask = core->get_mask_for_viewport(vx, vy);
+        uint32_t new_mask = output->viewport->get_mask_for_viewport(nx, ny);
+        uint32_t old_mask = output->viewport->get_mask_for_viewport(vx, vy);
 
-        core->for_each_window([=] (View v) {
+        output->for_each_view([=] (View v) {
             if(v->default_mask & new_mask)
                 v->transform.translation =
                     glm::translate(glm::mat4(), glm::vec3(2.f * (nx - vx), 2.f * (vy - ny), 0));
         });
 
-        core->set_redraw_everything(true);
-        core->set_renderer(new_mask | old_mask);
-        core->activate_owner(owner);
+        output->render->set_redraw_everything(true);
+        output->render->set_renderer(new_mask | old_mask);
+
+        output->input->activate_owner(owner);
+
         stepNum = 0;
     }
 
@@ -64,9 +66,8 @@ class VSwitch : public Plugin {
             dirs.push(std::make_tuple(ddx, ddy));
     }
 
-    void handleKey(Context ctx) {
-
-        if (!core->activate_owner(owner))
+    void handleKey(EventContext ctx) {
+        if (!output->input->activate_owner(owner))
             return;
 
         owner->grab();
@@ -84,21 +85,21 @@ class VSwitch : public Plugin {
     }
 
     void Step() {
-        GetTuple(w, h, core->getScreenSize());
+        GetTuple(w, h, output->get_screen_size());
 
         if (stepNum == vstep) {
             Transform::gtrs = glm::mat4();
-                     core->set_redraw_everything(false);
-            core->reset_renderer();
+            output->render->set_redraw_everything(false);
+            output->render->reset_renderer();
 
-            auto views = core->get_windows_on_viewport(core->get_current_viewport());
+            auto views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
             for(auto v : views) {
                 v->transform.translation = glm::mat4();
             }
 
             if (dirs.size() == 0) {
                 hook.disable();
-                core->deactivate_owner(owner);
+                output->input->deactivate_owner(owner);
             } else {
                 beginSwitch();
             }
@@ -131,20 +132,20 @@ class VSwitch : public Plugin {
             kbs[i].mod = WLC_BIT_MOD_CTRL | WLC_BIT_MOD_ALT;
             kbs[i].key = switch_workspaceBindings[i];
             kbs[i].action = std::bind(std::mem_fn(&VSwitch::handleKey), this, _1);
-            core->add_key(&kbs[i], true);
+            output->hook->add_key(&kbs[i], true);
         }
 
         hook.action = std::bind(std::mem_fn(&VSwitch::Step), this);
-        core->add_hook(&hook);
+        output->hook->add_hook(&hook);
 
         viewport_change_request.action =
             std::bind(std::mem_fn(&VSwitch::on_viewport_change_request), this, _1);
 
-        core->connect_signal("viewport-change-request", &viewport_change_request);
+        output->signal->connect_signal("viewport-change-request", &viewport_change_request);
     }
 
     void on_viewport_change_request(SignalListenerData data) {
-        GetTuple(vx, vy, core->get_current_viewport());
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
         int nx = *(int*)data[0];
         int ny = *(int*)data[1];
 
@@ -156,20 +157,17 @@ class VSwitch : public Plugin {
 
         /* Do not deny request if we cannot activate owner,
          * it might have come from another plugin which is incompatible with us (for ex. expo) */
-        if (!core->activate_owner(owner)) {
-            core->switch_workspace(std::make_tuple(nx, ny));
+        if (!output->input->activate_owner(owner)) {
+            output->viewport->switch_workspace(std::make_tuple(nx, ny));
             return;
         }
-
-        std::cout << "viewport change request" << std::endl;
-        std::cout << dx << " *** " << dy << std::endl;
 
         int dirx = dx > 0 ? 1 : -1;
         int keyx = dx > 0 ? switch_workspaceBindings[1] : switch_workspaceBindings[0];
         int diry = dy > 0 ? 1 : -1;
         int keyy = dy > 0 ? switch_workspaceBindings[3] : switch_workspaceBindings[2];
 
-        Context ctx(0, 0, 0, 0);
+        EventContext ctx(0, 0, 0, 0);
 
         while (vx != nx) {
             ctx.xev.xkey.key = keyx;

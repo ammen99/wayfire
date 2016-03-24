@@ -17,31 +17,33 @@ void gl_call(const char*, uint32_t, const char*);
 #define TEXTURE_TRANSFORM_USE_COLOR (1 << 1)
 
 namespace OpenGL {
-    extern glm::vec4 color;
 
-    extern int VersionMinor, VersionMajor;
+    /* Different Context is kept for each output */
+    /* Each of the following functions uses the currently bound context */
+    struct Context {
+        GLuint program;
+        glm::vec4 color;
+        GLuint mvpID, colorID;
+        GLuint position, uvPosition;
 
-    void initOpenGL(const char *shaderSrcPath);
+        int32_t width, height;
+    };
 
-    void renderTransformedTexture(GLuint text, const wlc_geometry& g, glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
+    Context* init_opengl(Output *output, const char *shaderSrcPath);
+    void bind_context(Context* ctx);
+    void release_context(Context *ctx);
+
+    void renderTransformedTexture(GLuint text, const wlc_geometry& g,
+            glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
     void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits);
-    void set_transform(glm::mat4 tr);
-
-    void preStage();
-    void preStage(GLuint fbuff);
-    void endStage();
 
     GLuint loadShader(const char *path, GLuint type);
     GLuint compileShader(const char* src, GLuint type);
 
     void prepareFramebuffer(GLuint &fbuff, GLuint &texture);
-    GLuint getTex();
 
     /* set program to current program */
     void useDefaultProgram();
-
-    /* reset OpenGL state */
-    void reset_gl();
 }
 
 

@@ -1,4 +1,5 @@
 #include "core.hpp"
+#include "output.hpp"
 
 namespace {
     int grabCount = 0;
@@ -9,31 +10,31 @@ SubData::SubData() {}
 SubData::~SubData() {}
 
 void _Ownership::grab() {
-    if(this->grabbed || !this->active)
+    if (grabbed)
         return;
 
-    this->grabbed = true;
+    grabbed = true;
     grabCount++;
 
-    if(grabCount == 1) {
-        core->grab_pointer();
-        core->grab_keyboard();
+    if (grabCount == 1) {
+        output->input->grab_pointer();
+        output->input->grab_keyboard();
     }
 }
 
 void _Ownership::ungrab() {
-    if(!grabbed || !active)
+    if (!grabbed)
         return;
 
     grabbed = false;
     grabCount--;
 
-    if(grabCount == 0) {
-        core->ungrab_pointer();
-        core->ungrab_keyboard();
+    if (grabCount == 0) {
+        output->input->ungrab_pointer();
+        output->input->ungrab_keyboard();
     }
 
-    if(grabCount < 0)
+    if (grabCount < 0)
         grabCount = 0;
 }
 
@@ -91,3 +92,14 @@ DataPair newButtonOption(std::string name, Button defaultVal) {
     pair.second->def.but = new Button(defaultVal);
     return pair;
 }
+
+void ButtonBinding::enable() { active = true; }
+void ButtonBinding::disable() { active = false; }
+void KeyBinding::enable() { active = true; }
+void KeyBinding::disable() { active = false; }
+
+Hook::Hook() {}
+bool Hook::getState() { return this->active; }
+void Hook::enable() { active = true; }
+void Hook::disable() { active = false; }
+

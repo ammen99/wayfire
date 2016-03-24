@@ -1,18 +1,10 @@
 #include "opengl.hpp"
+#include "output.hpp"
+
 
 namespace {
-    GLuint program;
-    GLuint mvpID;
-    GLuint depthID, colorID, bgraID;
-    glm::mat4 ViewMat;
-    glm::mat4 Proj;
-    glm::mat4 MVP;
-
-    GLuint framebuffer;
-    GLuint framebufferTexture;
+    OpenGL::Context *bound;
 }
-
-glm::vec4 OpenGL::color;
 
 const char* gl_error_string(const GLenum error) {
     switch (error) {
@@ -40,9 +32,6 @@ void gl_call(const char *func, uint32_t line, const char *glfunc) {
 
 
 namespace OpenGL {
-    int VersionMinor, VersionMajor;
-    GLuint position, uvPosition;
-#define uchar unsigned char
     GLuint compileShader(const char *src, GLuint type) {
         printf("compile shader\n");
 
@@ -83,8 +72,6 @@ namespace OpenGL {
         return compileShader(str.c_str(), type);
     }
 
-    GLuint getTex() {return framebufferTexture;}
-
     void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits) {
         float w2 = float(1366) / 2.;
         float h2 = float(768) / 2.;
@@ -102,9 +89,9 @@ namespace OpenGL {
 
         auto no_color_vector = glm::vec4(1, 1, 1, 1);
         if(bits & TEXTURE_TRANSFORM_USE_COLOR) {
-            GL_CALL(glUniform4fv(colorID, 1, &color[0]));
+            GL_CALL(glUniform4fv(bound->colorID, 1, &bound->color[0]));
         } else {
-            GL_CALL(glUniform4fv(colorID, 1, &no_color_vector[0]));
+            GL_CALL(glUniform4fv(bound->colorID, 1, &no_color_vector[0]));
         }
 
         GLfloat vertexData[] = {
@@ -132,33 +119,19 @@ namespace OpenGL {
 
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
 
-        GL_CALL(glVertexAttribPointer(position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));
-        GL_CALL(glVertexAttribPointer(uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
+        GL_CALL(glVertexAttribPointer(bound->position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));
+        GL_CALL(glVertexAttribPointer(bound->uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
 
         GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
 
     }
 
     void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model, uint32_t bits) {
-        set_transform(Model);
+        GL_CALL(glUniformMatrix4fv(bound->mvpID, 1, GL_FALSE, &Model[0][0]));
         renderTexture(tex, g, bits);
     }
 
-    void set_transform(glm::mat4 tr) {
-         glUniformMatrix4fv(mvpID, 1, GL_FALSE, &tr[0][0]);
-    }
-
-    void preStage() {
-        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, framebuffer));
-    }
-
-    void preStage(GLuint fbuff) {
-        glBindFramebuffer(GL_FRAMEBUFFER, fbuff);
-    }
-
     void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
-        GetTuple(sw, sh, core->getScreenSize());
-
         GL_CALL(glGenFramebuffers(1, &fbuff));
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
 
@@ -171,7 +144,7 @@ namespace OpenGL {
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sw, sh,
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bound->width, bound->height,
                 0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
 
         GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -183,10 +156,24 @@ namespace OpenGL {
     }
 
     void useDefaultProgram() {
-        GL_CALL(glUseProgram(program));
+         GL_CALL(glUseProgram(bound->program));
     }
 
-    void initOpenGL(const char *shaderSrcPath) {
+    void bind_context(Context *ctx) {
+        bound = ctx;
+        GL_CALL(glUseProgram(ctx->program));
+    }
+
+    void release_context(Context *ctx) {
+        GL_CALL(glDeleteProgram(ctx->program));
+        delete ctx;
+    }
+    Context* init_opengl(Output *output, const char *shaderSrcPath) {
+        Context *ctx = new Context;
+
+        ctx->width = output->screen_width;
+        ctx->height = output->screen_height;
+
         std::string tmp = shaderSrcPath;
 
         GLuint vss = loadShader(std::string(shaderSrcPath)
@@ -197,33 +184,28 @@ namespace OpenGL {
                     .append("/frag.glsl").c_str(),
                      GL_FRAGMENT_SHADER);
 
-        program = glCreateProgram();
+        ctx->program = GL_CALL(glCreateProgram());
 
-        GL_CALL(glAttachShader (program, vss));
-        GL_CALL(glAttachShader (program, fss));
-        GL_CALL(glLinkProgram (program));
-        useDefaultProgram();
+        GL_CALL(glAttachShader(ctx->program, vss));
+        GL_CALL(glAttachShader(ctx->program, fss));
+        GL_CALL(glLinkProgram(ctx->program));
+        GL_CALL(glUseProgram(ctx->program));
 
-        mvpID   = GL_CALL(glGetUniformLocation(program, "MVP"));
-        depthID = GL_CALL(glGetUniformLocation(program, "depth"));
-        colorID = GL_CALL(glGetUniformLocation(program, "color"));
-        bgraID  = GL_CALL(glGetUniformLocation(program, "bgra"));
+        ctx->mvpID   = GL_CALL(glGetUniformLocation(ctx->program, "MVP"));
+        ctx->colorID = GL_CALL(glGetUniformLocation(ctx->program, "color"));
 
-        ViewMat = glm::lookAt(glm::vec3(0., 0., 1.67),
-                glm::vec3(0., 0., 0.),
-                glm::vec3(0., 1., 0.));
-        Proj = glm::perspective(45.f, 1.f, .1f, 100.f);
-        MVP = glm::mat4();
+        glm::mat4 identity;
+        GL_CALL(glUniformMatrix4fv(ctx->mvpID, 1, GL_FALSE, &identity[0][0]));
 
-        GL_CALL(glUniformMatrix4fv(mvpID, 1, GL_FALSE, &MVP[0][0]));
+        auto w2ID = GL_CALL(glGetUniformLocation(ctx->program, "w2"));
+        auto h2ID = GL_CALL(glGetUniformLocation(ctx->program, "h2"));
 
-        auto w2ID = GL_CALL(glGetUniformLocation(program, "w2"));
-        auto h2ID = GL_CALL(glGetUniformLocation(program, "h2"));
+        glUniform1f(w2ID, output->screen_width / 2.);
+        glUniform1f(h2ID, output->screen_height / 2.);
 
-        glUniform1f(w2ID, 1366. / 2);
-        glUniform1f(h2ID, 768. / 2);
+        ctx->position   = GL_CALL(glGetAttribLocation(ctx->program, "position"));
+        ctx->uvPosition = GL_CALL(glGetAttribLocation(ctx->program, "uvPosition"));
 
-        position   = GL_CALL(glGetAttribLocation(program, "position"));
-        uvPosition = GL_CALL(glGetAttribLocation(program, "uvPosition"));
+        return ctx;
     }
 }

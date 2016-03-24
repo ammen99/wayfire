@@ -1,5 +1,5 @@
 /* Plugin used to map various KeyBindings to commands */
-#include <core.hpp>
+#include <output.hpp>
 
 #define NUMBER_COMMANDS 10
 
@@ -64,7 +64,7 @@ class Commands: public Plugin {
             commands[com].type   = BindingTypePress;
             commands[com].key    = key.key;
             commands[com].mod    = key.mod;
-            core->addKey(&commands[com], true);
+            output->hook->addKey(&commands[com], true);
         }
 
     }
@@ -80,12 +80,12 @@ class Commands: public Plugin {
         }
     }
 
-    void onCommandActivated(Context *ctx){
+    void onCommandActivated(EventContext *ctx){
         auto xev = ctx->xev.xkey;
 
         for(auto com : commands)
-            if(core->checkKey(&com.second, xev))
-                core->run(com.first.c_str());
+            if(output->checkKey(&com.second, xev))
+                output->run(com.first.c_str());
     }
 };
 

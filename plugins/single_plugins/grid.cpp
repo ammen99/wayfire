@@ -1,4 +1,4 @@
-#include <core.hpp>
+#include <output.hpp>
 #include <algorithm>
 struct GridWindow {
     View v;
@@ -41,11 +41,11 @@ class Grid : public Plugin {
             keys[i].mod    = WLC_BIT_MOD_ALT | WLC_BIT_MOD_CTRL;
             keys[i].action = std::bind(std::mem_fn(&Grid::handleKey), this, _1);
             keys[i].type   = BindingTypePress;
-            core->add_key(&keys[i], true);
+            output->hook->add_key(&keys[i], true);
         }
 
         rnd.action = std::bind(std::mem_fn(&Grid::step), this);
-        core->add_hook(&rnd);
+        output->hook->add_hook(&rnd);
     }
 
     void initOwnership(){
@@ -54,7 +54,7 @@ class Grid : public Plugin {
     }
 
     void updateConfiguration() {
-        steps = getSteps(options["duration"]->data.ival);
+        steps = options["duration"]->data.ival;
     }
 
 
@@ -78,7 +78,7 @@ class Grid : public Plugin {
             currentWin.v->set_geometry(currentWin.target_geometry);
 
             wlc_view_set_state(currentWin.v->get_id(), WLC_BIT_RESIZING, false);
-            core->set_redraw_everything(false);
+            output->render->set_redraw_everything(false);
             rnd.disable();
         }
     }
@@ -88,7 +88,7 @@ class Grid : public Plugin {
 
         if (it == saved_view_geometry.end()) {
             saved_view_geometry[v->get_id()] = v->attrib;
-            GetTuple(sw, sh, core->getScreenSize());
+            GetTuple(sw, sh, output->get_screen_size());
             x = y = 0, w = sw, h = sh;
         } else {
             x = it->second.origin.x;
@@ -101,7 +101,7 @@ class Grid : public Plugin {
     }
 
     void getSlot(int n, int &x, int &y, int &w, int &h) {
-        GetTuple(width, height, core->getScreenSize());
+        GetTuple(width, height, output->get_screen_size());
 
         int w2 = width  / 2;
         int h2 = height / 2;
@@ -123,8 +123,8 @@ class Grid : public Plugin {
             x = w2, y = h2, w = w2, h = h2;
     }
 
-    void handleKey(Context ctx) {
-        auto view = core->get_active_window();
+    void handleKey(EventContext ctx) {
+        auto view = output->get_active_view();
         if (!view)
             return;
 
@@ -147,7 +147,7 @@ class Grid : public Plugin {
         curstep = 0;
         rnd.enable();
         wlc_view_set_state(view->get_id(), WLC_BIT_RESIZING, true);
-        core->set_redraw_everything(true);
+        output->render->set_redraw_everything(true);
     }
 };
 

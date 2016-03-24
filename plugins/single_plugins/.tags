@@ -33,9 +33,9 @@ Grid	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^class Grid : public 
 GridWindow	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    GridWindow(){}$/;"	f	language:C++	struct:GridWindow
 GridWindow	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    GridWindow(FireWindow id, int x, int y, int w, int h) {$/;"	f	language:C++	struct:GridWindow
 GridWindow	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^struct GridWindow {$/;"	s	language:C++	file:
-handleKey	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void handleKey(Context ctx) {$/;"	f	language:C++	class:Grid
-handleKey	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void handleKey(Context ctx) {$/;"	f	language:C++	class:ATSwitcher
-handleKey	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void handleKey(Context ctx) {$/;"	f	language:C++	class:VSwitch
+handleKey	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void handleKey(EventContext ctx) {$/;"	f	language:C++	class:Grid
+handleKey	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void handleKey(EventContext ctx) {$/;"	f	language:C++	class:ATSwitcher
+handleKey	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void handleKey(EventContext ctx) {$/;"	f	language:C++	class:VSwitch
 height	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    struct {int x, y, width, height;} size;$/;"	m	language:C++	struct:GridWindow::__anon1	file:
 hook	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        Hook hook;$/;"	m	language:C++	class:Move	file:
 hook	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        Hook hook;$/;"	m	language:C++	class:Resize	file:
@@ -50,8 +50,8 @@ init	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void init() {$
 init	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void init() {$/;"	f	language:C++	class:ATSwitcher
 init	/home/ilex/work/fire/plugins/single_plugins/vswitch.cpp	/^    void init() {$/;"	f	language:C++	class:VSwitch
 initHook	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void initHook() {$/;"	f	language:C++	class:ATSwitcher
-Initiate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Initiate(Context ctx, FireWindow pwin) {$/;"	f	language:C++	class:Move
-initiate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void initiate(Context ctx, FireWindow pwin) {$/;"	f	language:C++	class:Resize
+Initiate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Initiate(EventContext ctx, FireWindow pwin) {$/;"	f	language:C++	class:Move
+initiate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void initiate(EventContext ctx, FireWindow pwin) {$/;"	f	language:C++	class:Resize
 initiate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    KeyBinding initiate;$/;"	m	language:C++	class:ATSwitcher	file:
 Initiate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void Initiate() {$/;"	f	language:C++	class:ATSwitcher
 initOwnership	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void initOwnership(){$/;"	f	language:C++	class:Grid
@@ -114,8 +114,8 @@ sx	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        int sx, sy; \/
 sx	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Resize	file:
 sy	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Move	file:
 sy	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^        int sx, sy; \/\/ starting pointer x, y$/;"	m	language:C++	class:Resize	file:
-Terminate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Terminate(Context ctx) {$/;"	f	language:C++	class:Move
-terminate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void terminate(Context ctx) {$/;"	f	language:C++	class:Resize
+Terminate	/home/ilex/work/fire/plugins/single_plugins/move.cpp	/^        void Terminate(EventContext ctx) {$/;"	f	language:C++	class:Move
+terminate	/home/ilex/work/fire/plugins/single_plugins/resize.cpp	/^    void terminate(EventContext ctx) {$/;"	f	language:C++	class:Resize
 terminate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    KeyBinding terminate;$/;"	m	language:C++	class:ATSwitcher	file:
 Terminate	/home/ilex/work/fire/plugins/single_plugins/switcher.cpp	/^    void Terminate() {$/;"	f	language:C++	class:ATSwitcher
 toggleMaxim	/home/ilex/work/fire/plugins/single_plugins/grid.cpp	/^    void toggleMaxim(FireWindow win, int &x, int &y, int &w, int &h) {$/;"	f	language:C++	class:Grid

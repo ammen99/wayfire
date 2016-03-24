@@ -1,4 +1,4 @@
-#include <core.hpp>
+#include <output.hpp>
 
 class Move : public Plugin {
 
@@ -31,20 +31,20 @@ class Move : public Plugin {
                 return;
 
             hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
-            core->add_hook(&hook);
+            output->hook->add_hook(&hook);
 
             using namespace std::placeholders;
             press.type   = BindingTypePress;
             press.mod    = iniButton.mod;
             press.button = iniButton.button;
             press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1, nullptr);
-            core->add_but(&press, true);
+            output->hook->add_but(&press, true);
 
             release.type   = BindingTypeRelease;
             release.mod    = 0;
             release.button = iniButton.button;
             release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
-            core->add_but(&release, false);
+            output->hook->add_but(&release, false);
         }
 
         void init() {
@@ -52,32 +52,30 @@ class Move : public Plugin {
             options.insert(newButtonOption("activate", Button{0, 0}));
 
             sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
-            core->connect_signal("screen-scale-changed", &sigScl);
+            output->signal->connect_signal("screen-scale-changed", &sigScl);
 
             move_request.action = std::bind(std::mem_fn(&Move::on_move_request), this, _1);
-            core->connect_signal("move-request", &move_request);
+            output->signal->connect_signal("move-request", &move_request);
         }
 
-        void Initiate(Context ctx, View pwin) {
+        void Initiate(EventContext ctx, View pwin) {
             /* Do not deny request if expo is active and has requested moving a window */
             /* TODO: this is a workaround, should add caller name to signals */
-            if(!(core->is_owner_active("expo") && pwin) && !core->activate_owner(owner))
+            if(!(output->input->is_owner_active("expo") && pwin) && !output->input->activate_owner(owner))
                 return;
 
             auto xev = ctx.xev.xbutton;
-            win = (pwin == nullptr ? core->get_view_at_point(xev.x_root, xev.y_root) : pwin);
+            win = (pwin == nullptr ? output->get_view_at_point(xev.x_root, xev.y_root) : pwin);
 
             if (!win) {
-                core->deactivate_owner(owner);
+                output->input->deactivate_owner(owner);
                 return;
             }
 
-            std::cout << "activating" << std::endl;
-
             owner->grab();
 
-            core->focus_window(win);
-            core->set_redraw_everything(true);
+            core->focus_view(win);
+            output->render->set_redraw_everything(true);
 
             hook.enable();
             release.enable();
@@ -86,15 +84,14 @@ class Move : public Plugin {
             this->sy = xev.y_root;
         }
 
-        void Terminate(Context ctx) {
+        void Terminate(EventContext ctx) {
             hook.disable();
             release.disable();
 
-            core->deactivate_owner(owner);
-            core->set_redraw_everything(false);
+            output->input->deactivate_owner(owner);
+            output->render->set_redraw_everything(false);
 
-            win->set_mask(core->get_mask_for_view(win));
-            std::cout << "new mask is " << win->default_mask << std::endl;
+            win->set_mask(output->viewport->get_mask_for_view(win));
         }
 
         int clamp(int x, int min, int max) {
@@ -104,9 +101,9 @@ class Move : public Plugin {
         }
 
         void Intermediate() {
-            GetTuple(cmx, cmy, core->get_pointer_position());
-            GetTuple(sw, sh, core->getScreenSize());
-            GetTuple(vx, vy, core->get_current_viewport());
+            GetTuple(cmx, cmy, output->input->get_pointer_position());
+            GetTuple(sw, sh, output->get_screen_size());
+            GetTuple(vx, vy, output->viewport->get_current_viewport());
 
             int nx = win->attrib.origin.x + (cmx - sx) * scX;
             int ny = win->attrib.origin.y + (cmy - sy) * scY;
@@ -130,7 +127,7 @@ class Move : public Plugin {
             data.push_back(&vx);
             data.push_back(&vy);
 
-            core->trigger_signal("viewport-change-request", data);
+            output->signal->trigger_signal("viewport-change-request", data);
 
             sx = cmx;
             sy = cmy;
@@ -139,7 +136,6 @@ class Move : public Plugin {
         void onScaleChanged(SignalListenerData data) {
             scX = *(int*)data[0];
             scY = *(int*)data[1];
-            std::cout << "scale is " << scX << " " << scY << std::endl;
         }
 
         void on_move_request(SignalListenerData data) {
@@ -148,7 +144,7 @@ class Move : public Plugin {
 
             wlc_point origin = *(wlc_point*)data[1];
 
-            Initiate(Context(origin.x, origin.y, 0, 0), v);
+            Initiate(EventContext(origin.x, origin.y, 0, 0), v);
         }
 };
 

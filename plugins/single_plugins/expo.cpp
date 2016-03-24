@@ -1,11 +1,12 @@
-#include <core.hpp>
+#include <output.hpp>
 #include <opengl.hpp>
+#include <output.hpp>
 
-void trigger_scale_change(int scX, int scY) {
+void trigger_scale_change(Output *o, int scX, int scY) {
     SignalListenerData sigData;
     sigData.push_back(&scX);
     sigData.push_back(&scY);
-    core->trigger_signal("screen-scale-changed", sigData);
+    o->signal->trigger_signal("screen-scale-changed", sigData);
 }
 
 class Expo : public Plugin {
@@ -28,8 +29,7 @@ class Expo : public Plugin {
         GLuint fbuffs[32][32], textures[32][32];
     public:
     void updateConfiguration() {
-        max_steps = getSteps(options["duration"]->data.ival);
-
+        max_steps = options["duration"]->data.ival;
         toggleKey = *options["activate"]->data.key;
 
         if (toggleKey.key == 0)
@@ -39,7 +39,7 @@ class Expo : public Plugin {
         toggle.key = toggleKey.key;
         toggle.mod = toggleKey.mod;
         toggle.action = std::bind(std::mem_fn(&Expo::Toggle), this, _1);
-        core->add_key(&toggle, true);
+        output->hook->add_key(&toggle, true);
 
         auto move_button = *options["activate"]->data.but;
 
@@ -52,18 +52,17 @@ class Expo : public Plugin {
             move.mod = WLC_BIT_MOD_ALT;
             move.button = BTN_LEFT;
 
-            core->add_but(&move, false);
-            std::cout << "move id is " << move.id << std::endl;
+            output->hook->add_but(&move, false);
         }
 
         press.action = std::bind(std::mem_fn(&Expo::on_press), this, _1);
         press.type = BindingTypePress;
         press.mod = 0;
         press.button = BTN_LEFT;
-        core->add_but(&press, false);
+        output->hook->add_but(&press, false);
 
         hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
-        core->add_hook(&hook);
+        output->hook->add_hook(&hook);
     }
 
     void init() {
@@ -71,7 +70,7 @@ class Expo : public Plugin {
         options.insert(newKeyOption("activate", Key{0, 0}));
         options.insert(newButtonOption("move", Button{0, 0}));
 
-        core->add_signal("screen-scale-changed");
+        output->signal->add_signal("screen-scale-changed");
         active = false;
 
         std::memset(fbuffs, -1, sizeof(fbuffs));
@@ -79,7 +78,7 @@ class Expo : public Plugin {
 
         using namespace std::placeholders;
         viewport_changed.action = std::bind(std::mem_fn(&Expo::on_viewport_changed), this, _1);
-        core->connect_signal("viewport-change-notify", &viewport_changed);
+        output->signal->connect_signal("viewport-change-notify", &viewport_changed);
     }
     void initOwnership() {
         owner->name = "expo";
@@ -101,19 +100,19 @@ class Expo : public Plugin {
               off_x, off_y;
     } render_params;
 
-    void Toggle(Context ctx) {
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-        GetTuple(vx, vy, core->get_current_viewport());
+    void Toggle(EventContext ctx) {
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
 
         float center_w = vw / 2.f;
         float center_h = vh / 2.f;
 
         if (!active) {
-            if (!core->activate_owner(owner))
+            if (!output->input->activate_owner(owner))
                 return;
 
             owner->grab();
-            core->set_renderer(0, std::bind(std::mem_fn(&Expo::render), this));
+            output->render->set_renderer(0, std::bind(std::mem_fn(&Expo::render), this));
             move.enable();
             press.enable();
 
@@ -129,7 +128,7 @@ class Expo : public Plugin {
         } else {
             move.disable();
             press.disable();
-            core->switch_workspace(std::make_tuple(target_vx, target_vy));
+            output->viewport->switch_workspace(std::make_tuple(target_vx, target_vy));
 
             zoom_target.steps = 0;
             zoom_target.scale_x = {1.f / vw, 1};
@@ -149,16 +148,16 @@ class Expo : public Plugin {
         if(zoom_target.steps == max_steps) {
             hook.disable();
             if (!active) {
-                core->deactivate_owner(owner);
-                core->set_redraw_everything(false);
-                core->reset_renderer();
+                output->input->deactivate_owner(owner);
+                output->render->set_redraw_everything(false);
+                output->render->reset_renderer();
 
                 move.disable();
-                trigger_scale_change(1, 1);
+                trigger_scale_change(output, 1, 1);
 
             } else {
-                GetTuple(vw, vh, core->get_viewport_grid_size());
-                trigger_scale_change(vw, vh);
+                GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+                trigger_scale_change(output, vw, vh);
             }
 
             render_params.scale_x = zoom_target.scale_x.end;
@@ -180,19 +179,18 @@ class Expo : public Plugin {
     }
 
     void render() {
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-        GetTuple(vx, vy, core->get_current_viewport());
-        GetTuple(w,  h,  core->getScreenSize());
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(w,  h,  output->get_screen_size());
 
         auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
         OpenGL::useDefaultProgram();
-        //OpenGL::set_transform(matrix);
 
         for(int i = 0; i < vw; i++) {
             for(int j = 0; j < vh; j++) {
-                core->texture_from_viewport(std::make_tuple(i, j),
+                output->render->texture_from_viewport(std::make_tuple(i, j),
                         fbuffs[i][j], textures[i][j]);
 
                 wlc_geometry g = {
@@ -204,10 +202,9 @@ class Expo : public Plugin {
         }
     }
 
-    void on_press(Context ctx) {
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-        GetTuple(sw, sh, core->getScreenSize());
-        std::cout << "pressed " << std::endl;
+    void on_press(EventContext ctx) {
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(sw, sh, output->get_screen_size());
 
         int vpw = sw / vw;
         int vph = sh / vh;
@@ -217,7 +214,7 @@ class Expo : public Plugin {
         Toggle(ctx);
     }
 
-    void on_move(Context ctx) {
+    void on_move(EventContext ctx) {
         auto v = find_view_at_point(ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root);
         if (!v) return;
 
@@ -226,13 +223,13 @@ class Expo : public Plugin {
         wlc_point p = {ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root};
         data.push_back(&p);
 
-        core->trigger_signal("move-request", data);
+        output->signal->trigger_signal("move-request", data);
     }
 
     View find_view_at_point(int px, int py) {
-        GetTuple(w, h, core->getScreenSize());
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-        GetTuple(cvx, cvy, core->get_current_viewport());
+        GetTuple(w, h, output->get_screen_size());
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(cvx, cvy, output->viewport->get_current_viewport());
 
         int vpw = w / vw;
         int vph = h / vh;
@@ -245,12 +242,11 @@ class Expo : public Plugin {
         int realx = (vx - cvx) * w + x * vw;
         int realy = (vy - cvy) * h + y * vh;
 
-        return core->get_view_at_point(realx, realy);
+        return output->get_view_at_point(realx, realy);
     }
 
     void on_viewport_changed(SignalListenerData data) {
-        GetTuple(vw, vh, core->get_viewport_grid_size());
-        std::cout << "vp changed" << std::endl;
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
 
         float center_w = vw / 2.f;
         float center_h = vh / 2.f;

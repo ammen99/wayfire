@@ -27,6 +27,7 @@ struct ViewData {
 };
 
 struct EffectHook;
+class Output;
 
 bool point_inside(wlc_point point, wlc_geometry rect);
 bool rect_inside(wlc_geometry screen, wlc_geometry win);
@@ -36,6 +37,7 @@ class FireView {
     wlc_resource surface;
 
     public:
+        Output *output;
 
         FireView(wlc_handle);
         ~FireView();

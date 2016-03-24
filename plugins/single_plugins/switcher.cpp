@@ -1,4 +1,4 @@
-#include <core.hpp>
+#include <output.hpp>
 #include <opengl.hpp>
 
 float clamp(float min, float x, float max) {
@@ -52,8 +52,8 @@ class Switcher : public Plugin {
     }
 
     void updateConfiguration() {
-        maxsteps = getSteps(options["duration"]->data.ival);
-        initsteps = getSteps(options["init"]->data.ival);
+        maxsteps = options["duration"]->data.ival;
+        initsteps = options["init"]->data.ival;
 
         actKey = *options["activate"]->data.key;
         if(actKey.key == 0)
@@ -66,35 +66,35 @@ class Switcher : public Plugin {
         init_binding.type = BindingTypePress;
         init_binding.action =
             std::bind(std::mem_fn(&Switcher::handle_key), this, _1);
-        core->add_key(&init_binding, true);
+        output->hook->add_key(&init_binding, true);
 
         forward.mod = 0;
         forward.key = XKB_KEY_Right;
         forward.type = BindingTypePress;
         forward.action = init_binding.action;
-        core->add_key(&forward, false);
+        output->hook->add_key(&forward, false);
 
         backward.mod = 0;
         backward.key = XKB_KEY_Left;
         backward.type = BindingTypePress;
         backward.action = init_binding.action;
-        core->add_key(&backward, false);
+        output->hook->add_key(&backward, false);
 
         term.mod = 0;
         term.key = XKB_KEY_Return;
         term.type = BindingTypePress;
         term.action = init_binding.action;
-        core->add_key(&term, false);
+        output->hook->add_key(&term, false);
 
         center.action = std::bind(std::mem_fn(&Switcher::center_hook), this);
         place.action  = std::bind(std::mem_fn(&Switcher::place_hook), this);
         rotate.action = std::bind(std::mem_fn(&Switcher::rotate_hook), this);
         exit.action   = std::bind(std::mem_fn(&Switcher::exit_hook), this);
 
-        core->add_hook(&center);
-        core->add_hook(&place);
-        core->add_hook(&rotate);
-        core->add_hook(&exit);
+        output->hook->add_hook(&center);
+        output->hook->add_hook(&place);
+        output->hook->add_hook(&rotate);
+        output->hook->add_hook(&exit);
     }
 
     void init() {
@@ -103,7 +103,7 @@ class Switcher : public Plugin {
         options.insert(newKeyOption("activate", Key{0, 0}));
     }
 
-    void handle_key(Context ctx) {
+    void handle_key(EventContext ctx) {
         auto xev = ctx.xev.xkey;
         if (xev.key == XKB_KEY_Tab) {
             if (active) {
@@ -161,7 +161,7 @@ class Switcher : public Plugin {
     std::vector<view_paint_attribs> active_views;
 
     void initiate() {
-        if (!core->activate_owner(owner))
+        if (!output->input->activate_owner(owner))
             return;
 
         owner->grab();
@@ -174,19 +174,18 @@ class Switcher : public Plugin {
 
         Transform::ViewProj = proj * view;
 
-        views = core->get_windows_on_viewport(core->get_current_viewport());
+        views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
 
         if (!views.size()) {
             owner->ungrab();
-            core->deactivate_owner(owner);
+            output->input->deactivate_owner(owner);
             return;
         }
         std::reverse(views.begin(), views.end());
 
-        GetTuple(sw, sh, core->getScreenSize());
+        GetTuple(sw, sh, output->get_screen_size());
 
         for (auto v : views) {
-
             /* center of screen minus center of view */
             float cx = -(sw / 2 - (v->attrib.origin.x + v->attrib.size.w / 2.f)) / sw * 2.f;
             float cy =  (sh / 2 - (v->attrib.origin.y + v->attrib.size.h / 2.f)) / sh * 2.f;
@@ -213,8 +212,8 @@ class Switcher : public Plugin {
 
         index = 0;
 
-        core->set_redraw_everything(true);
-        core->set_renderer(0, std::bind(std::mem_fn(&Switcher::render), this));
+        output->render->set_redraw_everything(true);
+        output->render->set_renderer(0, std::bind(std::mem_fn(&Switcher::render), this));
 
         curstep = 0;
 
@@ -222,7 +221,7 @@ class Switcher : public Plugin {
     }
 
     void render_view(View v) {
-        GetTuple(sw, sh, core->getScreenSize());
+        GetTuple(sw, sh, output->get_screen_size());
 
         int cx = sw / 2;
         int cy = sh / 2;
@@ -243,9 +242,9 @@ class Switcher : public Plugin {
         OpenGL::useDefaultProgram();
         GL_CALL(glDisable(GL_DEPTH_TEST));
 
-        auto bg = core->get_background();
+        auto bg = output->render->get_background();
         wlc_geometry g = {.origin = {0, 0}, .size = {1366, 768}};
-        OpenGL::color = glm::vec4(0.7, 0.7, 0.7, 1.0);
+        output->render->ctx->color = glm::vec4(0.7, 0.7, 0.7, 1.0);
         OpenGL::renderTransformedTexture(bg, g, glm::mat4(), TEXTURE_TRANSFORM_USE_COLOR);
 
         for(int i = active_views.size() - 1; i >= 0; i--)
@@ -477,11 +476,10 @@ class Switcher : public Plugin {
 
         if (curstep == maxsteps) {
              active = false;
-             core->reset_renderer();
-             core->set_redraw_everything(false);
+             output->render->reset_renderer();
+             output->render->set_redraw_everything(false);
 
-             core->focus_window(views[index]);
-
+             core->focus_view(views[index]);
              exit.disable();
 
              for(auto v : views) {
@@ -492,10 +490,10 @@ class Switcher : public Plugin {
 
     void terminate() {
         exit.enable();
-        core->deactivate_owner(owner);
+        output->input->deactivate_owner(owner);
         owner->ungrab();
 
-        GetTuple(sw, sh, core->getScreenSize());
+        GetTuple(sw, sh, output->get_screen_size());
 
         int sz = views.size();
 

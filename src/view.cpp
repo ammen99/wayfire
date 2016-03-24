@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "opengl.hpp"
+#include "output.hpp"
 #include <wlc/wlc-wayland.h>
 
 
@@ -47,28 +48,13 @@ bool rect_inside(wlc_geometry screen, wlc_geometry win) {
     return true;
 }
 
-/* ensure that new window is on current viewport */
-void constrain_position_for_view(int32_t &x, int32_t &y) {
-    GetTuple(sw, sh, core->getScreenSize());
-    auto nx = (x % sw + sw) % sw;
-    auto ny = (y % sh + sh) % sh;
-
-    if (nx != x || ny != y)
-        x = nx, y = ny;
-}
-
-
 FireView::FireView(wlc_handle _view) {
-    view = _view;
-    auto geom = wlc_view_get_geometry(view);
-
-    int32_t x = geom->origin.x, y = geom->origin.y;
-    constrain_position_for_view(x, y);
-
-    attrib.origin = {x, y};
-    attrib.size = geom->size;
-
+    view    = _view;
     surface = wlc_view_get_surface(view);
+    output  = core->get_active_output();
+
+    auto geom = wlc_view_get_geometry(view);
+    attrib = *geom;
 }
 
 FireView::~FireView() {
@@ -83,25 +69,8 @@ bool FireView::is_visible() {
 }
 
 void FireView::move(int x, int y) {
-        auto v = core->find_window(view);
-//
-//    int nvx, nvy;
-//    core->get_viewport_for_view(v, vx, vy);
-    std::cout << x << " -- " << y << std::endl;
-//
-//    GetTuple(sw, sh, core->getScreenSize());
-//
-//    int dx = (vx - nvx) * sw;
-//    int dy = (vy - nvy) * sh;
-//
+    auto v = core->find_view(view);
     attrib.origin = {x, y};
-//
-//    vx = nvx;
-//    vy = nvy;
-//
-//    std::cout << attrib.origin.x << " -- " << attrib.origin.y << std::endl;
-    set_mask(core->get_mask_for_view(v));
-
     wlc_view_set_geometry(view, 0, &attrib);
 }
 
@@ -150,21 +119,4 @@ void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, u
 
         render_surface(subsurfaces[i], sub_g, transform, bits);
     }
-}
-
-namespace WinUtil {
-
-    /* ensure that new window is on current viewport */
-    bool constrainNewWindowPosition(int &x, int &y) {
-        GetTuple(sw, sh, core->getScreenSize());
-        auto nx = (x % sw + sw) % sw;
-        auto ny = (y % sh + sh) % sh;
-
-        if(nx != x || ny != y){
-            x = nx, y = ny;
-            return true;
-        }
-        return false;
-    }
-
 }
