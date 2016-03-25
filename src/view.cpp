@@ -95,6 +95,23 @@ void FireView::set_geometry(int x, int y, int w, int h) {
     wlc_view_set_geometry(view, 0, &attrib);
 }
 
+void FireView::set_mask(uint32_t mask) {
+    std::cout << "set mask " << view << " " << mask << std::endl;
+    default_mask = mask;
+    if (!has_temporary_mask)
+        restore_mask();
+}
+
+void FireView::restore_mask() {
+    wlc_view_set_mask(view, default_mask);
+    has_temporary_mask = false;
+}
+
+void FireView::set_temporary_mask(uint32_t tmask) {
+    wlc_view_set_mask(view, tmask);
+    has_temporary_mask = true;
+}
+
 #include <wlc/wlc-wayland.h>
 #include <wlc/wlc-render.h>
 

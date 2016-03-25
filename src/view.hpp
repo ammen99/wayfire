@@ -59,21 +59,9 @@ class FireView {
         /* vx and vy are the coords of the viewport where the top left corner is located */
         int vx, vy;
 
-        void set_mask(uint32_t mask) {
-            default_mask = mask;
-            if (!has_temporary_mask)
-                restore_mask();
-        }
-
-        void restore_mask() {
-            wlc_view_set_mask(view, default_mask);
-            has_temporary_mask = false;
-        }
-
-        void set_temporary_mask(uint32_t tmask) {
-            wlc_view_set_mask(view, tmask);
-            has_temporary_mask = true;
-        }
+        void set_mask(uint32_t mask);
+        void restore_mask();
+        void set_temporary_mask(uint32_t tmask);
 
         void move(int x, int y);
         void resize(int w, int h);

@@ -488,7 +488,7 @@ uint32_t Output::ViewportManager::get_mask_for_view(View v) {
     int sdx, sdy, edx, edy;
 
     if (v->attrib.origin.x < 0) {
-        sdx = v->attrib.origin.x + 1 / width - 1;
+        sdx = v->attrib.origin.x / width - 1;
     } else {
         sdx = v->attrib.origin.x / width;
     }
@@ -523,6 +523,12 @@ uint32_t Output::ViewportManager::get_mask_for_view(View v) {
 
     uint32_t mask = 0;
 
+    std::cout << sdx << " " << width << std::endl;
+    std::cout << "generating mask " << sx << " " << ex << " __ " << sy << " " << ey << std::endl;
+    std::cout << "### " << v->attrib.origin.x << " ## " << v->attrib.origin.y << std::endl;
+    std::cout << "*** " << bottom_right_x << " ** " << bottom_right_y << std::endl;
+    std::cout << "&&& " << v->vx << " && " << v->vy << std::endl;
+
     for (int i = sx; i <= ex; i++)
         for (int j = sy; j <= ey; j++)
             mask |= get_mask_for_viewport(i, j);
@@ -544,13 +550,14 @@ void Output::ViewportManager::get_viewport_for_view(View v, int &x, int &y) {
         dy = v->attrib.origin.y / height;
     }
 
-    x = clamp(vx + dx, 0, vwidth - 1);
-    y = clamp(vy + dy, 0, vheight - 1);
+    x = clamp(v->vx + dx, 0, vwidth - 1);
+    y = clamp(v->vy + dy, 0, vheight - 1);
 }
 
 void Output::ViewportManager::switch_workspace(std::tuple<int, int> nPos) {
     GetTuple(nx, ny, nPos);
 
+    std::cout << "switch workspace " << nx << " " << ny << std::endl;
     if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
         return;
 
@@ -561,10 +568,12 @@ void Output::ViewportManager::switch_workspace(std::tuple<int, int> nPos) {
         bool has_been_before = v->default_mask & get_mask_for_viewport(vx, vy);
         bool visible_now = v->default_mask & get_mask_for_viewport(nx, ny);
 
-        if(has_been_before && visible_now)
+        if(has_been_before && visible_now) {
+            std::cout << "MOVING WINDOW ID " << v->get_id() << std::endl;
             v->move(v->attrib.origin.x + dx, v->attrib.origin.y + dy),
             v->vx = nx,
             v->vy = ny;
+        }
     });
 
     wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_viewport(nx, ny));

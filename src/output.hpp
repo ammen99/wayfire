@@ -156,7 +156,7 @@ class Output {
              * assuming the view coords are on current viewport */
             void get_viewport_for_view(View, int&, int&);
             uint32_t get_mask_for_viewport(int x, int y) {
-                return (1 << (x + y * vheight));
+                return (1 << (x + y * vwidth));
             }
 
 

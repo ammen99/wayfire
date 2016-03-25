@@ -193,9 +193,13 @@ class Expo : public Plugin {
                 output->render->texture_from_viewport(std::make_tuple(i, j),
                         fbuffs[i][j], textures[i][j]);
 
+#define EDGE_OFFSET 13
+#define MOSAIC 0
+
+                int mosaic_factor = EDGE_OFFSET - (1 - ((i + j) & 1)) * MOSAIC;
                 wlc_geometry g = {
-                    .origin = {(i - vx) * w, (j - vy) * h},
-                    .size = {(uint32_t) w, (uint32_t) h}};
+                    .origin = {(i - vx) * w + mosaic_factor, (j - vy) * h + mosaic_factor},
+                    .size = {(uint32_t) w - 2 * mosaic_factor, (uint32_t) h - 2 * mosaic_factor}};
 
                 OpenGL::renderTransformedTexture(textures[i][j], g, matrix, TEXTURE_TRANSFORM_INVERT_Y);
             }

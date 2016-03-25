@@ -32,8 +32,14 @@ class VSwitch : public Plugin {
         GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
         GetTuple(sw, sh, output->get_screen_size());
 
-        nx = (vx - ddx + vw) % vw;
-        ny = (vy - ddy + vh) % vh;
+        nx = vx - ddx;
+        ny = vy - ddy;
+
+        if (nx < 0 || nx >= vw || ny < 0 || ny >= vh) {
+            dirs = std::queue<std::tuple<int, int>>();
+            return;
+        }
+
         output->viewport->switch_workspace(std::make_tuple(nx, ny));
 
         dx = (vx - nx) * sw;
@@ -52,7 +58,6 @@ class VSwitch : public Plugin {
         output->render->set_renderer(new_mask | old_mask);
 
         output->input->activate_owner(owner);
-
         stepNum = 0;
     }
 
@@ -180,7 +185,6 @@ class VSwitch : public Plugin {
             handleKey(ctx);
             vy += diry;
         }
-
     }
 };
 extern "C" {

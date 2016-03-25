@@ -58,11 +58,19 @@ class Move : public Plugin {
             output->signal->connect_signal("move-request", &move_request);
         }
 
+        bool called_from_expo = false;
         void Initiate(EventContext ctx, View pwin) {
+            std::cout << "ACTIVE" << std::endl;
             /* Do not deny request if expo is active and has requested moving a window */
             /* TODO: this is a workaround, should add caller name to signals */
             if(!(output->input->is_owner_active("expo") && pwin) && !output->input->activate_owner(owner))
                 return;
+
+            if (output->input->is_owner_active("expo")) {
+                called_from_expo = true;
+            } else {
+                called_from_expo = false;
+            }
 
             auto xev = ctx.xev.xbutton;
             win = (pwin == nullptr ? output->get_view_at_point(xev.x_root, xev.y_root) : pwin);
@@ -90,8 +98,6 @@ class Move : public Plugin {
 
             output->input->deactivate_owner(owner);
             output->render->set_redraw_everything(false);
-
-            win->set_mask(output->viewport->get_mask_for_view(win));
         }
 
         int clamp(int x, int min, int max) {
@@ -103,31 +109,24 @@ class Move : public Plugin {
         void Intermediate() {
             GetTuple(cmx, cmy, output->input->get_pointer_position());
             GetTuple(sw, sh, output->get_screen_size());
-            GetTuple(vx, vy, output->viewport->get_current_viewport());
 
             int nx = win->attrib.origin.x + (cmx - sx) * scX;
             int ny = win->attrib.origin.y + (cmy - sy) * scY;
 
-            win->move(nx, ny);
+            /* TODO: implement edge offset */
 
-            /* TODO: make edge offset configurable */
-#define EDGE_OFFSET 50
+            if (called_from_expo) {
+                int vx, vy;
+                output->viewport->get_viewport_for_view(win, vx, vy);
 
-            if (nx > sw - EDGE_OFFSET)
-                ++vx;
-            if (nx + (int32_t)win->attrib.size.w < EDGE_OFFSET)
-                --vx;
+                win->move(nx + sw * (win->vx - vx), ny + sh * (win->vy - vy));
+                win->vx = vx;
+                win->vy = vy;
+            } else {
+                win->move(nx, ny);
+            }
 
-            if (ny > sh - EDGE_OFFSET)
-                ++vy;
-            if (ny + (int32_t)win->attrib.size.h < EDGE_OFFSET)
-                --vy;
-
-            SignalListenerData data;
-            data.push_back(&vx);
-            data.push_back(&vy);
-
-            output->signal->trigger_signal("viewport-change-request", data);
+            win->set_mask(output->viewport->get_mask_for_view(win));
 
             sx = cmx;
             sy = cmy;
@@ -143,7 +142,6 @@ class Move : public Plugin {
             if(!v) return;
 
             wlc_point origin = *(wlc_point*)data[1];
-
             Initiate(EventContext(origin.x, origin.y, 0, 0), v);
         }
 };
