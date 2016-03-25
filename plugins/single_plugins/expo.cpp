@@ -233,20 +233,20 @@ class Expo : public Plugin {
     View find_view_at_point(int px, int py) {
         GetTuple(w, h, output->get_screen_size());
         GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        GetTuple(cvx, cvy, output->viewport->get_current_viewport());
 
-        int vpw = w / vw;
-        int vph = h / vh;
+        wlc_point p = {px * vw, py * vh};
+        View chosen_view = nullptr;
 
-        int vx = px / vpw;
-        int vy = py / vph;
-        int x =  px % vpw;
-        int y =  py % vph;
+        output->for_each_view([&chosen_view, w, h, p] (View v) {
+            wlc_geometry g = v->attrib;
+            g.origin.x += v->vx * w;
+            g.origin.y += v->vy * h;
 
-        int realx = (vx - cvx) * w + x * vw;
-        int realy = (vy - cvy) * h + y * vh;
+            if (!chosen_view && point_inside(p, g))
+                chosen_view = v;
+        });
 
-        return output->get_view_at_point(realx, realy);
+        return chosen_view;
     }
 
     void on_viewport_changed(SignalListenerData data) {
