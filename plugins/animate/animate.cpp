@@ -1,40 +1,44 @@
 #include "fade.hpp"
 #include "fire.hpp"
 #include <opengl.hpp>
+#include <output.hpp>
 
 #define HAS_COMPUTE_SHADER (OpenGL::VersionMajor > 4 ||  \
         (OpenGL::VersionMajor == 4 && OpenGL::VersionMinor >= 3))
 
-bool Animation::Step() {return false;}
-bool Animation::Run() {return true;}
+bool Animation::step() {return false;}
+bool Animation::run() {return true;}
 Animation::~Animation() {}
 
-AnimationHook::AnimationHook(Animation *_anim) {
-    this->anim = _anim;
-    if(anim->Run()) {
-        this->hook.action =
-            std::bind(std::mem_fn(&AnimationHook::Step), this);
-        core->addHook(&hook);
-        this->hook.enable();
-    }
-    else {
+AnimationHook::AnimationHook(Animation *_anim, Output *output, View v) {
+    anim = _anim;
+    this->output = output;
+
+    if (anim->run()) {
+        hook.action = std::bind(std::mem_fn(&AnimationHook::step), this);
+        hook.type = (v == nullptr ? EFFECT_OVERLAY : EFFECT_WINDOW);
+        hook.win = v;
+
+        output->render->add_effect(&hook);
+        hook.enable();
+    } else {
         delete anim;
         delete this;
     }
 }
 
-void AnimationHook::Step() {
-    if(!this->anim->Step()) {
-        core->remHook(hook.id);
+void AnimationHook::step() {
+    if (!this->anim->step()) {
+        output->render->rem_effect(hook.id);
         delete anim;
         delete this;
     }
 }
 
 class AnimatePlugin : public Plugin {
-    SignalListener map, unmap;
+    SignalListener create, destroy;
 
-    std::string map_animation;
+    std::string animation;
 
     public:
         void initOwnership() {
@@ -44,7 +48,8 @@ class AnimatePlugin : public Plugin {
 
         void updateConfiguration() {
             fadeDuration = options["fade_duration"]->data.ival;
-            map_animation = *options["map_animation"]->data.sval;
+            animation = *options["map_animation"]->data.sval;
+#if false
             if(map_animation == "fire") {
                 if(!HAS_COMPUTE_SHADER) {
                     std::cout << "[EE] OpenGL version below 4.3," <<
@@ -53,6 +58,7 @@ class AnimatePlugin : public Plugin {
                     map_animation = "fade";
                 }
             }
+#endif
         }
 
         void init() {
@@ -60,31 +66,28 @@ class AnimatePlugin : public Plugin {
             options.insert(newStringOption("map_animation", "fade"));
 
             using namespace std::placeholders;
-            map.action = std::bind(std::mem_fn(&AnimatePlugin::mapWindow),
+            create.action = std::bind(std::mem_fn(&AnimatePlugin::mapWindow),
                         this, _1);
-            unmap.action = std::bind(std::mem_fn(&AnimatePlugin::unmapWindow),
+            destroy.action = std::bind(std::mem_fn(&AnimatePlugin::unmapWindow),
                         this, _1);
 
-            core->connect_signal("map-window", &map);
-            core->connect_signal("unmap-window", &unmap);
+            output->signal->connect_signal("create-view", &create);
+            output->signal->connect_signal("destroy-view", &destroy);
         }
 
         void mapWindow(SignalListenerData data) {
             auto win = *((View*) data[0]);
-            if(map_animation == "fire")
-                new Fire(win);
-            else
-                new AnimationHook(new Fade<FadeIn>(win));
+            new AnimationHook(new Fade<FadeIn>(win, output), output);
         }
 
         void unmapWindow(SignalListenerData data) {
             auto win = *((View*) data[0]);
-            new AnimationHook(new Fade<FadeOut>(win));
+            new AnimationHook(new Fade<FadeOut>(win, output), output);
         }
 
         void fini() {
-            core->disconnect_signal("map-window", map.id);
-            core->disconnect_signal("unmap-window", unmap.id);
+            output->signal->disconnect_signal("create-view", create.id);
+            output->signal->disconnect_signal("destroy-view", destroy.id);
         }
 };
 

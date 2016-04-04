@@ -90,6 +90,8 @@ namespace OpenGL {
         auto no_color_vector = glm::vec4(1, 1, 1, 1);
         if(bits & TEXTURE_TRANSFORM_USE_COLOR) {
             GL_CALL(glUniform4fv(bound->colorID, 1, &bound->color[0]));
+            GL_CALL(glEnable(GL_BLEND));
+            GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
         } else {
             GL_CALL(glUniform4fv(bound->colorID, 1, &no_color_vector[0]));
         }
@@ -168,6 +170,30 @@ namespace OpenGL {
         GL_CALL(glDeleteProgram(ctx->program));
         delete ctx;
     }
+
+    const char *simple_fs =
+R"(#version 100
+attribute mediump vec2 position;
+attribute highp vec2 uvPosition;
+
+varying highp vec2 uvpos;
+
+uniform int time;
+
+void main() {
+
+    gl_Position = vec4(position, 0.0, 0.0);
+    uvpos = uvPosition;
+})";
+
+    GLuint duplicate_texture(GLuint tex, const wlc_geometry& g) {
+        GLuint dst_fbuff, dst_tex;
+        prepareFramebuffer(dst_fbuff, dst_tex);
+
+        GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
+        return dst_tex;
+    }
+
     Context* init_opengl(Output *output, const char *shaderSrcPath) {
         Context *ctx = new Context;
 

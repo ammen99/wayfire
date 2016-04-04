@@ -112,18 +112,56 @@ void FireView::set_temporary_mask(uint32_t tmask) {
     has_temporary_mask = true;
 }
 
+void FireView::render(uint32_t bits) {
+    wlc_geometry g;
+    wlc_view_get_visible_geometry(get_id(), &g);
+    render_surface(surface, g, transform.compose(), bits);
+
+    /*
+    std::vector<EffectHook*> hooks_to_run;
+    for (auto hook : effects) {
+        if (hook.second->getState()) {
+            hooks_to_run.push_back(hook.second);
+        }
+    }
+
+    for (auto hook : hooks_to_run)
+        hook->action();
+    */
+}
+
 #include <wlc/wlc-wayland.h>
 #include <wlc/wlc-render.h>
 
-void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
-    uint32_t tex[3];
-    wlc_surface_format fmt;
-    wlc_surface_get_textures(surface, tex, &fmt);
-    for(int i = 0; i < 3 && tex[i]; i++)
-        OpenGL::renderTransformedTexture(tex[i], g, transform, bits);
+void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surface>& v) {
+    Surface s;
+    wlc_surface_get_textures(surface, s.tex, &s.fmt);
+    s.g = g;
+    v.push_back(s);
 
     size_t num_subsurfaces;
+    auto subsurfaces = wlc_surface_get_subsurfaces(surface, &num_subsurfaces);
+    if (!subsurfaces || !num_subsurfaces)
+        return;
 
+    for (int i = num_subsurfaces - 1; i >= 0; i--) {
+        wlc_geometry sub_g;
+        wlc_get_subsurface_geometry(subsurfaces[i], &sub_g);
+
+        sub_g.origin.x += g.origin.x;
+        sub_g.origin.y += g.origin.y;
+
+        collect_subsurfaces(subsurfaces[i], sub_g, v);
+    }
+}
+
+void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
+    Surface surf;
+    wlc_surface_get_textures(surface, surf.tex, &surf.fmt);
+    for(int i = 0; i < 3 && surf.tex[i]; i++)
+        OpenGL::renderTransformedTexture(surf.tex[i], g, transform, bits);
+
+    size_t num_subsurfaces;
     auto subsurfaces = wlc_surface_get_subsurfaces(surface, &num_subsurfaces);
     if (!subsurfaces) return;
 

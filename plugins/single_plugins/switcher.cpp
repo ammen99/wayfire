@@ -49,6 +49,7 @@ class Switcher : public Plugin {
     void initOwnership() {
         owner->name = "switcher";
         owner->compatAll = false;
+        owner->compat.insert("screenshot");
     }
 
     void updateConfiguration() {

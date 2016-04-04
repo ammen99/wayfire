@@ -381,25 +381,33 @@ void Output::RenderManager::paint() {
     if (renderer) {
         renderer();
     } else {
-//        wlc_geometry g;
-//        g.origin = {0, 0};
-//        g.size.w = output->screen_width;
-//        g.size.h = output->screen_height;
-//
-//        OpenGL::renderTransformedTexture(background.tex, g);
         blit_background(0);
     }
+}
+
+void Output::RenderManager::post_paint() {
+    std::vector<EffectHook*> active_effects;
+    for (auto effect : effects) {
+        if (effect->getState())
+            active_effects.push_back(effect);
+    }
+
+    for (auto effect : active_effects)
+        effect->action();
 }
 
 void Output::RenderManager::transformation_renderer() {
     blit_background(0);
     output->for_each_view_reverse([=](View v) {
-        if(v->default_mask & visibility_mask) {
+        if(!v->is_hidden && (v->default_mask & visibility_mask) && !v->destroyed) {
             wlc_geometry g;
             wlc_view_get_visible_geometry(v->get_id(), &g);
 
             auto surf = wlc_view_get_surface(v->get_id());
             render_surface(surf, g, v->transform.compose());
+
+            v->collected_surfaces.clear();
+            collect_subsurfaces(surf, g, v->collected_surfaces);
         }
     });
 }
@@ -700,9 +708,16 @@ void Output::attach_view(View v) {
     v->vy = vy;
 
     v->set_mask(viewport->get_mask_for_view(v));
+
+    SignalListenerData data;
+    data.push_back(&v);
+    signal->trigger_signal("create-view", data);
 }
 
 void Output::detach_view(View v) {
+    SignalListenerData data;
+    data.push_back(&v);
+    signal->trigger_signal("destroy-view", data);
 }
 
 void Output::focus_view(View v) {

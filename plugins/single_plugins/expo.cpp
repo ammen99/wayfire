@@ -83,6 +83,7 @@ class Expo : public Plugin {
     void initOwnership() {
         owner->name = "expo";
         owner->compatAll = false;
+        owner->compat.insert("screenshot");
     }
 
     struct tup {

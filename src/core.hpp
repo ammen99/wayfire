@@ -21,6 +21,10 @@ class Core {
     void add_view(wlc_handle view);
     void rem_view(wlc_handle view);
 
+    /* Only removes the view from the "database".
+     * Use only when view is already destroyed and detached from output */
+    void erase_view(wlc_handle view);
+
     /* brings the view to the top
      * and also focuses its output */
     void focus_view(View win);

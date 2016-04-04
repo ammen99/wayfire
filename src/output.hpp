@@ -121,6 +121,7 @@ class Output {
             void reset_renderer();
             bool renderer_running() { return renderer != nullptr || redraw_timer; }
             void paint();
+            void post_paint();
 
             bool should_render_view(wlc_handle view) { return renderer == nullptr; }
             bool should_repaint_everything() { return redraw_timer > 0; }

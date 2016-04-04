@@ -97,9 +97,20 @@ void Core::close_view(View v) {
 
 void Core::rem_view(wlc_handle v) {
     auto it = views.find(v);
-    if (it != views.end())
-        it->second.reset();
-    views.erase(it);
+    if (it != views.end()) {
+        auto view = it->second;
+
+        view->destroyed = true;
+        view->output->detach_view(view);
+        if (view->keep_count == 0) {
+            it->second.reset();
+            views.erase(it);
+        }
+    }
+}
+
+void Core::erase_view(wlc_handle v) {
+    views.erase(v);
 }
 
 namespace {

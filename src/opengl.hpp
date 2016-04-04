@@ -36,6 +36,7 @@ namespace OpenGL {
     void renderTransformedTexture(GLuint text, const wlc_geometry& g,
             glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
     void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits);
+    GLuint duplicate_texture(GLuint source_tex, const wlc_geometry& g);
 
     GLuint loadShader(const char *path, GLuint type);
     GLuint compileShader(const char* src, GLuint type);

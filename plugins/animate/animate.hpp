@@ -5,17 +5,19 @@
 
 class Animation {
     public:
-    virtual bool Step(); /* return true if continue, false otherwise */
-    virtual bool Run(); /* should we start? */
+    virtual bool step(); /* return true if continue, false otherwise */
+    virtual bool run(); /* should we start? */
     virtual ~Animation();
 };
 
 class AnimationHook {
-    Hook hook;
+    EffectHook hook;
     Animation *anim;
+    Output *output;
+
     public:
-    AnimationHook(Animation *_anim);
-    void Step();
+    AnimationHook(Animation *_anim, Output *output, View v = nullptr);
+    void step();
 };
 
 #endif

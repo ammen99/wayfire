@@ -1,116 +1,72 @@
 #include "animate.hpp"
 #include "fade.hpp"
+#include <output.hpp>
 
 int fadeDuration;
-struct FadeWindowData : public WindowData {
-    bool fadeIn = false; // used to prevent activation
-    bool fadeOut = false; // of fading multiple times
-};
-
 /* FadeIn begin */
-
 template<>
-Fade<FadeIn>::Fade (View _win) : win(_win), run(true) {
-
-    /* exit if already running */
-    if(ExistsData(win, "fade")) {
-        auto data = GetData(FadeWindowData, win, "fade");
-        if(data->fadeIn)
-            run = false;
-    }
-    else AllocData(FadeWindowData, win, "fade"),
-        GetData(FadeWindowData, win, "fade")->fadeIn = true;
-
-    if(!run) return;
-
-    savetr = win->transparent;
-    win->transparent = true;
-    win->keepCount++;
-
-    target = maxstep = getSteps(fadeDuration);
+Fade<FadeIn>::Fade (View _win, Output *o) : out(o), win(_win) {
+    target = maxstep = fadeDuration;
     progress = 0;
+
+    win->is_hidden = true;
+    GetTuple(x, y, out->viewport->get_current_viewport());
+    out->render->set_renderer(out->viewport->get_mask_for_viewport(x, y));
 }
 
-template<> bool Fade<FadeIn>::Step() {
+template<> bool Fade<FadeIn>::step() {
     progress++;
-    win->transform.color[3] = (float(progress) / float(maxstep));
-    win->addDamage();
+    out->render->ctx->color =
+        glm::vec4(1, 1, 1, (float(progress) / float(maxstep)));
 
+    win->render(TEXTURE_TRANSFORM_USE_COLOR);
     if(progress == target) {
-        if(restoretr)
-            win->transparent = savetr;
-
-        GetData(FadeWindowData, win, "fade")->fadeIn = false;
-
-        win->transparent = savetr;
-        win->keepCount--;
-
+        out->render->reset_renderer();
+        win->is_hidden = false;
         return false;
     }
+
     return true;
 }
 
-template<> bool Fade<FadeIn>::Run() { return this->run; }
+template<> bool Fade<FadeIn>::run() { return true; }
 template<> Fade<FadeIn>::~Fade() {}
 /* FadeIn  end */
 
 /* FadeOut begin */
 template<>
-Fade<FadeOut>::Fade (View _win) : win(_win), run(true) {
+Fade<FadeOut>::Fade (View _win, Output *o) : out(o), win(_win) {
+    wlc_geometry g;
+    wlc_view_get_visible_geometry(win->get_id(), &g);
+    collected_surfaces = win->collected_surfaces;
+
+    GetTuple(x, y, out->viewport->get_current_viewport());
+    out->render->set_renderer(out->viewport->get_mask_for_viewport(x, y));
 
     /* exit if already running */
-    if(ExistsData(win, "fade")) {
-        if(GetData(FadeWindowData, win, "fade")->fadeOut)
-            run = false;
-    }
-    else AllocData(FadeWindowData, win, "fade"),
-        GetData(FadeWindowData, win, "fade")->fadeOut = true;
-
-    if(!run) return;
-
-    if(GetData(FadeWindowData, win, "fade")->fadeIn)
-        restoretr = false;
-
-    savetr = win->transparent;
-    win->keepCount++;
-    win->transparent = true;
-
-    progress = maxstep = getSteps(fadeDuration);
+    progress = maxstep = fadeDuration;
     target = 0;
 }
 
 template<>
-bool Fade<FadeOut>::Step() {
+bool Fade<FadeOut>::step() {
     progress--;
-    win->transform.color[3] = (float(progress) / float(maxstep));
-    win->addDamage();
+    out->render->ctx->color =
+        glm::vec4(1, 1, 1, (float(progress) / float(maxstep)));
 
-    if(progress == target) {
-        if(restoretr)
-            win->transparent = savetr;
+    for (auto surf : collected_surfaces) {
+        for (int i = 0; i < 3 && surf.tex[i]; i++)
+            OpenGL::renderTransformedTexture(surf.tex[i], surf.g,
+                    glm::mat4(), TEXTURE_TRANSFORM_USE_COLOR);
+    }
 
-        GetData(FadeWindowData, win, "fade")->fadeOut = false;
-
-        win->transparent = savetr;
-        win->keepCount--;
-
-        if(!win->keepCount) {
-
-            /* window is now unmapped */
-            win->norender = true;
-            XFreePixmap(core->d, win->pixmap);
-
-            core->focusWindow(core->getActiveWindow());
-
-            /* there's been DestroyNotify, delete window */
-            if(win->destroyed)
-                core->removeWindow(win);
-        }
+    if (progress == target) {
+        out->render->reset_renderer();
         return false;
     }
     return true;
 }
 
-template<> bool Fade<FadeOut>::Run() { return this->run; }
+template<> bool Fade<FadeOut>::run() { return true; }
 template<> Fade<FadeOut>::~Fade() {}
 /* FadeOut end */

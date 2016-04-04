@@ -111,6 +111,7 @@ void output_post_paint(wlc_handle output) {
     auto o = core->get_output(output);
     if (!o) return;
 
+    o->render->post_paint();
     o->hook->run_hooks();
     if (o->should_redraw()) {
         wlc_output_schedule_render(output);
@@ -168,6 +169,17 @@ bool on_scroll(wlc_handle view, uint32_t time, const struct wlc_modifiers* mods,
     }
 }
 
+void view_pre_paint(wlc_handle v) {
+    auto view = core->find_view(v);
+    if (view && !view->destroyed) {
+        wlc_geometry g;
+        wlc_view_get_visible_geometry(v, &g);
+
+        view->collected_surfaces.clear();
+        collect_subsurfaces(view->get_surface(), g, view->collected_surfaces);
+    }
+}
+
 int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
     wlc_log_set_handler(log);
@@ -177,6 +189,7 @@ int main(int argc, char *argv[]) {
     interface.view.focus          = view_focus;
     interface.view.move_to_output = view_move_to_output;
 
+    interface.view.render.pre = view_pre_paint;
     interface.view.request.resize = view_request_resize;
     interface.view.request.move   = view_request_move;
     interface.view.request.geometry = view_request_geometry;

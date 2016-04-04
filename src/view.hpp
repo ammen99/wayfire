@@ -22,15 +22,17 @@ class Transform {
         glm::mat4 compose();
 };
 
-
-struct ViewData {
-};
-
 struct EffectHook;
 class Output;
 
 bool point_inside(wlc_point point, wlc_geometry rect);
 bool rect_inside(wlc_geometry screen, wlc_geometry win);
+
+struct Surface {
+    wlc_geometry g;
+    uint32_t tex[3];
+    wlc_surface_format fmt;
+};
 
 class FireView {
     wlc_handle view;
@@ -41,10 +43,13 @@ class FireView {
 
         FireView(wlc_handle);
         ~FireView();
-        /* this can be used by plugins to store
-         * specific for the plugin data */
-        std::unordered_map<std::string, ViewData> data;
         std::unordered_map<uint, EffectHook*> effects;
+
+        /* collected surfaces are just the textures of the surfaces which belong to
+         * the subsurface tree. num_frames shows how much frames have elapsed since
+         * last refreshing those textures. */
+        int32_t num_frames;
+        std::vector<Surface> collected_surfaces;
 
         wlc_geometry attrib;
 
@@ -52,9 +57,16 @@ class FireView {
 
         bool is_visible();
 
+        /* Used to specify that this view has been destroyed.
+         * Useful when animating view close */
+        bool destroyed = false;
+        int keep_count = 0;
+
         /* default_mask is the mask of all viewports the current view is visible on */
         uint32_t default_mask;
         bool has_temporary_mask = false;
+        /* Set if the current view should not be rendered by built-in renderer */
+        bool is_hidden = false;
 
         /* vx and vy are the coords of the viewport where the top left corner is located */
         int vx, vy;
@@ -71,9 +83,12 @@ class FireView {
 
         wlc_handle get_id() {return view;}
         wlc_resource get_surface() {return surface;}
+
+        void render(uint32_t bits = 0);
 };
 
 void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits = 0);
+void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surface>& v);
 
 typedef std::shared_ptr<FireView> View;
 class Core;

@@ -45,6 +45,7 @@ class Cube : public Plugin {
         void initOwnership() {
             owner->name = "cube";
             owner->compatAll = false;
+            owner->compat.insert("screenshot");
         }
 
         void updateConfiguration() {

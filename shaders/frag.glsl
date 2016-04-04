@@ -13,7 +13,7 @@ uniform int       bgra;
 
 void main() {
     //if(depth == 32)
-        gl_FragColor = vec4(texture2D(smp, uvpos).xyzw) * color;
+        gl_FragColor = texture2D(smp, uvpos) * color;
     //else
     //gl_FragColor = vec4(1, 0, 0, 1);
 //        gl_FragColor = vec4(texture2D(smp, uvpos).xyz, 1);
