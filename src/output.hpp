@@ -108,11 +108,16 @@ class Output {
             RenderHook renderer;
             #define ALL_VISIBLE 4294967295 // All 32 bits are on
             uint32_t visibility_mask = ALL_VISIBLE;
-        public:
-            RenderManager(Output *o);
-            OpenGL::Context *ctx;
 
             void load_background();
+        public:
+            RenderManager(Output *o);
+
+            bool dirty_context = true;
+            OpenGL::Context *ctx;
+            void load_context();
+            void release_context();
+
             void blit_background(GLuint destination_fbuff);
             GLuint get_background() {return background.tex;}
 
@@ -135,7 +140,7 @@ class Output {
 
             /* this function renders a viewport and
              * saves the image in texture which is returned */
-            void texture_from_viewport(std::tuple<int, int>, GLuint& fbuff, GLuint& tex);
+            void texture_from_viewport(std::tuple<int, int>, GLuint& fbuff, GLuint &tex);
 
             std::vector<EffectHook*> effects;
             void add_effect(EffectHook *);
@@ -186,7 +191,9 @@ class Output {
     Output(wlc_handle handle, Config *config);
     ~Output();
 
-    void init();
+    void activate();
+    void deactivate();
+
     wlc_handle get_handle() {return id;}
     View get_active_view();
     View get_view_at_point(int x, int y, uint32_t mask = 0);

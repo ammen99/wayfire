@@ -2,6 +2,145 @@
 #include "output.hpp"
 #include <stdio.h>
 
+
+#include <signal.h>
+#include <sys/wait.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+
+#include <execinfo.h>
+#include <cxxabi.h>
+
+/* shdata keeps all the shared memory between first process and fork()
+ * shdata[0] is a flag whether to restart or no
+ * shdata[1] and shdata[2] are initial viewport x and y */
+
+char *shdata;
+constexpr int shmkey = 1010101234;
+constexpr int shmsize = 8;
+int shmid;
+
+Config *config;
+
+#define Crash 101
+#define max_frames 100
+
+void print_trace() {
+    std::cout << "stack trace:\n";
+
+    // storage array for stack trace address data
+    void* addrlist[max_frames + 1];
+
+    // retrieve current stack addresses
+    int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
+
+    if (addrlen == 0) {
+        std::cout << "<empty, possibly corrupt>\n";
+        return;
+    }
+
+    // resolve addresses into strings containing "filename(function+address)",
+    // this array must be free()-ed
+    char** symbollist = backtrace_symbols(addrlist, addrlen);
+
+    //allocate string which will be filled with
+    //the demangled function name
+    size_t funcnamesize = 256;
+    char* funcname = (char*)malloc(funcnamesize);
+
+    // iterate over the returned symbol lines. skip the first, it is the
+    // address of this function.
+    for(int i = 1; i < addrlen; i++) {
+        char *begin_name = 0, *begin_offset = 0, *end_offset = 0;
+
+        // find parentheses and +address offset surrounding the mangled name:
+        // ./module(function+0x15c)[0x8048a6d]
+        for(char* p = symbollist[i]; *p; ++p) {
+            if(*p == '(')
+                begin_name = p;
+            else if(*p == '+')
+                begin_offset = p;
+            else if(*p == ')' && begin_offset){
+                end_offset = p;
+                break;
+            }
+        }
+
+        if(begin_name && begin_offset && end_offset
+                &&begin_name < begin_offset)
+        {
+            *begin_name++ = '\0';
+            *begin_offset++ = '\0';
+            *end_offset = '\0';
+
+            // mangled name is now in[begin_name, begin_offset) and caller
+            // offset in [begin_offset, end_offset). now apply
+            // __cxa_demangle():
+
+            int status;
+            char *ret = abi::__cxa_demangle(begin_name,
+                    funcname, &funcnamesize, &status);
+            if(status == 0) {
+                funcname = ret;// use possibly realloc()-ed string
+                printf("%s:%s+%s\n", symbollist[i], funcname, begin_offset);
+            }
+            else{
+                // demangling failed. Output function name as a C function with
+                // no arguments.
+                printf("%s:%s()+%s\n",
+                        symbollist[i], begin_name, begin_offset);
+            }
+        }
+        else
+        {
+            // couldn't parse the line? print the whole line.
+            printf("%s\n",symbollist[i]);
+        }
+    }
+
+    free(funcname);
+    free(symbollist);
+
+    exit(-1);
+}
+
+
+
+void signalHandle(int sig) {
+    switch(sig) {
+        case SIGINT:                 // if interrupted, then
+            std::cout << "EXITING BECAUSE OF SIGINT" << std::endl;
+            shdata[0] = 0;         // make main loop exit
+            break;
+
+        case SIGUSR1:
+            std::cout << "SIGUSR1" << std::endl;
+            shdata[0] = 1;
+            if(!core)
+                std::cout << "in main process" << std::endl;
+            else {
+                delete core;
+                std::exit(0);
+            }
+
+            break;
+
+        default: // program crashed, so restart core
+            std::cout << "Crash Detected!!!!!!" << std::endl;
+            print_trace();
+            break;
+    }
+}
+
+void on_activate() {
+    std::cout << "001010011341" << std::endl;
+    core->for_each_output([] (Output *o) {o->activate();});
+}
+
+void on_deactivate() {
+    core->for_each_output([] (Output *o) {o->deactivate();});
+}
+
 bool keyboard_key(wlc_handle view, uint32_t time,
         const struct wlc_modifiers *modifiers, uint32_t key,
         enum wlc_key_state state) {
@@ -175,6 +314,14 @@ int main(int argc, char *argv[]) {
     static struct wlc_interface interface;
     wlc_log_set_handler(log);
 
+
+    signal(SIGINT, signalHandle);
+    signal(SIGSEGV, signalHandle);
+    signal(SIGFPE, signalHandle);
+    signal(SIGILL, signalHandle);
+    signal(SIGABRT, signalHandle);
+    signal(SIGTRAP, signalHandle);
+
     interface.view.created        = view_created;
     interface.view.destroyed      = view_destroyed;
     interface.view.focus          = view_focus;
@@ -196,6 +343,9 @@ int main(int argc, char *argv[]) {
     interface.pointer.button = pointer_button;
     interface.pointer.motion = pointer_motion;
     interface.pointer.scroll = on_scroll;
+
+    interface.compositor.activate = on_activate;
+    interface.compositor.deactivate = on_deactivate;
 
     core = new Core();
     core->init();

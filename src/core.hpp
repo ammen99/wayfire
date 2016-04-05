@@ -6,6 +6,8 @@
 
 #include <map>
 
+using OutputCallbackProc = std::function<void(Output*)>;
+
 class Core {
     Config *config;
     uint32_t nextID = 0;
@@ -37,6 +39,8 @@ class Core {
     void rem_output(Output* o);
     Output *get_active_output();
     Output *get_next_output();
+
+    void for_each_output(OutputCallbackProc);
 
     void run(const char *command);
 

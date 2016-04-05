@@ -14,7 +14,7 @@ class Expo : public Plugin {
         KeyBinding toggle;
         ButtonBinding press, move;
 
-        SignalListener viewport_changed;
+        SignalListener viewport_changed, reload_gl;
 
         int max_steps;
 
@@ -34,6 +34,8 @@ class Expo : public Plugin {
 
         if (toggleKey.key == 0)
             return;
+
+        on_reload_gl({});
 
         using namespace std::placeholders;
         toggle.key = toggleKey.key;
@@ -73,12 +75,12 @@ class Expo : public Plugin {
         output->signal->add_signal("screen-scale-changed");
         active = false;
 
-        std::memset(fbuffs, -1, sizeof(fbuffs));
-        std::memset(textures, -1, sizeof(textures));
-
         using namespace std::placeholders;
         viewport_changed.action = std::bind(std::mem_fn(&Expo::on_viewport_changed), this, _1);
         output->signal->connect_signal("viewport-change-notify", &viewport_changed);
+
+        reload_gl.action = std::bind(std::mem_fn(&Expo::on_reload_gl), this, _1);
+        output->signal->connect_signal("reload-gl", &reload_gl);
     }
     void initOwnership() {
         owner->name = "expo";
@@ -261,6 +263,11 @@ class Expo : public Plugin {
 
         render_params.off_x   = ((target_vx - center_w) * 2.f + 1.f) / vw;
         render_params.off_y   = ((center_h - target_vy) * 2.f - 1.f) / vh;
+    }
+
+    void on_reload_gl(SignalListenerData data) {
+        std::memset(fbuffs, -1, sizeof(fbuffs));
+        std::memset(textures, -1, sizeof(textures));
     }
 };
 

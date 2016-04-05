@@ -58,6 +58,11 @@ Output* Core::get_next_output() {
     }
 }
 
+void Core::for_each_output(OutputCallbackProc call) {
+    for (auto o : outputs)
+        call(o.second);
+}
+
 void Core::add_view(wlc_handle view) {
     View v = std::make_shared<FireView>(view);
 

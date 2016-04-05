@@ -336,6 +336,24 @@ void Output::RenderManager::load_background() {
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
+void Output::RenderManager::load_context() {
+    ctx = OpenGL::init_opengl(output, core->shadersrc.c_str());
+    OpenGL::bind_context(ctx);
+    load_background();
+
+    dirty_context = false;
+
+    output->signal->trigger_signal("reload-gl", {});
+}
+
+void Output::RenderManager::release_context() {
+    GL_CALL(glDeleteFramebuffers(1, &background.fbuff));
+    GL_CALL(glDeleteTextures(1, &background.tex));
+
+    OpenGL::release_context(ctx);
+    dirty_context = true;
+}
+
 void Output::RenderManager::blit_background(GLuint dest) {
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
@@ -345,10 +363,7 @@ void Output::RenderManager::blit_background(GLuint dest) {
 
 Output::RenderManager::RenderManager(Output *o) {
     output = o;
-
-    ctx = OpenGL::init_opengl(o, core->shadersrc.c_str());
-    OpenGL::bind_context(ctx);
-    load_background();
+    load_context();
 }
 
 void Output::RenderManager::reset_renderer() {
@@ -376,6 +391,9 @@ void Output::RenderManager::set_renderer(uint32_t vis_mask, RenderHook rh) {
 }
 
 void Output::RenderManager::paint() {
+    if (dirty_context)
+        load_context();
+
     OpenGL::bind_context(ctx);
 
     if (renderer) {
@@ -410,11 +428,12 @@ void Output::RenderManager::transformation_renderer() {
 }
 
 void Output::RenderManager::texture_from_viewport(std::tuple<int, int> vp,
-        GLuint &fbuff, GLuint &texture) {
+        GLuint &fbuff, GLuint &tex) {
 
     OpenGL::bind_context(ctx);
-    if (fbuff == (uint)-1 || texture == (uint)-1)
-        OpenGL::prepareFramebuffer(fbuff, texture);
+
+    if (fbuff == (uint)-1 || tex == (uint)-1)
+        OpenGL::prepareFramebuffer(fbuff, tex);
 
     blit_background(fbuff);
     GetTuple(x, y, vp);
@@ -665,6 +684,12 @@ void Output::SignalManager::add_default_signals() {
     /* Emitted when viewport is changed,
      * contains the old and the new viewport */
     add_signal("change-viewport-notify");
+
+    /* Emitted when a the GL context is reloaded
+     * This happens when the tty is switched and then
+     * the whole context is destroyed. At this point
+     * we must recreate all programs and framebuffers */
+    add_signal("reload-gl");
 }
 /* End SignalManager */
 /* Start output */
@@ -675,16 +700,12 @@ Output::Output(wlc_handle handle, Config *c) {
 
     screen_width = res->w;
     screen_height = res->h;
-//
-//    /* TODO: investigate problem with resolution */
-//    screen_width = 1366;
-//    screen_height = 768;
 
+    signal = new SignalManager();
     hook = new HookManager();
     input = new InputManager(hook);
     render = new RenderManager(this);
     viewport = new ViewportManager(this);
-    signal = new SignalManager();
     plugin = new PluginManager(this, c);
 }
 
@@ -697,6 +718,12 @@ Output::~Output(){
     delete hook;
 }
 
+void Output::activate() {
+}
+
+void Output::deactivate() {
+    render->dirty_context = true;
+}
 
 void Output::attach_view(View v) {
     v->output = this;

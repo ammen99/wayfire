@@ -9,6 +9,8 @@ class Cube : public Plugin {
     ButtonBinding deactiv;
     ButtonBinding zoom;
 
+    SignalListener reload_gl;
+
     Hook mouse;
     std::vector<GLuint> sides;
     std::vector<GLuint> sideFBuffs;
@@ -93,6 +95,10 @@ class Cube : public Plugin {
             deactiv.action =
                 std::bind(std::mem_fn(&Cube::Terminate), this, _1);
             output->hook->add_but(&deactiv, false);
+
+            reload_gl.action = std::bind(std::mem_fn(&Cube::on_reload_gl), this, _1);
+            output->signal->connect_signal("reload-gl", &reload_gl);
+
         }
 
         void init() {
@@ -166,8 +172,8 @@ class Cube : public Plugin {
             coeff = 0.5 / std::tan(angle / 2);
 
             for(int i = 0; i < vw; i++)
-                sides[i] = sideFBuffs[i] = -1,
-                OpenGL::prepareFramebuffer(sideFBuffs[i], sides[i]);
+                sides[i] = sideFBuffs[i] = -1;
+
             mouse.action = std::bind(std::mem_fn(&Cube::mouseMoved), this);
             output->hook->add_hook(&mouse);
 
@@ -299,6 +305,15 @@ class Cube : public Plugin {
             if (zoomFactor <= 0.1)
                 zoomFactor = 0.1;
         }
+
+    void on_reload_gl(SignalListenerData data) {
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        vh = 0;
+
+        for (int i = 0; i < vw; i++)
+            sides[i] = sideFBuffs[i] = -1;
+    }
+
 };
 
 extern "C" {
