@@ -29,7 +29,7 @@ class Switcher : public Plugin {
     std::queue<int> dirs;
 
     bool active = false, block = false; // block is waiting to exit
-    int index;
+    size_t index;
 
     Hook center, place, rotate, exit;
 
@@ -500,12 +500,12 @@ class Switcher : public Plugin {
 
         if (!sz) return;
 
-        int next = ((index + 1  ) % sz + sz) % sz;
-        int prev = ((index - 1  ) % sz + sz) % sz;
+        size_t next = ((index + 1) % sz + sz) % sz;
+        size_t prev = ((index - 1) % sz + sz) % sz;
 
         active_views.clear();
 
-        for (int i = 0; i < views.size(); i++) {
+        for (size_t i = 0; i < views.size(); i++) {
 
             const auto& v = views[i];
             /* center of screen minus center of view */

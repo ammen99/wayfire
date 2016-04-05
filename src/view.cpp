@@ -27,10 +27,10 @@ bool point_inside(wlc_point point, wlc_geometry rect) {
     if(point.x < rect.origin.x || point.y < rect.origin.y)
         return false;
 
-    if(point.x > rect.origin.x + rect.size.w)
+    if(point.x > rect.origin.x + (int32_t)rect.size.w)
         return false;
 
-    if(point.y > rect.origin.y + rect.size.h)
+    if(point.y > rect.origin.y + (int32_t)rect.size.h)
         return false;
 
     return true;
@@ -44,7 +44,6 @@ bool rect_inside(wlc_geometry screen, wlc_geometry win) {
     if (screen.origin.x + (int32_t)screen.size.w < win.origin.x ||
         screen.origin.y + (int32_t)screen.size.h < win.origin.y)
         return false;
-
     return true;
 }
 
@@ -130,12 +129,24 @@ void FireView::render(uint32_t bits) {
     */
 }
 
+void FireView::snapshot(std::vector<Surface> &v) {
+    v.clear();
+    wlc_geometry vis;
+    wlc_view_get_visible_geometry(view, &vis);
+    collect_subsurfaces(surface, vis, v);
+}
+
 #include <wlc/wlc-wayland.h>
 #include <wlc/wlc-render.h>
 
 void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surface>& v) {
     Surface s;
     wlc_surface_get_textures(surface, s.tex, &s.fmt);
+    for (int i = 0; i < 3 && s.tex[i]; i++) {
+        s.tex[i] = OpenGL::duplicate_texture(s.tex[i], g.size.w, g.size.h);
+        std::cout << s.tex[i] << std::endl;
+    }
+
     s.g = g;
     v.push_back(s);
 

@@ -81,7 +81,7 @@ class Output {
 
             bool check_key(KeyBinding *kb, uint32_t key, uint32_t mod);
             bool check_but_press  (ButtonBinding *bb, uint32_t button, uint32_t mod);
-            bool check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod);
+            bool check_but_release(ButtonBinding *bb, uint32_t button);
 
             bool process_key_event(uint32_t key, uint32_t mods, wlc_key_state state);
             bool process_button_event(uint32_t button, uint32_t mods, wlc_button_state state, wlc_point point);
@@ -123,7 +123,10 @@ class Output {
             void paint();
             void post_paint();
 
-            bool should_render_view(wlc_handle view) { return renderer == nullptr; }
+            bool should_render_view(wlc_handle view) {
+                View v = core->find_view(view);
+                return v && (v->default_mask & visibility_mask) && renderer == nullptr;
+            }
             bool should_repaint_everything() { return redraw_timer > 0; }
             void set_redraw_everything(bool state) {
                 if(state) ++redraw_timer;

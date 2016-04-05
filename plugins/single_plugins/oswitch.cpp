@@ -41,10 +41,8 @@ class OutputSwitcher : public Plugin {
 
         void handle_key(EventContext ctx) {
             auto key = ctx.xev.xkey;
-            auto now  = core->get_active_output();
             auto next = core->get_next_output();
             auto view = output->get_active_view();
-
             core->focus_output(next);
 
             if (key.key == with.key && key.mod == with.mod) {

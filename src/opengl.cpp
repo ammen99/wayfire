@@ -120,12 +120,9 @@ namespace OpenGL {
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
-
         GL_CALL(glVertexAttribPointer(bound->position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));
         GL_CALL(glVertexAttribPointer(bound->uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
-
         GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
-
     }
 
     void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model, uint32_t bits) {
@@ -137,7 +134,10 @@ namespace OpenGL {
         GL_CALL(glGenFramebuffers(1, &fbuff));
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
 
-        GL_CALL(glGenTextures(1, &texture));
+        bool existing_texture = texture != (uint)-1;
+        if (!existing_texture)
+            GL_CALL(glGenTextures(1, &texture));
+
         GL_CALL(glBindTexture(GL_TEXTURE_2D, texture));
 
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
@@ -146,8 +146,9 @@ namespace OpenGL {
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bound->width, bound->height,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
+        if (!existing_texture)
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bound->width, bound->height,
+                        0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
 
         GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
                 texture, 0));
@@ -171,7 +172,7 @@ namespace OpenGL {
         delete ctx;
     }
 
-    const char *simple_fs =
+    const char *simple_vs =
 R"(#version 100
 attribute mediump vec2 position;
 attribute highp vec2 uvPosition;
@@ -186,11 +187,58 @@ void main() {
     uvpos = uvPosition;
 })";
 
-    GLuint duplicate_texture(GLuint tex, const wlc_geometry& g) {
-        GLuint dst_fbuff, dst_tex;
-        prepareFramebuffer(dst_fbuff, dst_tex);
+const char *simple_fs =
+R"(#version 100
+        varying highp vec2 uvpos;
+        uniform sampler2D smp;
+        void main() {
+            gl_FragColor = texture2D(smp, uvpos);
+        }
+)";
 
-        GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
+    GLuint duplicate_texture(GLuint tex, int w, int h) {
+        GLuint dst_fbuff = -1, src_fbuff = -1, dst_tex = -1;
+
+        prepareFramebuffer(dst_fbuff, dst_tex);
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
+
+        prepareFramebuffer(src_fbuff, tex);
+
+        GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst_fbuff));
+        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbuff));
+        GL_CALL(glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+
+//        GL_CALL(glUseProgram(bound->min_program));
+//
+//        GLfloat vertexData[] = {
+//            -1,  1,
+//            -1, -1,
+//             1, -1,
+//             1, -1,
+//             1,  1,
+//            -1,  1
+//        };
+//
+//        GLfloat coordData[] = {
+//            0.0f, 1.0f,
+//            1.0f, 1.0f,
+//            1.0f, 0.0f,
+//            1.0f, 0.0f,
+//            0.0f, 0.0f,
+//            0.0f, 1.0f,
+//        };
+//
+//        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
+//        GL_CALL(glVertexAttribPointer(bound->position, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
+//        GL_CALL(glVertexAttribPointer(bound->uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
+//        GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
+//
+
+        renderTransformedTexture(tex, {{0, 0}, {uint32_t(w), uint32_t(h)}});
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+//        GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
+//        GL_CALL(glDeleteFramebuffers(1, &src_fbuff));
         return dst_tex;
     }
 
@@ -199,6 +247,13 @@ void main() {
 
         ctx->width = output->screen_width;
         ctx->height = output->screen_height;
+
+        GLuint minvss = compileShader(simple_vs, GL_VERTEX_SHADER);
+        GLuint minfss = compileShader(simple_fs, GL_FRAGMENT_SHADER);
+        ctx->min_program = GL_CALL(glCreateProgram());
+        GL_CALL(glAttachShader(ctx->min_program, minvss));
+        GL_CALL(glAttachShader(ctx->min_program, minfss));
+        GL_CALL(glLinkProgram(ctx->min_program));
 
         std::string tmp = shaderSrcPath;
 
@@ -231,7 +286,6 @@ void main() {
 
         ctx->position   = GL_CALL(glGetAttribLocation(ctx->program, "position"));
         ctx->uvPosition = GL_CALL(glGetAttribLocation(ctx->program, "uvPosition"));
-
         return ctx;
     }
 }

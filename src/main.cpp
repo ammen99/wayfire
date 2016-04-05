@@ -43,12 +43,6 @@ bool pointer_motion(wlc_handle view, uint32_t time, const struct wlc_point *posi
     return grabbed;
 }
 
-static void
-cb_log(enum wlc_log_type type, const char *str) {
-    (void)type;
-    printf("%s\n", str);
-}
-
 bool view_created(wlc_handle view) {
     assert(core);
     core->add_view(view);
@@ -174,9 +168,6 @@ void view_pre_paint(wlc_handle v) {
     if (view && !view->destroyed) {
         wlc_geometry g;
         wlc_view_get_visible_geometry(v, &g);
-
-        view->collected_surfaces.clear();
-        collect_subsurfaces(view->get_surface(), g, view->collected_surfaces);
     }
 }
 

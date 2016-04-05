@@ -237,7 +237,7 @@ bool Output::InputManager::check_but_press(ButtonBinding *bb, uint32_t button, u
     return true;
 }
 
-bool Output::InputManager::check_but_release(ButtonBinding *bb, uint32_t button, uint32_t mod) {
+bool Output::InputManager::check_but_release(ButtonBinding *bb, uint32_t button) {
     if(!bb->active)
         return false;
 
@@ -294,7 +294,7 @@ bool Output::InputManager::process_button_event(uint32_t button, uint32_t mod,
                 processed = true;
         }
 
-        if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button, mod)) {
+        if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button)) {
             but->action(EventContext(mousex, mousey, 0, 0));
             processed = true;
         }
@@ -405,9 +405,6 @@ void Output::RenderManager::transformation_renderer() {
 
             auto surf = wlc_view_get_surface(v->get_id());
             render_surface(surf, g, v->transform.compose());
-
-            v->collected_surfaces.clear();
-            collect_subsurfaces(surf, g, v->collected_surfaces);
         }
     });
 }
@@ -416,7 +413,7 @@ void Output::RenderManager::texture_from_viewport(std::tuple<int, int> vp,
         GLuint &fbuff, GLuint &texture) {
 
     OpenGL::bind_context(ctx);
-    if (fbuff == -1 || texture == -1)
+    if (fbuff == (uint)-1 || texture == (uint)-1)
         OpenGL::prepareFramebuffer(fbuff, texture);
 
     blit_background(fbuff);
@@ -727,7 +724,7 @@ void Output::focus_view(View v) {
     wlc_view_focus(v->get_id());
 }
 
-wlc_handle get_top_view(wlc_handle output, size_t offset) {
+wlc_handle get_top_view(wlc_handle output) {
     size_t memb;
     const wlc_handle *views = wlc_output_get_views(output, &memb);
 
@@ -741,7 +738,7 @@ wlc_handle get_top_view(wlc_handle output, size_t offset) {
 }
 
 View Output::get_active_view() {
-    return core->find_view(get_top_view(id, 0));
+    return core->find_view(get_top_view(id));
 }
 
 void Output::for_each_view(ViewCallbackProc call) {
@@ -758,7 +755,7 @@ void Output::for_each_view_reverse(WindowCallbackProc call) {
     size_t num;
     const wlc_handle *views = wlc_output_get_views(id, &num);
 
-    for (int i = 0; i < num; i++) {
+    for (size_t i = 0; i < num; i++) {
         auto v = core->find_view(views[i]);
         if (v)
            call(v);

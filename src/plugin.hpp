@@ -60,11 +60,11 @@ struct Color {
 };
 struct Key {
     uint mod;
-    int key;
+    uint key;
 };
 struct Button {
     uint mod;
-    int button;
+    uint button;
 };
 
 union SubData {

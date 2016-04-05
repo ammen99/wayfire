@@ -29,7 +29,6 @@ class Cube : public Plugin {
     RenderHook renderer;
 
     GLuint program;
-    GLuint vao, vbo;
 
     GLuint vpID;
     GLuint initialModel;
@@ -202,7 +201,7 @@ class Cube : public Plugin {
             glClearColor(bg.r, bg.g, bg.b, 0.0f);
             glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-            for(int i = 0; i < sides.size(); i++) {
+            for(size_t i = 0; i < sides.size(); i++) {
                 output->render->texture_from_viewport(std::make_tuple(i, vy),
                         sideFBuffs[i], sides[i]);
             }
@@ -230,7 +229,7 @@ class Cube : public Plugin {
             g.size.w = sw / 2;
             g.size.h = sh / 2;
 
-            for(int i = 0; i < sides.size(); i++) {
+            for(size_t i = 0; i < sides.size(); i++) {
                 int index = (vx + i) % sides.size();
 
        //         glBindTexture(GL_TEXTURE_2D, sides[index]);

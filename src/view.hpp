@@ -44,13 +44,6 @@ class FireView {
         FireView(wlc_handle);
         ~FireView();
         std::unordered_map<uint, EffectHook*> effects;
-
-        /* collected surfaces are just the textures of the surfaces which belong to
-         * the subsurface tree. num_frames shows how much frames have elapsed since
-         * last refreshing those textures. */
-        int32_t num_frames;
-        std::vector<Surface> collected_surfaces;
-
         wlc_geometry attrib;
 
         Transform transform;
@@ -85,6 +78,7 @@ class FireView {
         wlc_resource get_surface() {return surface;}
 
         void render(uint32_t bits = 0);
+        void snapshot(std::vector<Surface> &v);
 };
 
 void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits = 0);

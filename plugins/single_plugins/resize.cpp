@@ -4,7 +4,6 @@
 class Resize : public Plugin {
     private:
         int sx, sy; // starting pointer x, y
-        int cx, cy; // coordinates of the center of the window
         View win; // window we're operating on
 
         Button iniButton;
@@ -99,7 +98,6 @@ class Resize : public Plugin {
     }
 
     void intermediate() {
-
         GetTuple(cmx, cmy, output->input->get_pointer_position());
 
         const int32_t dx = cmx - sx;

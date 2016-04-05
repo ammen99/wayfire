@@ -36,9 +36,7 @@ template<> Fade<FadeIn>::~Fade() {}
 /* FadeOut begin */
 template<>
 Fade<FadeOut>::Fade (View _win, Output *o) : out(o), win(_win) {
-    wlc_geometry g;
-    wlc_view_get_visible_geometry(win->get_id(), &g);
-    collected_surfaces = win->collected_surfaces;
+    win->snapshot(collected_surfaces);
 
     GetTuple(x, y, out->viewport->get_current_viewport());
     out->render->set_renderer(out->viewport->get_mask_for_viewport(x, y));
@@ -62,6 +60,10 @@ bool Fade<FadeOut>::step() {
 
     if (progress == target) {
         out->render->reset_renderer();
+        for (auto surf : collected_surfaces) {
+            for (int i = 0; i < 3 && surf.tex[i]; i++)
+                GL_CALL(glDeleteTextures(1, surf.tex + i));
+        }
         return false;
     }
     return true;

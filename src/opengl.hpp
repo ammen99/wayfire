@@ -21,7 +21,7 @@ namespace OpenGL {
     /* Different Context is kept for each output */
     /* Each of the following functions uses the currently bound context */
     struct Context {
-        GLuint program;
+        GLuint program, min_program;
         glm::vec4 color;
         GLuint mvpID, colorID;
         GLuint position, uvPosition;
@@ -36,7 +36,7 @@ namespace OpenGL {
     void renderTransformedTexture(GLuint text, const wlc_geometry& g,
             glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
     void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits);
-    GLuint duplicate_texture(GLuint source_tex, const wlc_geometry& g);
+    GLuint duplicate_texture(GLuint source_tex, int w, int h);
 
     GLuint loadShader(const char *path, GLuint type);
     GLuint compileShader(const char* src, GLuint type);
