@@ -11,16 +11,6 @@
 #include <execinfo.h>
 #include <cxxabi.h>
 
-/* shdata keeps all the shared memory between first process and fork()
- * shdata[0] is a flag whether to restart or no
- * shdata[1] and shdata[2] are initial viewport x and y */
-
-char *shdata;
-constexpr int shmkey = 1010101234;
-constexpr int shmsize = 8;
-int shmid;
-
-Config *config;
 
 #define Crash 101
 #define max_frames 100
@@ -110,12 +100,10 @@ void signalHandle(int sig) {
     switch(sig) {
         case SIGINT:                 // if interrupted, then
             std::cout << "EXITING BECAUSE OF SIGINT" << std::endl;
-            shdata[0] = 0;         // make main loop exit
             break;
 
         case SIGUSR1:
             std::cout << "SIGUSR1" << std::endl;
-            shdata[0] = 1;
             if(!core)
                 std::cout << "in main process" << std::endl;
             else {
@@ -259,6 +247,10 @@ bool output_created(wlc_handle output) {
     return true;
 }
 
+/* TODO: handle this, move all views from this output and disable it */
+void output_destroyed(wlc_handle output) {
+}
+
 void log(wlc_log_type type, const char *msg) {
     std::cout << "wlc: " << msg << std::endl;
 }
@@ -310,10 +302,12 @@ void view_pre_paint(wlc_handle v) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    static struct wlc_interface interface;
-    wlc_log_set_handler(log);
+void readyyyy() {
+    std::cout << "fhahdfasjflkadsjfalsjdflasjfla1234566" << std::endl;
+}
 
+int main(int argc, char *argv[]) {
+    wlc_log_set_handler(log);
 
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
@@ -322,35 +316,40 @@ int main(int argc, char *argv[]) {
     signal(SIGABRT, signalHandle);
     signal(SIGTRAP, signalHandle);
 
-    interface.view.created        = view_created;
-    interface.view.destroyed      = view_destroyed;
-    interface.view.focus          = view_focus;
-    interface.view.move_to_output = view_move_to_output;
 
-    interface.view.render.pre = view_pre_paint;
-    interface.view.request.resize = view_request_resize;
-    interface.view.request.move   = view_request_move;
-    interface.view.request.geometry = view_request_geometry;
-    interface.view.request.state  = view_request_state;
+    wlc_set_view_created_cb(view_created);
 
-    interface.output.created = output_created;
-    interface.output.focus = output_focus;
-    interface.output.render.pre = output_pre_paint;
-    interface.output.render.post = output_post_paint;
+    wlc_set_view_created_cb       (view_created);
+    wlc_set_view_destroyed_cb     (view_destroyed);
+    wlc_set_view_focus_cb         (view_focus);
+    wlc_set_view_move_to_output_cb(view_move_to_output);
 
-    interface.keyboard.key = keyboard_key;
+    wlc_set_view_render_pre_cb(view_pre_paint);
+    wlc_set_view_request_resize_cb(view_request_resize);
+    wlc_set_view_request_move_cb(view_request_move);
+    wlc_set_view_request_geometry_cb(view_request_geometry);
+    wlc_set_view_request_state_cb(view_request_state);
 
-    interface.pointer.button = pointer_button;
-    interface.pointer.motion = pointer_motion;
-    interface.pointer.scroll = on_scroll;
+    wlc_set_output_created_cb(output_created);
+    wlc_set_output_destroyed_cb(output_destroyed);
+    wlc_set_output_focus_cb(output_focus);
+    wlc_set_output_render_pre_cb(output_pre_paint);
+    wlc_set_output_render_post_cb(output_post_paint);
 
-    interface.compositor.activate = on_activate;
-    interface.compositor.deactivate = on_deactivate;
+    wlc_set_keyboard_key_cb(keyboard_key);
+    wlc_set_pointer_scroll_cb(on_scroll);
+    wlc_set_pointer_button_cb(pointer_button);
+    wlc_set_pointer_motion_cb(pointer_motion);
+
+    wlc_set_compositor_activated_cb(on_activate);
+    wlc_set_compositor_deactivated_cb(on_deactivate);
+
+    wlc_set_compositor_ready_cb(readyyyy);
 
     core = new Core();
     core->init();
 
-    if (!wlc_init(&interface, argc, argv))
+    if (!wlc_init2())
         return EXIT_FAILURE;
 
     wlc_run();
