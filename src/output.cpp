@@ -252,10 +252,10 @@ bool Output::InputManager::check_but_release(ButtonBinding *bb, uint32_t button)
 bool Output::InputManager::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state) {
     if (state == WLC_KEY_STATE_RELEASED)
         return false;
-
-    if (key_in == XKB_KEY_r && (mod & WLC_BIT_MOD_ALT)) {
-        core->run("dmenu_run");
-    }
+//
+//    if (key_in == XKB_KEY_r && (mod & WLC_BIT_MOD_ALT)) {
+//        core->run("dmenu_run");
+//    }
 
     for(auto key : hook_mgr->keys) {
         if(check_key(key, key_in, mod)) {
@@ -745,6 +745,8 @@ void Output::focus_view(View v) {
         return;
 
     wlc_view_focus(v->get_id());
+    wlc_view_bring_to_front(v->get_id());
+    wlc_view_set_state(v->get_id(), WLC_BIT_ACTIVATED, 1);
 }
 
 wlc_handle get_top_view(wlc_handle output) {

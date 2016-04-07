@@ -29,7 +29,6 @@ namespace {
 
         return s;
     }
-
 }
 
 class Commands: public Plugin {
@@ -45,10 +44,8 @@ class Commands: public Plugin {
         using namespace std::placeholders;
 
         for(int i = 1; i <= NUMBER_COMMANDS; i++) {
-            auto str1 =
-                getStringFromCommandNumber(i, TYPE_COMMAND);
-            auto str2 =
-                getStringFromCommandNumber(i, TYPE_BINDING);
+            auto str1 = getStringFromCommandNumber(i, TYPE_COMMAND);
+            auto str2 = getStringFromCommandNumber(i, TYPE_BINDING);
 
             auto com = *options[str1]->data.sval;
             if(com == "")
@@ -58,34 +55,30 @@ class Commands: public Plugin {
             if(key.mod == 0 && key.key == 0)
                 continue;
 
-            commands[com].action = std::bind(
-                    std::mem_fn(&Commands::onCommandActivated),
-                    this, _1);
+            commands[com].action = std::bind(std::mem_fn(&Commands::onCommandActivated), this, _1);
             commands[com].type   = BindingTypePress;
             commands[com].key    = key.key;
             commands[com].mod    = key.mod;
-            output->hook->addKey(&commands[com], true);
+            output->hook->add_key(&commands[com], true);
         }
 
     }
     void init() {
         for(int i = 1; i <= NUMBER_COMMANDS; i++) {
-            auto str1 =
-                getStringFromCommandNumber(i, TYPE_COMMAND);
-            auto str2 =
-                getStringFromCommandNumber(i, TYPE_BINDING);
+            auto str1 = getStringFromCommandNumber(i, TYPE_COMMAND);
+            auto str2 = getStringFromCommandNumber(i, TYPE_BINDING);
 
             options.insert(newStringOption(str1, ""));
             options.insert(newKeyOption(str2, Key{0, 0}));
         }
     }
 
-    void onCommandActivated(EventContext *ctx){
-        auto xev = ctx->xev.xkey;
+    void onCommandActivated(EventContext ctx){
+        auto xev = ctx.xev.xkey;
 
         for(auto com : commands)
-            if(output->checkKey(&com.second, xev))
-                output->run(com.first.c_str());
+            if (output->input->check_key(&com.second, xev.key, xev.mod))
+                core->run(com.first.c_str());
     }
 };
 

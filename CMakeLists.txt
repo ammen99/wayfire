@@ -17,7 +17,7 @@ add_executable(wayfire ${SOURCES})
 
 # Libraries
 target_link_libraries(wayfire jpeg GLESv2)
-target_link_libraries(wayfire dl wlc png)
+target_link_libraries(wayfire dl wlc png xkbcommon)
 
 # Installation
 install(TARGETS wayfire DESTINATION bin)

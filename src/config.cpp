@@ -1,5 +1,6 @@
 #include "config.hpp"
 #include "core.hpp"
+#include <xkbcommon/xkbcommon.h>
 
 /* Stuff recarding configuration file
  * Note that this file is a mess
@@ -79,44 +80,6 @@ namespace {
         return c;
     }
 
-    namespace {
-        uint32_t readXKBKeyFromString(std::string value) {
-            if (value.length() == 1) {
-                /* small letters */
-                if (value[0] >= 'a' && value[0] <= 'z')
-                    return (value[0] - 'a') + XKB_KEY_a;
-                /* capital letters */
-                if (value[0] >= 'A' && value[0] <= 'Z')
-                    return (value[0] - 'A') + XKB_KEY_A;
-                /* digits */
-                if (value[0] >= '0' && value[0] <= '9')
-                    return (value[0] - '0') + XKB_KEY_0;
-            } else if (value.length() == 4) {
-                /* KP_0-9 */
-                if (value.substr(0, 3) == "KP_")
-                    return (value[3] - '0' + XKB_KEY_KP_0);
-            } else if (value.length() == 2) {
-                if (value[0] == 'F')
-                    return (value[1] - '1') + XKB_KEY_F1;
-            } else {
-                if(value == "F10")
-                    return XKB_KEY_F10;
-                if(value == "F11")
-                    return XKB_KEY_F11;
-                if(value == "F12")
-                    return XKB_KEY_F12;
-
-                if(value == "Tab")
-                    return XKB_KEY_Tab;
-
-                if(value == "Esc")
-                    return XKB_KEY_Escape;
-            }
-
-            return -1;
-        }
-    }
-
     template<>Key readValue<Key>(std::string value) {
         Key key;
         key.mod = getModsFromString(value);
@@ -126,11 +89,11 @@ namespace {
         }
         ++i;
         std::string keystr = value.substr(i, value.size() - i);
-        key.key = readXKBKeyFromString(keystr);
+        key.key = xkb_keysym_from_name(keystr.c_str(), XKB_KEYSYM_NO_FLAGS);
         return key;
     }
 
-    int Buttons [] = {0, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT, BTN_GEAR_DOWN, BTN_GEAR_UP};
+    int Buttons [] = {0, BTN_LEFT, BTN_MIDDLE, BTN_RIGHT};
 
     template<>Button readValue<Button>(std::string value) {
         Button but;

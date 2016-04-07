@@ -1,12 +1,13 @@
 #include <output.hpp>
 #include <opengl.hpp>
 
+/* TODO: add configuration options for left, right and exit keybindings */
+
 float clamp(float min, float x, float max) {
     if (x < min) return min;
     if (x > max) return max;
     return x;
 }
-
 
 float get_scale_factor(float w, float h, float sw, float sh, float c) {
     float d = w * w + h * h;
@@ -113,7 +114,7 @@ class Switcher : public Plugin {
 
     void handle_key(EventContext ctx) {
         auto xev = ctx.xev.xkey;
-        if (xev.key == XKB_KEY_Tab) {
+        if (xev.key == options["activate"]->data.key->key) {
             if (active) {
                 if (rotate.getState()) {
                     if (!block) {
