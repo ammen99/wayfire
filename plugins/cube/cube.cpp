@@ -296,7 +296,6 @@ class Cube : public Plugin {
         }
 
         void onScrollEvent(EventContext ctx) {
-            std::cout << "Scroll event" << std::endl;
             zoomFactor += ZVelocity * ctx.amount[0];
 
             if (zoomFactor > MaxFactor)

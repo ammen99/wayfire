@@ -47,5 +47,8 @@
 #define MAGIC 1023444 // A random number, used for scroll up/down. Hopefully won't collide with other button!
 #define BTN_SCROLL (MAGIC)
 
-#endif
+extern std::ofstream file_debug;
+#define debug file_debug << "[DD] "
+#define error std::cout  << "[EE] "
 
+#endif

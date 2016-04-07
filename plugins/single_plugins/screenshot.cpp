@@ -34,7 +34,6 @@ class Screenshot : public Plugin {
             hook.disable();
 
             path = *options["path"]->data.sval;
-            std::cout << "ja ja" << std::endl;
         }
 
         void init() {

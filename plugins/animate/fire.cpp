@@ -153,7 +153,6 @@ Fire::Fire(View win) : w(win) {
     int numParticles =
         MAX_PARTICLES *  w / float(sw) * h / float(sh);
 
-    std::cout << "INITIATING WITH " << numParticles << " " << numParticles / 384 << std::endl;
     ps = new FireParticleSystem(avg(tlx, brx), avg(tly, bry),
             w / float(sw), h / float(sh), numParticles);
 

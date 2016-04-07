@@ -11,8 +11,6 @@
 #undef log
 #endif
 
-#define log std::cout<<"[CC] "
-
 namespace {
     /* removes whitespace from beginning and from end */
     std::string trim(std::string line) {
@@ -53,7 +51,7 @@ namespace {
         if(value == "Shift")
             return WLC_BIT_MOD_SHIFT;
 
-        log << "modval not recognized" << std::endl;
+        debug << "wrong modifier in config file" << std::endl;
         return 0;
     }
 
@@ -146,7 +144,7 @@ namespace {
         tmp = trim(tmp); tmp = tmp.substr(1, tmp.size() - 1);
 
         if(!std::isdigit(tmp[0])){
-            std::cout << "Error reading button binding!" << std::endl;
+            error << "Invalid button binding in config file!" << std::endl;
             but.button = 0;
             return but;
         }
@@ -177,7 +175,7 @@ namespace {
         for(; i < str.length() && str[i] != '_'; i++);
 
         if(i == str.length()){
-            log << "Warning! Option without a type!\n";
+            debug << "option without a type!\n";
             name = str;
             return IOTPlain;
         }
@@ -204,8 +202,9 @@ namespace {
         else if(type == DataTypeColor)
             return true;
 
-        if(itype != IOTPlain)
-            std::cout << "[WW] Type mismatch in config file.\n";
+        if(itype != IOTPlain) {
+            debug << "Type mismatch in config file.\n";
+        }
 
         /* other cases are too much to be checked */
         // TODO: implement some more invalid cases
@@ -216,10 +215,9 @@ namespace {
 
 Config::Config(std::string path) {
     this->path = path;
-    printf("path to config %s\n", path.c_str());
     stream.open(path, std::ios::in | std::ios::out);
     if(!stream.is_open()) {
-        printf("[EE] Failed to open config file\n");
+        error << "[EE] Failed to open config file\n";
         blocked = true;
     }
     else
@@ -264,7 +262,6 @@ void Config::readConfig() {
 
         auto pos = line.find("=");
         if(pos == std::string::npos) {
-            std::cout << "Warning - Garbage in config" << std::endl;
             continue;
         }
 
@@ -284,10 +281,10 @@ void Config::reset() {
 
 void Config::setOptionsForPlugin(PluginPtr p) {
     auto name = p->owner->name;
-    std::cout << "set options for " << name << std::endl;
+
     auto it = tree.find(name);
     if(it == tree.end()) {
-        std::cout << "[WW] Plugin " << p->owner->name << " has no entry in config file." << std::endl;
+        debug << "plugin " << p->owner->name << " has no entry in config file." << std::endl;
         setDefaultOptions(p);
         return;
     }
@@ -297,7 +294,6 @@ void Config::setOptionsForPlugin(PluginPtr p) {
         auto it = tree[name].find(oname);
 
         if(it == tree[name].end()) {
-            std::cout << "copy default data" << std::endl;
             copyInto(p->options[oname]->def,
                     p->options[oname]->data);
             continue;
@@ -307,18 +303,16 @@ void Config::setOptionsForPlugin(PluginPtr p) {
         auto reqType = p->options[oname]->type;
 
         if(!isValidToRead(opt.type, reqType)) {
-            std::cout << "[EE] Type mismatch: \n";
-            std::cout << "\t Plugin name:" << name
-                << " Option name: " << oname << std::endl;
+            error << "Type mismatch: \n";
+            error << "\tin plugin :" << name
+                << " option: " << oname << std::endl;
 
             copyInto(p->options[oname]->def,
                     p->options[oname]->data);
             continue;
         }
 
-        std::cout << "reading " << oname << std::endl;
         auto data = opt.value;
-
         switch(reqType) {
             case DataTypeInt:
                 p->options[oname]->data.ival =

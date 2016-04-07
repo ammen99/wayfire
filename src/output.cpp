@@ -46,16 +46,15 @@ namespace {
 PluginPtr Output::PluginManager::load_plugin_from_file(std::string path, void **h) {
     void *handle = dlopen(path.c_str(), RTLD_NOW);
     if(handle == NULL){
-        std::cout << "Error loading plugin " << path << std::endl;
-        std::cout << dlerror() << std::endl;
+        error << "Can't load plugin " << path << std::endl;
+        error << "\t" << dlerror() << std::endl;
         return nullptr;
     }
 
     auto initptr = dlsym(handle, "newInstance");
     if(initptr == NULL) {
-        std::cout << "Failed to load newInstance from file " <<
-            path << std::endl;
-        std::cout << dlerror();
+        error << "Missing function newInstance in file " << path << std::endl;
+        error << dlerror();
         return nullptr;
     }
     LoadFunction init = unionCast<void*, LoadFunction>(initptr);
@@ -320,6 +319,8 @@ std::tuple<int, int> Output::InputManager::get_pointer_position() {
 #include <wlc/wlc-render.h>
 #include "jpeg.hpp"
 
+/* TODO: do not rely on glBlitFramebuffer, provide fallback
+ * to texture rendering for older systems */
 void Output::RenderManager::load_background() {
     background.tex = texture_from_jpeg(core->background.c_str(), background.w, background.h);
 
@@ -331,7 +332,7 @@ void Output::RenderManager::load_background() {
 
     auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
     if (status != GL_FRAMEBUFFER_COMPLETE)
-        std::cout << "Error in background framebuffer !!!" << std::endl;
+        error << "Can't setup background framebuffer!" << std::endl;
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
@@ -549,12 +550,6 @@ uint32_t Output::ViewportManager::get_mask_for_view(View v) {
 
     uint32_t mask = 0;
 
-    std::cout << sdx << " " << width << std::endl;
-    std::cout << "generating mask " << sx << " " << ex << " __ " << sy << " " << ey << std::endl;
-    std::cout << "### " << v->attrib.origin.x << " ## " << v->attrib.origin.y << std::endl;
-    std::cout << "*** " << bottom_right_x << " ** " << bottom_right_y << std::endl;
-    std::cout << "&&& " << v->vx << " && " << v->vy << std::endl;
-
     for (int i = sx; i <= ex; i++)
         for (int j = sy; j <= ey; j++)
             mask |= get_mask_for_viewport(i, j);
@@ -582,10 +577,10 @@ void Output::ViewportManager::get_viewport_for_view(View v, int &x, int &y) {
 
 void Output::ViewportManager::switch_workspace(std::tuple<int, int> nPos) {
     GetTuple(nx, ny, nPos);
-
-    std::cout << "switch workspace " << nx << " " << ny << std::endl;
     if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
         return;
+
+    debug << "switching workspace target:" << nx << " " << ny << " current:" << vx << " " << vy << std::endl;
 
     auto dx = (vx - nx) * output->screen_width;
     auto dy = (vy - ny) * output->screen_height;
@@ -595,7 +590,6 @@ void Output::ViewportManager::switch_workspace(std::tuple<int, int> nPos) {
         bool visible_now = v->default_mask & get_mask_for_viewport(nx, ny);
 
         if(has_been_before && visible_now) {
-            std::cout << "MOVING WINDOW ID " << v->get_id() << std::endl;
             v->move(v->attrib.origin.x + dx, v->attrib.origin.y + dy),
             v->vx = nx,
             v->vy = ny;

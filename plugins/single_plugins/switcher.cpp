@@ -61,8 +61,6 @@ class Switcher : public Plugin {
         fast_switch_kb.type = BindingTypePress;
         fast_switch_kb.action = std::bind(std::mem_fn(&Switcher::fast_switch), this, _1);
 
-        std::cout << "hhre " << fast.key << " " << fast.mod << std::endl;
-
         if (fast.key)
             output->hook->add_key(&fast_switch_kb, true);
 
@@ -566,12 +564,10 @@ class Switcher : public Plugin {
 
     void fast_switch(EventContext ctx) {
         if (!active && !exit.getState()) {
-            std::cout << "54321" << std::endl;
             if (!output->input->activate_owner(owner))
                 return;
 
             auto views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
-            std::cout << "got 12345$$$$$" << views.size() << std::endl;
             if (views.size() >= 2)
                 core->focus_view(views[views.size() - 2]);
 

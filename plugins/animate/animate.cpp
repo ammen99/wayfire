@@ -52,7 +52,7 @@ class AnimatePlugin : public Plugin {
 #if false
             if(map_animation == "fire") {
                 if(!HAS_COMPUTE_SHADER) {
-                    std::cout << "[EE] OpenGL version below 4.3," <<
+                    error << "[EE] OpenGL version below 4.3," <<
                         " so no support for Fire effect" <<
                         "defaulting to fade effect" << std::endl;
                     map_animation = "fade";

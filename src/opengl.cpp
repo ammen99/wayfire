@@ -6,8 +6,8 @@ namespace {
     OpenGL::Context *bound;
 }
 
-const char* gl_error_string(const GLenum error) {
-    switch (error) {
+const char* gl_error_string(const GLenum err) {
+    switch (err) {
         case GL_INVALID_ENUM:
             return "GL_INVALID_ENUM";
         case GL_INVALID_VALUE:
@@ -23,11 +23,11 @@ const char* gl_error_string(const GLenum error) {
 
 
 void gl_call(const char *func, uint32_t line, const char *glfunc) {
-    GLenum error;
-    if ((error = glGetError()) == GL_NO_ERROR)
+    GLenum err;
+    if ((err = glGetError()) == GL_NO_ERROR)
         return;
 
-    printf("gles2: function %s at line %u: %s == %s\n", func, line, glfunc, gl_error_string(error));
+    debug << "gles2: function " << func << " at line " << line << ": " << glfunc << " == " << gl_error_string(err) << "\n";
 }
 
 
@@ -155,7 +155,7 @@ namespace OpenGL {
 
         auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
         if (status != GL_FRAMEBUFFER_COMPLETE)
-            std::cout << "Error in framebuffer !!!" << std::endl;
+            error << "Error in framebuffer!\n";
     }
 
     void useDefaultProgram() {
@@ -168,7 +168,6 @@ namespace OpenGL {
     }
 
     void release_context(Context *ctx) {
-        std::cout << "release ctx" << std::endl;
         delete ctx;
     }
 

@@ -60,7 +60,6 @@ class Move : public Plugin {
 
         bool called_from_expo = false;
         void Initiate(EventContext ctx, View pwin) {
-            std::cout << "ACTIVE" << std::endl;
             /* Do not deny request if expo is active and has requested moving a window */
             /* TODO: this is a workaround, should add caller name to signals */
             if(!(output->input->is_owner_active("expo") && pwin) && !output->input->activate_owner(owner))

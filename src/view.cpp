@@ -80,7 +80,6 @@ void FireView::resize(int w, int h) {
 }
 
 void FireView::set_geometry(wlc_geometry g) {
-    std::cout << g.origin.x << " " << g.origin.y << " " << g.size.w << " " << g.size.h << std::endl;
     attrib = g;
     wlc_view_set_geometry(view, 0, &attrib);
 }
@@ -95,7 +94,6 @@ void FireView::set_geometry(int x, int y, int w, int h) {
 }
 
 void FireView::set_mask(uint32_t mask) {
-    std::cout << "set mask " << view << " " << mask << std::endl;
     default_mask = mask;
     if (!has_temporary_mask)
         restore_mask();
@@ -144,7 +142,6 @@ void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surfa
     wlc_surface_get_textures(surface, s.tex, &s.fmt);
     for (int i = 0; i < 3 && s.tex[i]; i++) {
         s.tex[i] = OpenGL::duplicate_texture(s.tex[i], g.size.w, g.size.h);
-        std::cout << s.tex[i] << std::endl;
     }
 
     s.g = g;

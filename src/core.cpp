@@ -100,7 +100,20 @@ void Core::add_view(wlc_handle view) {
     if (active_output)
         active_output->attach_view(v);
 
-    focus_view(v);
+    wlc_view_bring_to_front(view);
+    uint32_t type = wlc_view_get_type(view);
+
+    switch (type) {
+        case 0:
+        case WLC_BIT_MODAL:
+        case WLC_BIT_OVERRIDE_REDIRECT:
+            wlc_view_focus(view);
+            wlc_view_set_state(view, WLC_BIT_ACTIVATED, true);
+            break;
+        /* popups and others */
+        default:
+            break;
+    }
 }
 
 View Core::find_view(wlc_handle handle) {
