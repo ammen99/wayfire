@@ -17,10 +17,8 @@ float get_scale_factor(float w, float h, float sw, float sh, float c) {
 
 class Switcher : public Plugin {
 
-    KeyBinding init_binding;
-    KeyBinding forward;
-    KeyBinding backward;
-    KeyBinding term;
+    KeyBinding init_binding, term, fast_switch_kb;
+    KeyBinding forward, backward;
 
     Key actKey;
     std::vector<View> views;
@@ -56,11 +54,21 @@ class Switcher : public Plugin {
         maxsteps = options["duration"]->data.ival;
         initsteps = options["init"]->data.ival;
 
+        using namespace std::placeholders;
+        Key fast = *options["fast_switch"]->data.key;
+        fast_switch_kb.key = fast.key;
+        fast_switch_kb.mod = fast.mod;
+        fast_switch_kb.type = BindingTypePress;
+        fast_switch_kb.action = std::bind(std::mem_fn(&Switcher::fast_switch), this, _1);
+
+        std::cout << "hhre " << fast.key << " " << fast.mod << std::endl;
+
+        if (fast.key)
+            output->hook->add_key(&fast_switch_kb, true);
+
         actKey = *options["activate"]->data.key;
         if(actKey.key == 0)
             return;
-
-        using namespace std::placeholders;
 
         init_binding.mod = actKey.mod;
         init_binding.key = actKey.key;
@@ -102,6 +110,7 @@ class Switcher : public Plugin {
         options.insert(newIntOption("duration", 1000));
         options.insert(newIntOption("init", 1000));
         options.insert(newKeyOption("activate", Key{0, 0}));
+        options.insert(newKeyOption("fast_switch", Key{0, 0}));
     }
 
     void handle_key(EventContext ctx) {
@@ -483,6 +492,8 @@ class Switcher : public Plugin {
              core->focus_view(views[index]);
              exit.disable();
 
+             Transform::ViewProj = glm::mat4();
+
              for(auto v : views) {
                 v->transform.scalation = v->transform.translation = v->transform.rotation = glm::mat4();
              }
@@ -551,6 +562,21 @@ class Switcher : public Plugin {
         backward.disable();
         forward.disable();
         term.disable();
+    }
+
+    void fast_switch(EventContext ctx) {
+        if (!active && !exit.getState()) {
+            std::cout << "54321" << std::endl;
+            if (!output->input->activate_owner(owner))
+                return;
+
+            auto views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
+            std::cout << "got 12345$$$$$" << views.size() << std::endl;
+            if (views.size() >= 2)
+                core->focus_view(views[views.size() - 2]);
+
+            output->input->deactivate_owner(owner);
+        }
     }
 };
 

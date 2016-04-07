@@ -1,6 +1,36 @@
 #include "core.hpp"
 #include "output.hpp"
 
+class CorePlugin : public Plugin {
+    public:
+        void init() {
+            options.insert(newIntOption("vwidth", 3));
+            options.insert(newIntOption("vheight", 3));
+            options.insert(newStringOption("background", ""));
+            options.insert(newStringOption("shadersrc", "/usr/share/"));
+            options.insert(newStringOption("pluginpath", "/usr/lib/"));
+            options.insert(newStringOption("plugins", ""));
+            options.insert(newStringOption("key_repeat_rate", "50"));
+            options.insert(newStringOption("key_repeat_delay", "350"));
+        }
+        void initOwnership() {
+            owner->name = "core";
+            owner->compatAll = true;
+        }
+        void updateConfiguration() {
+            core->vwidth  = options["vwidth"]->data.ival;
+            core->vheight = options["vheight"]->data.ival;
+
+            core->background  = *options["background"]->data.sval;
+            core->shadersrc   = *options["shadersrc"]->data.sval;
+            core->plugin_path = *options["pluginpath"]->data.sval;
+            core->plugins     = *options["plugins"]->data.sval;
+
+            setenv("WLC_REPEAT_RATE", options["key_repeat_rate"]->data.sval->c_str(), 1);
+            setenv("WLC_REPEAT_DELAY", options["key_repeat_delay"]->data.sval->c_str(), 1);
+        }
+};
+
 Core *core;
 
 void Core::init() {

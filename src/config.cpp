@@ -110,6 +110,9 @@ namespace {
 
                 if(value == "Tab")
                     return XKB_KEY_Tab;
+
+                if(value == "Esc")
+                    return XKB_KEY_Escape;
             }
 
             return -1;

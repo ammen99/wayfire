@@ -168,6 +168,7 @@ namespace OpenGL {
     }
 
     void release_context(Context *ctx) {
+        std::cout << "release ctx" << std::endl;
         delete ctx;
     }
 

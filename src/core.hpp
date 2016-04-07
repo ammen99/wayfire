@@ -51,31 +51,4 @@ class Core {
 };
 
 extern Core *core;
-
-class CorePlugin : public Plugin {
-    public:
-        void init() {
-            options.insert(newIntOption("vwidth", 3));
-            options.insert(newIntOption("vheight", 3));
-            options.insert(newStringOption("background", ""));
-            options.insert(newStringOption("shadersrc", "/usr/local/share/"));
-            options.insert(newStringOption("pluginpath", "/usr/local/lib/"));
-            options.insert(newStringOption("plugins", ""));
-        }
-        void initOwnership() {
-            owner->name = "core";
-            owner->compatAll = true;
-        }
-        void updateConfiguration() {
-            core->vwidth  = options["vwidth"]->data.ival;
-            core->vheight = options["vheight"]->data.ival;
-
-            core->background  = *options["background"]->data.sval;
-            core->shadersrc   = *options["shadersrc"]->data.sval;
-            core->plugin_path = *options["pluginpath"]->data.sval;
-            core->plugins     = *options["plugins"]->data.sval;
-        }
-};
-
-
 #endif

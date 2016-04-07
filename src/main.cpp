@@ -218,12 +218,15 @@ void view_request_move(wlc_handle view, const struct wlc_point *origin) {
 void output_pre_paint(wlc_handle output) {
     assert(core);
 
+    /* TODO: format this */
     Output *o;
     if (!(o = core->get_output(output))) {
         core->add_output(output);
         o = core->get_output(output);
+        o->render->load_context();
+    } else {
+        o->render->paint();
     }
-    o->render->paint();
 }
 
 void output_post_paint(wlc_handle output) {
@@ -243,6 +246,7 @@ void output_post_paint(wlc_handle output) {
 }
 
 bool output_created(wlc_handle output) {
+    std::cout << "output created" << std::endl;
     //core->add_output(output);
     return true;
 }
@@ -276,6 +280,27 @@ void view_request_state(wlc_handle view, wlc_view_state_bit state, bool toggle) 
 void output_focus(wlc_handle output, bool is_focused) {
 //    if (is_focused)
 //        core->focus_output(core->get_output(output));
+}
+
+void output_ctx_created(wlc_handle output) {
+    Output *o = core->get_output(output);
+    if (!o)
+        return;
+
+    std::cout << "output" << std::endl;
+
+    if (o->render->ctx) {
+        std::cout << "delete context" << std::endl;
+        delete o->render->ctx;
+    }
+
+    std::cout << "here" << std::endl;
+    o->render->load_context();
+}
+
+void output_ctx_destroyed(wlc_handle output) {
+//    Output *o = core->get_output(output);
+//    if (o) o->render->release_context();
 }
 
 void view_move_to_output(wlc_handle view, wlc_handle old, wlc_handle new_output) {
@@ -316,9 +341,6 @@ int main(int argc, char *argv[]) {
     signal(SIGABRT, signalHandle);
     signal(SIGTRAP, signalHandle);
 
-
-    wlc_set_view_created_cb(view_created);
-
     wlc_set_view_created_cb       (view_created);
     wlc_set_view_destroyed_cb     (view_destroyed);
     wlc_set_view_focus_cb         (view_focus);
@@ -333,16 +355,17 @@ int main(int argc, char *argv[]) {
     wlc_set_output_created_cb(output_created);
     wlc_set_output_destroyed_cb(output_destroyed);
     wlc_set_output_focus_cb(output_focus);
+
     wlc_set_output_render_pre_cb(output_pre_paint);
     wlc_set_output_render_post_cb(output_post_paint);
+
+    wlc_set_output_context_created_cb(output_ctx_created);
+    wlc_set_output_context_destroyed_cb(output_ctx_destroyed);
 
     wlc_set_keyboard_key_cb(keyboard_key);
     wlc_set_pointer_scroll_cb(on_scroll);
     wlc_set_pointer_button_cb(pointer_button);
     wlc_set_pointer_motion_cb(pointer_motion);
-
-    wlc_set_compositor_activated_cb(on_activate);
-    wlc_set_compositor_deactivated_cb(on_deactivate);
 
     wlc_set_compositor_ready_cb(readyyyy);
 

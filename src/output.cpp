@@ -347,8 +347,10 @@ void Output::RenderManager::load_context() {
 }
 
 void Output::RenderManager::release_context() {
+    /*
     GL_CALL(glDeleteFramebuffers(1, &background.fbuff));
     GL_CALL(glDeleteTextures(1, &background.tex));
+    */
 
     OpenGL::release_context(ctx);
     dirty_context = true;
@@ -363,7 +365,7 @@ void Output::RenderManager::blit_background(GLuint dest) {
 
 Output::RenderManager::RenderManager(Output *o) {
     output = o;
-    load_context();
+    //load_context();
 }
 
 void Output::RenderManager::reset_renderer() {
