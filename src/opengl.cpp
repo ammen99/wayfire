@@ -17,10 +17,8 @@ const char* gl_error_string(const GLenum err) {
         case GL_OUT_OF_MEMORY:
             return "GL_OUT_OF_MEMORY";
     }
-
     return "UNKNOWN GL ERROR";
 }
-
 
 void gl_call(const char *func, uint32_t line, const char *glfunc) {
     GLenum err;
@@ -29,7 +27,6 @@ void gl_call(const char *func, uint32_t line, const char *glfunc) {
 
     debug << "gles2: function " << func << " at line " << line << ": " << glfunc << " == " << gl_error_string(err) << "\n";
 }
-
 
 namespace OpenGL {
     GLuint compileShader(const char *src, GLuint type) {
@@ -113,6 +110,7 @@ namespace OpenGL {
             0.0f, 0.0f,
             0.0f, 1.0f,
         };
+
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
 
@@ -208,34 +206,9 @@ R"(#version 100
         GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbuff));
         GL_CALL(glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
 
-//        GL_CALL(glUseProgram(bound->min_program));
-//
-//        GLfloat vertexData[] = {
-//            -1,  1,
-//            -1, -1,
-//             1, -1,
-//             1, -1,
-//             1,  1,
-//            -1,  1
-//        };
-//
-//        GLfloat coordData[] = {
-//            0.0f, 1.0f,
-//            1.0f, 1.0f,
-//            1.0f, 0.0f,
-//            1.0f, 0.0f,
-//            0.0f, 0.0f,
-//            0.0f, 1.0f,
-//        };
-//
-//        GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
-//        GL_CALL(glVertexAttribPointer(bound->position, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
-//        GL_CALL(glVertexAttribPointer(bound->uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
-//        GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
-//
-
         renderTransformedTexture(tex, {{0, 0}, {uint32_t(w), uint32_t(h)}});
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+        /* FIXME: check if we can destroy fb */
 //        GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
 //        GL_CALL(glDeleteFramebuffers(1, &src_fbuff));
         return dst_tex;
@@ -246,13 +219,6 @@ R"(#version 100
 
         ctx->width = output->screen_width;
         ctx->height = output->screen_height;
-
-        GLuint minvss = compileShader(simple_vs, GL_VERTEX_SHADER);
-        GLuint minfss = compileShader(simple_fs, GL_FRAGMENT_SHADER);
-        ctx->min_program = GL_CALL(glCreateProgram());
-        GL_CALL(glAttachShader(ctx->min_program, minvss));
-        GL_CALL(glAttachShader(ctx->min_program, minfss));
-        GL_CALL(glLinkProgram(ctx->min_program));
 
         std::string tmp = shaderSrcPath;
 

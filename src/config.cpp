@@ -212,19 +212,19 @@ void Config::readConfig() {
     std::string currentPluginName = "";
     std::string option, value;
 
-    while(std::getline(stream, line)) {
+    while (std::getline(stream, line)) {
         line = trim(line);
-        if(!line.length())
+        if (!line.length() || line[0] == '#')
             continue;
 
-        if(line[0] == '[') {
+        if (line[0] == '[') {
             currentPluginName =
                 line.substr(1, line.length() - 2);
             continue;
         }
 
         auto pos = line.find("=");
-        if(pos == std::string::npos) {
+        if (pos == std::string::npos) {
             continue;
         }
 

@@ -7,12 +7,19 @@ class CorePlugin : public Plugin {
             options.insert(newIntOption("vwidth", 3));
             options.insert(newIntOption("vheight", 3));
             options.insert(newStringOption("background", ""));
-            options.insert(newStringOption("shadersrc", "/usr/share/"));
+            options.insert(newStringOption("shadersrc", "/usr/share/wayfire/shaders"));
             options.insert(newStringOption("pluginpath", "/usr/lib/"));
             options.insert(newStringOption("plugins", ""));
+
             options.insert(newStringOption("key_repeat_rate", "50"));
             options.insert(newStringOption("key_repeat_delay", "350"));
+
+            options.insert(newStringOption("kbd_model", "pc100"));
+            options.insert(newStringOption("kbd_layouts", "us"));
+            options.insert(newStringOption("kbd_variants", ""));
+            options.insert(newStringOption("kbd_options", "grp:alt_shift_toggl"));
         }
+
         void initOwnership() {
             owner->name = "core";
             owner->compatAll = true;
@@ -28,6 +35,11 @@ class CorePlugin : public Plugin {
 
             setenv("WLC_REPEAT_RATE", options["key_repeat_rate"]->data.sval->c_str(), 1);
             setenv("WLC_REPEAT_DELAY", options["key_repeat_delay"]->data.sval->c_str(), 1);
+
+            setenv("XKB_DEFAULT_MODEL", options["kbd_model"]->data.sval->c_str(), 1);
+            setenv("XKB_DEFAULT_LAYOUT", options["kbd_layouts"]->data.sval->c_str(), 1);
+            setenv("XKB_DEFAULT_VARIANT", options["kbd_variants"]->data.sval->c_str(), 1);
+            setenv("XKB_DEFAULT_OPTIONS", options["kbd_options"]->data.sval->c_str(), 1);
         }
 };
 
