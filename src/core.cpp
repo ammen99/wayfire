@@ -1,5 +1,6 @@
 #include "core.hpp"
 #include "output.hpp"
+#include "img.hpp"
 
 class CorePlugin : public Plugin {
     public:
@@ -56,6 +57,8 @@ void Core::init() {
 
     plug->updateConfiguration();
     plug.reset();
+
+    image_io::init();
 }
 
 void Core::add_output(wlc_handle o) {

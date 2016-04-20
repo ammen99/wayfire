@@ -1,13 +1,9 @@
 #include <output.hpp>
-#include "png.hpp"
+#include <img.hpp>
 
 struct File {
     std::string name;
 };
-
-void cb_pixels (const wlc_size *sz, uint32_t *pixels, void *arg) {
-    File f = *(File*) arg;
-}
 
 class Screenshot : public Plugin {
     KeyBinding binding;
@@ -56,8 +52,10 @@ class Screenshot : public Plugin {
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
             uint8_t pixels[output->screen_width * output->screen_height * 4];
             wlc_pixels_read(WLC_RGBA8888, &in, &out, pixels);
-            write_to_png_file("/home/ilex/Scr.png", pixels,
-                    output->screen_width, output->screen_height);
+
+            /* TODO: write to home */
+            image_io::write_to_file("/home/ilex/Scr.png", pixels,
+                    output->screen_width, output->screen_height, "png");
         }
 };
 

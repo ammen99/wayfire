@@ -8,7 +8,6 @@
 #include <poll.h>
 #include <dlfcn.h>
 #include <unistd.h>
-#include <cstdlib>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <memory>

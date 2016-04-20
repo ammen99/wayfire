@@ -317,12 +317,12 @@ std::tuple<int, int> Output::InputManager::get_pointer_position() {
 
 #include <wlc/wlc-wayland.h>
 #include <wlc/wlc-render.h>
-#include "jpeg.hpp"
+#include "img.hpp"
 
 /* TODO: do not rely on glBlitFramebuffer, provide fallback
  * to texture rendering for older systems */
 void Output::RenderManager::load_background() {
-    background.tex = texture_from_jpeg(core->background.c_str(), background.w, background.h);
+    background.tex = image_io::load_from_file(core->background, background.w, background.h);
 
     GL_CALL(glGenFramebuffers(1, &background.fbuff));
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, background.fbuff));
@@ -437,6 +437,8 @@ void Output::RenderManager::texture_from_viewport(std::tuple<int, int> vp,
 
     if (fbuff == (uint)-1 || tex == (uint)-1)
         OpenGL::prepareFramebuffer(fbuff, tex);
+
+    /* Rendering code, taken from wlc's get_visible_views */
 
     blit_background(fbuff);
     GetTuple(x, y, vp);
