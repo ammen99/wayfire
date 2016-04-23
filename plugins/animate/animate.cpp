@@ -43,7 +43,7 @@ class AnimatePlugin : public Plugin {
     public:
         void initOwnership() {
             owner->name = "animate";
-            owner->compatAll = true;
+            owner->compatAll = false;
         }
 
         void updateConfiguration() {
