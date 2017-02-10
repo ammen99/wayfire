@@ -554,58 +554,53 @@ void wayfire_output::focus_view(wayfire_view v) {
     */
 }
 
-static weston_view get_top_wayfire_view(weston_output* output) {
+static weston_view* get_top_view(weston_output* output) {
     auto ec = output->compositor;
-    size_t memb;
-    const wlc_handle *wayfire_views = wlc_output_get_wayfire_views(output, &memb);
+    weston_view *view;
 
-    for (int i = memb - 1; i >= 0; i--) {
-        auto v = core->find_wayfire_view(wayfire_views[i]);
-        if (v && v->is_visible())
-            return v->get_id();
+    uint mask = (1u << output->id);
+    /* TODO: check if views are ordered top-to-bottom or bottom-to-top */
+    wl_list_for_each(view, &ec->view_list, link) {
+        if (view->output_mask & mask)
+            return view;
     }
 
-    return 0;
+    return nullptr;
 }
 
-wayfire_view wayfire_output::get_active_wayfire_view() {
-    return core->find_wayfire_view(get_top_wayfire_view(id));
+wayfire_view wayfire_output::get_active_view() {
+    return core->find_view(get_top_view(handle));
 }
 
-void wayfire_output::for_each_wayfire_view(wayfire_viewCallbackProc call) {
-    size_t num;
-    const wlc_handle* wayfire_views = wlc_output_get_wayfire_views(id, &num);
-    for (int i = num - 1; i >= 0; i--) {
-        auto v = core->find_wayfire_view(wayfire_views[i]);
-        if (v)
-           call(v);
-    }
-}
+void wayfire_output::for_each_view(view_callback_proc_t call) {
+    weston_view *view;
 
-void wayfire_output::for_each_wayfire_view_reverse(WindowCallbackProc call) {
-    size_t num;
-    const wlc_handle *wayfire_views = wlc_output_get_wayfire_views(id, &num);
-
-    for (size_t i = 0; i < num; i++) {
-        auto v = core->find_wayfire_view(wayfire_views[i]);
-        if (v)
-           call(v);
+    wl_list_for_each(view, &handle->compositor->view_list, link) {
+        if (view->output == handle) {
+            call(core->find_view(view));
+        }
     }
 }
 
-wayfire_view wayfire_output::get_wayfire_view_at_point(int x, int y, uint32_t mask) {
+void wayfire_output::for_each_view_reverse(view_callback_proc_t call) {
+    weston_view *view;
+
+    wl_list_for_each_reverse(view, &handle->compositor->view_list, link) {
+        if (view->output == handle) {
+            call(core->find_view(view));
+        }
+    }
+}
+
+wayfire_view wayfire_output::get_view_at_point(int x, int y) {
     wayfire_view chosen = nullptr;
 
-    for_each_wayfire_view([x, y, &chosen, mask] (wayfire_view v) {
-        if ((!mask && v->is_visible() && point_inside({x, y}, v->attrib)) ||
-                (mask && (v->default_mask & mask) && point_inside({x, y}, v->attrib))) {
-
+    for_each_view([x, y, &chosen] (wayfire_view v) {
+        if (v->is_visible() && point_inside({x, y}, v->geometry)) {
             if (chosen == nullptr)
                chosen = v;
-
         }
     });
 
     return chosen;
 }
-

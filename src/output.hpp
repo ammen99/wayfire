@@ -156,7 +156,7 @@ class wayfire_output {
     void deactivate();
 
     wayfire_view get_active_view();
-    wayfire_view get_view_at_point(int x, int y, uint32_t mask = 0);
+    wayfire_view get_view_at_point(int x, int y);
 
     void for_each_view(view_callback_proc_t);
     void for_each_view_reverse(view_callback_proc_t);
