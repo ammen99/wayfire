@@ -163,7 +163,7 @@ void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surfa
     }
 }
 
-void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
+static void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
     Surface surf;
     wlc_surface_get_textures(surface, surf.tex, &surf.fmt);
     for(int i = 0; i < 3 && surf.tex[i]; i++)

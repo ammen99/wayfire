@@ -1,29 +1,27 @@
 #include "opengl.hpp"
 #include "output.hpp"
+#include "signal_definitions.hpp"
 #include "wm.hpp"
 
 #include <sstream>
 #include <memory>
+#include <dlfcn.h>
+#include <algorithm>
 
 /* Start plugin manager */
-Output::PluginManager::PluginManager(Output *o, Config *config) {
+plugin_manager::plugin_manager(wayfire_output *o, weston_config *config) {
     init_default_plugins();
     load_dynamic_plugins();
 
     for (auto p : plugins) {
-        p->owner = std::make_shared<_Ownership>();
-
-        p->owner->output = o;
+        p->grab_interface = std::make_shared<wayfire_grab_interface_t>(o);
         p->output = o;
 
-        p->initOwnership();
-        p->init();
-        config->setOptionsForPlugin(p);
-        p->updateConfiguration();
+        p->init(config);
     }
 }
 
-Output::PluginManager::~PluginManager() {
+plugin_manager::~plugin_manager() {
     for (auto p : plugins) {
         p->fini();
         if (p->dynamic)
@@ -33,7 +31,7 @@ Output::PluginManager::~PluginManager() {
 }
 
 namespace {
-    template<class A, class B> B unionCast(A object) {
+    template<class A, class B> B union_cast(A object) {
         union {
             A x;
             B y;
@@ -43,7 +41,7 @@ namespace {
     }
 }
 
-PluginPtr Output::PluginManager::load_plugin_from_file(std::string path, void **h) {
+wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h) {
     void *handle = dlopen(path.c_str(), RTLD_NOW);
     if(handle == NULL){
         error << "Can't load plugin " << path << std::endl;
@@ -57,12 +55,12 @@ PluginPtr Output::PluginManager::load_plugin_from_file(std::string path, void **
         error << dlerror();
         return nullptr;
     }
-    LoadFunction init = unionCast<void*, LoadFunction>(initptr);
+    get_plugin_instance_t init = union_cast<void*, get_plugin_instance_t> (initptr);
     *h = handle;
-    return std::shared_ptr<Plugin>(init());
+    return wayfire_plugin(init());
 }
 
-void Output::PluginManager::load_dynamic_plugins() {
+void plugin_manager::load_dynamic_plugins() {
     std::stringstream stream(core->plugins);
     auto path = core->plugin_path + "/wayfire/";
 
@@ -71,111 +69,44 @@ void Output::PluginManager::load_dynamic_plugins() {
         if(plugin != "") {
             void *handle;
             auto ptr = load_plugin_from_file(path + "/lib" + plugin + ".so", &handle);
-            if(ptr) ptr->handle  = handle,
-                    ptr->dynamic = true,
-                    plugins.push_back(ptr);
+            if(ptr) {
+                ptr->handle  = handle;
+                ptr->dynamic = true;
+                plugins.push_back(ptr);
+            }
         }
     }
 }
 
 template<class T>
-PluginPtr Output::PluginManager::create_plugin() {
-    return std::static_pointer_cast<Plugin>(std::make_shared<T>());
+wayfire_plugin plugin_manager::create_plugin() {
+    return std::static_pointer_cast<wayfire_plugin_t>(std::make_shared<T>());
 }
 
-void Output::PluginManager::init_default_plugins() {
+void plugin_manager::init_default_plugins() {
     plugins.push_back(create_plugin<Focus>());
     plugins.push_back(create_plugin<Exit>());
     plugins.push_back(create_plugin<Close>());
     plugins.push_back(create_plugin<Refresh>());
 }
 
-/* End PluginManager */
+/* End plugin_manager */
 
-/* Start HookManager */
+/* Start input_manager */
 
-void Output::HookManager::add_key(KeyBinding *kb, bool grab) {
-    if (!kb)
-        return;
+void input_manager::grab_pointer() {++pointer_grab_count;}
+void input_manager::ungrab_pointer() {pointer_grab_count = std::max(0, pointer_grab_count - 1);}
+void input_manager::grab_keyboard() {++keyboard_grab_count;}
+void input_manager::ungrab_keyboard() {keyboard_grab_count = std::max(0, keyboard_grab_count - 1);}
 
-    keys.push_back(kb);
-    kb->id = core->get_nextid();
-
-    if (grab)
-        kb->enable();
-}
-
-void Output::HookManager::rem_key(uint key) {
-    auto it = std::remove_if(keys.begin(), keys.end(), [key] (KeyBinding *kb) {
-                if(kb) return kb->id == key;
-                else return true;
-            });
-
-    keys.erase(it, keys.end());
-}
-
-void Output::HookManager::add_but(ButtonBinding *bb, bool grab) {
-    if (!bb)
-        return;
-
-    buttons.push_back(bb);
-    bb->id = core->get_nextid();
-
-    if (grab)
-        bb->enable();
-}
-
-void Output::HookManager::rem_but(uint key) {
-    auto it = std::remove_if(buttons.begin(), buttons.end(), [key] (ButtonBinding *bb) {
-                if(bb) return bb->id == key;
-                else return true;
-            });
-    buttons.erase(it, buttons.end());
-}
-
-void Output::HookManager::add_hook(Hook *hook){
-    if(hook) {
-        hook->id = core->get_nextid();
-        hooks.push_back(hook);
-    }
-}
-
-void Output::HookManager::rem_hook(uint key) {
-    auto it = std::remove_if(hooks.begin(), hooks.end(), [key] (Hook *hook) {
-                if (hook && hook->id == key) {
-                    hook->disable();
-                    return true;
-                } else {
-                    return false;
-                }
-            });
-
-    hooks.erase(it, hooks.end());
-}
-
-void Output::HookManager::run_hooks() {
-    for (auto h : hooks) {
-        if (h->getState())
-            h->action();
-    }
-}
-
-/* End HookManager */
-/* Start InputManager */
-
-void Output::InputManager::grab_pointer() {++pointer_grab_count;}
-void Output::InputManager::ungrab_pointer() {pointer_grab_count = std::max(0, pointer_grab_count - 1);}
-void Output::InputManager::grab_keyboard() {++keyboard_grab_count;}
-void Output::InputManager::ungrab_keyboard() {keyboard_grab_count = std::max(0, keyboard_grab_count - 1);}
-
-bool Output::InputManager::activate_owner(Ownership owner) {
+bool input_manager::activate_plugin(wayfire_grab_interface owner) {
     if (!owner)
         return false;
 
-    if (active_owners.find(owner) != active_owners.end())
+    if (active_plugins.find(owner) != active_plugins.end())
         return true;
 
-    for(auto act_owner : active_owners) {
+    for(auto act_owner : active_plugins) {
         bool owner_in_act_owner_compat =
             act_owner->compat.find(owner->name) != act_owner->compat.end();
 
@@ -189,139 +120,32 @@ bool Output::InputManager::activate_owner(Ownership owner) {
             return false;
     }
 
-    active_owners.insert(owner);
+    active_plugins.insert(owner);
     return true;
 }
 
-bool Output::InputManager::deactivate_owner(Ownership owner) {
+bool input_manager::deactivate_plugin(wayfire_grab_interface owner) {
     owner->ungrab();
-    active_owners.erase(owner);
+    active_plugins.erase(owner);
     return true;
 }
 
-bool Output::InputManager::is_owner_active(std::string name) {
-    for (auto act : active_owners)
+bool input_manager::is_plugin_active(owner_t name) {
+    for (auto act : active_plugins)
         if (act && act->name == name)
             return true;
 
     return false;
 }
+/* End input_manager */
 
-bool Output::InputManager::check_key(KeyBinding *kb, uint32_t key, uint32_t mod) {
-    if(!kb->active)
-        return false;
+/* Start render_manager */
 
-    if(kb->key != key)
-        return false;
-
-    if(kb->mod != mod)
-        return false;
-
-    return true;
-}
-
-bool Output::InputManager::check_but_press(ButtonBinding *bb, uint32_t button, uint32_t mod) {
-    if(!bb->active)
-        return false;
-
-    if(bb->type != BindingTypePress)
-        return false;
-
-    if(bb->mod != mod)
-        return false;
-
-    if(bb->button != button)
-        return false;
-
-    return true;
-}
-
-bool Output::InputManager::check_but_release(ButtonBinding *bb, uint32_t button) {
-    if(!bb->active)
-        return false;
-
-    if(bb->type != BindingTypeRelease)
-        return false;
-
-    if(bb->button != button)
-        return false;
-
-    return true;
-}
-
-bool Output::InputManager::process_key_event(uint32_t key_in, uint32_t mod, wlc_key_state state) {
-    if (state == WLC_KEY_STATE_RELEASED)
-        return false;
-//
-//    if (key_in == XKB_KEY_r && (mod & WLC_BIT_MOD_ALT)) {
-//        core->run("dmenu_run");
-//    }
-
-    for(auto key : hook_mgr->keys) {
-        if(check_key(key, key_in, mod)) {
-            key->action(EventContext(0, 0, key_in, mod));
-            return true;
-        }
-    }
-
-    return keyboard_grab_count > 0;
-}
-
-bool Output::InputManager::process_scroll_event(uint32_t mod, double amount[2]) {
-    for (auto but : hook_mgr->buttons) {
-        if (but->button == BTN_SCROLL && but->mod == mod && but->active) {
-            but->action(EventContext{amount[0], amount[1]});
-            return true;
-        }
-    }
-
-    return pointer_grab_count > 0;
-}
-
-bool Output::InputManager::process_button_event(uint32_t button, uint32_t mod,
-        wlc_button_state state, wlc_point point) {
-
-    mousex = point.x;
-    mousey = point.y;
-
-    bool processed = false;
-
-    for(auto but : hook_mgr->buttons) {
-        if(state == WLC_BUTTON_STATE_PRESSED && check_but_press(but, button, mod)) {
-            but->action(EventContext(mousex, mousey, 0, 0));
-            if (but->mod != 0)
-                processed = true;
-        }
-
-        if(state == WLC_BUTTON_STATE_RELEASED && check_but_release(but, button)) {
-            but->action(EventContext(mousex, mousey, 0, 0));
-            processed = true;
-        }
-    }
-
-    return processed || pointer_grab_count > 0;
-}
-
-bool Output::InputManager::process_pointer_motion_event(wlc_point point) {
-    mousex = point.x;
-    mousey = point.y;
-
-    return pointer_grab_count > 0;
-}
-
-std::tuple<int, int> Output::InputManager::get_pointer_position() {
-    return std::make_tuple(mousex, mousey);
-}
-/* End InputManager */
-/* Start RenderManager */
-
-#include <wlc/wlc-wayland.h>
-#include <wlc/wlc-render.h>
 #include "img.hpp"
 
 /* TODO: do not rely on glBlitFramebuffer, provide fallback
  * to texture rendering for older systems */
-void Output::RenderManager::load_background() {
+void render_manager::load_background() {
     background.tex = image_io::load_from_file(core->background, background.w, background.h);
 
     GL_CALL(glGenFramebuffers(1, &background.fbuff));
@@ -337,17 +161,17 @@ void Output::RenderManager::load_background() {
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
-void Output::RenderManager::load_context() {
-    ctx = OpenGL::init_opengl(output, core->shadersrc.c_str());
+void render_manager::load_context() {
+    ctx = OpenGL::create_gles_context(output, core->shadersrc.c_str());
     OpenGL::bind_context(ctx);
     load_background();
 
     dirty_context = false;
 
-    output->signal->trigger_signal("reload-gl", {});
+    output->signal->emit_signal("reload-gl", nullptr);
 }
 
-void Output::RenderManager::release_context() {
+void render_manager::release_context() {
     /*
     GL_CALL(glDeleteFramebuffers(1, &background.fbuff));
     GL_CALL(glDeleteTextures(1, &background.tex));
@@ -357,43 +181,45 @@ void Output::RenderManager::release_context() {
     dirty_context = true;
 }
 
-void Output::RenderManager::blit_background(GLuint dest) {
+void render_manager::blit_background(GLuint dest) {
+#ifdef USE_GLES3
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
     GL_CALL(glBlitFramebuffer(0, 0, background.w, background.h,
-                0, output->screen_height, output->screen_width, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+                0, output->handle->height, output->handle->width, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+#endif
 }
 
-Output::RenderManager::RenderManager(Output *o) {
+render_manager::render_manager(wayfire_output *o) {
     output = o;
     //load_context();
 }
 
-void Output::RenderManager::reset_renderer() {
+void render_manager::reset_renderer() {
     renderer = nullptr;
 
-    output->for_each_view([] (View v) {
+    output->for_each_view([] (wayfire_view v) {
         v->restore_mask();
     });
 
-    wlc_output_schedule_render(wlc_get_focused_output());
+    weston_output_schedule_repaint(output->handle);
 }
 
-void Output::RenderManager::set_renderer(uint32_t vis_mask, RenderHook rh) {
+void render_manager::set_renderer(uint32_t vis_mask, render_hook_t rh) {
     if (!rh) {
-        renderer = std::bind(std::mem_fn(&Output::RenderManager::transformation_renderer), this);
+        renderer = std::bind(std::mem_fn(&render_manager::transformation_renderer), this);
     } else {
         renderer = rh;
     }
 
-    output->for_each_view([=] (View v) {
+    output->for_each_view([=] (wayfire_view v) {
         v->set_temporary_mask(0);
     });
 
     visibility_mask = vis_mask;
 }
 
-void Output::RenderManager::paint() {
+void render_manager::paint() {
     if (dirty_context)
         load_context();
 
@@ -406,95 +232,94 @@ void Output::RenderManager::paint() {
     }
 }
 
-void Output::RenderManager::post_paint() {
-    std::vector<EffectHook*> active_effects;
-    for (auto effect : effects) {
-        if (effect->getState())
-            active_effects.push_back(effect);
+void render_manager::post_paint() {
+    std::vector<effect_hook> active_effects;
+    for (auto effect : output_effects) {
+         active_effects.push_back(effect);
     }
 
-    for (auto effect : active_effects)
-        effect->action();
+    for (auto& effect : active_effects)
+        effect.action();
 }
 
-void Output::RenderManager::transformation_renderer() {
+void render_manager::transformation_renderer() {
     blit_background(0);
-    output->for_each_view_reverse([=](View v) {
+    output->for_each_view_reverse([=](wayfire_view v) {
         if(!v->is_hidden && (v->default_mask & visibility_mask) && !v->destroyed) {
+        // TODO: render with weston
+        /*
             wlc_geometry g;
-            wlc_view_get_visible_geometry(v->get_id(), &g);
+            wlc_wayfire_view_get_visible_geometry(v->get_id(), &g);
 
-            auto surf = wlc_view_get_surface(v->get_id());
+            auto surf = wlc_wayfire_view_get_surface(v->get_id());
             render_surface(surf, g, v->transform.compose());
+            */
         }
     });
 }
 
-void Output::RenderManager::texture_from_viewport(std::tuple<int, int> vp,
+#ifdef USE_GLES3
+void render_manager::texture_from_viewport(std::tuple<int, int> vp,
         GLuint &fbuff, GLuint &tex) {
 
     OpenGL::bind_context(ctx);
 
     if (fbuff == (uint)-1 || tex == (uint)-1)
-        OpenGL::prepareFramebuffer(fbuff, tex);
+        OpenGL::prepare_framebuffer(fbuff, tex);
 
-    /* Rendering code, taken from wlc's get_visible_views */
+    /* Rendering code, taken from wlc's get_visible_wayfire_views */
 
     blit_background(fbuff);
-    GetTuple(x, y, vp);
+    //GetTuple(x, y, vp);
 
-    uint32_t mask = output->viewport->get_mask_for_viewport(x, y);
+    //uint32_t mask = output->viewport->get_mask_for_viewport(x, y);
 
-    output->for_each_view_reverse([=] (View v) {
+    /* TODO: implement this function as well
+    output->for_each_view_reverse([=] (wayfire_view v) {
         if (v->default_mask & mask) {
-            int dx = (v->vx - x) * output->screen_width;
-            int dy = (v->vy - y) * output->screen_height;
+            int dx = (v->vx - x) * output->handle->width;
+            int dy = (v->vy - y) * output->handle->height;
 
-            wlc_geometry g;
-            wlc_view_get_visible_geometry(v->get_id(), &g);
+            wayfire_geometry g;
+            wlc_wayfire_view_get_visible_geometry(v->get_id(), &g);
             g.origin.x += dx;
             g.origin.y += dy;
 
             render_surface(v->get_surface(), g, v->transform.compose());
         }
     });
+    */
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
+#endif
 
-void Output::RenderManager::add_effect(EffectHook *hook){
-    if(!hook) return;
+static int effect_hook_last_id = 0;
+void render_manager::add_output_effect(effect_hook& hook, wayfire_view v){
+    hook.id = effect_hook_last_id++;
 
-    hook->id = core->get_nextid();
-    if(hook->type == EFFECT_OVERLAY)
-        effects.push_back(hook);
-    else if(hook->type == EFFECT_WINDOW)
-        hook->win->effects[hook->id] = hook;
+    if (v)
+        v->effects.push_back(hook);
+    else
+        output_effects.push_back(hook);
 }
 
-void Output::RenderManager::rem_effect(uint key, View v) {
-    if (!v) {
-        auto it = std::remove_if(effects.begin(), effects.end(),
-                [key] (EffectHook *hook) {
-            if (hook && hook->id == key) {
-                hook->disable();
-                return true;
-            } else {
-                return false;
-            }
-        });
+void render_manager::rem_effect(const effect_hook& hook, wayfire_view v) {
+    decltype(output_effects)& container = output_effects;
+    if (v) container = v->effects;
+    auto it = std::remove_if(output_effects.begin(), output_effects.end(),
+            [hook] (const effect_hook& h) {
+                if (h.id == hook.id)
+            return true;
+            return false;
+            });
 
-        effects.erase(it, effects.end());
-    } else {
-        auto it = v->effects.find(key);
-        it->second->disable();
-        v->effects.erase(it);
-    }
+    container.erase(it, container.end());
 }
-/* End RenderManager */
-/* Start ViewportManager */
+/* End render_manager */
 
-Output::ViewportManager::ViewportManager(Output *o) {
+/* Start viewport_manager */
+viewport_manager::viewport_manager(wayfire_output *o) {
     output = o;
     vx = vy = 0;
 
@@ -502,8 +327,8 @@ Output::ViewportManager::ViewportManager(Output *o) {
     vheight = core->vheight;
 }
 
-std::tuple<int, int> Output::ViewportManager::get_current_viewport() { return std::make_tuple(vx, vy); }
-std::tuple<int, int> Output::ViewportManager::get_viewport_grid_size() { return std::make_tuple(vwidth, vheight); }
+std::tuple<int, int> viewport_manager::get_current_viewport() { return std::make_tuple(vx, vy); }
+std::tuple<int, int> viewport_manager::get_viewport_grid_size() { return std::make_tuple(vwidth, vheight); }
 
 int clamp(int x, int min, int max) {
     if(x < min) return min;
@@ -511,29 +336,29 @@ int clamp(int x, int min, int max) {
     return x;
 }
 
-uint32_t Output::ViewportManager::get_mask_for_view(View v) {
+uint32_t viewport_manager::get_mask_for_view(wayfire_view v) {
     assert(output);
     GetTuple(width, height, output->get_screen_size());
     int sdx, sdy, edx, edy;
 
-    if (v->attrib.origin.x < 0) {
-        sdx = v->attrib.origin.x / width - 1;
+    if (v->geometry.origin.x < 0) {
+        sdx = v->geometry.origin.x / width - 1;
     } else {
-        sdx = v->attrib.origin.x / width;
+        sdx = v->geometry.origin.x / width;
     }
 
-    if (v->attrib.origin.y < 0) {
-        sdy = v->attrib.origin.y / height - 1;
+    if (v->geometry.origin.y < 0) {
+        sdy = v->geometry.origin.y / height - 1;
     } else {
-        sdy = v->attrib.origin.y / height;
+        sdy = v->geometry.origin.y / height;
     }
 
     int sx = v->vx + sdx;
     int sy = v->vy + sdy;
 
     /* We must substract a bit to prevent having windows with only 5 pixels visible */
-    int bottom_right_x = v->attrib.origin.x + (int32_t)v->attrib.size.w - 5;
-    int bottom_right_y = v->attrib.origin.y + (int32_t)v->attrib.size.h - 5;
+    int bottom_right_x = v->geometry.origin.x + (int32_t)v->geometry.size.w - 5;
+    int bottom_right_y = v->geometry.origin.y + (int32_t)v->geometry.size.h - 5;
 
     if (bottom_right_x < 0) {
         edx = bottom_right_x / width - 1;
@@ -559,204 +384,183 @@ uint32_t Output::ViewportManager::get_mask_for_view(View v) {
     return mask;
 }
 
-void Output::ViewportManager::get_viewport_for_view(View v, int &x, int &y) {
+void viewport_manager::get_viewport_for_view(wayfire_view v, int &x, int &y) {
     GetTuple(width, height, output->get_screen_size());
     int dx, dy;
-    if (v->attrib.origin.x < 0) {
-        dx = v->attrib.origin.x / width - 1;
+    if (v->geometry.origin.x < 0) {
+        dx = v->geometry.origin.x / width - 1;
     } else {
-        dx = v->attrib.origin.x / width;
+        dx = v->geometry.origin.x / width;
     }
-    if (v->attrib.origin.y < 0) {
-        dy = v->attrib.origin.y / height - 1;
+    if (v->geometry.origin.y < 0) {
+        dy = v->geometry.origin.y / height - 1;
     } else {
-        dy = v->attrib.origin.y / height;
+        dy = v->geometry.origin.y / height;
     }
 
     x = clamp(v->vx + dx, 0, vwidth - 1);
     y = clamp(v->vy + dy, 0, vheight - 1);
 }
 
-void Output::ViewportManager::switch_workspace(std::tuple<int, int> nPos) {
+void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
     GetTuple(nx, ny, nPos);
     if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
         return;
 
     debug << "switching workspace target:" << nx << " " << ny << " current:" << vx << " " << vy << std::endl;
 
-    auto dx = (vx - nx) * output->screen_width;
-    auto dy = (vy - ny) * output->screen_height;
+    auto dx = (vx - nx) * output->handle->width;
+    auto dy = (vy - ny) * output->handle->height;
 
-    output->for_each_view([=] (View v) {
+    output->for_each_view([=] (wayfire_view v) {
         bool has_been_before = v->default_mask & get_mask_for_viewport(vx, vy);
         bool visible_now = v->default_mask & get_mask_for_viewport(nx, ny);
 
         if(has_been_before && visible_now) {
-            v->move(v->attrib.origin.x + dx, v->attrib.origin.y + dy),
+            v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy),
             v->vx = nx,
             v->vy = ny;
         }
     });
 
-    wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_viewport(nx, ny));
+    //wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_wayfire_viewport(nx, ny));
 
     /* TODO: use tuples for SignalListenerData, this is just an ugly hack */
+    /* FIXME
     SignalListenerData data;
     data.push_back(&vx);
     data.push_back(&vy);
     data.push_back(&nx);
     data.push_back(&ny);
 
-    output->signal->trigger_signal("viewport-change-notify", data);
+    output->signal->emit_signal("viewport-change-notify", data);
 
     vx = nx;
     vy = ny;
 
-    auto new_mask = get_mask_for_viewport(vx, vy);
+    auto new_mask = get_mask_for_wayfire_viewport(vx, vy);
 
-    output->for_each_view_reverse([=] (View v) {
+    output->for_each_wayfire_view_reverse([=] (wayfire_view v) {
         if(v->default_mask & new_mask)
-            core->focus_view(v);
+            core->focus_wayfire_view(v);
     });
+    */
 }
 
-std::vector<View> Output::ViewportManager::get_windows_on_viewport(std::tuple<int, int> vp) {
+std::vector<wayfire_view> viewport_manager::get_views_on_viewport(std::tuple<int, int> vp) {
 
+    /*
     GetTuple(x, y, vp);
-    uint32_t mask = get_mask_for_viewport(x, y);
+    uint32_t mask = get_mask_for_wayfire_viewport(x, y);
 
-    std::vector<View> ret;
+    std::vector<wayfire_view> ret;
 
-    output->for_each_view_reverse([&ret, mask] (View v) {
+    output->for_each_wayfire_view_reverse([&ret, mask] (wayfire_view v) {
                 if(v->default_mask & mask)
                     ret.push_back(v);
             });
 
     return ret;
+    */
+    return std::vector<wayfire_view>();
 }
-/* End ViewportManager */
+/* End viewport_manager */
+
 /* Start SignalManager */
 
-void Output::SignalManager::add_signal(std::string name) {
-    if(signals.find(name) == signals.end())
-        signals[name] = std::vector<SignalListener*>();
+void signal_manager::connect_signal(std::string name, signal_callback_t* callback) {
+    sig[name].push_back(callback);
 }
 
-void Output::SignalManager::trigger_signal(std::string name, SignalListenerData data) {
-    if(signals.find(name) != signals.end()) {
-        std::vector<SignalListener*> toTrigger;
-        for(auto proc : signals[name])
-            toTrigger.push_back(proc);
-
-        for(auto proc : signals[name])
-            proc->action(data);
-    }
-}
-
-void Output::SignalManager::connect_signal(std::string name, SignalListener *callback){
-    add_signal(name);
-    callback->id = core->get_nextid();
-    signals[name].push_back(callback);
-}
-
-void Output::SignalManager::disconnect_signal(std::string name, uint id) {
-    auto it = std::remove_if(signals[name].begin(), signals[name].end(),
-            [id](SignalListener *sigl){
-            return sigl->id == id;
+void signal_manager::disconnect_signal(std::string name, signal_callback_t* callback) {
+    auto it = std::remove_if(sig[name].begin(), sig[name].end(),
+            [=] (const signal_callback_t *call) {
+                return call == callback;
             });
 
-    signals[name].erase(it, signals[name].end());
+    sig[name].erase(it, sig[name].end());
 }
 
-void Output::SignalManager::add_default_signals() {
-    add_signal("create-view");
-    add_signal("destroy-view");
+void signal_manager::emit_signal(std::string name, signal_data *data) {
+    std::vector<signal_callback_t> callbacks;
+    for (auto x : sig[name])
+        callbacks.push_back(*x);
 
-    add_signal("move-request");
-    add_signal("resize-request");
-
-    /* Doesn't actually change anything,
-     * connected listeners should do it */
-    add_signal("change-viewport-request");
-
-    /* Emitted when viewport is changed,
-     * contains the old and the new viewport */
-    add_signal("change-viewport-notify");
-
-    /* Emitted when a the GL context is reloaded
-     * This happens when the tty is switched and then
-     * the whole context is destroyed. At this point
-     * we must recreate all programs and framebuffers */
-    add_signal("reload-gl");
+    for (auto x : callbacks)
+        x(data);
 }
+
 /* End SignalManager */
 /* Start output */
 
-Output::Output(wlc_handle handle, Config *c) {
-    id = handle;
-    auto res = wlc_output_get_resolution(handle);
+wayfire_output::wayfire_output(weston_output *handle, weston_config *c) {
+    this->handle = handle;
 
-    screen_width = res->w;
-    screen_height = res->h;
-
-    signal = new SignalManager();
-    hook = new HookManager();
-    input = new InputManager(hook);
-    render = new RenderManager(this);
-    viewport = new ViewportManager(this);
-    plugin = new PluginManager(this, c);
+    /* TODO: init output */
+    input = new input_manager();
+    render = new render_manager(this);
+    viewport = new viewport_manager(this);
+    plugin = new plugin_manager(this, c);
 }
 
-Output::~Output(){
+wayfire_output::~wayfire_output(){
     delete plugin;
     delete signal;
     delete viewport;
     delete render;
     delete input;
-    delete hook;
 }
 
-void Output::activate() {
+void wayfire_output::activate() {
 }
 
-void Output::deactivate() {
+void wayfire_output::deactivate() {
     render->dirty_context = true;
 }
 
-void Output::attach_view(View v) {
+void wayfire_output::attach_view(wayfire_view v) {
     v->output = this;
-    GetTuple(vx, vy, viewport->get_current_viewport());
-    v->vx = vx;
-    v->vy = vy;
+    //GetTuple(vx, vy, wayfire_viewport->get_current_wayfire_viewport());
+    //v->vx = vx;
+    //v->vy = vy;
 
-    v->set_mask(viewport->get_mask_for_view(v));
+    //v->set_mask(wayfire_viewport->get_mask_for_wayfire_view(v));
 
+    /*
     SignalListenerData data;
     data.push_back(&v);
-    signal->trigger_signal("create-view", data);
+    signal->trigger_signal("create-wayfire_view", data);
+    */
 }
 
-void Output::detach_view(View v) {
+void wayfire_output::detach_view(wayfire_view v) {
+    /*
     SignalListenerData data;
     data.push_back(&v);
-    signal->trigger_signal("destroy-view", data);
+    signal->trigger_signal("destroy-wayfire_view", data);
+    */
+    signal->emit_signal("destroy-view", new destroy_view_signal{v});
 }
 
-void Output::focus_view(View v) {
+void wayfire_output::focus_view(wayfire_view v) {
     if (!v)
         return;
 
-    wlc_view_focus(v->get_id());
-    wlc_view_bring_to_front(v->get_id());
-    wlc_view_set_state(v->get_id(), WLC_BIT_ACTIVATED, 1);
+    // XXX FIXME TODO enable focusing of views
+    /*
+    wlc_wayfire_view_focus(v->get_id());
+    wlc_wayfire_view_bring_to_front(v->get_id());
+    wlc_wayfire_view_set_state(v->get_id(), WLC_BIT_ACTIVATED, 1);
+    */
 }
 
-wlc_handle get_top_view(wlc_handle output) {
+static weston_view get_top_wayfire_view(weston_output* output) {
+    auto ec = output->compositor;
     size_t memb;
-    const wlc_handle *views = wlc_output_get_views(output, &memb);
+    const wlc_handle *wayfire_views = wlc_output_get_wayfire_views(output, &memb);
 
     for (int i = memb - 1; i >= 0; i--) {
-        auto v = core->find_view(views[i]);
+        auto v = core->find_wayfire_view(wayfire_views[i]);
         if (v && v->is_visible())
             return v->get_id();
     }
@@ -764,35 +568,35 @@ wlc_handle get_top_view(wlc_handle output) {
     return 0;
 }
 
-View Output::get_active_view() {
-    return core->find_view(get_top_view(id));
+wayfire_view wayfire_output::get_active_wayfire_view() {
+    return core->find_wayfire_view(get_top_wayfire_view(id));
 }
 
-void Output::for_each_view(ViewCallbackProc call) {
+void wayfire_output::for_each_wayfire_view(wayfire_viewCallbackProc call) {
     size_t num;
-    const wlc_handle* views = wlc_output_get_views(id, &num);
+    const wlc_handle* wayfire_views = wlc_output_get_wayfire_views(id, &num);
     for (int i = num - 1; i >= 0; i--) {
-        auto v = core->find_view(views[i]);
+        auto v = core->find_wayfire_view(wayfire_views[i]);
         if (v)
            call(v);
     }
 }
 
-void Output::for_each_view_reverse(WindowCallbackProc call) {
+void wayfire_output::for_each_wayfire_view_reverse(WindowCallbackProc call) {
     size_t num;
-    const wlc_handle *views = wlc_output_get_views(id, &num);
+    const wlc_handle *wayfire_views = wlc_output_get_wayfire_views(id, &num);
 
     for (size_t i = 0; i < num; i++) {
-        auto v = core->find_view(views[i]);
+        auto v = core->find_wayfire_view(wayfire_views[i]);
         if (v)
            call(v);
     }
 }
 
-View Output::get_view_at_point(int x, int y, uint32_t mask) {
-    View chosen = nullptr;
+wayfire_view wayfire_output::get_wayfire_view_at_point(int x, int y, uint32_t mask) {
+    wayfire_view chosen = nullptr;
 
-    for_each_view([x, y, &chosen, mask] (View v) {
+    for_each_wayfire_view([x, y, &chosen, mask] (wayfire_view v) {
         if ((!mask && v->is_visible() && point_inside({x, y}, v->attrib)) ||
                 (mask && (v->default_mask & mask) && point_inside({x, y}, v->attrib))) {
 

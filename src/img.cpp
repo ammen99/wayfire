@@ -5,6 +5,7 @@
 #include <jpeglib.h>
 #include <jerror.h>
 #include <cstdio>
+#include <iostream>
 
 #define TEXTURE_LOAD_ERROR 0
 

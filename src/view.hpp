@@ -1,52 +1,72 @@
+#ifndef VIEW_HPP
+#define VIEW_HPP
 #include "commonincludes.hpp"
+#include <libweston-desktop.h>
+#include <vector>
+#include <memory>
 
-#define SizeStates (WindowStateMaxH|WindowStateMaxV|WindowStateFullscreen)
+class wayfire_view_transform {
+    public: // applied to all views
+        static glm::mat4 global_rotation;
+        static glm::mat4 global_scale;
+        static glm::mat4 global_translate;
 
-class Transform {
-    public: // applied to all windows
-        static glm::mat4 grot;
-        static glm::mat4 gscl;
-        static glm::mat4 gtrs;
-
-        static glm::mat4 ViewProj;
-        static bool has_rotation;
+        static glm::mat4 global_view_projection;
     public:
         glm::mat4 rotation;
-        glm::mat4 scalation;
+        glm::mat4 scale;
         glm::mat4 translation;
-        glm::mat4 translateToCenter;
 
         glm::vec4 color;
     public:
-        Transform();
-        glm::mat4 compose();
+        wayfire_view_transform();
+        weston_transform calculate_total_transform();
 };
 
-struct EffectHook;
-class Output;
-
-bool point_inside(wlc_point point, wlc_geometry rect);
-bool rect_inside(wlc_geometry screen, wlc_geometry win);
-
-struct Surface {
-    wlc_geometry g;
-    uint32_t tex[3];
-    wlc_surface_format fmt;
+/* effect hooks are called after main rendering */
+using effect_hook_t = std::function<void()>;
+struct effect_hook {
+    effect_hook_t action;
+    int id;
 };
 
-class FireView {
-    wlc_handle view;
-    wlc_resource surface;
+class wayfire_output;
 
+struct wayfire_point {
+    int x, y;
+};
+
+struct wayfire_size {
+    int w, h;
+};
+
+struct wayfire_geometry {
+    wayfire_point origin;
+    wayfire_size size;
+};
+
+bool point_inside(wayfire_point point, wayfire_geometry rect);
+bool rect_inside(wayfire_geometry screen, wayfire_geometry win);
+
+class wayfire_view_t {
     public:
-        Output *output;
+        weston_view *view;
 
-        FireView(wlc_handle);
-        ~FireView();
-        std::unordered_map<uint, EffectHook*> effects;
-        wlc_geometry attrib;
+        wayfire_view_t(weston_surface *surface);
+        ~wayfire_view_t();
 
-        Transform transform;
+        wayfire_output *output;
+
+        wayfire_geometry geometry;
+
+        void move(int x, int y);
+        void resize(int w, int h);
+        void set_geometry(wayfire_geometry g);
+        /* convenience function */
+        void set_geometry(int x, int y, int w, int h);
+
+
+        wayfire_view_transform transform;
 
         bool is_visible();
 
@@ -58,8 +78,11 @@ class FireView {
         /* default_mask is the mask of all viewports the current view is visible on */
         uint32_t default_mask;
         bool has_temporary_mask = false;
+
         /* Set if the current view should not be rendered by built-in renderer */
         bool is_hidden = false;
+
+        std::vector<effect_hook> effects;
 
         /* vx and vy are the coords of the viewport where the top left corner is located */
         int vx, vy;
@@ -67,22 +90,8 @@ class FireView {
         void set_mask(uint32_t mask);
         void restore_mask();
         void set_temporary_mask(uint32_t tmask);
-
-        void move(int x, int y);
-        void resize(int w, int h);
-
-        void set_geometry(int x, int y, int w, int h);
-        void set_geometry(wlc_geometry g);
-
-        wlc_handle get_id() {return view;}
-        wlc_resource get_surface() {return surface;}
-
         void render(uint32_t bits = 0);
-        void snapshot(std::vector<Surface> &v);
 };
 
-void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits = 0);
-void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surface>& v);
-
-typedef std::shared_ptr<FireView> View;
-class Core;
+typedef std::shared_ptr<wayfire_view_t> wayfire_view;
+#endif

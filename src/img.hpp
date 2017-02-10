@@ -2,6 +2,7 @@
 #define IMG_HPP_
 
 #include "commonincludes.hpp"
+#include <GLES2/gl2.h>
 
 #define ulong unsigned long
 

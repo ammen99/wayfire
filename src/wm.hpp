@@ -5,25 +5,22 @@
 
 // The following plugins
 // are very, very simple(they just register a keybinding)
-class Exit : public Plugin {
+class Exit : public wayfire_plugin {
     public:
         void init();
 };
 
-class Close : public Plugin {
+class Close : public wayfire_plugin {
     public:
         void init();
 };
 
-class Refresh : public Plugin { // keybinding to restart window manager
-    KeyBinding ref;
+class Refresh : public wayfire_plugin { // keybinding to restart window manager
     public:
         void init();
 };
 
-class Focus : public Plugin {
-    private:
-        ButtonBinding focus;
+class Focus : public wayfire_plugin {
     public:
         void init();
 };

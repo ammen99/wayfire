@@ -2,53 +2,52 @@
 #define FIRE_H
 
 #include "plugin.hpp"
-#include "config.hpp"
-
+#include <vector>
 #include <map>
 
-using OutputCallbackProc = std::function<void(Output*)>;
+using output_callback_proc = std::function<void(wayfire_output*)>;
 
-class Core {
-    Config *config;
+class wayfire_core {
     uint32_t nextID = 0;
 
-    Output *active_output;
-    std::map<wlc_handle, Output*> outputs;
-    std::unordered_map<wlc_handle, View> views;
+    weston_config *config;
+
+    wayfire_output *active_output;
+    std::map<uint32_t, wayfire_output*> outputs;
+    std::map<weston_view*, wayfire_view> views;
+
+    void configure(weston_config *config);
 
     public:
-    void init();
+    void init(weston_config *config);
 
-    View find_view(wlc_handle handle);
-    void add_view(wlc_handle view);
-    void rem_view(wlc_handle view);
-
+    wayfire_view find_view(weston_view *v);
     /* Only removes the view from the "database".
      * Use only when view is already destroyed and detached from output */
-    void erase_view(wlc_handle view);
+    void erase_view(wayfire_view view);
 
     /* brings the view to the top
      * and also focuses its output */
-    void focus_view(View win);
-    void close_view(View win);
-    void move_view_to_output(View v, Output *old, Output *new_output);
+    void focus_view(wayfire_view win);
+    void close_view(wayfire_view win);
+    void move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output);
 
-    void add_output(wlc_handle o);
-    Output* get_output(wlc_handle o);
-    void focus_output(Output* o);
-    void rem_output(Output* o);
-    Output *get_active_output();
-    Output *get_next_output();
+    void add_output(weston_output *output);
+    wayfire_output* get_output(weston_output *output);
 
-    void for_each_output(OutputCallbackProc);
+    void focus_output(wayfire_output* o);
+    void remove_output(wayfire_output* o);
+
+    wayfire_output *get_active_output();
+    wayfire_output *get_next_output();
+
+    void for_each_output(output_callback_proc);
 
     void run(const char *command);
-
-    uint32_t get_nextid();
 
     int vwidth, vheight;
     std::string background, shadersrc, plugin_path, plugins;
 };
 
-extern Core *core;
+extern wayfire_core *core;
 #endif

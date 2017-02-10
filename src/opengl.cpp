@@ -1,9 +1,8 @@
 #include "opengl.hpp"
 #include "output.hpp"
 
-
 namespace {
-    OpenGL::Context *bound;
+    OpenGL::context_t *bound;
 }
 
 const char* gl_error_string(const GLenum err) {
@@ -29,7 +28,7 @@ void gl_call(const char *func, uint32_t line, const char *glfunc) {
 }
 
 namespace OpenGL {
-    GLuint compileShader(const char *src, GLuint type) {
+    GLuint compile_shader(const char *src, GLuint type) {
         printf("compile shader\n");
 
         GLuint shader = GL_CALL(glCreateShader(type));
@@ -41,37 +40,38 @@ namespace OpenGL {
         GL_CALL(glGetShaderiv(shader, GL_COMPILE_STATUS, &s));
         GL_CALL(glGetShaderInfoLog(shader, 10000, NULL, b1));
 
-
         if ( s == GL_FALSE ) {
-            printf("shader compilation failed!\n"
-                    "src: ***************************\n"
-                    "%s\n"
-                    "********************************\n"
-                    "%s\n"
-                    "********************************\n", src, b1);
+
+            error << "shader compilation failed!\n"
+                    "src: ***************************\n" <<
+                    src <<
+                    "********************************\n" <<
+                    b1 <<
+                    "********************************\n";
             return -1;
         }
         return shader;
     }
 
-    GLuint loadShader(const char *path, GLuint type) {
+    GLuint load_shader(const char *path, GLuint type) {
 
         std::fstream file(path, std::ios::in);
-        if(!file.is_open())
-            printf("Cannot open shader file %s. Aborting\n", path),
-                std::exit(1);
+        if(!file.is_open()) {
+            error << "Cannot open shader file " << path << ". Aborting\n";
+            std::exit(1);
+        }
 
         std::string str, line;
 
         while(std::getline(file, line))
             str += line, str += '\n';
 
-        return compileShader(str.c_str(), type);
+        return compile_shader(str.c_str(), type);
     }
 
-    void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits) {
-        float w2 = float(1366) / 2.;
-        float h2 = float(768) / 2.;
+    void render_texture(GLuint tex, const wayfire_geometry& g, uint32_t bits) {
+        float w2 = float(bound->width) / 2.;
+        float h2 = float(bound->height) / 2.;
 
         float tlx = float(g.origin.x) - w2,
               tly = h2 - float(g.origin.y);
@@ -84,15 +84,7 @@ namespace OpenGL {
             tly += h;
         }
 
-        auto no_color_vector = glm::vec4(1, 1, 1, 1);
-        if(bits & TEXTURE_TRANSFORM_USE_COLOR) {
-            GL_CALL(glUniform4fv(bound->colorID, 1, &bound->color[0]));
-            GL_CALL(glEnable(GL_BLEND));
-            GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-        } else {
-            GL_CALL(glUniform4fv(bound->colorID, 1, &no_color_vector[0]));
-        }
-
+        /* TODO: use TRIANGLE_FAN to make less data uploaded */
         GLfloat vertexData[] = {
             tlx    , tly - h, 0.f, // 1
             tlx + w, tly - h, 0.f, // 2
@@ -123,12 +115,17 @@ namespace OpenGL {
         GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
     }
 
-    void renderTransformedTexture(GLuint tex, const wlc_geometry& g, glm::mat4 Model, uint32_t bits) {
-        GL_CALL(glUniformMatrix4fv(bound->mvpID, 1, GL_FALSE, &Model[0][0]));
-        renderTexture(tex, g, bits);
+    void render_transformed_texture(GLuint tex, const wayfire_geometry& g, glm::mat4 model, glm::vec4 color, uint32_t bits) {
+        GL_CALL(glUniformMatrix4fv(bound->mvpID, 1, GL_FALSE, &model[0][0]));
+        GL_CALL(glUniform4fv(bound->colorID, 1, &color[0]));
+        /* TODO: check if it works with weston */
+        //GL_CALL(glEnable(GL_BLEND));
+        //GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+        render_texture(tex, g, bits);
     }
 
-    void prepareFramebuffer(GLuint &fbuff, GLuint &texture) {
+    void prepare_framebuffer(GLuint &fbuff, GLuint &texture) {
+#ifdef USE_GLES3
         GL_CALL(glGenFramebuffers(1, &fbuff));
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
 
@@ -154,18 +151,20 @@ namespace OpenGL {
         auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
         if (status != GL_FRAMEBUFFER_COMPLETE)
             error << "Error in framebuffer!\n";
+
+#endif /* USE_GLES3 */
     }
 
-    void useDefaultProgram() {
+    void use_default_program() {
          GL_CALL(glUseProgram(bound->program));
     }
 
-    void bind_context(Context *ctx) {
+    void bind_context(context_t *ctx) {
         bound = ctx;
         GL_CALL(glUseProgram(ctx->program));
     }
 
-    void release_context(Context *ctx) {
+    void release_context(context_t *ctx) {
         delete ctx;
     }
 
@@ -194,39 +193,45 @@ R"(#version 100
 )";
 
     GLuint duplicate_texture(GLuint tex, int w, int h) {
-        GLuint dst_fbuff = -1, src_fbuff = -1, dst_tex = -1;
-
-        prepareFramebuffer(dst_fbuff, dst_tex);
+        GLuint dst_tex = -1;
+#ifdef USE_GLES3
+        GLuint dst_fbuff = -1, src_fbuff = -1;
+        prepare_framebuffer(dst_fbuff, dst_tex);
         GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h,
                 0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
 
-        prepareFramebuffer(src_fbuff, tex);
+        prepare_framebuffer(src_fbuff, tex);
 
         GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst_fbuff));
         GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbuff));
-        GL_CALL(glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+
+        if (bound->framebuffer_support) {
+            GL_CALL(bound->glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+        }
 
         renderTransformedTexture(tex, {{0, 0}, {uint32_t(w), uint32_t(h)}});
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
         /* FIXME: check if we can destroy fb */
 //        GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
 //        GL_CALL(glDeleteFramebuffers(1, &src_fbuff));
+#else
+//        GL_CALL(glUseProgram(bound->min_program))
+    //TODO: implement support for non gles3 systems
+#endif
         return dst_tex;
     }
 
-    Context* init_opengl(Output *output, const char *shaderSrcPath) {
-        Context *ctx = new Context;
+    context_t* init_opengl(wayfire_output *output, const char *shaderSrcPath) {
+        context_t *ctx = new context_t;
 
-        ctx->width = output->screen_width;
-        ctx->height = output->screen_height;
+        ctx->width = output->handle->width;
+        ctx->height = output->handle->height;
 
-        std::string tmp = shaderSrcPath;
-
-        GLuint vss = loadShader(std::string(shaderSrcPath)
+        GLuint vss = load_shader(std::string(shaderSrcPath)
                     .append("/vertex.glsl").c_str(),
                      GL_VERTEX_SHADER);
 
-        GLuint fss = loadShader(std::string(shaderSrcPath)
+        GLuint fss = load_shader(std::string(shaderSrcPath)
                     .append("/frag.glsl").c_str(),
                      GL_FRAGMENT_SHADER);
 
@@ -246,8 +251,8 @@ R"(#version 100
         auto w2ID = GL_CALL(glGetUniformLocation(ctx->program, "w2"));
         auto h2ID = GL_CALL(glGetUniformLocation(ctx->program, "h2"));
 
-        glUniform1f(w2ID, output->screen_width / 2.);
-        glUniform1f(h2ID, output->screen_height / 2.);
+        glUniform1f(w2ID, bound->width / 2.);
+        glUniform1f(h2ID, bound->height / 2.);
 
         ctx->position   = GL_CALL(glGetAttribLocation(ctx->program, "position"));
         ctx->uvPosition = GL_CALL(glGetAttribLocation(ctx->program, "uvPosition"));

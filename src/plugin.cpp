@@ -5,11 +5,7 @@ namespace {
     int grabCount = 0;
 }
 
-Data::Data(){}
-SubData::SubData() {}
-SubData::~SubData() {}
-
-void _Ownership::grab() {
+void wayfire_grab_interface_t::grab() {
     if (grabbed)
         return;
 
@@ -22,7 +18,7 @@ void _Ownership::grab() {
     }
 }
 
-void _Ownership::ungrab() {
+void wayfire_grab_interface_t::ungrab() {
     if (!grabbed)
         return;
 
@@ -38,68 +34,15 @@ void _Ownership::ungrab() {
         grabCount = 0;
 }
 
-void Plugin::initOwnership() {
-    owner->name = "Unknown";
-    owner->compatAll = true;
+void wayfire_plugin_t::fini() {}
+
+void weston_config_section_get_cppstring(weston_config_section* section, std::string name,
+        std::string &value, std::string default_value) {
+
+    char *buf;
+    weston_config_section_get_string(section, name.c_str(), &buf, default_value.c_str());
+    value = buf;
+    free(buf);
 }
 
-void Plugin::updateConfiguration() {}
-void Plugin::fini() {}
-
-DataPair newIntOption(std::string name, int defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeInt;
-    pair.second->def.ival = defaultVal;
-    return pair;
-}
-
-DataPair newFloatOption(std::string name, float defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeFloat;
-    pair.second->def.fval = defaultVal;
-    return pair;
-}
-
-DataPair newBoolOption(std::string name, bool defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeBool;
-    pair.second->def.bval = defaultVal;
-    return pair;
-}
-
-DataPair newStringOption(std::string name, std::string defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeString;
-    pair.second->def.sval = new std::string(defaultVal);
-    return pair;
-}
-
-DataPair newColorOption(std::string name, Color defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeColor;
-    pair.second->def.color = new Color(defaultVal);
-    return pair;
-}
-DataPair newKeyOption(std::string name, Key defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeKey;
-    pair.second->def.key = new Key(defaultVal);
-    return pair;
-}
-DataPair newButtonOption(std::string name, Button defaultVal) {
-    auto pair = std::make_pair(name, new Data());
-    pair.second->type = DataTypeButton;
-    pair.second->def.but = new Button(defaultVal);
-    return pair;
-}
-
-void ButtonBinding::enable() { active = true; }
-void ButtonBinding::disable() { active = false; }
-void KeyBinding::enable() { active = true; }
-void KeyBinding::disable() { active = false; }
-
-Hook::Hook() {}
-bool Hook::getState() { return this->active; }
-void Hook::enable() { active = true; }
-void Hook::disable() { active = false; }
 

@@ -2,23 +2,18 @@
 #define PLUGIN_H
 
 #include "view.hpp"
+#include <unordered_set>
 
 using std::string;
-/* a useful macro for making animation/hook duration
- * independent of refresh rate
- * x is in milliseconds(for example see Expo) */
-#define getSteps(x) ((x)/(1000/core->getRefreshRate()))
 
 /*
  * Documentation for writing a plugin
  *
  * Plugins are just objects which are created during init of
- * Core and destroyed when core is destroyed
+ * core and destroyed when core is destroyed
  *
- * Plugins aren't run at any time(i.e between redraws)
- * They must have at least the method init()
- * which is the method when they register on the Core()
- * their bindings and hooks
+ * Plugin's main functionality is achieved through their init() function
+ * where they initialize themselves and register hooks for various events or connect to signals
  *
  * They should not atempt to access the global core variable
  * in their constructors since during that time that global
@@ -31,217 +26,61 @@ using std::string;
  * For example see expo.cpp, move.cpp, resize.cpp
  */
 
-class Output;
-
-using Owner = string;
+class wayfire_output;
+using owner_t = string;
 
 /* owners are used to acquire screen grab and to activate */
-struct _Ownership {
-    Owner name;
-    std::unordered_set<Owner> compat;
+struct wayfire_grab_interface_t {
+    owner_t name;
+    std::unordered_set<owner_t> compat;
     bool compatAll = true;
-    Output *output;
+    const wayfire_output *output;
+
+    wayfire_grab_interface_t(wayfire_output *_output) : output(_output) {}
 
     void grab();
     void ungrab();
     bool grabbed;
 };
 
-using Ownership = std::shared_ptr<_Ownership>;
-
-
-enum DataType { DataTypeBool, DataTypeInt,
-                DataTypeFloat, DataTypeString,
-                DataTypeColor, DataTypeKey,
-                DataTypeButton};
-
-struct Color {
-    float r, g, b;
-};
-struct Key {
-    uint mod;
-    uint key;
-};
-struct Button {
-    uint mod;
-    uint button;
-};
-
-union SubData {
-    bool  bval;
-    int   ival;
-    float fval;
-
-    string *sval;
-    Color  *color;
-    Key    *key;
-    Button *but;
-
-    SubData();
-    ~SubData();
-};
-
-struct Data {
-    DataType type;
-    SubData data, def;
-
-    /* plugins should not touch this,
-     * except for the case when they want the
-     * option to not be read from config file */
-    bool alreadySet = false;
-    Data();
-};
-
-using DataPair = std::pair<string, Data*>;
-/* helper functions to easily add options */
-DataPair newIntOption   (string name, int    defaultVal);
-DataPair newFloatOption (string name, float  defaultVal);
-DataPair newBoolOption  (string name, bool   defaultVal);
-DataPair newStringOption(string name, string defaultVal);
-DataPair newColorOption (string name, Color  defaultVal);
-DataPair newKeyOption   (string name, Key    defaultVal);
-DataPair newButtonOption(string name, Button defaultVal);
-
-void readColor  (string value, Color &colorval);
-void readKey    (string value, Key   &keyval  );
-void readButton (string value, Key   &butval  );
-
-class Plugin {
+using wayfire_grab_interface = std::shared_ptr<wayfire_grab_interface_t>;
+class wayfire_plugin_t {
     public:
-        /* Output this plugin is running on */
-        Output *output;
+        /* the output this plugin is running on
+         * each output has an instance of each plugin, so that the two monitors act independently
+         * in the future there should be an option for mirroring displays */
+        wayfire_output *output;
 
-        std::unordered_map<string, Data*> options;
+        wayfire_grab_interface grab_interface;
 
-        /* initOwnership() should set all values in own */
-        virtual void initOwnership();
-
-        /* each plugin should allocate all options and set their
-         * type and def value in init().
-         * After that they are automatically read
-         * and if not available, the data becomes def */
-        virtual void init() = 0;
-
-        /* used to obtain already read options */
-        virtual void updateConfiguration();
+        /* should read configuration data, attach hooks / keybindings, etc */
+        virtual void init(weston_config *config) = 0;
 
         /* the fini() method should remove all hooks/buttons/keys
          * and of course prepare the plugin for deletion, i.e
          * fini() must act like destuctor */
         virtual void fini();
-        Ownership owner;
 
-        /* plugin must not touch these! */
+        /* used by the plugin loader, shouldn't be modified by plugins */
         bool dynamic = false;
         void *handle;
 };
 
-using PluginPtr = std::shared_ptr<Plugin>;
-/* each dynamic plugin should have the symbol loadFunction() which returns
+using wayfire_plugin = std::shared_ptr<wayfire_plugin_t>;
+/* each dynamic plugin should have the symbol get_plugin_instance() which returns
  * an instance of the plugin */
-typedef Plugin *(*LoadFunction)();
+typedef wayfire_plugin_t *(*get_plugin_instance_t)();
 
-/* TODO: make EventContext saner */
-struct EventContext {
-    struct {
-        struct {
-            int x_root, y_root;
-        } xbutton;
-
-        struct {
-            uint32_t key;
-            uint32_t mod;
-        } xkey; /* represents both button click and key press */
-    } xev;
-
-    /* used for scroll events */
-    double amount[2];
-
-    EventContext(int x, int y, int key, int mod) {
-        xev.xbutton.x_root = x;
-        xev.xbutton.y_root = y;
-
-        xev.xkey.key = key;
-        xev.xkey.mod = mod;
-    }
-
-    EventContext(double x, double y) {
-        amount[0] = x;
-        amount[1] = y;
-    }
-};
-
-enum BindingType {
-    BindingTypePress,
-    BindingTypeRelease
-};
-
-struct Binding{
-    bool active = false;
-    BindingType type;
-    uint32_t mod;
-    uint id;
-    std::function<void(EventContext)> action;
-};
-
-struct KeyBinding : Binding {
-    uint32_t key;
-
-    void enable();
-    void disable();
-};
-
-struct ButtonBinding : Binding {
-    uint32_t button;
-
-    void enable();
-    void disable();
-};
-
-// hooks are used to handle pointer motion
-struct Hook {
-    protected:
-        bool active = false;
-    public:
-        uint id;
-        std::function<void(void)> action;
-
-        virtual void enable();
-        virtual void disable();
-        bool getState();
-        Hook();
-};
-
-/* render hooks are used to replace the renderAllWindows()
- * when necessary, i.e to render completely custom
- * image */
-using RenderHook = std::function<void()>;
-
-/* Effects are used to draw over the screen, e.g when animating window actions */
-/* Effects render directly to Core's framebuffer
- * They are either as overlays, which means they are always drawn
- * or they are on per-window basis */
-
-enum EffectType { EFFECT_OVERLAY, EFFECT_WINDOW };
-struct EffectHook : public Hook {
-    EffectType type;
-
-    /* used only if type == EFFECT_WINDOW */
-    View win;
-};
-
-using SignalListenerData = std::vector<void*>;
-
-struct SignalListener {
-    std::function<void(SignalListenerData)> action;
-    uint id;
-};
+/* render hooks are used when a plugin requests to draw the whole desktop on their own
+ * example plugin is cube */
+using render_hook_t = std::function<void()>;
 
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
 
-using WindowCallbackProc = std::function<void(View)>;
-
-
+using view_callback_proc_t = std::function<void(wayfire_view)>;
 
 #endif
+
+void weston_config_section_get_cppstring(weston_config_section *section,
+        std::string name, std::string& val, std::string default_value);

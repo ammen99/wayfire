@@ -1,7 +1,17 @@
 #ifndef DRIVER_H
 #define DRIVER_H
 
-#include "core.hpp"
+#ifndef USE_GLES3
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#else
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
+#endif
+
+#include <glm/glm.hpp>
+#include <map>
+#include "view.hpp"
 
 void gl_call(const char*, uint32_t, const char*);
 
@@ -13,39 +23,44 @@ void gl_call(const char*, uint32_t, const char*);
 /* This macro is taken from WLC source code */
 #define GL_CALL(x) x; gl_call(__PRETTY_FUNCTION__, __LINE__, __STRING(x))
 
-#define TEXTURE_TRANSFORM_INVERT_Y 1
+#define TEXTURE_TRANSFORM_INVERT_Y  (1 << 0)
 #define TEXTURE_TRANSFORM_USE_COLOR (1 << 1)
 
 namespace OpenGL {
 
     /* Different Context is kept for each output */
     /* Each of the following functions uses the currently bound context */
-    struct Context {
+    struct context_t {
         GLuint program, min_program;
-        glm::vec4 color;
+
         GLuint mvpID, colorID;
         GLuint position, uvPosition;
 
         int32_t width, height;
+
+
     };
 
-    Context* init_opengl(Output *output, const char *shaderSrcPath);
-    void bind_context(Context* ctx);
-    void release_context(Context *ctx);
+    context_t* create_gles_context(wayfire_output *output, const char *shader_src_path);
+    void bind_context(context_t* ctx);
+    void release_context(context_t *ctx);
 
-    void renderTransformedTexture(GLuint text, const wlc_geometry& g,
-            glm::mat4 transform = glm::mat4(), uint32_t bits = 0);
-    void renderTexture(GLuint tex, const wlc_geometry& g, uint32_t bits);
+    void render_transformed_texture(GLuint text, const wayfire_geometry& g,
+            glm::mat4 transform = glm::mat4(), glm::vec4 color = glm::vec4(1.f),
+            uint32_t bits = 0);
+    void render_texture(GLuint tex, const wayfire_geometry& g, uint32_t bits);
+
     GLuint duplicate_texture(GLuint source_tex, int w, int h);
 
-    GLuint loadShader(const char *path, GLuint type);
-    GLuint compileShader(const char* src, GLuint type);
+    GLuint load_shader(const char *path, GLuint type);
+    GLuint compile_shader(const char *src, GLuint type);
 
-    void prepareFramebuffer(GLuint &fbuff, GLuint &texture);
+#ifdef USE_GLES3
+    void prepare_framebuffer(GLuint& fbuff, GLuint& texture);
+#endif
 
     /* set program to current program */
-    void useDefaultProgram();
+    void use_default_program();
 }
-
 
 #endif

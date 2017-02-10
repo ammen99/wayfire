@@ -2,75 +2,45 @@
 #include "output.hpp"
 #include "img.hpp"
 
-class CorePlugin : public Plugin {
-    public:
-        void init() {
-            options.insert(newIntOption("vwidth", 3));
-            options.insert(newIntOption("vheight", 3));
-            options.insert(newStringOption("background", ""));
-            options.insert(newStringOption("shadersrc", "/usr/share/wayfire/shaders"));
-            options.insert(newStringOption("pluginpath", "/usr/lib/"));
-            options.insert(newStringOption("plugins", ""));
+void wayfire_core::configure(weston_config *config) {
+    this->config = config;
+    weston_config_section *sect =
+        weston_config_get_section(config, "core", NULL, NULL);
 
-            options.insert(newStringOption("key_repeat_rate", "50"));
-            options.insert(newStringOption("key_repeat_delay", "350"));
+    weston_config_section_get_int(sect, "vwidth", &core->vwidth, 3);
+    weston_config_section_get_int(sect, "vheight", &core->vheight, 3);
 
-            options.insert(newStringOption("kbd_model", "pc100"));
-            options.insert(newStringOption("kbd_layouts", "us"));
-            options.insert(newStringOption("kbd_variants", ""));
-            options.insert(newStringOption("kbd_options", "grp:alt_shift_toggl"));
-        }
+    weston_config_section_get_cppstring(sect, "background", core->background, "");
+    weston_config_section_get_cppstring(sect, "shadersrc", core->shadersrc, "/usr/share/wayfire/shaders");
+    weston_config_section_get_cppstring(sect, "pluginpathprefix", core->plugin_path, "/usr/lib/");
+    weston_config_section_get_cppstring(sect, "plugins", core->plugins, "");
 
-        void initOwnership() {
-            owner->name = "core";
-            owner->compatAll = true;
-        }
-        void updateConfiguration() {
-            core->vwidth  = options["vwidth"]->data.ival;
-            core->vheight = options["vheight"]->data.ival;
+    /*
+       options.insert(newStringOption("key_repeat_rate", "50"));
+       options.insert(newStringOption("key_repeat_delay", "350"));
 
-            core->background  = *options["background"]->data.sval;
-            core->shadersrc   = *options["shadersrc"]->data.sval;
-            core->plugin_path = *options["pluginpath"]->data.sval;
-            core->plugins     = *options["plugins"]->data.sval;
-
-            setenv("WLC_REPEAT_RATE", options["key_repeat_rate"]->data.sval->c_str(), 1);
-            setenv("WLC_REPEAT_DELAY", options["key_repeat_delay"]->data.sval->c_str(), 1);
-
-            setenv("XKB_DEFAULT_MODEL", options["kbd_model"]->data.sval->c_str(), 1);
-            setenv("XKB_DEFAULT_LAYOUT", options["kbd_layouts"]->data.sval->c_str(), 1);
-            setenv("XKB_DEFAULT_VARIANT", options["kbd_variants"]->data.sval->c_str(), 1);
-            setenv("XKB_DEFAULT_OPTIONS", options["kbd_options"]->data.sval->c_str(), 1);
-        }
-};
-
-Core *core;
-
-void Core::init() {
-    PluginPtr plug = std::static_pointer_cast<Plugin>(std::make_shared<CorePlugin>());
-    plug->owner = std::make_shared<_Ownership>();
-    plug->initOwnership();
-    plug->init();
-
-    config = new Config("/home/ilex/.config/firerc");
-    config->setOptionsForPlugin(plug);
-
-    plug->updateConfiguration();
-    plug.reset();
-
+       options.insert(newStringOption("kbd_model", "pc100"));
+       options.insert(newStringOption("kbd_layouts", "us"));
+       options.insert(newStringOption("kbd_variants", ""));
+       options.insert(newStringOption("kbd_options", "grp:win_space_toggle"));
+       */
+}
+void wayfire_core::init(weston_config *conf) {
+    configure(conf);
     image_io::init();
 }
 
-void Core::add_output(wlc_handle o) {
-    if (outputs.find(o) != outputs.end())
+void wayfire_core::add_output(weston_output *output) {
+    weston_view *v;
+    if (outputs.find(output->id) != outputs.end())
         return;
 
-    outputs.insert(std::make_pair(o, new Output(o, config)));
+    outputs[output->id] = new wayfire_output(output, config);
     wlc_output_set_mask(o, 1);
     focus_output(outputs[o]);
 }
 
-void Core::focus_output(Output *o) {
+void wayfire_core::focus_output(Output *o) {
     if (!o)
         return;
 
@@ -78,7 +48,7 @@ void Core::focus_output(Output *o) {
     active_output = o;
 }
 
-Output* Core::get_output(wlc_handle handle) {
+Output* wayfire_core::get_output(wlc_handle handle) {
     auto it = outputs.find(handle);
     if (it != outputs.end()) {
         return it->second;
@@ -87,11 +57,11 @@ Output* Core::get_output(wlc_handle handle) {
     }
 }
 
-Output* Core::get_active_output() {
+Output* wayfire_core::get_active_output() {
     return active_output;
 }
 
-Output* Core::get_next_output() {
+Output* wayfire_core::get_next_output() {
     auto id = active_output->id;
     auto it = outputs.find(id);
     ++it;
@@ -103,12 +73,12 @@ Output* Core::get_next_output() {
     }
 }
 
-void Core::for_each_output(OutputCallbackProc call) {
+void wayfire_core::for_each_output(OutputCallbackProc call) {
     for (auto o : outputs)
         call(o.second);
 }
 
-void Core::add_view(wlc_handle view) {
+void wayfire_core::add_view(wlc_handle view) {
     View v = std::make_shared<FireView>(view);
 
     views[view] = v;
@@ -131,7 +101,7 @@ void Core::add_view(wlc_handle view) {
     }
 }
 
-View Core::find_view(wlc_handle handle) {
+View wayfire_core::find_view(wlc_handle handle) {
     auto it = views.find(handle);
     if (it == views.end()) {
         return nullptr;
@@ -140,7 +110,7 @@ View Core::find_view(wlc_handle handle) {
     }
 }
 
-void Core::focus_view(View v) {
+void wayfire_core::focus_view(View v) {
     if (!v)
         return;
 
@@ -150,7 +120,7 @@ void Core::focus_view(View v) {
     active_output->focus_view(v);
 }
 
-void Core::close_view(View v) {
+void wayfire_core::close_view(View v) {
     if (!v)
        return;
 
@@ -158,7 +128,7 @@ void Core::close_view(View v) {
     focus_view(active_output->get_active_view());
 }
 
-void Core::rem_view(wlc_handle v) {
+void wayfire_core::rem_view(wlc_handle v) {
     auto it = views.find(v);
     if (it != views.end()) {
         auto view = it->second;
@@ -172,7 +142,7 @@ void Core::rem_view(wlc_handle v) {
     }
 }
 
-void Core::erase_view(wlc_handle v) {
+void wayfire_core::erase_view(wlc_handle v) {
     views.erase(v);
 }
 
@@ -180,18 +150,18 @@ namespace {
     int last_id = 0;
 }
 
-uint32_t Core::get_nextid() {
+uint32_t wayfire_core::get_nextid() {
     return ++last_id;
 }
 
-void Core::run(const char *command) {
+void wayfire_core::run(const char *command) {
     auto pid = fork();
 
     if (!pid)
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
 }
 
-void Core::move_view_to_output(View v, Output *old, Output *new_output) {
+void wayfire_core::move_view_to_output(View v, Output *old, Output *new_output) {
     if (old && v->output && old->id == v->output->id)
         old->detach_view(v);
 
@@ -202,4 +172,4 @@ void Core::move_view_to_output(View v, Output *old, Output *new_output) {
     }
 }
 
-
+wayfire_core *core;

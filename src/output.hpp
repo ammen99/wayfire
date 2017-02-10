@@ -3,207 +3,167 @@
 
 #include "plugin.hpp"
 #include "opengl.hpp"
+#include <vector>
 
-using ViewCallbackProc = std::function<void(View)>;
+/* TODO: add plugin->output so that plugins know which output they're running on */
+/* Controls loading of plugins */
+struct plugin_manager {
+    std::vector<wayfire_plugin> plugins;
 
-class Core;
-class Output {
+    template<class T> wayfire_plugin create_plugin();
+    wayfire_plugin load_plugin_from_file(std::string path, void **handle);
+    void load_dynamic_plugins();
+    void init_default_plugins();
+    plugin_manager(wayfire_output *o, weston_config *config);
+    ~plugin_manager();
+};
 
-    friend struct Hook;
-    friend class Core;
-
-    wlc_handle id;
-
+/* Manages input grabs */
+struct input_manager {
     private:
-    /* TODO: add plugin->output so that plugins know which output they're running on */
-    /* Controls loading of plugins */
-    struct PluginManager {
-        std::vector<PluginPtr> plugins;
+        std::unordered_set<wayfire_grab_interface> active_plugins;
 
-        template<class T> PluginPtr create_plugin();
-        PluginPtr load_plugin_from_file(std::string path, void **handle);
-        void load_dynamic_plugins();
-        void init_default_plugins();
-        PluginManager(Output *o, Config *config);
-        ~PluginManager();
-    } *plugin;
+        int keyboard_grab_count = 0;
+        int pointer_grab_count = 0;
+    public:
+        bool activate_plugin  (wayfire_grab_interface owner);
+        bool deactivate_plugin(wayfire_grab_interface owner);
+        bool is_plugin_active (owner_t owner_name);
+
+        void grab_keyboard();
+        void ungrab_keyboard();
+        void grab_pointer();
+        void ungrab_pointer();
+};
+struct render_manager {
+    private:
+        wayfire_output *output;
+
+        int redraw_timer = 0;
+        struct {
+            GLuint tex = -1;
+            GLuint fbuff;
+            unsigned long w, h;
+        } background;
+
+        render_hook_t renderer;
+#define ALL_VISIBLE 4294967295 // All 32 bits are on
+        uint32_t visibility_mask = ALL_VISIBLE;
+
+        void load_background();
+    public:
+        render_manager(wayfire_output *o);
+
+        bool dirty_context = true;
+        OpenGL::context_t *ctx;
+        void load_context();
+        void release_context();
+
+#ifdef USE_GLES3
+        void blit_background(GLuint destination_fbuff);
+#endif
+        GLuint get_background() {return background.tex;}
+
+        void set_renderer(uint32_t visibility_mask = ALL_VISIBLE, render_hook_t rh = nullptr);
+        void transformation_renderer();
+        void reset_renderer();
+        bool renderer_running() { return renderer != nullptr || redraw_timer; }
+        void paint();
+        void post_paint();
+
+        bool should_repaint_everything() { return redraw_timer > 0; }
+
+        void force_full_redraw(bool state) {
+            if(state) ++redraw_timer;
+            else if(redraw_timer) --redraw_timer;
+        }
+
+        /* this function renders a viewport and
+         * saves the image in texture which is returned */
+#ifdef USE_GLES3
+        void texture_from_viewport(std::tuple<int, int>, GLuint& fbuff, GLuint &tex);
+#endif
+
+        std::vector<effect_hook> output_effects;
+        void add_output_effect(effect_hook&, wayfire_view v = nullptr);
+        void rem_effect(const effect_hook&, wayfire_view v = nullptr);
+};
+
+struct viewport_manager {
+    private:
+        int vwidth, vheight, vx, vy;
+        wayfire_output *output;
+
+    public:
+        viewport_manager(wayfire_output *o);
+        /* returns viewport mask for a View, assuming it is on current viewport */
+        uint32_t get_mask_for_view(wayfire_view);
+
+        /* returns the coords of the viewport where top left corner of a view is,
+         * assuming the view coords are on current viewport */
+        void get_viewport_for_view(wayfire_view, int&, int&);
+
+        uint32_t get_mask_for_viewport(int x, int y) {
+            return (1 << (x + y * vwidth));
+        }
+
+        std::vector<wayfire_view> get_views_on_viewport(std::tuple<int, int>);
+        void set_viewport(std::tuple<int, int>);
+
+        std::tuple<int, int> get_current_viewport();
+        std::tuple<int, int> get_viewport_grid_size();
+};
+
+/* when creating a signal there should be the definition of the derived class */
+struct signal_data {
+};
+using signal_callback_t = std::function<void(signal_data*)>;
+
+struct signal_manager {
+    private:
+        std::map<std::string, std::vector<signal_callback_t*>> sig;
+    public:
+        signal_manager();
+        void connect_signal(std::string name, signal_callback_t* callback);
+        void disconnect_signal(std::string name, signal_callback_t* callback);
+        void emit_signal(std::string name, signal_data *data);
+};
+
+class wayfire_output {
+    friend class core_t;
+    private:
+        plugin_manager *plugin;
 
     public:
 
-    struct InputManager;
-    /* Controls key/buttonbindings and hooks */
-    struct HookManager {
-        friend struct Output::InputManager;
-        private:
-            int cnt_hooks = 0;
-            std::vector<KeyBinding*> keys;
-            std::vector<ButtonBinding*> buttons;
-            std::vector<Hook*> hooks;
 
-        public:
+    weston_output* handle;
+    std::tuple<int, int> get_screen_size() {return std::make_tuple(handle->width, handle->height);}
 
-            void add_key (KeyBinding *kb, bool grab = false);
-            void rem_key (uint key);
-
-            void add_but (ButtonBinding *bb, bool grab = false);
-            void rem_but (uint key);
-
-            void add_hook(Hook*);
-            void rem_hook(uint key);
-            void run_hooks();
-
-            int running_hooks() { return cnt_hooks; }
-    } *hook;
-
-    /* Controls input/output */
-    struct InputManager {
-        private:
-            std::unordered_set<Ownership> active_owners;
-            int mousex, mousey; // pointer x, y
-
-            int keyboard_grab_count = 0;
-            int pointer_grab_count = 0;
-
-            /* Pointer to this output's hook manager
-             * Needed to activate button/keybindings */
-            Output::HookManager *hook_mgr;
-
-        public:
-            InputManager(HookManager *hmgr) : hook_mgr(hmgr) {}
-            bool activate_owner  (Ownership owner);
-            bool deactivate_owner(Ownership owner);
-            bool is_owner_active (std::string owner_name);
-
-            void grab_keyboard();
-            void ungrab_keyboard();
-            void grab_pointer();
-            void ungrab_pointer();
-
-            bool check_key(KeyBinding *kb, uint32_t key, uint32_t mod);
-            bool check_but_press  (ButtonBinding *bb, uint32_t button, uint32_t mod);
-            bool check_but_release(ButtonBinding *bb, uint32_t button);
-
-            bool process_key_event(uint32_t key, uint32_t mods, wlc_key_state state);
-            bool process_button_event(uint32_t button, uint32_t mods, wlc_button_state state, wlc_point point);
-            bool process_pointer_motion_event(wlc_point point);
-            bool process_scroll_event(uint32_t mods, double amount[2]);
-
-            std::tuple<int, int> get_pointer_position();
-    } *input;
-
-    int32_t screen_width, screen_height;
-    std::tuple<int, int> get_screen_size() {return std::make_tuple(screen_width, screen_height);}
-
-    struct RenderManager {
-        private:
-            Output *output;
-
-            int redraw_timer = 0;
-            struct {
-                GLuint tex = -1;
-                GLuint fbuff;
-                unsigned long w, h;
-            } background;
-
-            RenderHook renderer;
-            #define ALL_VISIBLE 4294967295 // All 32 bits are on
-            uint32_t visibility_mask = ALL_VISIBLE;
-
-            void load_background();
-        public:
-            RenderManager(Output *o);
-
-            bool dirty_context = true;
-            OpenGL::Context *ctx;
-            void load_context();
-            void release_context();
-
-            void blit_background(GLuint destination_fbuff);
-            GLuint get_background() {return background.tex;}
-
-            void set_renderer(uint32_t visibility_mask = ALL_VISIBLE, RenderHook rh = nullptr);
-            void transformation_renderer();
-            void reset_renderer();
-            bool renderer_running() { return renderer != nullptr || redraw_timer; }
-            void paint();
-            void post_paint();
-
-            bool should_render_view(wlc_handle view) {
-                View v = core->find_view(view);
-                return v && (v->default_mask & visibility_mask) && renderer == nullptr;
-            }
-            bool should_repaint_everything() { return redraw_timer > 0; }
-            void set_redraw_everything(bool state) {
-                if(state) ++redraw_timer;
-                else if(redraw_timer) --redraw_timer;
-            }
-
-            /* this function renders a viewport and
-             * saves the image in texture which is returned */
-            void texture_from_viewport(std::tuple<int, int>, GLuint& fbuff, GLuint &tex);
-
-            std::vector<EffectHook*> effects;
-            void add_effect(EffectHook *);
-            void rem_effect(uint key, View win = nullptr);
-        } *render;
+    input_manager *input;
+    render_manager *render;
+    viewport_manager *viewport;
+    signal_manager *signal;
 
     bool should_redraw() {
-        return render->renderer_running() || hook->running_hooks() > 0;
+        return render->renderer_running();
     }
 
-    struct ViewportManager {
-        private:
-            int vwidth, vheight, vx, vy;
-            Output *output;
-
-        public:
-            ViewportManager(Output *o);
-            /* returns viewport mask for a View, assuming it is on current viewport */
-            uint32_t get_mask_for_view(View);
-
-            /* returns the coords of the viewport where top left corner of a view is,
-             * assuming the view coords are on current viewport */
-            void get_viewport_for_view(View, int&, int&);
-            uint32_t get_mask_for_viewport(int x, int y) {
-                return (1 << (x + y * vwidth));
-            }
-
-
-            std::vector<View> get_windows_on_viewport(std::tuple<int, int>);
-            void switch_workspace(std::tuple<int, int>);
-
-            std::tuple<int, int> get_current_viewport();
-            std::tuple<int, int> get_viewport_grid_size();
-    } *viewport;
-
-    struct SignalManager {
-        private:
-            std::unordered_map<std::string, std::vector<SignalListener*>> signals;
-            void add_default_signals();
-
-        public:
-            void add_signal(std::string name);
-            void connect_signal(std::string name, SignalListener *callback);
-            void disconnect_signal(std::string name, uint id);
-            void trigger_signal(std::string name, SignalListenerData data);
-    } *signal;
-
-    Output(wlc_handle handle, Config *config);
-    ~Output();
+    wayfire_output(weston_output*, weston_config *config);
+    ~wayfire_output();
 
     void activate();
     void deactivate();
 
-    wlc_handle get_handle() {return id;}
-    View get_active_view();
-    View get_view_at_point(int x, int y, uint32_t mask = 0);
+    wayfire_view get_active_view();
+    wayfire_view get_view_at_point(int x, int y, uint32_t mask = 0);
 
-    void for_each_view(ViewCallbackProc);
-    void for_each_view_reverse(ViewCallbackProc);
+    void for_each_view(view_callback_proc_t);
+    void for_each_view_reverse(view_callback_proc_t);
 
-    void attach_view(View v);
-    void detach_view(View v);
-    void focus_view(View v);
+    void attach_view(wayfire_view v);
+    void detach_view(wayfire_view v);
+    void focus_view(wayfire_view v);
 };
 
 #endif /* end of include guard: OUTPUT_HPP */
