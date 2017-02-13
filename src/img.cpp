@@ -6,6 +6,7 @@
 #include <jerror.h>
 #include <cstdio>
 #include <iostream>
+#include <unordered_map>
 
 #define TEXTURE_LOAD_ERROR 0
 

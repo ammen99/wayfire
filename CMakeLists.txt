@@ -19,7 +19,7 @@ add_executable(wayfire ${SOURCES})
 
 # Libraries
 target_link_libraries(wayfire jpeg GLESv2)
-target_link_libraries(wayfire dl wlc wayland-server weston-1 weston-desktop-1 png xkbcommon)
+target_link_libraries(wayfire dl wayland-server weston-1 weston-desktop-1 png xkbcommon)
 
 # Installation
 install(TARGETS wayfire DESTINATION bin)

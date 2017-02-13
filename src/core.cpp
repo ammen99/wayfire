@@ -1,6 +1,7 @@
 #include "core.hpp"
 #include "output.hpp"
 #include "img.hpp"
+#include <unistd.h>
 
 void wayfire_core::configure(weston_config *config) {
     this->config = config;
@@ -25,31 +26,29 @@ void wayfire_core::configure(weston_config *config) {
        options.insert(newStringOption("kbd_options", "grp:win_space_toggle"));
        */
 }
-void wayfire_core::init(weston_config *conf) {
+void wayfire_core::init(weston_compositor *comp, weston_config *conf) {
+    ec = comp;
     configure(conf);
     image_io::init();
 }
 
 void wayfire_core::add_output(weston_output *output) {
-    weston_view *v;
     if (outputs.find(output->id) != outputs.end())
         return;
 
     outputs[output->id] = new wayfire_output(output, config);
-    wlc_output_set_mask(o, 1);
-    focus_output(outputs[o]);
+    focus_output(outputs[output->id]);
 }
 
-void wayfire_core::focus_output(Output *o) {
+void wayfire_core::focus_output(wayfire_output *o) {
     if (!o)
         return;
 
-    wlc_output_focus(o->get_handle());
     active_output = o;
 }
 
-Output* wayfire_core::get_output(wlc_handle handle) {
-    auto it = outputs.find(handle);
+wayfire_output* wayfire_core::get_output(weston_output *handle) {
+    auto it = outputs.find(handle->id);
     if (it != outputs.end()) {
         return it->second;
     } else {
@@ -57,12 +56,12 @@ Output* wayfire_core::get_output(wlc_handle handle) {
     }
 }
 
-Output* wayfire_core::get_active_output() {
+wayfire_output* wayfire_core::get_active_output() {
     return active_output;
 }
 
-Output* wayfire_core::get_next_output() {
-    auto id = active_output->id;
+wayfire_output* wayfire_core::get_next_output() {
+    auto id = active_output->handle->id;
     auto it = outputs.find(id);
     ++it;
 
@@ -73,35 +72,22 @@ Output* wayfire_core::get_next_output() {
     }
 }
 
-void wayfire_core::for_each_output(OutputCallbackProc call) {
+void wayfire_core::for_each_output(output_callback_proc call) {
     for (auto o : outputs)
         call(o.second);
 }
 
-void wayfire_core::add_view(wlc_handle view) {
-    View v = std::make_shared<FireView>(view);
+void wayfire_core::add_view(weston_view *view) {
+    wayfire_view v = std::make_shared<wayfire_view_t> (view);
 
     views[view] = v;
     if (active_output)
         active_output->attach_view(v);
 
-    wlc_view_bring_to_front(view);
-    uint32_t type = wlc_view_get_type(view);
-
-    switch (type) {
-        case 0:
-        case WLC_BIT_MODAL:
-        case WLC_BIT_OVERRIDE_REDIRECT:
-            wlc_view_focus(view);
-            wlc_view_set_state(view, WLC_BIT_ACTIVATED, true);
-            break;
-        /* popups and others */
-        default:
-            break;
-    }
+    focus_view(v);
 }
 
-View wayfire_core::find_view(wlc_handle handle) {
+wayfire_view wayfire_core::find_view(weston_view *handle) {
     auto it = views.find(handle);
     if (it == views.end()) {
         return nullptr;
@@ -110,26 +96,31 @@ View wayfire_core::find_view(wlc_handle handle) {
     }
 }
 
-void wayfire_core::focus_view(View v) {
+void wayfire_core::focus_view(wayfire_view v) {
     if (!v)
         return;
 
     if (v->output != active_output)
         focus_output(v->output);
 
+    /* TODO: get current seat -> keyboard -> set_keyboard_focus */
     active_output->focus_view(v);
 }
 
-void wayfire_core::close_view(View v) {
+void wayfire_core::close_view(wayfire_view v) {
     if (!v)
        return;
 
-    wlc_view_close(v->get_id());
+
+    auto surf = weston_surface_get_desktop_surface(v->view->surface);
+    weston_desktop_surface_close(surf);
+    /* XXX: maybe wait a little bit for the view to close, possibly ignore the closed view */
     focus_view(active_output->get_active_view());
 }
 
-void wayfire_core::rem_view(wlc_handle v) {
-    auto it = views.find(v);
+void wayfire_core::erase_view(wayfire_view v) {
+    if (!v) return;
+    auto it = views.find(v->view);
     if (it != views.end()) {
         auto view = it->second;
 
@@ -142,16 +133,8 @@ void wayfire_core::rem_view(wlc_handle v) {
     }
 }
 
-void wayfire_core::erase_view(wlc_handle v) {
-    views.erase(v);
-}
-
 namespace {
     int last_id = 0;
-}
-
-uint32_t wayfire_core::get_nextid() {
-    return ++last_id;
 }
 
 void wayfire_core::run(const char *command) {
@@ -161,8 +144,8 @@ void wayfire_core::run(const char *command) {
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
 }
 
-void wayfire_core::move_view_to_output(View v, Output *old, Output *new_output) {
-    if (old && v->output && old->id == v->output->id)
+void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output) {
+    if (old && v->output && old == v->output)
         old->detach_view(v);
 
     if (new_output) {

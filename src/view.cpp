@@ -1,29 +1,22 @@
 #include "core.hpp"
 #include "opengl.hpp"
 #include "output.hpp"
-#include <wlc/wlc-wayland.h>
+#include <glm/glm.hpp>
 
 
 /* misc definitions */
 
-glm::mat4 Transform::grot;
-glm::mat4 Transform::gscl;
-glm::mat4 Transform::gtrs;
-glm::mat4 Transform::ViewProj;
+glm::mat4 wayfire_view_transform::global_rotation;
+glm::mat4 wayfire_view_transform::global_scale;
+glm::mat4 wayfire_view_transform::global_translate;
+glm::mat4 wayfire_view_transform::global_view_projection;
 
-bool Transform::has_rotation = false;
-
-Transform::Transform() {
-    this->translation = glm::mat4();
-    this->rotation = glm::mat4();
-    this->scalation = glm::mat4();
+glm::mat4 wayfire_view_transform::calculate_total_transform() {
+    return global_view_projection * (global_translate * translation) *
+        (global_rotation * rotation) * (global_scale *scale);
 }
 
-glm::mat4 Transform::compose() {
-    return ViewProj*(gtrs*translation)*(grot*rotation)*(gscl*scalation);
-}
-
-bool point_inside(wlc_point point, wlc_geometry rect) {
+bool point_inside(wayfire_point point, wayfire_geometry rect) {
     if(point.x < rect.origin.x || point.y < rect.origin.y)
         return false;
 
@@ -36,7 +29,7 @@ bool point_inside(wlc_point point, wlc_geometry rect) {
     return true;
 }
 
-bool rect_inside(wlc_geometry screen, wlc_geometry win) {
+bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
     if (win.origin.x + (int32_t)win.size.w < screen.origin.x ||
         win.origin.y + (int32_t)win.size.h < screen.origin.y)
         return false;
@@ -47,73 +40,77 @@ bool rect_inside(wlc_geometry screen, wlc_geometry win) {
     return true;
 }
 
-FireView::FireView(wlc_handle _view) {
+wayfire_view_t::wayfire_view_t(weston_view *_view) {
     view    = _view;
-    surface = wlc_view_get_surface(view);
     output  = core->get_active_output();
 
-    auto geom = wlc_view_get_geometry(view);
-    attrib = *geom;
+    /// FIXME : get geometry
+    //geometry.origin.x = view->geometry.xjko;
+    //auto geom = wlc_view_get_geometry(view);
+    //attrib = *geom;
 }
 
-FireView::~FireView() {
+wayfire_view_t::~wayfire_view_t() {
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
 
 
 
-bool FireView::is_visible() {
-    return wlc_output_get_mask(wlc_get_focused_output()) & default_mask;
+// TODO: implement is_visible
+bool wayfire_view_t::is_visible() {
+    return true;
+    //return wlc_output_get_mask(wlc_get_focused_output()) & default_mask;
 }
 
-void FireView::move(int x, int y) {
+void wayfire_view_t::move(int x, int y) {
     auto v = core->find_view(view);
-    attrib.origin = {x, y};
-    wlc_view_set_geometry(view, 0, &attrib);
+    //attrib.origin = {x, y};
+    //wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireView::resize(int w, int h) {
-    attrib.size = {(uint32_t)w, uint32_t(h)};
-
-    wlc_view_set_geometry(view, 0, &attrib);
+void wayfire_view_t::resize(int w, int h) {
+    //attrib.size = {(uint32_t)w, uint32_t(h)};
+    //wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireView::set_geometry(wlc_geometry g) {
-    attrib = g;
-    wlc_view_set_geometry(view, 0, &attrib);
+void wayfire_view_t::set_geometry(wayfire_geometry g) {
+    //attrib = g;
+    //wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireView::set_geometry(int x, int y, int w, int h) {
-    attrib = (wlc_geometry) {
+void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
+    geometry = (wayfire_geometry) {
         .origin = {x, y},
-        .size = {(uint32_t)w, (uint32_t)h}
+        .size = {(int32_t)w, (int32_t)h}
     };
 
-    wlc_view_set_geometry(view, 0, &attrib);
+    //wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void FireView::set_mask(uint32_t mask) {
+void wayfire_view_t::set_mask(uint32_t mask) {
     default_mask = mask;
     if (!has_temporary_mask)
         restore_mask();
 }
 
-void FireView::restore_mask() {
-    wlc_view_set_mask(view, default_mask);
-    has_temporary_mask = false;
+void wayfire_view_t::restore_mask() {
+    //wlc_view_set_mask(view, default_mask);
+    //has_temporary_mask = false;
 }
 
-void FireView::set_temporary_mask(uint32_t tmask) {
-    wlc_view_set_mask(view, tmask);
+void wayfire_view_t::set_temporary_mask(uint32_t tmask) {
+    //wlc_view_set_mask(view, tmask);
     has_temporary_mask = true;
 }
 
-void FireView::render(uint32_t bits) {
+void wayfire_view_t::render(uint32_t bits) {
+    /*
     wlc_geometry g;
     wlc_view_get_visible_geometry(get_id(), &g);
     render_surface(surface, g, transform.compose(), bits);
 
+    */
     /*
     std::vector<EffectHook*> hooks_to_run;
     for (auto hook : effects) {
@@ -127,16 +124,17 @@ void FireView::render(uint32_t bits) {
     */
 }
 
-void FireView::snapshot(std::vector<Surface> &v) {
+/*
+void wayfire_view_t::snapshot() {
     v.clear();
     wlc_geometry vis;
     wlc_view_get_visible_geometry(view, &vis);
     collect_subsurfaces(surface, vis, v);
 }
+*/
 
-#include <wlc/wlc-wayland.h>
-#include <wlc/wlc-render.h>
 
+/*
 void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surface>& v) {
     Surface s;
     wlc_surface_get_textures(surface, s.tex, &s.fmt);
@@ -183,3 +181,4 @@ static void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 trans
         render_surface(subsurfaces[i], sub_g, transform, bits);
     }
 }
+*/

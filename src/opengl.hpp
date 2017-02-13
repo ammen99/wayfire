@@ -37,8 +37,6 @@ namespace OpenGL {
         GLuint position, uvPosition;
 
         int32_t width, height;
-
-
     };
 
     context_t* create_gles_context(wayfire_output *output, const char *shader_src_path);

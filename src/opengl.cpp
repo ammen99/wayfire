@@ -205,11 +205,13 @@ R"(#version 100
         GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst_fbuff));
         GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbuff));
 
-        if (bound->framebuffer_support) {
-            GL_CALL(bound->glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
-        }
+//        if (bound->framebuffer_support) {
+#ifdef USE_GLES3
+            GL_CALL(glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+#endif
+ //       }
 
-        renderTransformedTexture(tex, {{0, 0}, {uint32_t(w), uint32_t(h)}});
+        render_transformed_texture(tex, {{0, 0}, {int32_t(w), int32_t(h)}});
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
         /* FIXME: check if we can destroy fb */
 //        GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
@@ -221,7 +223,7 @@ R"(#version 100
         return dst_tex;
     }
 
-    context_t* init_opengl(wayfire_output *output, const char *shaderSrcPath) {
+    context_t* create_gles_context(wayfire_output *output, const char *shaderSrcPath) {
         context_t *ctx = new context_t;
 
         ctx->width = output->handle->width;

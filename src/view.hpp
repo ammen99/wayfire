@@ -1,7 +1,7 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 #include "commonincludes.hpp"
-#include <libweston-desktop.h>
+#include <libweston-1/libweston-desktop.h>
 #include <vector>
 #include <memory>
 
@@ -19,8 +19,7 @@ class wayfire_view_transform {
 
         glm::vec4 color;
     public:
-        wayfire_view_transform();
-        weston_transform calculate_total_transform();
+        glm::mat4 calculate_total_transform();
 };
 
 /* effect hooks are called after main rendering */
@@ -52,7 +51,7 @@ class wayfire_view_t {
     public:
         weston_view *view;
 
-        wayfire_view_t(weston_surface *surface);
+        wayfire_view_t(weston_view *_view);
         ~wayfire_view_t();
 
         wayfire_output *output;

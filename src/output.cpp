@@ -84,10 +84,13 @@ wayfire_plugin plugin_manager::create_plugin() {
 }
 
 void plugin_manager::init_default_plugins() {
+    // TODO: rewrite default plugins */
+    /*
     plugins.push_back(create_plugin<Focus>());
     plugins.push_back(create_plugin<Exit>());
     plugins.push_back(create_plugin<Close>());
     plugins.push_back(create_plugin<Refresh>());
+    */
 }
 
 /* End plugin_manager */
@@ -137,6 +140,23 @@ bool input_manager::is_plugin_active(owner_t name) {
 
     return false;
 }
+
+static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data) {
+    key_callback call = *((key_callback*)data);
+    call(key);
+}
+
+static void buttonbinding_handler(weston_pointer *ptr, uint32_t time, uint32_t key, void *data) {
+    key_callback call = *((key_callback*)data);
+    call(key);
+}
+weston_binding* input_manager::add_key(weston_keyboard_modifier mod, uint32_t key, key_callback *call) {
+    return weston_compositor_add_key_binding(core->ec, key, mod, keybinding_handler, (void*)call);
+}
+
+weston_binding* input_manager::add_button(weston_keyboard_modifier mod, uint32_t button, button_callback *call) {
+    return weston_compositor_add_button_binding(core->ec, button, mod, buttonbinding_handler, (void*)call);
+}
 /* End input_manager */
 
 /* Start render_manager */
@@ -181,14 +201,14 @@ void render_manager::release_context() {
     dirty_context = true;
 }
 
-void render_manager::blit_background(GLuint dest) {
 #ifdef USE_GLES3
+void render_manager::blit_background(GLuint dest) {
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
     GL_CALL(glBlitFramebuffer(0, 0, background.w, background.h,
                 0, output->handle->height, output->handle->width, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR));
-#endif
 }
+#endif
 
 render_manager::render_manager(wayfire_output *o) {
     output = o;
@@ -227,8 +247,8 @@ void render_manager::paint() {
 
     if (renderer) {
         renderer();
-    } else {
-        blit_background(0);
+    } else {//TODO: paint background
+        //blit_background(0);
     }
 }
 
@@ -243,7 +263,8 @@ void render_manager::post_paint() {
 }
 
 void render_manager::transformation_renderer() {
-    blit_background(0);
+    // TODO: paint background
+    //blit_background(0);
     output->for_each_view_reverse([=](wayfire_view v) {
         if(!v->is_hidden && (v->default_mask & visibility_mask) && !v->destroyed) {
         // TODO: render with weston
@@ -547,6 +568,7 @@ void wayfire_output::focus_view(wayfire_view v) {
         return;
 
     // XXX FIXME TODO enable focusing of views
+    // should be done using weston_view_activate on current seat
     /*
     wlc_wayfire_view_focus(v->get_id());
     wlc_wayfire_view_bring_to_front(v->get_id());

@@ -9,10 +9,7 @@
 void print_trace() {
     error << "stack trace:\n";
 
-    // storage array for stack trace address data
     void* addrlist[max_frames + 1];
-
-    // retrieve current stack addresses
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
     if (addrlen == 0) {
@@ -20,22 +17,14 @@ void print_trace() {
         return;
     }
 
-    // resolve addresses into strings containing "filename(function+address)",
-    // this array must be free()-ed
     char** symbollist = backtrace_symbols(addrlist, addrlen);
 
-    //allocate string which will be filled with
-    //the demangled function name
     size_t funcnamesize = 256;
     char* funcname = (char*)malloc(funcnamesize);
 
-    // iterate over the returned symbol lines. skip the first, it is the
-    // address of this function.
     for(int i = 1; i < addrlen; i++) {
         char *begin_name = 0, *begin_offset = 0, *end_offset = 0;
 
-        // find parentheses and +address offset surrounding the mangled name:
-        // ./module(function+0x15c)[0x8048a6d]
         for(char* p = symbollist[i]; *p; ++p) {
             if(*p == '(')
                 begin_name = p;
@@ -72,8 +61,39 @@ void print_trace() {
 }
 
 
+extern weston_compositor *crash_compositor;
 
 void signalHandle(int sig) {
     error << "Crash detected!" << std::endl;
     print_trace();
+
+    crash_compositor->backend->restore(crash_compositor);
+    raise(SIGTRAP);
 }
+static int
+vlog(const char *fmt, va_list ap)
+{
+    char buf[4096];
+	vsnprintf(buf, 4095, fmt, ap);
+    file_debug << "[weston] " << buf;
+    file_debug.flush();
+	return 0;
+}
+static int
+vlog_continue(const char *fmt, va_list argp)
+{
+    char buf[4096];
+	vsnprintf(buf, 4095, fmt, argp);
+    file_debug << buf;
+    file_debug.flush();
+    return 0;
+}
+static void
+wayland_log_handler(const char *fmt, va_list arg)
+{
+    char buf[4096];
+	vsnprintf(buf, 4095, fmt, arg);
+    file_debug << "[wayland] " << buf;
+    file_debug.flush();
+}
+

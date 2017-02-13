@@ -18,7 +18,11 @@ struct plugin_manager {
     ~plugin_manager();
 };
 
+
+using key_callback = std::function<void(uint32_t)>;
+using button_callback = key_callback;
 /* Manages input grabs */
+/* TODO: make compatible with weston */
 struct input_manager {
     private:
         std::unordered_set<wayfire_grab_interface> active_plugins;
@@ -34,6 +38,10 @@ struct input_manager {
         void ungrab_keyboard();
         void grab_pointer();
         void ungrab_pointer();
+
+        /* TODO: support touch */
+        weston_binding* add_key(weston_keyboard_modifier mod, uint32_t key, key_callback*);
+        weston_binding* add_button(weston_keyboard_modifier mod, uint32_t button, button_callback*);
 };
 struct render_manager {
     private:

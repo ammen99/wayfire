@@ -1,8 +1,9 @@
 #include "wm.hpp"
 #include "output.hpp"
 
-void Exit::init() {
-    KeyBinding *exit = new KeyBinding();
+/*
+void Exit::init(weston_config*) {
+    output->input->add_key()
     exit->action = [](EventContext ctx){
         wlc_terminate();
     };
@@ -13,7 +14,7 @@ void Exit::init() {
 }
 
 //TODO: implement refresh using wlc
-void Refresh::init() {
+void Refresh::init(weston_config*) {
     ref.key = XKB_KEY_r;
     ref.type = BindingTypePress;
     ref.mod = WLC_BIT_MOD_CTRL | WLC_BIT_MOD_ALT;
@@ -24,7 +25,7 @@ void Refresh::init() {
     output->hook->add_key(&ref, true);
 }
 
-void Close::init() {
+void Close::init(weston_config*) {
     KeyBinding *close = new KeyBinding();
     close->mod = WLC_BIT_MOD_ALT;
     close->type = BindingTypePress;
@@ -35,7 +36,7 @@ void Close::init() {
     output->hook->add_key(close, true);
 }
 
-void Focus::init() {
+void Focus::init(weston_config*) {
     focus.type = BindingTypePress;
 
     focus.button = BTN_LEFT;
@@ -50,3 +51,4 @@ void Focus::init() {
 
     output->hook->add_but(&focus, false);
 }
+*/
