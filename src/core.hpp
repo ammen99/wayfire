@@ -22,8 +22,9 @@ class wayfire_core {
     weston_compositor *ec;
     void init(weston_compositor *ec, weston_config *config);
 
-    void add_view(weston_view *v);
-    wayfire_view find_view(weston_view *v);
+    void add_view(weston_desktop_surface*);
+    wayfire_view find_view(weston_view*);
+    wayfire_view find_view(weston_desktop_surface*);
     /* Only removes the view from the "database".
      * Use only when view is already destroyed and detached from output */
     void erase_view(wayfire_view view);

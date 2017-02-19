@@ -77,7 +77,15 @@ void wayfire_core::for_each_output(output_callback_proc call) {
         call(o.second);
 }
 
-void wayfire_core::add_view(weston_view *view) {
+
+void wayfire_core::add_view(weston_desktop_surface *ds) {
+
+    auto view = weston_desktop_surface_create_view(ds);
+    view->plane = view->plane; /* workaround for compiler warning */
+
+    weston_desktop_surface_set_user_data(ds, NULL);
+    weston_desktop_surface_set_activated(ds, true);
+
     wayfire_view v = std::make_shared<wayfire_view_t> (view);
 
     views[view] = v;

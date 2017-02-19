@@ -49,6 +49,7 @@ bool rect_inside(wayfire_geometry screen, wayfire_geometry win);
 
 class wayfire_view_t {
     public:
+        weston_desktop_surface *desktop_surface;
         weston_view *view;
 
         wayfire_view_t(weston_view *_view);
@@ -56,7 +57,7 @@ class wayfire_view_t {
 
         wayfire_output *output;
 
-        wayfire_geometry geometry;
+        wayfire_geometry geometry, saved_geometry;
 
         void move(int x, int y);
         void resize(int w, int h);
@@ -64,10 +65,17 @@ class wayfire_view_t {
         /* convenience function */
         void set_geometry(int x, int y, int w, int h);
 
+        bool maximized = false, fullscreen = false;
+        /* TODO: implement set_fullscreen and add support for workarea in wayfire_output */
+        void set_maximized(bool maxim);
+        //void set_fullscreen(bool fullscreen);
 
         wayfire_view_transform transform;
 
         bool is_visible();
+
+        bool is_mapped = false;
+        void map();
 
         /* Used to specify that this view has been destroyed.
          * Useful when animating view close */

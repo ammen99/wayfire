@@ -6,6 +6,9 @@
 
 using std::string;
 
+using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
+using button_callback = std::function<void(weston_pointer*, uint32_t)>;
+
 /*
  * Documentation for writing a plugin
  *

@@ -1,5 +1,6 @@
 #include "wm.hpp"
 #include "output.hpp"
+#include <linux/input.h>
 
 /*
 void Exit::init(weston_config*) {
@@ -35,14 +36,19 @@ void Close::init(weston_config*) {
     };
     output->hook->add_key(close, true);
 }
+*/
 
-void Focus::init(weston_config*) {
-    focus.type = BindingTypePress;
+void wayfire_focus::init(weston_config* config) {
+    callback = new button_callback();
+    /*
+    *callback = [=] (weston_pointer *ptr, uint32_t button) {
+        auto surf = weston_surface_get_main_surface(ptr->focus->surface);
+        weston_view_activate(surf->view)
 
-    focus.button = BTN_LEFT;
-    focus.mod = 0;
-    focus.active = true;
 
+    };
+    output->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, [=] (uint32_t key) {
+    });
     focus.action = [=] (EventContext ctx){
         auto xev = ctx.xev.xbutton;
         auto w = output->get_view_at_point(xev.x_root, xev.y_root);
@@ -50,5 +56,5 @@ void Focus::init(weston_config*) {
     };
 
     output->hook->add_but(&focus, false);
+    */
 }
-*/

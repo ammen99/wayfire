@@ -1,6 +1,7 @@
 #include "opengl.hpp"
 #include "output.hpp"
 #include "signal_definitions.hpp"
+
 #include "wm.hpp"
 
 #include <sstream>
@@ -143,12 +144,12 @@ bool input_manager::is_plugin_active(owner_t name) {
 
 static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data) {
     key_callback call = *((key_callback*)data);
-    call(key);
+    call(kbd, key);
 }
 
-static void buttonbinding_handler(weston_pointer *ptr, uint32_t time, uint32_t key, void *data) {
-    key_callback call = *((key_callback*)data);
-    call(key);
+static void buttonbinding_handler(weston_pointer *ptr, uint32_t time, uint32_t button, void *data) {
+    button_callback call = *((button_callback*)data);
+    call(ptr, button);
 }
 weston_binding* input_manager::add_key(weston_keyboard_modifier mod, uint32_t key, key_callback *call) {
     return weston_compositor_add_key_binding(core->ec, key, mod, keybinding_handler, (void*)call);

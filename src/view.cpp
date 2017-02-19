@@ -88,6 +88,18 @@ void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
     //wlc_view_set_geometry(view, 0, &attrib);
 }
 
+void wayfire_view_t::set_maximized(bool maxim) {
+    if (fullscreen)
+        return;
+
+    if (maxim && !maximized) {
+        saved_geometry = geometry;
+        set_geometry(0, 0, output->handle->width, output->handle->height);
+    } else if (!maxim && maximized) {
+        set_geometry(saved_geometry);
+    }
+}
+
 void wayfire_view_t::set_mask(uint32_t mask) {
     default_mask = mask;
     if (!has_temporary_mask)

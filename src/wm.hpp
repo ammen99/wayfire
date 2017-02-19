@@ -22,9 +22,10 @@ class Refresh : public wayfire_plugin_t { // keybinding to restart window manage
         void init(weston_config *);
 };
 
-class Focus : public wayfire_plugin_t {
+*/
+class wayfire_focus : public wayfire_plugin_t {
+    button_callback *callback;
     public:
         void init(weston_config *);
 };
-*/
 #endif

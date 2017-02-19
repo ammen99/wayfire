@@ -18,9 +18,6 @@ struct plugin_manager {
     ~plugin_manager();
 };
 
-
-using key_callback = std::function<void(uint32_t)>;
-using button_callback = key_callback;
 /* Manages input grabs */
 /* TODO: make compatible with weston */
 struct input_manager {
