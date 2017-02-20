@@ -8,7 +8,7 @@
 #include <wayland-server.h>
 #include <libweston-1/timeline-object.h>
 
-std::ofstream file_debug, file_info, file_error;
+std::ofstream file_info, file_error;
 weston_compositor *crash_compositor;
 
 weston_desktop_api desktop_api;
@@ -51,21 +51,12 @@ int main(int argc, char *argv[]) {
     names.options = NULL;
 
     weston_compositor_set_xkb_rule_names(ec, &names);
-    //load_wayland_backend(ec);
-    error << "pre-loading" << std::endl;
-    /*
-    if (load_drm_backend(ec) < 0) {
-        error << "could not load drm backend, exiting" << std::endl;
-        return -1;
-    }
-    */
-    error << "drm loaded" << std::endl;
 
- //   core = new Core();
+    core = new wayfire_core();
     ec->user_data = core;
+    core->init(ec, config);
 
-    //load_wayland_backend(ec);
-    load_drm_backend(ec);
+    load_wayland_backend(ec);
 
     auto socket_name = wl_display_add_socket_auto(display);
     if (!socket_name) {

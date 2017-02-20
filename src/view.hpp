@@ -50,7 +50,8 @@ bool rect_inside(wayfire_geometry screen, wayfire_geometry win);
 class wayfire_view_t {
     public:
         weston_desktop_surface *desktop_surface;
-        weston_view *view;
+        weston_surface *surface;
+        weston_view *handle;
 
         wayfire_view_t(weston_view *_view);
         ~wayfire_view_t();
@@ -58,6 +59,11 @@ class wayfire_view_t {
         wayfire_output *output;
 
         wayfire_geometry geometry, saved_geometry;
+
+        struct {
+            bool is_xorg;
+            int x, y;
+        } xwayland;
 
         void move(int x, int y);
         void resize(int w, int h);
@@ -75,7 +81,7 @@ class wayfire_view_t {
         bool is_visible();
 
         bool is_mapped = false;
-        void map();
+        void map(int sx, int sy);
 
         /* Used to specify that this view has been destroyed.
          * Useful when animating view close */

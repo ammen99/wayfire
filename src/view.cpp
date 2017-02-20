@@ -100,6 +100,20 @@ void wayfire_view_t::set_maximized(bool maxim) {
     }
 }
 
+void wayfire_view_t::map(int sx, int sy) {
+
+    if (xwayland.is_xorg) {
+        /* TODO: position xorg views, see weston shell.c#2432 */
+    } else {
+        weston_view_set_position(handle, 0, 0);
+    }
+
+    weston_view_update_transform(handle);
+    handle->is_mapped = true;
+
+    /* TODO: see shell.c#activate() */
+}
+
 void wayfire_view_t::set_mask(uint32_t mask) {
     default_mask = mask;
     if (!has_temporary_mask)
