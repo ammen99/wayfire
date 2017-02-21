@@ -8,7 +8,7 @@
 #include <wayland-server.h>
 #include <libweston-1/timeline-object.h>
 
-std::ofstream file_info, file_error;
+std::ofstream file_info, file_null, *file_debug;
 weston_compositor *crash_compositor;
 
 weston_desktop_api desktop_api;
@@ -33,8 +33,10 @@ int main(int argc, char *argv[]) {
 
     auto display = wl_display_create();
 
-//    weston_config *config = weston_config_parse("wayfire.ini");
+    /* TODO: load non-hardcoded config file, useful for debug */
+    weston_config *config = weston_config_parse("/home/ilex/firerc");
     auto ec = weston_compositor_create(display, NULL);
+
     crash_compositor = ec;
     ec->idle_time = 300;
     ec->repaint_msec = 16;
@@ -75,6 +77,7 @@ int main(int argc, char *argv[]) {
     desktop_api.struct_size = sizeof(weston_desktop_api);
     desktop_api.surface_added = desktop_surface_added;
     desktop_api.surface_removed = desktop_surface_removed;
+    desktop_api.committed = desktop_surface_commited;
 
     auto desktop = weston_desktop_create(ec, &desktop_api, NULL);
     if (!desktop) {
@@ -82,7 +85,13 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    weston_output *output;
+    wl_list_for_each(output, &ec->output_list, link) {
+        core->add_output(output);
+    }
+
     weston_compositor_wake(ec);
+
     wl_display_run(display);
 
     return EXIT_SUCCESS;

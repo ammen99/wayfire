@@ -140,8 +140,6 @@ class wayfire_output {
         plugin_manager *plugin;
 
     public:
-
-
     weston_output* handle;
     std::tuple<int, int> get_screen_size() {return std::make_tuple(handle->width, handle->height);}
 
@@ -162,6 +160,9 @@ class wayfire_output {
 
     wayfire_view get_active_view();
     wayfire_view get_view_at_point(int x, int y);
+
+    /* TODO: add other layers, draw cursor in cursor_layer */
+    weston_layer normal_layer;
 
     void for_each_view(view_callback_proc_t);
     void for_each_view_reverse(view_callback_proc_t);

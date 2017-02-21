@@ -41,7 +41,7 @@ bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
 }
 
 wayfire_view_t::wayfire_view_t(weston_view *_view) {
-    view    = _view;
+    //view    = _view;
     output  = core->get_active_output();
 
     /// FIXME : get geometry
@@ -64,7 +64,7 @@ bool wayfire_view_t::is_visible() {
 }
 
 void wayfire_view_t::move(int x, int y) {
-    auto v = core->find_view(view);
+    //auto v = core->find_view(view);
     //attrib.origin = {x, y};
     //wlc_view_set_geometry(view, 0, &attrib);
 }

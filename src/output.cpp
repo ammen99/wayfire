@@ -213,6 +213,8 @@ void render_manager::blit_background(GLuint dest) {
 
 render_manager::render_manager(wayfire_output *o) {
     output = o;
+    /* TODO: load context now or later?
+     * Also hijack weston renderer */
     //load_context();
 }
 
@@ -523,6 +525,8 @@ wayfire_output::wayfire_output(weston_output *handle, weston_config *c) {
     render = new render_manager(this);
     viewport = new viewport_manager(this);
     plugin = new plugin_manager(this, c);
+
+    weston_layer_init(&normal_layer, &core->ec->cursor_layer.link);
 }
 
 wayfire_output::~wayfire_output(){
@@ -542,6 +546,8 @@ void wayfire_output::deactivate() {
 
 void wayfire_output::attach_view(wayfire_view v) {
     v->output = this;
+
+    weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
     //GetTuple(vx, vy, wayfire_viewport->get_current_wayfire_viewport());
     //v->vx = vx;
     //v->vy = vy;

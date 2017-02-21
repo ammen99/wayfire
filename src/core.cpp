@@ -80,6 +80,7 @@ void wayfire_core::for_each_output(output_callback_proc call) {
 
 void wayfire_core::add_view(weston_desktop_surface *ds) {
 
+    /* TODO: move view initialization to wayfire_view_t constructor */
     auto view = weston_desktop_surface_create_view(ds);
     view->plane = view->plane; /* workaround for compiler warning */
 
@@ -89,6 +90,10 @@ void wayfire_core::add_view(weston_desktop_surface *ds) {
     wayfire_view v = std::make_shared<wayfire_view_t> (view);
 
     views[view] = v;
+    v->desktop_surface = ds;
+    v->surface = weston_desktop_surface_get_surface(ds);
+    v->handle = view;
+
     if (active_output)
         active_output->attach_view(v);
 
@@ -102,6 +107,14 @@ wayfire_view wayfire_core::find_view(weston_view *handle) {
     } else {
         return it->second;
     }
+}
+
+wayfire_view wayfire_core::find_view(weston_desktop_surface *desktop_surface) {
+    for (auto v : views)
+        if (v.second->desktop_surface == desktop_surface)
+            return v.second;
+
+    return nullptr;
 }
 
 void wayfire_core::focus_view(wayfire_view v) {
@@ -119,16 +132,14 @@ void wayfire_core::close_view(wayfire_view v) {
     if (!v)
        return;
 
-
-    auto surf = weston_surface_get_desktop_surface(v->view->surface);
-    weston_desktop_surface_close(surf);
+    weston_desktop_surface_close(v->desktop_surface);
     /* XXX: maybe wait a little bit for the view to close, possibly ignore the closed view */
     focus_view(active_output->get_active_view());
 }
 
 void wayfire_core::erase_view(wayfire_view v) {
     if (!v) return;
-    auto it = views.find(v->view);
+    auto it = views.find(v->handle);
     if (it != views.end()) {
         auto view = it->second;
 

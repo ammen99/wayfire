@@ -119,29 +119,29 @@ namespace image_io {
         if (!png)
             return;
 
-        png_infop info = png_create_info_struct(png);
-        if (!info) {
-            png_destroy_write_struct(&png, &info);
+        png_infop infot = png_create_info_struct(png);
+        if (!infot) {
+            png_destroy_write_struct(&png, &infot);
             return;
         }
 
         FILE *fp = fopen(name, "wb");
         if (!fp) {
-            png_destroy_write_struct(&png, &info);
+            png_destroy_write_struct(&png, &infot);
             return;
         }
 
         png_init_io(png, fp);
-        png_set_IHDR(png, info, w, h, 8 /* depth */, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
+        png_set_IHDR(png, infot, w, h, 8 /* depth */, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
                 PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
         png_colorp palette = (png_colorp)png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color));
         if (!palette) {
             fclose(fp);
-            png_destroy_write_struct(&png, &info);
+            png_destroy_write_struct(&png, &infot);
             return;
         }
-        png_set_PLTE(png, info, palette, PNG_MAX_PALETTE_LENGTH);
-        png_write_info(png, info);
+        png_set_PLTE(png, infot, palette, PNG_MAX_PALETTE_LENGTH);
+        png_write_info(png, infot);
         png_set_packing(png);
 
         png_bytepp rows = (png_bytepp)png_malloc(png, h * sizeof(png_bytep));
@@ -149,9 +149,9 @@ namespace image_io {
             rows[i] = (png_bytep)(pixels + (h - i) * w * 4);
 
         png_write_image(png, rows);
-        png_write_end(png, info);
+        png_write_end(png, infot);
         png_free(png, palette);
-        png_destroy_write_struct(&png, &info);
+        png_destroy_write_struct(&png, &infot);
 
         fclose(fp);
         delete[] rows;
@@ -164,36 +164,36 @@ namespace image_io {
         unsigned int type;
         unsigned char * rowptr[1];
         unsigned char * jdata;
-        struct jpeg_decompress_struct info;
+        struct jpeg_decompress_struct infot;
         struct jpeg_error_mgr err;
 
         std::FILE* file = fopen(FileName, "rb");
-        info.err = jpeg_std_error(& err);
-        jpeg_create_decompress(&info);
+        infot.err = jpeg_std_error(& err);
+        jpeg_create_decompress(&infot);
 
         if(!file) {
             error << "Error reading JPEG file" << FileName << std::endl;
             return 0;
         }
 
-        jpeg_stdio_src(&info, file);
-        jpeg_read_header(&info, TRUE);
-        jpeg_start_decompress(&info);
+        jpeg_stdio_src(&infot, file);
+        jpeg_read_header(&infot, TRUE);
+        jpeg_start_decompress(&infot);
 
-        x = info.output_width;
-        y = info.output_height;
-        channels = info.num_components;
+        x = infot.output_width;
+        y = infot.output_height;
+        channels = infot.num_components;
         type = GL_RGB;
         if(channels == 4) type = GL_RGBA;
         data_size = x * y * 3;
 
         jdata = new unsigned char[data_size];
-        while (info.output_scanline < info.output_height) {
-            rowptr[0] = (unsigned char *)jdata +  3* info.output_width * info.output_scanline;
-            jpeg_read_scanlines(&info, rowptr, 1);
+        while (infot.output_scanline < infot.output_height) {
+            rowptr[0] = (unsigned char *)jdata +  3* infot.output_width * infot.output_scanline;
+            jpeg_read_scanlines(&infot, rowptr, 1);
         }
 
-        jpeg_finish_decompress(&info);
+        jpeg_finish_decompress(&infot);
 
         GL_CALL(glGenTextures(1,&texture_id));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, texture_id));

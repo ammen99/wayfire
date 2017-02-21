@@ -65,7 +65,7 @@ int load_wayland_backend(weston_compositor *ec) {
     config.outputs[0].transform = WL_OUTPUT_TRANSFORM_NORMAL;
     config.outputs[0].scale = 1;
 
-    return weston_compositor_load_backend(ec,WESTON_BACKEND_WAYLAND, &config.base);
+    return weston_compositor_load_backend(ec, WESTON_BACKEND_WAYLAND, &config.base);
 }
 
 #endif /* end of include guard: WESTON_BACKEND_HPP */

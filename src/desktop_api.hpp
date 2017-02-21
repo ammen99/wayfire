@@ -29,11 +29,19 @@ void desktop_surface_commited (weston_desktop_surface *desktop_surface,
 
     if (!weston_surface_is_mapped(view->surface)) {
         view->map(sx, sy);
-        return;
+        //return;
     }
 
     /* TODO: handle fullscreen and maximized state
      * weston_desktop_surface_get_fullscreen() && weston_desktop_surface_get_maximized() */
+
+
+    debug << "listing outputs" << std::endl;
+    weston_output *output;
+    wl_list_for_each(output, &core->ec->output_list, link) {
+        weston_output_schedule_repaint(output);
+        debug << "output id: " << output->id << std::endl;
+    }
 }
 
 void desktop_surface_set_xwayland_position(weston_desktop_surface *desktop_surface,
