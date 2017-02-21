@@ -40,21 +40,17 @@ void Close::init(weston_config*) {
 
 void wayfire_focus::init(weston_config* config) {
     callback = new button_callback();
-    /*
     *callback = [=] (weston_pointer *ptr, uint32_t button) {
+        if (!ptr->focus)
+            return;
+
         auto surf = weston_surface_get_main_surface(ptr->focus->surface);
-        weston_view_activate(surf->view)
-
-
+        weston_desktop_surface *ds;
+        wayfire_view view;
+        if ((ds = weston_surface_get_desktop_surface(surf)) && (view = core->find_view(ds))) {
+            weston_view_activate(view->handle, ptr->seat,
+                    WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+        }
     };
-    output->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, [=] (uint32_t key) {
-    });
-    focus.action = [=] (EventContext ctx){
-        auto xev = ctx.xev.xbutton;
-        auto w = output->get_view_at_point(xev.x_root, xev.y_root);
-        if (w) core->focus_view(w);
-    };
-
-    output->hook->add_but(&focus, false);
-    */
+    output->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, callback);
 }

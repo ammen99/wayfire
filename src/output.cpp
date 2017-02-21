@@ -86,6 +86,7 @@ wayfire_plugin plugin_manager::create_plugin() {
 
 void plugin_manager::init_default_plugins() {
     // TODO: rewrite default plugins */
+    plugins.push_back(create_plugin<wayfire_focus>());
     /*
     plugins.push_back(create_plugin<Focus>());
     plugins.push_back(create_plugin<Exit>());
