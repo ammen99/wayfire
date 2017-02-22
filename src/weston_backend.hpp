@@ -59,8 +59,8 @@ int load_wayland_backend(weston_compositor *ec) {
     config.outputs = (weston_wayland_backend_output_config*)
         std::malloc(sizeof(weston_wayland_backend_output_config));
 
-    config.outputs[0].width = 800;
-    config.outputs[0].height = 800;
+    config.outputs[0].width = 1600;
+    config.outputs[0].height = 900;
     config.outputs[0].name = NULL;
     config.outputs[0].transform = WL_OUTPUT_TRANSFORM_NORMAL;
     config.outputs[0].scale = 1;

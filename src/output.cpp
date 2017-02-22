@@ -571,17 +571,20 @@ void wayfire_output::detach_view(wayfire_view v) {
     signal->emit_signal("destroy-view", new destroy_view_signal{v});
 }
 
-void wayfire_output::focus_view(wayfire_view v) {
+void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
     if (!v)
         return;
 
-    // XXX FIXME TODO enable focusing of views
-    // should be done using weston_view_activate on current seat
-    /*
-    wlc_wayfire_view_focus(v->get_id());
-    wlc_wayfire_view_bring_to_front(v->get_id());
-    wlc_wayfire_view_set_state(v->get_id(), WLC_BIT_ACTIVATED, 1);
-    */
+    weston_view_activate(v->handle, seat,
+            WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+
+    weston_view_geometry_dirty(v->handle);
+    weston_layer_entry_remove(&v->handle->layer_link);
+    weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
+    weston_view_geometry_dirty(v->handle);
+    weston_surface_damage(v->surface);
+
+    weston_desktop_surface_propagate_layer(v->desktop_surface);
 }
 
 static weston_view* get_top_view(weston_output* output) {

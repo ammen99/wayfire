@@ -169,7 +169,7 @@ class wayfire_output {
 
     void attach_view(wayfire_view v);
     void detach_view(wayfire_view v);
-    void focus_view(wayfire_view v);
+    void focus_view(wayfire_view v, weston_seat *seat);
 };
 
 #endif /* end of include guard: OUTPUT_HPP */

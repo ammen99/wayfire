@@ -48,8 +48,7 @@ void wayfire_focus::init(weston_config* config) {
         weston_desktop_surface *ds;
         wayfire_view view;
         if ((ds = weston_surface_get_desktop_surface(surf)) && (view = core->find_view(ds))) {
-            weston_view_activate(view->handle, ptr->seat,
-                    WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+            view->output->focus_view(view, ptr->seat);
         }
     };
     output->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, callback);

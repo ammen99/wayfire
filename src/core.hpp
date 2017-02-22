@@ -22,6 +22,8 @@ class wayfire_core {
     weston_compositor *ec;
     void init(weston_compositor *ec, weston_config *config);
 
+    weston_seat *get_current_seat();
+
     void add_view(weston_desktop_surface*);
     wayfire_view find_view(weston_view*);
     wayfire_view find_view(weston_desktop_surface*);
@@ -31,7 +33,7 @@ class wayfire_core {
 
     /* brings the view to the top
      * and also focuses its output */
-    void focus_view(wayfire_view win);
+    void focus_view(wayfire_view win, weston_seat* seat);
     void close_view(wayfire_view win);
     void move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output);
 

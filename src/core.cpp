@@ -32,6 +32,14 @@ void wayfire_core::init(weston_compositor *comp, weston_config *conf) {
     image_io::init();
 }
 
+weston_seat* wayfire_core::get_current_seat() {
+    weston_seat *seat;
+    wl_list_for_each(seat, &ec->seat_list, link) {
+        return seat;
+    }
+    return nullptr;
+}
+
 void wayfire_core::add_output(weston_output *output) {
     if (outputs.find(output->id) != outputs.end())
         return;
@@ -97,7 +105,7 @@ void wayfire_core::add_view(weston_desktop_surface *ds) {
     if (active_output)
         active_output->attach_view(v);
 
-    focus_view(v);
+    focus_view(v, get_current_seat());
 }
 
 wayfire_view wayfire_core::find_view(weston_view *handle) {
@@ -117,7 +125,7 @@ wayfire_view wayfire_core::find_view(weston_desktop_surface *desktop_surface) {
     return nullptr;
 }
 
-void wayfire_core::focus_view(wayfire_view v) {
+void wayfire_core::focus_view(wayfire_view v, weston_seat *seat) {
     if (!v)
         return;
 
@@ -125,7 +133,7 @@ void wayfire_core::focus_view(wayfire_view v) {
         focus_output(v->output);
 
     /* TODO: get current seat -> keyboard -> set_keyboard_focus */
-    active_output->focus_view(v);
+    active_output->focus_view(v, seat);
 }
 
 void wayfire_core::close_view(wayfire_view v) {
@@ -134,7 +142,7 @@ void wayfire_core::close_view(wayfire_view v) {
 
     weston_desktop_surface_close(v->desktop_surface);
     /* XXX: maybe wait a little bit for the view to close, possibly ignore the closed view */
-    focus_view(active_output->get_active_view());
+    focus_view(active_output->get_active_view(), get_current_seat());
 }
 
 void wayfire_core::erase_view(wayfire_view v) {
