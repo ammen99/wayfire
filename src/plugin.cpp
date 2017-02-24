@@ -3,10 +3,15 @@
 
 namespace {
     int grabCount = 0;
+    std::vector<wayfire_grab_interface> active_grabs;
 }
 
 void wayfire_grab_interface_t::grab() {
     if (grabbed)
+        return;
+    weston_pointer_axis_event *ev;
+
+    if (!output->input->is_plugin_active(name))
         return;
 
     grabbed = true;
@@ -30,8 +35,7 @@ void wayfire_grab_interface_t::ungrab() {
         output->input->ungrab_keyboard();
     }
 
-    if (grabCount < 0)
-        grabCount = 0;
+    assert(grabCount >= 0); // alarm if anything isn't okay
 }
 
 void wayfire_plugin_t::fini() {}

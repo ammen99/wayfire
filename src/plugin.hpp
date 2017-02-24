@@ -34,6 +34,11 @@ using owner_t = string;
 
 /* owners are used to acquire screen grab and to activate */
 struct wayfire_grab_interface_t {
+    private:
+        bool grabbed;
+        friend struct input_manager;
+
+    public:
     owner_t name;
     std::unordered_set<owner_t> compat;
     bool compatAll = true;
@@ -43,7 +48,21 @@ struct wayfire_grab_interface_t {
 
     void grab();
     void ungrab();
-    bool grabbed;
+
+    struct {
+        struct {
+            std::function<void(weston_pointer*,weston_pointer_axis_event*)> axis;
+            std::function<void(weston_pointer*,uint32_t, uint32_t)> button;
+            std::function<void(weston_pointer*,weston_pointer_motion_event*)> motion;
+        } pointer;
+
+        struct {
+        } keyboard;
+
+        /* TODO: touch grabs */
+        struct {
+        } touch;
+    } callbacks;
 };
 
 using wayfire_grab_interface = std::shared_ptr<wayfire_grab_interface_t>;

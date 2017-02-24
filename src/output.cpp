@@ -99,7 +99,53 @@ void plugin_manager::init_default_plugins() {
 
 /* Start input_manager */
 
-void input_manager::grab_pointer() {++pointer_grab_count;}
+/* pointer grab callbacks */
+void pointer_grab_focus(weston_pointer_grab*) { }
+void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev) {
+    core->get_active_output()->input->propagate_pointer_grab_axis(grab->pointer, ev);
+}
+void pointer_grab_axis_source(weston_pointer_grab*, uint32_t) {}
+void pointer_grab_frame(weston_pointer_grab*) {}
+void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev) {
+    weston_pointer_move(grab->pointer, ev);
+    core->get_active_output()->input->propagate_pointer_grab_motion(grab->pointer, ev);
+}
+void pointer_grab_button(weston_pointer_grab *grab, uint32_t, uint32_t b, uint32_t s) {
+    core->get_active_output()->input->propagate_pointer_grab_button(grab->pointer, b, s);
+}
+void pointer_grab_cancel(weston_pointer_grab *grab) {
+    core->get_active_output()->input->end_pointer_grabs();
+}
+
+namespace {
+    const weston_pointer_grab_interface pointer_grab_interface = {
+        pointer_grab_focus,
+        pointer_grab_motion,
+        pointer_grab_button,
+        pointer_grab_axis,
+        pointer_grab_axis_source,
+        pointer_grab_frame,
+        pointer_grab_cancel
+    };
+}
+
+/* keyboard grab callbacks */
+void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key, uint32_t state) {
+    core->get_active_output()->input->propagate_keyboard_grab_key(grab->keyboard, key, state);
+}
+void keyboard_grab_mod(weston_keyboard_grab*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
+void keyboard_grab_cancel(weston_keyboard_grab*) {
+    core->get_active_output()->input->end_keyboard_grabs();
+}
+namespace {
+    const weston_keyboard_grab_interface keyboard_grab_interface = {
+        keyboard_grab_key,
+        keyboard_grab_mod,
+        keyboard_grab_cancel
+    };
+}
+
+void input_manager::grab_pointer(weston_seat *seat) {++pointer_grab_count;}
 void input_manager::ungrab_pointer() {pointer_grab_count = std::max(0, pointer_grab_count - 1);}
 void input_manager::grab_keyboard() {++keyboard_grab_count;}
 void input_manager::ungrab_keyboard() {keyboard_grab_count = std::max(0, keyboard_grab_count - 1);}
@@ -156,8 +202,10 @@ weston_binding* input_manager::add_key(weston_keyboard_modifier mod, uint32_t ke
     return weston_compositor_add_key_binding(core->ec, key, mod, keybinding_handler, (void*)call);
 }
 
-weston_binding* input_manager::add_button(weston_keyboard_modifier mod, uint32_t button, button_callback *call) {
-    return weston_compositor_add_button_binding(core->ec, button, mod, buttonbinding_handler, (void*)call);
+weston_binding* input_manager::add_button(weston_keyboard_modifier mod,
+        uint32_t button, button_callback *call) {
+    return weston_compositor_add_button_binding(core->ec, button, mod,
+            buttonbinding_handler, (void*)call);
 }
 /* End input_manager */
 

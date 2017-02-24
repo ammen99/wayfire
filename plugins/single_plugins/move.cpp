@@ -1,7 +1,6 @@
 #include <output.hpp>
 
-class Move : public Plugin {
-
+class wayfire_move : public wayfire_plugin_t {
         int sx, sy; // starting pointer x, y
 
         View win; // window we're operating on

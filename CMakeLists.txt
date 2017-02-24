@@ -28,4 +28,4 @@ install(TARGETS wayfire DESTINATION bin)
 install(DIRECTORY shaders/ DESTINATION share/wayfire/shaders)
 
 # Plugins
-# add_subdirectory(plugins)
+add_subdirectory(plugins)
