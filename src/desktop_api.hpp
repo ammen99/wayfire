@@ -18,7 +18,6 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data) {
 
 void desktop_surface_commited (weston_desktop_surface *desktop_surface,
         int32_t sx, int32_t sy, void *data) {
-    debug << "desktop_surface_committed" << std::endl;
 
     auto view = core->find_view(desktop_surface);
     assert(view != nullptr);
@@ -34,14 +33,6 @@ void desktop_surface_commited (weston_desktop_surface *desktop_surface,
 
     /* TODO: handle fullscreen and maximized state
      * weston_desktop_surface_get_fullscreen() && weston_desktop_surface_get_maximized() */
-
-
-    debug << "listing outputs" << std::endl;
-    weston_output *output;
-    wl_list_for_each(output, &core->ec->output_list, link) {
-        weston_output_schedule_repaint(output);
-        debug << "output id: " << output->id << std::endl;
-    }
 }
 
 void desktop_surface_set_xwayland_position(weston_desktop_surface *desktop_surface,

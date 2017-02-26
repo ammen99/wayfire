@@ -1,152 +1,74 @@
 #include <output.hpp>
+#include <core.hpp>
+#include <linux/input.h>
 
 class wayfire_move : public wayfire_plugin_t {
-        int sx, sy; // starting pointer x, y
+    button_callback activate_binding;
+    wayfire_view view;
 
-        View win; // window we're operating on
-
-        ButtonBinding press;
-        ButtonBinding release;
-        //Hook hook;
-
-        SignalListener sigScl, move_request;
-
-        int scX = 1, scY = 1;
-
-        Hook hook;
-
-        Button iniButton;
+    wl_fixed_t initial_x, initial_y;
 
     public:
-        void initOwnership() {
-            owner->name = "move";
-            owner->compatAll = true;
-        }
+        void init(weston_config *config) {
+            debug << "loading move plugin" << std::endl;
+            grab_interface->name = "move";
+            grab_interface->compatAll = true;
 
-        void updateConfiguration() {
-
-            iniButton = *options["activate"]->data.but;
-            if(iniButton.button == 0)
-                return;
-
-            hook.action = std::bind(std::mem_fn(&Move::Intermediate), this);
-            output->hook->add_hook(&hook);
+            activate_binding = [=] (weston_pointer* ptr, uint32_t) {
+                this->initiate(ptr);
+            };
 
             using namespace std::placeholders;
-            press.type   = BindingTypePress;
-            press.mod    = iniButton.mod;
-            press.button = iniButton.button;
-            press.action = std::bind(std::mem_fn(&Move::Initiate), this, _1, nullptr);
-            output->hook->add_but(&press, true);
+            output->input->add_button(MODIFIER_ALT, BTN_LEFT, &activate_binding);
+            grab_interface->callbacks.pointer.button =
+                std::bind(std::mem_fn(&wayfire_move::button_pressed), this, _1, _2, _3);
+            grab_interface->callbacks.pointer.motion =
+                std::bind(std::mem_fn(&wayfire_move::pointer_motion), this, _1, _2);
 
-            release.type   = BindingTypeRelease;
-            release.mod    = 0;
-            release.button = iniButton.button;
-            release.action = std::bind(std::mem_fn(&Move::Terminate), this, _1);
-            output->hook->add_but(&release, false);
+            /* TODO: move_request, read binding from file and expo interoperability */
         }
 
-        void init() {
-            using namespace std::placeholders;
-            options.insert(newButtonOption("activate", Button{0, 0}));
-
-            sigScl.action = std::bind(std::mem_fn(&Move::onScaleChanged), this, _1);
-            output->signal->connect_signal("screen-scale-changed", &sigScl);
-
-            move_request.action = std::bind(std::mem_fn(&Move::on_move_request), this, _1);
-            output->signal->connect_signal("move-request", &move_request);
-        }
-
-        bool called_from_expo = false;
-        void Initiate(EventContext ctx, View pwin) {
-            /* Do not deny request if expo is active and has requested moving a window */
-            /* TODO: this is a workaround, should add caller name to signals */
-            if(!(output->input->is_owner_active("expo") && pwin) && !output->input->activate_owner(owner))
+        void initiate(weston_pointer *ptr) {
+            debug << "initiate move" << std::endl;
+            if (!ptr->focus)
                 return;
 
-            if (output->input->is_owner_active("expo")) {
-                called_from_expo = true;
-            } else {
-                called_from_expo = false;
-            }
-
-            auto xev = ctx.xev.xbutton;
-            win = (pwin == nullptr ? output->get_view_at_point(xev.x_root, xev.y_root) : pwin);
-
-            if (!win) {
-                output->input->deactivate_owner(owner);
+            debug << "no focus" << std::endl;
+            view = core->find_view(ptr->focus);
+            if (!view)
                 return;
-            }
 
-            owner->grab();
+            debug << "not found view" << std::endl;
+            if (!output->input->activate_plugin(grab_interface))
+                return;
 
-            core->focus_view(win);
-            output->render->set_redraw_everything(true);
+            debug << "can't activate" << std::endl;
+            weston_seat_break_desktop_grabs(ptr->seat);
+            if (!grab_interface->grab())
+                return;
+            debug << "start grab" << std::endl;
 
-            hook.enable();
-            release.enable();
-
-            this->sx = xev.x_root;
-            this->sy = xev.y_root;
+            initial_x = wl_fixed_from_double(view->handle->geometry.x) - ptr->x;
+            initial_y = wl_fixed_from_double(view->handle->geometry.y) - ptr->y;
         }
 
-        void Terminate(EventContext ctx) {
-            hook.disable();
-            release.disable();
+        void button_pressed(weston_pointer *ptr, uint32_t button, uint32_t state) {
+            if (button != BTN_LEFT || state != WL_POINTER_BUTTON_STATE_RELEASED)
+                return;
 
-            output->input->deactivate_owner(owner);
-            output->render->set_redraw_everything(false);
+            grab_interface->ungrab();
+            output->input->deactivate_plugin(grab_interface);
         }
 
-        int clamp(int x, int min, int max) {
-            if(x < min) return min;
-            if(x > max) return max;
-            return x;
-        }
-
-        void Intermediate() {
-            GetTuple(cmx, cmy, output->input->get_pointer_position());
-            GetTuple(sw, sh, output->get_screen_size());
-
-            int nx = win->attrib.origin.x + (cmx - sx) * scX;
-            int ny = win->attrib.origin.y + (cmy - sy) * scY;
-
-            /* TODO: implement edge offset */
-
-            if (called_from_expo) {
-                int vx, vy;
-                output->viewport->get_viewport_for_view(win, vx, vy);
-
-                win->move(nx + sw * (win->vx - vx), ny + sh * (win->vy - vy));
-                win->vx = vx;
-                win->vy = vy;
-            } else {
-                win->move(nx, ny);
-            }
-
-            win->set_mask(output->viewport->get_mask_for_view(win));
-
-            sx = cmx;
-            sy = cmy;
-        }
-
-        void onScaleChanged(SignalListenerData data) {
-            scX = *(int*)data[0];
-            scY = *(int*)data[1];
-        }
-
-        void on_move_request(SignalListenerData data) {
-            View v = *(View*)data[0];
-            if(!v) return;
-
-            wlc_point origin = *(wlc_point*)data[1];
-            Initiate(EventContext(origin.x, origin.y, 0, 0), v);
+        void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
+            view->move(wl_fixed_to_int(initial_x + ptr->x),
+                    wl_fixed_to_int(initial_y + ptr->y));
         }
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new Move();
+    wayfire_plugin_t* newInstance() {
+        return new wayfire_move();
     }
 }
 

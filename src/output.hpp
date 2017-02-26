@@ -25,27 +25,26 @@ struct input_manager {
         std::unordered_set<wayfire_grab_interface> active_plugins;
         std::unordered_set<wayfire_grab_interface> active_grabs;
 
-        int keyboard_grab_count = 0;
-        int pointer_grab_count = 0;
+        weston_keyboard_grab kgrab;
+        weston_pointer_grab pgrab;
+
     public:
+        input_manager();
         bool activate_plugin  (wayfire_grab_interface owner);
         bool deactivate_plugin(wayfire_grab_interface owner);
 
         bool is_plugin_active (owner_t owner_name);
 
-        void grab_keyboard(wayfire_grab_interface);
-        void ungrab_keyboard(wayfire_grab_interface);
-
-        void grab_pointer(wayfire_grab_interface);
-        void ungrab_pointer(wayfire_grab_interface);
+        void grab_input(wayfire_grab_interface);
+        void ungrab_input(wayfire_grab_interface);
 
         void propagate_pointer_grab_axis  (weston_pointer *ptr, weston_pointer_axis_event *ev);
         void propagate_pointer_grab_motion(weston_pointer *ptr, weston_pointer_motion_event *ev);
         void propagate_pointer_grab_button(weston_pointer *ptr, uint32_t button, uint32_t state);
-        void end_pointer_grabs();
 
         void propagate_keyboard_grab_key(weston_keyboard *kdb, uint32_t key, uint32_t state);
-        void end_keyboard_grabs();
+
+        void end_grabs();
 
         /* TODO: support touch */
         weston_binding* add_key(weston_keyboard_modifier mod, uint32_t key, key_callback*);

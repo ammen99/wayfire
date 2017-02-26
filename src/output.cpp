@@ -15,7 +15,7 @@ plugin_manager::plugin_manager(wayfire_output *o, weston_config *config) {
     load_dynamic_plugins();
 
     for (auto p : plugins) {
-        p->grab_interface = std::make_shared<wayfire_grab_interface_t>(o);
+        p->grab_interface = new wayfire_grab_interface_t(o);
         p->output = o;
 
         p->init(config);
@@ -25,6 +25,8 @@ plugin_manager::plugin_manager(wayfire_output *o, weston_config *config) {
 plugin_manager::~plugin_manager() {
     for (auto p : plugins) {
         p->fini();
+        delete p->grab_interface;
+
         if (p->dynamic)
             dlclose(p->handle);
         p.reset();
@@ -114,7 +116,7 @@ void pointer_grab_button(weston_pointer_grab *grab, uint32_t, uint32_t b, uint32
     core->get_active_output()->input->propagate_pointer_grab_button(grab->pointer, b, s);
 }
 void pointer_grab_cancel(weston_pointer_grab *grab) {
-    core->get_active_output()->input->end_pointer_grabs();
+    core->get_active_output()->input->end_grabs();
 }
 
 namespace {
@@ -135,7 +137,7 @@ void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key, 
 }
 void keyboard_grab_mod(weston_keyboard_grab*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
 void keyboard_grab_cancel(weston_keyboard_grab*) {
-    core->get_active_output()->input->end_keyboard_grabs();
+    core->get_active_output()->input->end_grabs();
 }
 namespace {
     const weston_keyboard_grab_interface keyboard_grab_interface = {
@@ -145,10 +147,89 @@ namespace {
     };
 }
 
-void input_manager::grab_pointer(weston_seat *seat) {++pointer_grab_count;}
-void input_manager::ungrab_pointer() {pointer_grab_count = std::max(0, pointer_grab_count - 1);}
-void input_manager::grab_keyboard() {++keyboard_grab_count;}
-void input_manager::ungrab_keyboard() {keyboard_grab_count = std::max(0, keyboard_grab_count - 1);}
+input_manager::input_manager() {
+    pgrab.interface = &pointer_grab_interface;
+    kgrab.interface = &keyboard_grab_interface;
+}
+
+void input_manager::grab_input(wayfire_grab_interface iface) {
+    if (!iface->grabbed)
+        return;
+
+    active_grabs.insert(iface);
+    if (1 == active_grabs.size()) {
+        weston_pointer_start_grab(weston_seat_get_pointer(core->get_current_seat()),
+                &pgrab);
+        weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
+                &kgrab);
+    }
+}
+
+void input_manager::ungrab_input(wayfire_grab_interface iface) {
+    active_grabs.erase(iface);
+    if (active_grabs.empty()) {
+        weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
+        weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
+    }
+}
+
+void input_manager::propagate_pointer_grab_axis(weston_pointer *ptr,
+        weston_pointer_axis_event *ev) {
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.pointer.axis)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.pointer.axis(ptr, ev);
+}
+
+void input_manager::propagate_pointer_grab_motion(weston_pointer *ptr,
+        weston_pointer_motion_event *ev) {
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.pointer.motion)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.pointer.motion(ptr, ev);
+}
+
+void input_manager::propagate_pointer_grab_button(weston_pointer *ptr,
+        uint32_t button, uint32_t state) {
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.pointer.button)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.pointer.button(ptr, button, state);
+}
+
+void input_manager::propagate_keyboard_grab_key(weston_keyboard *kbd,
+        uint32_t key, uint32_t state) {
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.keyboard.key)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.keyboard.key(kbd, key, state);
+}
+
+void input_manager::end_grabs() {
+    std::vector<wayfire_grab_interface> v;
+
+    for (auto x : active_grabs)
+        v.push_back(x);
+
+    for (auto x : v)
+        ungrab_input(x);
+}
 
 bool input_manager::activate_plugin(wayfire_grab_interface owner) {
     if (!owner)

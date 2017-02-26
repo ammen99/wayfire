@@ -1,26 +1,15 @@
 #include "core.hpp"
 #include "output.hpp"
 
-namespace {
-    int grabCount = 0;
-    std::vector<wayfire_grab_interface> active_grabs;
-}
-
-void wayfire_grab_interface_t::grab() {
+bool wayfire_grab_interface_t::grab() {
     if (grabbed)
-        return;
-    weston_pointer_axis_event *ev;
-
+        return true;
     if (!output->input->is_plugin_active(name))
-        return;
+        return false;
 
     grabbed = true;
-    grabCount++;
-
-    if (grabCount == 1) {
-        output->input->grab_pointer();
-        output->input->grab_keyboard();
-    }
+    output->input->grab_input(this);
+    return true;
 }
 
 void wayfire_grab_interface_t::ungrab() {
@@ -28,14 +17,7 @@ void wayfire_grab_interface_t::ungrab() {
         return;
 
     grabbed = false;
-    grabCount--;
-
-    if (grabCount == 0) {
-        output->input->ungrab_pointer();
-        output->input->ungrab_keyboard();
-    }
-
-    assert(grabCount >= 0); // alarm if anything isn't okay
+    output->input->ungrab_input(this);
 }
 
 void wayfire_plugin_t::fini() {}

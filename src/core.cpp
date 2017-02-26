@@ -14,7 +14,7 @@ void wayfire_core::configure(weston_config *config) {
     weston_config_section_get_cppstring(sect, "background", core->background, "");
     weston_config_section_get_cppstring(sect, "shadersrc", core->shadersrc, "/usr/share/wayfire/shaders");
     weston_config_section_get_cppstring(sect, "pluginpathprefix", core->plugin_path, "/usr/lib/");
-    weston_config_section_get_cppstring(sect, "plugins", core->plugins, "");
+    weston_config_section_get_cppstring(sect, "plugins", core->plugins, "move resize");
 
     /*
        options.insert(newStringOption("key_repeat_rate", "50"));
@@ -101,6 +101,8 @@ void wayfire_core::add_view(weston_desktop_surface *ds) {
     v->desktop_surface = ds;
     v->surface = weston_desktop_surface_get_surface(ds);
     v->handle = view;
+    v->geometry.origin.x = wl_fixed_to_int(view->geometry.x);
+    v->geometry.origin.y = wl_fixed_to_int(view->geometry.y);
 
     if (active_output)
         active_output->attach_view(v);

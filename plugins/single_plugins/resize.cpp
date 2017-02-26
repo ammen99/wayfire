@@ -1,148 +1,98 @@
 #include <wm.hpp>
 #include <output.hpp>
+#include <core.hpp>
+#include <linux/input.h>
 
-class Resize : public Plugin {
-    private:
-        int sx, sy; // starting pointer x, y
-        View win; // window we're operating on
+enum resize_edges {
+    RESIZE_EDGE_TOP = 1 << 0,
+    RESIZE_EDGE_BOTTOM = 1 << 1,
+    RESIZE_EDGE_LEFT = 1 << 2,
+    RESIZE_EDGE_RIGHT = 1 << 3
+};
 
-        Button iniButton;
+class wayfire_resize : public wayfire_plugin_t {
+    button_callback activate_binding;
+    wayfire_view view;
 
-        SignalListener resize_request;
-
-        uint32_t edges;
-
-    private:
-        ButtonBinding press;
-        ButtonBinding release;
-        Hook hook;
+    uint32_t edges;
     public:
+        void init(weston_config *config) {
+            grab_interface->name = "resize";
+            grab_interface->compatAll = true;
 
-    void initOwnership() {
-        owner->name = "resize";
-        owner->compatAll = true;
-    }
-    void updateConfiguration(){
-        iniButton = *options["activate"]->data.but;
-        if(iniButton.button == 0)
-            return;
+            activate_binding = [=] (weston_pointer* ptr, uint32_t) {
+                this->initiate(ptr);
+            };
 
-        using namespace std::placeholders;
-        hook.action = std::bind(std::mem_fn(&Resize::intermediate), this);
-        output->hook->add_hook(&hook);
-        press.type   = BindingTypePress;
-        press.mod    = iniButton.mod;
-        press.button = iniButton.button;
-        press.action = std::bind(std::mem_fn(&Resize::initiate), this, _1, nullptr);
-        output->hook->add_but(&press, true);
+            using namespace std::placeholders;
+            output->input->add_button(MODIFIER_SUPER, BTN_LEFT, &activate_binding);
+            grab_interface->callbacks.pointer.button =
+                std::bind(std::mem_fn(&wayfire_resize::button_pressed), this, _1, _2, _3);
+            grab_interface->callbacks.pointer.motion =
+                std::bind(std::mem_fn(&wayfire_resize::pointer_motion), this, _1, _2);
 
-
-        release.type   = BindingTypeRelease;
-        release.mod    = 0;
-        release.button = iniButton.button;
-        release.action = std::bind(std::mem_fn(&Resize::terminate), this, _1);
-        output->hook->add_but(&release, false);
-
-        resize_request.action = std::bind(std::mem_fn(&Resize::on_resize_request), this, _1);
-        output->signal->connect_signal("resize-request", &resize_request);
-    }
-
-    void init() {
-        options.insert(newButtonOption("activate", Button{0, 0}));
-        using namespace std::placeholders;
-    }
-
-    void initiate(EventContext ctx, View pwin) {
-
-        auto xev = ctx.xev.xbutton;
-
-        if(!pwin) {
-            auto win_at_coord = output->get_view_at_point(xev.x_root,xev.y_root);
-
-            if(!win_at_coord) return;
-            else win = win_at_coord;
-        }
-        else win = pwin;
-
-        if(!output->input->activate_owner(owner)) {
-            return;
+            /* TODO: resize_request, read binding from config */
         }
 
-        owner->grab();
-        core->focus_view(win);
+        void initiate(weston_pointer *ptr) {
+            if (!ptr->focus)
+                return;
 
-        hook.enable();
-        release.enable();
+            view = core->find_view(ptr->focus);
+            if (!view)
+                return;
 
-        sx = xev.x_root;
-        sy = xev.y_root;
+            if (!output->input->activate_plugin(grab_interface))
+                return;
+            if (!grab_interface->grab())
+                return;
 
-        const int32_t halfw = win->attrib.origin.x + win->attrib.size.w / 2;
-        const int32_t halfh = win->attrib.origin.y + win->attrib.size.h / 2;
+            const int32_t halfw = view->geometry.origin.x + view->geometry.size.w / 2;
+            const int32_t halfh = view->geometry.origin.y + view->geometry.size.h / 2;
 
-        edges = (sx < halfw ? WLC_RESIZE_EDGE_LEFT : (sx >= halfw ? WLC_RESIZE_EDGE_RIGHT : 0)) |
-            (sy < halfh ? WLC_RESIZE_EDGE_TOP : (sy >= halfh ? WLC_RESIZE_EDGE_BOTTOM : 0));
-
-        if(!edges) terminate(ctx);
-
-        wlc_view_set_state(win->get_id(), WLC_BIT_RESIZING, true);
-    }
-
-    void terminate(EventContext ctx) {
-        hook.disable();
-        release.disable();
-        output->input->deactivate_owner(owner);
-
-        wlc_view_set_state(win->get_id(), WLC_BIT_RESIZING, false);
-        win->set_mask(output->viewport->get_mask_for_view(win));
-    }
-
-    void intermediate() {
-        GetTuple(cmx, cmy, output->input->get_pointer_position());
-
-        const int32_t dx = cmx - sx;
-        const int32_t dy = cmy - sy;
-
-        if (edges) {
-            const struct wlc_size min = { 10, 10 };
-
-            struct wlc_geometry n = win->attrib;
-
-            if (edges & WLC_RESIZE_EDGE_LEFT) n.size.w -= dx, n.origin.x += dx;
-            else if (edges & WLC_RESIZE_EDGE_RIGHT) n.size.w += dx;
-
-            if (edges & WLC_RESIZE_EDGE_TOP) n.size.h -= dy, n.origin.y += dy;
-            else if (edges & WLC_RESIZE_EDGE_BOTTOM) n.size.h += dy;
-
-            if (n.size.w < min.w) {
-                n.size.w = min.w;
-                n.origin.x = win->attrib.origin.x;
+            if (ptr->x < halfw) {
+                edges = RESIZE_EDGE_LEFT;
+            } else {
+                edges = RESIZE_EDGE_RIGHT;
             }
 
-            if (n.size.h < min.h) {
-                n.origin.y = win->attrib.origin.y;
-                n.size.h = min.h;
+            if (ptr->y < halfh) {
+                edges |= RESIZE_EDGE_TOP;
+            } else {
+                edges |= RESIZE_EDGE_BOTTOM;
             }
-
-            win->set_geometry(n.origin.x, n.origin.y, n.size.w, n.size.h);
-
         }
 
-        sx = cmx;
-        sy = cmy;
-    }
+        void button_pressed(weston_pointer *ptr, uint32_t button, uint32_t state) {
+            if (button != BTN_LEFT || state != WL_POINTER_BUTTON_STATE_RELEASED)
+                return;
 
-    void on_resize_request(SignalListenerData data) {
-        View w = *(View*)data[0];
-        wlc_point point = *(wlc_point*)data[1];
+            grab_interface->ungrab();
+            output->input->deactivate_plugin(grab_interface);
+        }
 
-        initiate(EventContext(point.x, point.y, 0, 0), w);
-    }
+        void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
+            auto newg = view->geometry;
+            if (edges & RESIZE_EDGE_LEFT) {
+                newg.origin.x += ev->dx;
+                newg.size.w -= ev->dx;
+            } else {
+                newg.size.w += ev->dx;
+            }
 
+            if (edges & RESIZE_EDGE_TOP) {
+                newg.origin.y += ev->dy;
+                newg.size.h -= ev->dy;
+            } else {
+                newg.size.h += ev->dy;
+            }
+
+            view->set_geometry(newg);
+        }
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new Resize();
+    wayfire_plugin_t *newInstance() {
+        return new wayfire_resize();
     }
 }

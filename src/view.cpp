@@ -64,19 +64,22 @@ bool wayfire_view_t::is_visible() {
 }
 
 void wayfire_view_t::move(int x, int y) {
+    geometry.origin = {x, y};
+    weston_view_set_position(handle, x, y);
+
     //auto v = core->find_view(view);
     //attrib.origin = {x, y};
     //wlc_view_set_geometry(view, 0, &attrib);
 }
 
 void wayfire_view_t::resize(int w, int h) {
-    //attrib.size = {(uint32_t)w, uint32_t(h)};
-    //wlc_view_set_geometry(view, 0, &attrib);
+    geometry.size = {w, h};
+    weston_desktop_surface_set_size(desktop_surface, w, h);
 }
 
 void wayfire_view_t::set_geometry(wayfire_geometry g) {
-    //attrib = g;
-    //wlc_view_set_geometry(view, 0, &attrib);
+    move(g.origin.x, g.origin.y);
+    move(g.size.w, g.size.h);
 }
 
 void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
@@ -84,6 +87,8 @@ void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
         .origin = {x, y},
         .size = {(int32_t)w, (int32_t)h}
     };
+
+    set_geometry(geometry);
 
     //wlc_view_set_geometry(view, 0, &attrib);
 }
@@ -105,11 +110,12 @@ void wayfire_view_t::map(int sx, int sy) {
     if (xwayland.is_xorg) {
         /* TODO: position xorg views, see weston shell.c#2432 */
     } else {
-        weston_view_set_position(handle, 0, 0);
+        weston_view_set_position(handle, sx, sy);
     }
 
     weston_view_update_transform(handle);
     handle->is_mapped = true;
+    surface->is_mapped = true;
 
     /* TODO: see shell.c#activate() */
 }

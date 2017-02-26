@@ -46,26 +46,29 @@ struct wayfire_grab_interface_t {
 
     wayfire_grab_interface_t(wayfire_output *_output) : output(_output) {}
 
-    void grab();
+    bool grab();
     void ungrab();
 
     struct {
         struct {
             std::function<void(weston_pointer*,weston_pointer_axis_event*)> axis;
-            std::function<void(weston_pointer*,uint32_t, uint32_t)> button;
+            std::function<void(weston_pointer*,uint32_t, uint32_t)> button; // button, state
             std::function<void(weston_pointer*,weston_pointer_motion_event*)> motion;
         } pointer;
 
         struct {
+            std::function<void(weston_keyboard*,uint32_t,uint32_t)> key; // button, state
         } keyboard;
 
         /* TODO: touch grabs */
         struct {
         } touch;
+
+        std::function<void()> cancel; // called when we must stop current grab
     } callbacks;
 };
 
-using wayfire_grab_interface = std::shared_ptr<wayfire_grab_interface_t>;
+using wayfire_grab_interface = wayfire_grab_interface_t*;
 class wayfire_plugin_t {
     public:
         /* the output this plugin is running on
@@ -75,6 +78,7 @@ class wayfire_plugin_t {
 
         wayfire_grab_interface grab_interface;
 
+        //TODO: use custom config
         /* should read configuration data, attach hooks / keybindings, etc */
         virtual void init(weston_config *config) = 0;
 
