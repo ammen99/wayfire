@@ -12,7 +12,7 @@ weston_drm_backend_output_mode drm_configure_output (weston_compositor *ec, bool
     config->base.scale = 1;
     config->base.transform = WL_OUTPUT_TRANSFORM_NORMAL;
     config->gbm_format = NULL;
-    config->seat = const_cast<char*>("");
+    config->seat = const_cast<char*>("seat0");
 
     return WESTON_DRM_BACKEND_OUTPUT_PREFERRED;
 }

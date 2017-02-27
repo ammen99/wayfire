@@ -31,6 +31,12 @@ int main(int argc, char *argv[]) {
     weston_log_set_handler(vlog, vlog_continue);
     wl_log_set_handler_server(wayland_log_handler);
 
+    signal(SIGINT, signalHandle);
+    signal(SIGSEGV, signalHandle);
+    signal(SIGFPE, signalHandle);
+    signal(SIGILL, signalHandle);
+    signal(SIGABRT, signalHandle);
+
     auto display = wl_display_create();
 
     /* TODO: load non-hardcoded config file, useful for debug */
@@ -58,7 +64,9 @@ int main(int argc, char *argv[]) {
     ec->user_data = core;
     core->init(ec, config);
 
-    load_wayland_backend(ec);
+    if (load_drm_backend(ec) < 0) {
+        load_wayland_backend(ec);
+    }
 
     auto socket_name = wl_display_add_socket_auto(display);
     if (!socket_name) {
@@ -68,12 +76,6 @@ int main(int argc, char *argv[]) {
 
     debug << "running at socket " << socket_name << std::endl;
     setenv("WAYLAND_SERVER", socket_name, 1);
-    signal(SIGINT, signalHandle);
-    signal(SIGSEGV, signalHandle);
-    signal(SIGFPE, signalHandle);
-    signal(SIGILL, signalHandle);
-    signal(SIGABRT, signalHandle);
-
     desktop_api.struct_size = sizeof(weston_desktop_api);
     desktop_api.surface_added = desktop_surface_added;
     desktop_api.surface_removed = desktop_surface_removed;

@@ -1,33 +1,15 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
+// TODO: remove dependency on view.hpp
 #include "view.hpp"
+#include "config.hpp"
 #include <unordered_set>
 
 using std::string;
 
 using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
 using button_callback = std::function<void(weston_pointer*, uint32_t)>;
-
-/*
- * Documentation for writing a plugin
- *
- * Plugins are just objects which are created during init of
- * core and destroyed when core is destroyed
- *
- * Plugin's main functionality is achieved through their init() function
- * where they initialize themselves and register hooks for various events or connect to signals
- *
- * They should not atempt to access the global core variable
- * in their constructors since during that time that global
- * variable is still uninitialized
- *
- * A typical example of a plugin is when
- * in the init() function it registers a hook(disabled)
- * and then a key/button binding to activate it
- *
- * For example see expo.cpp, move.cpp, resize.cpp
- */
 
 class wayfire_output;
 using owner_t = string;
