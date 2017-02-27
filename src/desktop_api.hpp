@@ -1,8 +1,8 @@
 #ifndef DESKTOP_API_HPP
 #define DESKTOP_API_HPP
 
-#include <libweston-1/compositor.h>
-#include <libweston-1/libweston-desktop.h>
+#include <libweston-2/compositor.h>
+#include <libweston-2/libweston-desktop.h>
 
 #include "commonincludes.hpp"
 #include "core.hpp"

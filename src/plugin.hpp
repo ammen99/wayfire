@@ -17,7 +17,7 @@ using owner_t = string;
 /* owners are used to acquire screen grab and to activate */
 struct wayfire_grab_interface_t {
     private:
-        bool grabbed;
+        bool grabbed = false;
         friend struct input_manager;
 
     public:

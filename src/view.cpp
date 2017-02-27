@@ -116,6 +116,7 @@ void wayfire_view_t::map(int sx, int sy) {
     weston_view_update_transform(handle);
     handle->is_mapped = true;
     surface->is_mapped = true;
+    handle->is_mapped = true;
 
     /* TODO: see shell.c#activate() */
 }

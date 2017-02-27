@@ -61,6 +61,7 @@ class wayfire_move : public wayfire_plugin_t {
         }
 
         void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
+            debug << "motion " << std::endl;
             view->move(wl_fixed_to_int(initial_x + ptr->x),
                     wl_fixed_to_int(initial_y + ptr->y));
         }

@@ -109,6 +109,7 @@ void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_
 void pointer_grab_axis_source(weston_pointer_grab*, uint32_t) {}
 void pointer_grab_frame(weston_pointer_grab*) {}
 void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev) {
+    debug << "pointer_grab_motion" << std::endl;
     weston_pointer_move(grab->pointer, ev);
     core->get_active_output()->input->propagate_pointer_grab_motion(grab->pointer, ev);
 }
@@ -153,11 +154,15 @@ input_manager::input_manager() {
 }
 
 void input_manager::grab_input(wayfire_grab_interface iface) {
+    debug << "grab input" << std::endl;
     if (!iface->grabbed)
         return;
 
+    debug << "grab has been active" << std::endl;
+
     active_grabs.insert(iface);
     if (1 == active_grabs.size()) {
+        debug << "active grabs" << std::endl;
         weston_pointer_start_grab(weston_seat_get_pointer(core->get_current_seat()),
                 &pgrab);
         weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
@@ -656,7 +661,8 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     viewport = new viewport_manager(this);
     plugin = new plugin_manager(this, c);
 
-    weston_layer_init(&normal_layer, &core->ec->cursor_layer.link);
+    weston_layer_init(&normal_layer, core->ec);
+    weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);
 }
 
 wayfire_output::~wayfire_output(){

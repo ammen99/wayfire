@@ -1,9 +1,10 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 #include "commonincludes.hpp"
-#include <libweston-1/libweston-desktop.h>
+#include <libweston-2/libweston-desktop.h>
 #include <vector>
 #include <memory>
+#include <glm/glm.hpp>
 
 class wayfire_view_transform {
     public: // applied to all views

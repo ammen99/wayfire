@@ -4,6 +4,7 @@
 bool wayfire_grab_interface_t::grab() {
     if (grabbed)
         return true;
+
     if (!output->input->is_plugin_active(name))
         return false;
 
