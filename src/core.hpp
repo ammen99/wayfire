@@ -8,19 +8,20 @@
 using output_callback_proc = std::function<void(wayfire_output*)>;
 
 class wayfire_core {
-    uint32_t nextID = 0;
+    friend class plugin_manager;
 
-    weston_config *config;
+    uint32_t nextID = 0;
+    wayfire_config *config;
 
     wayfire_output *active_output;
     std::map<uint32_t, wayfire_output*> outputs;
     std::map<weston_view*, wayfire_view> views;
 
-    void configure(weston_config *config);
+    void configure(wayfire_config *config);
 
     public:
     weston_compositor *ec;
-    void init(weston_compositor *ec, weston_config *config);
+    void init(weston_compositor *ec, wayfire_config *config);
 
     weston_seat *get_current_seat();
 
@@ -51,6 +52,7 @@ class wayfire_core {
     void run(const char *command);
 
     int vwidth, vheight;
+
     std::string background, shadersrc, plugin_path, plugins;
 };
 

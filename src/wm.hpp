@@ -26,6 +26,6 @@ class Refresh : public wayfire_plugin_t { // keybinding to restart window manage
 class wayfire_focus : public wayfire_plugin_t {
     button_callback *callback;
     public:
-        void init(weston_config *);
+        void init(wayfire_config *);
 };
 #endif

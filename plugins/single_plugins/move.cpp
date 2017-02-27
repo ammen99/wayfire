@@ -9,7 +9,7 @@ class wayfire_move : public wayfire_plugin_t {
     wl_fixed_t initial_x, initial_y;
 
     public:
-        void init(weston_config *config) {
+        void init(wayfire_config *config) {
             debug << "loading move plugin" << std::endl;
             grab_interface->name = "move";
             grab_interface->compatAll = true;

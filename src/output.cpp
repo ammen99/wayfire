@@ -10,7 +10,7 @@
 #include <algorithm>
 
 /* Start plugin manager */
-plugin_manager::plugin_manager(wayfire_output *o, weston_config *config) {
+plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config) {
     init_default_plugins();
     load_dynamic_plugins();
 
@@ -647,7 +647,7 @@ void signal_manager::emit_signal(std::string name, signal_data *data) {
 /* End SignalManager */
 /* Start output */
 
-wayfire_output::wayfire_output(weston_output *handle, weston_config *c) {
+wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     this->handle = handle;
 
     /* TODO: init output */

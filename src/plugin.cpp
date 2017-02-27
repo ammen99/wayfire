@@ -21,14 +21,3 @@ void wayfire_grab_interface_t::ungrab() {
 }
 
 void wayfire_plugin_t::fini() {}
-
-void weston_config_section_get_cppstring(weston_config_section* section, std::string name,
-        std::string &value, std::string default_value) {
-
-    char *buf;
-    weston_config_section_get_string(section, name.c_str(), &buf, default_value.c_str());
-    value = buf;
-    free(buf);
-}
-
-

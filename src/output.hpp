@@ -14,7 +14,7 @@ struct plugin_manager {
     wayfire_plugin load_plugin_from_file(std::string path, void **handle);
     void load_dynamic_plugins();
     void init_default_plugins();
-    plugin_manager(wayfire_output *o, weston_config *config);
+    plugin_manager(wayfire_output *o, wayfire_config *config);
     ~plugin_manager();
 };
 
@@ -162,7 +162,7 @@ class wayfire_output {
         return render->renderer_running();
     }
 
-    wayfire_output(weston_output*, weston_config *config);
+    wayfire_output(weston_output*, wayfire_config *config);
     ~wayfire_output();
 
     void activate();

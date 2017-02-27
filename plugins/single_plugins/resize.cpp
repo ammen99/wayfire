@@ -16,7 +16,7 @@ class wayfire_resize : public wayfire_plugin_t {
 
     uint32_t edges;
     public:
-        void init(weston_config *config) {
+        void init(wayfire_config *config) {
             grab_interface->name = "resize";
             grab_interface->compatAll = true;
 

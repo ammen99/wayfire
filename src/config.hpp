@@ -36,11 +36,11 @@ struct wayfire_config_section {
 };
 
 class wayfire_config {
-    std::vector<wayfire_config_section> sections;
+    std::vector<wayfire_config_section*> sections;
 
     public:
     wayfire_config(std::string file);
-    wayfire_config_section wayfire_config_get_section();
+    wayfire_config_section* get_section(std::string name);
 };
 
 #endif /* end of include guard: CONFIG_HPP */

@@ -3,18 +3,18 @@
 #include "img.hpp"
 #include <unistd.h>
 
-void wayfire_core::configure(weston_config *config) {
+void wayfire_core::configure(wayfire_config *config) {
     this->config = config;
-    weston_config_section *sect =
-        weston_config_get_section(config, "core", NULL, NULL);
+    auto section = config->get_section("core");
 
-    weston_config_section_get_int(sect, "vwidth", &core->vwidth, 3);
-    weston_config_section_get_int(sect, "vheight", &core->vheight, 3);
+    vwidth  = section->get_int("vwidth", 3);
+    vheight = section->get_int("vheight", 3);
+    background = section->get_string("background", "");
 
-    weston_config_section_get_cppstring(sect, "background", core->background, "");
-    weston_config_section_get_cppstring(sect, "shadersrc", core->shadersrc, "/usr/share/wayfire/shaders");
-    weston_config_section_get_cppstring(sect, "pluginpathprefix", core->plugin_path, "/usr/lib/");
-    weston_config_section_get_cppstring(sect, "plugins", core->plugins, "move resize");
+    shadersrc = section->get_string("shadersrc", "/usr/share/wayfire/shaders");
+    plugin_path = section->get_string("plugin_path_prefix", "/usr/lib/");
+    plugins = section->get_string("plugins", "");
+    debug << "plugins are " << plugins << std::endl;
 
     /*
        options.insert(newStringOption("key_repeat_rate", "50"));
@@ -26,7 +26,7 @@ void wayfire_core::configure(weston_config *config) {
        options.insert(newStringOption("kbd_options", "grp:win_space_toggle"));
        */
 }
-void wayfire_core::init(weston_compositor *comp, weston_config *conf) {
+void wayfire_core::init(weston_compositor *comp, wayfire_config *conf) {
     ec = comp;
     configure(conf);
     image_io::init();

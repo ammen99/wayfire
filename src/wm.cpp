@@ -38,7 +38,7 @@ void Close::init(weston_config*) {
 }
 */
 
-void wayfire_focus::init(weston_config* config) {
+void wayfire_focus::init(wayfire_config*) {
     callback = new button_callback();
     *callback = [=] (weston_pointer *ptr, uint32_t button) {
         if (!ptr->focus)

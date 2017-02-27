@@ -1,12 +1,14 @@
 #include <cstdlib>
 #include <cstring>
+
 #include "output.hpp"
 #include "debug.hpp"
+#include "config.hpp"
+
 #include "weston_backend.hpp"
 #include "desktop_api.hpp"
 
 #include <wayland-server.h>
-#include <libweston-1/timeline-object.h>
 
 std::ofstream file_info, file_null, *file_debug;
 weston_compositor *crash_compositor;
@@ -39,8 +41,6 @@ int main(int argc, char *argv[]) {
 
     auto display = wl_display_create();
 
-    /* TODO: load non-hardcoded config file, useful for debug */
-    weston_config *config = weston_config_parse("/home/ilex/firerc");
     auto ec = weston_compositor_create(display, NULL);
 
     crash_compositor = ec;
@@ -60,13 +60,12 @@ int main(int argc, char *argv[]) {
 
     weston_compositor_set_xkb_rule_names(ec, &names);
 
+    /* TODO: load non-hardcoded config file, useful for debug */
+    wayfire_config *config = new wayfire_config("/home/ilex/firerc");
     core = new wayfire_core();
-    ec->user_data = core;
     core->init(ec, config);
 
-    if (load_drm_backend(ec) < 0) {
-        load_wayland_backend(ec);
-    }
+    load_wayland_backend(ec);
 
     auto socket_name = wl_display_add_socket_auto(display);
     if (!socket_name) {

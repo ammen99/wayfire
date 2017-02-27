@@ -60,9 +60,8 @@ class wayfire_plugin_t {
 
         wayfire_grab_interface grab_interface;
 
-        //TODO: use custom config
         /* should read configuration data, attach hooks / keybindings, etc */
-        virtual void init(weston_config *config) = 0;
+        virtual void init(wayfire_config *config) = 0;
 
         /* the fini() method should remove all hooks/buttons/keys
          * and of course prepare the plugin for deletion, i.e
@@ -79,6 +78,7 @@ using wayfire_plugin = std::shared_ptr<wayfire_plugin_t>;
  * an instance of the plugin */
 typedef wayfire_plugin_t *(*get_plugin_instance_t)();
 
+/* TODO: move elsewhere */
 /* render hooks are used when a plugin requests to draw the whole desktop on their own
  * example plugin is cube */
 using render_hook_t = std::function<void()>;
@@ -89,6 +89,3 @@ using render_hook_t = std::function<void()>;
 using view_callback_proc_t = std::function<void(wayfire_view)>;
 
 #endif
-
-void weston_config_section_get_cppstring(weston_config_section *section,
-        std::string name, std::string& val, std::string default_value);
