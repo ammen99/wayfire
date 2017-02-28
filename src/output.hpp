@@ -4,6 +4,7 @@
 #include "plugin.hpp"
 #include "opengl.hpp"
 #include <vector>
+#include <unordered_map>
 
 /* TODO: add plugin->output so that plugins know which output they're running on */
 /* Controls loading of plugins */
@@ -136,9 +137,8 @@ using signal_callback_t = std::function<void(signal_data*)>;
 
 struct signal_manager {
     private:
-        std::map<std::string, std::vector<signal_callback_t*>> sig;
+        std::unordered_map<std::string, std::vector<signal_callback_t*>> sig;
     public:
-        signal_manager();
         void connect_signal(std::string name, signal_callback_t* callback);
         void disconnect_signal(std::string name, signal_callback_t* callback);
         void emit_signal(std::string name, signal_data *data);
@@ -168,7 +168,8 @@ class wayfire_output {
     void activate();
     void deactivate();
 
-    wayfire_view get_active_view();
+
+    wayfire_view active_view;
     wayfire_view get_view_at_point(int x, int y);
 
     /* TODO: add other layers, draw cursor in cursor_layer */

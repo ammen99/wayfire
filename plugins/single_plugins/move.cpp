@@ -29,24 +29,19 @@ class wayfire_move : public wayfire_plugin_t {
         }
 
         void initiate(weston_pointer *ptr) {
-            debug << "initiate move" << std::endl;
             if (!ptr->focus)
                 return;
 
-            debug << "no focus" << std::endl;
             view = core->find_view(ptr->focus);
             if (!view)
                 return;
 
-            debug << "not found view" << std::endl;
             if (!output->input->activate_plugin(grab_interface))
                 return;
 
-            debug << "can't activate" << std::endl;
             weston_seat_break_desktop_grabs(ptr->seat);
             if (!grab_interface->grab())
                 return;
-            debug << "start grab" << std::endl;
 
             initial_x = wl_fixed_from_double(view->handle->geometry.x) - ptr->x;
             initial_y = wl_fixed_from_double(view->handle->geometry.y) - ptr->y;
@@ -61,7 +56,6 @@ class wayfire_move : public wayfire_plugin_t {
         }
 
         void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
-            debug << "motion " << std::endl;
             view->move(wl_fixed_to_int(initial_x + ptr->x),
                     wl_fixed_to_int(initial_y + ptr->y));
         }

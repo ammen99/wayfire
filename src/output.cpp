@@ -154,15 +154,11 @@ input_manager::input_manager() {
 }
 
 void input_manager::grab_input(wayfire_grab_interface iface) {
-    debug << "grab input" << std::endl;
     if (!iface->grabbed)
         return;
 
-    debug << "grab has been active" << std::endl;
-
     active_grabs.insert(iface);
     if (1 == active_grabs.size()) {
-        debug << "active grabs" << std::endl;
         weston_pointer_start_grab(weston_seat_get_pointer(core->get_current_seat()),
                 &pgrab);
         weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
@@ -660,6 +656,7 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     render = new render_manager(this);
     viewport = new viewport_manager(this);
     plugin = new plugin_manager(this, c);
+    signal = new signal_manager();
 
     weston_layer_init(&normal_layer, core->ec);
     weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);
@@ -690,28 +687,47 @@ void wayfire_output::attach_view(wayfire_view v) {
 
     //v->set_mask(wayfire_viewport->get_mask_for_wayfire_view(v));
 
-    /*
-    SignalListenerData data;
-    data.push_back(&v);
-    signal->trigger_signal("create-wayfire_view", data);
-    */
+    auto sig_data = new create_view_signal{v};
+    signal->emit_signal("create-view", sig_data);
+    delete sig_data;
 }
 
 void wayfire_output::detach_view(wayfire_view v) {
-    /*
-    SignalListenerData data;
-    data.push_back(&v);
-    signal->trigger_signal("destroy-wayfire_view", data);
-    */
-    signal->emit_signal("destroy-view", new destroy_view_signal{v});
+    weston_layer_entry_remove(&v->handle->layer_link);
+    weston_view *wview, *next;
+
+    wl_list_for_each(wview, &normal_layer.view_list.link, layer_link.link) {
+        if (wview->surface == v->surface)
+            continue;
+
+        if (core->find_view(wview)->output != this)
+            continue;
+
+        next = wview;
+        break;
+    }
+
+    if (active_view == v) {
+        active_view = core->find_view(next);
+        focus_view(active_view, core->get_current_seat());
+    }
+
+    auto sig_data = new destroy_view_signal{v};
+    signal->emit_signal("destroy-view", sig_data);
+    delete sig_data;
 }
 
 void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
-    if (!v)
+    if (!v || v == active_view)
         return;
 
+    if (active_view)
+        weston_desktop_surface_set_activated(active_view->desktop_surface, false);
+
+    active_view = v;
     weston_view_activate(v->handle, seat,
             WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+    weston_desktop_surface_set_activated(v->desktop_surface, true);
 
     weston_view_geometry_dirty(v->handle);
     weston_layer_entry_remove(&v->handle->layer_link);
@@ -720,24 +736,6 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
     weston_surface_damage(v->surface);
 
     weston_desktop_surface_propagate_layer(v->desktop_surface);
-}
-
-static weston_view* get_top_view(weston_output* output) {
-    auto ec = output->compositor;
-    weston_view *view;
-
-    uint mask = (1u << output->id);
-    /* TODO: check if views are ordered top-to-bottom or bottom-to-top */
-    wl_list_for_each(view, &ec->view_list, link) {
-        if (view->output_mask & mask)
-            return view;
-    }
-
-    return nullptr;
-}
-
-wayfire_view wayfire_output::get_active_view() {
-    return core->find_view(get_top_view(handle));
 }
 
 void wayfire_output::for_each_view(view_callback_proc_t call) {

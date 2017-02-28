@@ -40,10 +40,18 @@ bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
     return true;
 }
 
-wayfire_view_t::wayfire_view_t(weston_view *_view) {
-    //view    = _view;
+wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds) {
     output  = core->get_active_output();
+    handle = weston_desktop_surface_create_view(ds);
 
+    weston_desktop_surface_set_user_data(ds, NULL);
+    weston_desktop_surface_set_activated(ds, true);
+
+    desktop_surface = ds;
+    surface = weston_desktop_surface_get_surface(ds);
+
+    geometry.size.w = surface->width;
+    geometry.size.h = surface->height;
     /// FIXME : get geometry
     //geometry.origin.x = view->geometry.xjko;
     //auto geom = wlc_view_get_geometry(view);
@@ -79,7 +87,7 @@ void wayfire_view_t::resize(int w, int h) {
 
 void wayfire_view_t::set_geometry(wayfire_geometry g) {
     move(g.origin.x, g.origin.y);
-    move(g.size.w, g.size.h);
+    resize(g.size.w, g.size.h);
 }
 
 void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
@@ -108,6 +116,8 @@ void wayfire_view_t::set_maximized(bool maxim) {
 void wayfire_view_t::map(int sx, int sy) {
 
     if (xwayland.is_xorg) {
+        auto g = weston_desktop_surface_get_geometry(desktop_surface);
+        weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
         /* TODO: position xorg views, see weston shell.c#2432 */
     } else {
         weston_view_set_position(handle, sx, sy);
@@ -117,6 +127,9 @@ void wayfire_view_t::map(int sx, int sy) {
     handle->is_mapped = true;
     surface->is_mapped = true;
     handle->is_mapped = true;
+
+    geometry.origin = {sx, sy};
+    geometry.size = {surface->width, surface->height};
 
     /* TODO: see shell.c#activate() */
 }

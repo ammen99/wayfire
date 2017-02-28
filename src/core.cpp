@@ -87,27 +87,13 @@ void wayfire_core::for_each_output(output_callback_proc call) {
 
 
 void wayfire_core::add_view(weston_desktop_surface *ds) {
-
-    /* TODO: move view initialization to wayfire_view_t constructor */
-    auto view = weston_desktop_surface_create_view(ds);
-    view->plane = view->plane; /* workaround for compiler warning */
-
-    weston_desktop_surface_set_user_data(ds, NULL);
-    weston_desktop_surface_set_activated(ds, true);
-
-    wayfire_view v = std::make_shared<wayfire_view_t> (view);
-
-    views[view] = v;
-    v->desktop_surface = ds;
-    v->surface = weston_desktop_surface_get_surface(ds);
-    v->handle = view;
-    v->geometry.origin.x = wl_fixed_to_int(view->geometry.x);
-    v->geometry.origin.y = wl_fixed_to_int(view->geometry.y);
+    auto view = std::make_shared<wayfire_view_t> (ds);
+    views[view->handle] = view;
 
     if (active_output)
-        active_output->attach_view(v);
+        active_output->attach_view(view);
 
-    focus_view(v, get_current_seat());
+    focus_view(view, get_current_seat());
 }
 
 wayfire_view wayfire_core::find_view(weston_view *handle) {
@@ -134,7 +120,6 @@ void wayfire_core::focus_view(wayfire_view v, weston_seat *seat) {
     if (v->output != active_output)
         focus_output(v->output);
 
-    /* TODO: get current seat -> keyboard -> set_keyboard_focus */
     active_output->focus_view(v, seat);
 }
 
@@ -143,8 +128,6 @@ void wayfire_core::close_view(wayfire_view v) {
        return;
 
     weston_desktop_surface_close(v->desktop_surface);
-    /* XXX: maybe wait a little bit for the view to close, possibly ignore the closed view */
-    focus_view(active_output->get_active_view(), get_current_seat());
 }
 
 void wayfire_core::erase_view(wayfire_view v) {

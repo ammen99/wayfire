@@ -54,7 +54,7 @@ class wayfire_view_t {
         weston_surface *surface;
         weston_view *handle;
 
-        wayfire_view_t(weston_view *_view);
+        wayfire_view_t(weston_desktop_surface *ds);
         ~wayfire_view_t();
 
         wayfire_output *output;
@@ -62,7 +62,7 @@ class wayfire_view_t {
         wayfire_geometry geometry, saved_geometry;
 
         struct {
-            bool is_xorg;
+            bool is_xorg = false;
             int x, y;
         } xwayland;
 
