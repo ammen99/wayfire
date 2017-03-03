@@ -79,6 +79,8 @@ int main(int argc, char *argv[]) {
     desktop_api.surface_added = desktop_surface_added;
     desktop_api.surface_removed = desktop_surface_removed;
     desktop_api.committed = desktop_surface_commited;
+    desktop_api.move = desktop_surface_move;
+    desktop_api.resize = desktop_surface_resize;
 
     auto desktop = weston_desktop_create(ec, &desktop_api, NULL);
     if (!desktop) {

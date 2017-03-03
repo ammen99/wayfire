@@ -655,8 +655,9 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     input = new input_manager();
     render = new render_manager(this);
     viewport = new viewport_manager(this);
-    plugin = new plugin_manager(this, c);
     signal = new signal_manager();
+
+    plugin = new plugin_manager(this, c);
 
     weston_layer_init(&normal_layer, core->ec);
     weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);

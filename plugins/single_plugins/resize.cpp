@@ -2,15 +2,11 @@
 #include <output.hpp>
 #include <core.hpp>
 #include <linux/input.h>
-
-enum resize_edges {
-    RESIZE_EDGE_TOP = 1 << 0,
-    RESIZE_EDGE_BOTTOM = 1 << 1,
-    RESIZE_EDGE_LEFT = 1 << 2,
-    RESIZE_EDGE_RIGHT = 1 << 3
-};
+#include <signal_definitions.hpp>
 
 class wayfire_resize : public wayfire_plugin_t {
+    signal_callback_t resize_request;
+
     button_callback activate_binding;
     wayfire_view view;
     wl_fixed_t initial_x, initial_y;
@@ -32,7 +28,18 @@ class wayfire_resize : public wayfire_plugin_t {
             grab_interface->callbacks.pointer.motion =
                 std::bind(std::mem_fn(&wayfire_resize::pointer_motion), this, _1, _2);
 
+            resize_request = std::bind(std::mem_fn(&wayfire_resize::resize_requested), this, _1);
+            output->signal->connect_signal("resize-request", &resize_request);
             /* TODO: resize_request, read binding from config */
+        }
+
+        void resize_requested(signal_data *data) {
+            auto converted = static_cast<resize_request_signal*> (data);
+            if (converted) {
+                initiate(converted->ptr);
+                edges = converted->edges; // the first function may not return,
+                                          //but in this case this is a no-op
+            }
         }
 
         void initiate(weston_pointer *ptr) {
@@ -57,15 +64,15 @@ class wayfire_resize : public wayfire_plugin_t {
             const int32_t halfh = view->geometry.origin.y + view->geometry.size.h / 2;
 
             if (pointer_x < halfw) {
-                edges = RESIZE_EDGE_LEFT;
+                edges = WL_SHELL_SURFACE_RESIZE_LEFT;
             } else {
-                edges = RESIZE_EDGE_RIGHT;
+                edges = WL_SHELL_SURFACE_RESIZE_RIGHT;
             }
 
             if (pointer_y < halfh) {
-                edges |= RESIZE_EDGE_TOP;
+                edges |= WL_SHELL_SURFACE_RESIZE_TOP;
             } else {
-                edges |= RESIZE_EDGE_BOTTOM;
+                edges |= WL_SHELL_SURFACE_RESIZE_BOTTOM;
             }
 
             weston_desktop_surface_set_resizing(view->desktop_surface, true);
@@ -92,14 +99,14 @@ class wayfire_resize : public wayfire_plugin_t {
             initial_x = current_x;
             initial_y = current_y;
 
-            if (edges & RESIZE_EDGE_LEFT) {
+            if (edges & WL_SHELL_SURFACE_RESIZE_LEFT) {
                 newg.origin.x += dx;
                 newg.size.w -= dx;
             } else {
                 newg.size.w += dx;
             }
 
-            if (edges & RESIZE_EDGE_TOP) {
+            if (edges & WL_SHELL_SURFACE_RESIZE_TOP) {
                 newg.origin.y += dy;
                 newg.size.h -= dy;
             } else {

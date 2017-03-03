@@ -22,6 +22,15 @@ struct destroy_view_signal : public signal_data {
 struct change_viewport_signal : public signal_data {
     int nvx, nvy;
 };
+using change_viewport_notify = change_viewport_signal;
 
+struct move_request_signal : public signal_data {
+    weston_pointer *ptr;
+};
+
+struct resize_request_signal : public signal_data {
+    weston_pointer *ptr;
+    uint32_t edges;
+};
 #endif
 

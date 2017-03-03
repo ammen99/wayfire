@@ -1,8 +1,10 @@
 #include <output.hpp>
 #include <core.hpp>
 #include <linux/input.h>
+#include <signal_definitions.hpp>
 
 class wayfire_move : public wayfire_plugin_t {
+    signal_callback_t move_request;
     button_callback activate_binding;
     wayfire_view view;
 
@@ -25,7 +27,15 @@ class wayfire_move : public wayfire_plugin_t {
             grab_interface->callbacks.pointer.motion =
                 std::bind(std::mem_fn(&wayfire_move::pointer_motion), this, _1, _2);
 
+            move_request = std::bind(std::mem_fn(&wayfire_move::move_requested), this, _1);
+            output->signal->connect_signal("move-request", &move_request);
             /* TODO: move_request, read binding from file and expo interoperability */
+        }
+
+        void move_requested(signal_data *data) {
+            auto converted = static_cast<move_request_signal*> (data);
+            if(converted)
+                initiate(converted->ptr);
         }
 
         void initiate(weston_pointer *ptr) {
