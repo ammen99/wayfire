@@ -65,7 +65,8 @@ int main(int argc, char *argv[]) {
     core = new wayfire_core();
     core->init(ec, config);
 
-    load_wayland_backend(ec);
+    load_drm_backend(ec);
+    //load_wayland_backend(ec);
 
     auto socket_name = wl_display_add_socket_auto(display);
     if (!socket_name) {

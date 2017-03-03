@@ -41,6 +41,7 @@ weston_seat* wayfire_core::get_current_seat() {
 }
 
 void wayfire_core::add_output(weston_output *output) {
+    debug << "add output" << std::endl;
     if (outputs.find(output->id) != outputs.end())
         return;
 

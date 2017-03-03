@@ -114,24 +114,33 @@ void wayfire_view_t::set_maximized(bool maxim) {
 }
 
 void wayfire_view_t::map(int sx, int sy) {
+    if (!weston_surface_is_mapped(surface)) {
+        if (xwayland.is_xorg) {
+            auto g = weston_desktop_surface_get_geometry(desktop_surface);
+            weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
+            /* TODO: position xorg views, see weston shell.c#2432 */
+        } else {
+            weston_view_set_position(handle, sx, sy);
+        }
 
-    if (xwayland.is_xorg) {
-        auto g = weston_desktop_surface_get_geometry(desktop_surface);
-        weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
-        /* TODO: position xorg views, see weston shell.c#2432 */
-    } else {
-        weston_view_set_position(handle, sx, sy);
+        weston_view_update_transform(handle);
+        handle->is_mapped = true;
+        surface->is_mapped = true;
+        handle->is_mapped = true;
+        geometry.size = {surface->width, surface->height};
     }
 
-    weston_view_update_transform(handle);
-    handle->is_mapped = true;
-    surface->is_mapped = true;
-    handle->is_mapped = true;
+    int oldx, oldy;
+    int newx, newy;
 
-    geometry.origin = {sx, sy};
-    geometry.size = {surface->width, surface->height};
+    weston_view_to_global_fixed(handle, 0, 0, &oldx, &oldy);
+    weston_view_to_global_fixed(handle, sx, sy, &newx, &newy);
 
-    /* TODO: see shell.c#activate() */
+    sx = handle->geometry.x + (newx - oldx);
+    sy = handle->geometry.y + (newy - oldy);
+
+    move(sx, sy);
+        /* TODO: see shell.c#activate() */
 }
 
 void wayfire_view_t::set_mask(uint32_t mask) {

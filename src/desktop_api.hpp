@@ -32,10 +32,7 @@ void desktop_surface_commited (weston_desktop_surface *desktop_surface,
         return;
     }
 
-    if (!weston_surface_is_mapped(view->surface)) {
-        view->map(sx, sy);
-        //return;
-    }
+    view->map(sx, sy);
 
     /* TODO: handle fullscreen and maximized state
      * weston_desktop_surface_get_fullscreen() && weston_desktop_surface_get_maximized() */

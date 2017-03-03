@@ -60,8 +60,10 @@ class wayfire_resize : public wayfire_plugin_t {
             int pointer_x = wl_fixed_to_int(initial_x);
             int pointer_y = wl_fixed_to_int(initial_y);
 
-            const int32_t halfw = view->geometry.origin.x + view->geometry.size.w / 2;
-            const int32_t halfh = view->geometry.origin.y + view->geometry.size.h / 2;
+            //const int32_t halfw = view->geometry.origin.x + view->geometry.size.w / 2;
+            //const int32_t halfh = view->geometry.origin.y + view->geometry.size.h / 2;
+            const int32_t halfw = view->geometry.size.w / 2;
+            const int32_t halfh = view->geometry.size.h / 2;
 
             if (pointer_x < halfw) {
                 edges = WL_SHELL_SURFACE_RESIZE_LEFT;

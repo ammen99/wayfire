@@ -20,8 +20,7 @@ add_executable(wayfire ${SOURCES})
 
 # Libraries
 target_link_libraries(wayfire jpeg GLESv2)
-target_link_libraries(wayfire dl wayland-server weston-2 weston-desktop-2 png xkbcommon)
-target_link_libraries(wayfire ${CMAKE_SOURCE_DIR}/src/libshared.a)
+target_link_libraries(wayfire dl wayland-server weston-2 weston-desktop-2 png xkbcommon input)
 
 # Installation
 install(TARGETS wayfire DESTINATION bin)
