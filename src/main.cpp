@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
 
     debug << "running at server " << server_name << std::endl;
     setenv("WAYLAND_SERVER", server_name, 1);
+    core->wayland_display = server_name;
 
     load_xwayland(ec);
 

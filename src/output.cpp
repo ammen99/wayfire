@@ -712,7 +712,7 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     weston_output_schedule_repaint(handle);
 
     terminal_callback = [=] (weston_keyboard *kbd, uint32_t key) {
-        core->run("terminator");
+        core->run("weston-terminal");
     };
 
     input->add_key(MODIFIER_SUPER, KEY_T, &terminal_callback);

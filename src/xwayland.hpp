@@ -26,6 +26,7 @@ int handle_sigusr1(int ignore, void *data) {
 pid_t spawn_callback(void *data, const char *display, int abstract_fd, int unix_fd) {
     info << "Xwayland display: " << display << std::endl;
 
+    core->xwayland_display = display;
     int sv[2], wm[2];
 
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv) < 0) {

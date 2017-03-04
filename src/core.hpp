@@ -20,6 +20,8 @@ class wayfire_core {
     void configure(wayfire_config *config);
 
     public:
+    std::string wayland_display, xwayland_display;
+
     weston_compositor *ec;
     void init(weston_compositor *ec, wayfire_config *config);
 

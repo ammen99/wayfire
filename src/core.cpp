@@ -152,10 +152,13 @@ namespace {
 
 void wayfire_core::run(const char *command) {
     debug << "run " << command << std::endl;
+
+    std::string cmd = command;
+    cmd = "WAYLAND_DISPLAY=" + wayland_display + " DISPLAY=" + xwayland_display + " " + cmd;
     auto pid = fork();
 
     if (!pid) {
-        std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
+        std::exit(execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL));
     }
 }
 
