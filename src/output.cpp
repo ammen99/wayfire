@@ -1,6 +1,7 @@
 #include "opengl.hpp"
 #include "output.hpp"
 #include "signal_definitions.hpp"
+#include <linux/input.h>
 
 #include "wm.hpp"
 
@@ -690,6 +691,9 @@ void signal_manager::emit_signal(std::string name, signal_data *data) {
 /* End SignalManager */
 /* Start output */
 
+/* TODO: move to command plugin */
+key_callback terminal_callback;
+
 wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     this->handle = handle;
 
@@ -706,6 +710,12 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
 
     weston_output_damage(handle);
     weston_output_schedule_repaint(handle);
+
+    terminal_callback = [=] (weston_keyboard *kbd, uint32_t key) {
+        core->run("terminator");
+    };
+
+    input->add_key(MODIFIER_SUPER, KEY_T, &terminal_callback);
 }
 
 wayfire_output::~wayfire_output(){
@@ -754,10 +764,8 @@ void wayfire_output::detach_view(wayfire_view v) {
         break;
     }
 
-    if (active_view == v) {
-        active_view = core->find_view(next);
-        focus_view(active_view, core->get_current_seat());
-    }
+    if (active_view == v)
+        focus_view(core->find_view(next), core->get_current_seat());
 
     auto sig_data = new destroy_view_signal{v};
     signal->emit_signal("destroy-view", sig_data);
@@ -771,6 +779,7 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
     if (active_view)
         weston_desktop_surface_set_activated(active_view->desktop_surface, false);
 
+    debug << "focus view" << std::endl;
     active_view = v;
     weston_view_activate(v->handle, seat,
             WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);

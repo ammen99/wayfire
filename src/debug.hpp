@@ -1,3 +1,6 @@
+#ifndef DEBUG_HPP
+#define DEBUG_HPP
+
 #include <signal.h>
 #include <execinfo.h>
 #include <cxxabi.h>
@@ -97,3 +100,4 @@ wayland_log_handler(const char *fmt, va_list arg)
     file_info.flush();
 }
 
+#endif /* end of include guard: DEBUG_HPP */

@@ -151,10 +151,12 @@ namespace {
 }
 
 void wayfire_core::run(const char *command) {
+    debug << "run " << command << std::endl;
     auto pid = fork();
 
-    if (!pid)
+    if (!pid) {
         std::exit(execl("/bin/sh", "/bin/sh", "-c", command, NULL));
+    }
 }
 
 void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output) {

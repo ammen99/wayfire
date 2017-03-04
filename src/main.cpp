@@ -7,6 +7,7 @@
 
 #include "weston_backend.hpp"
 #include "desktop_api.hpp"
+#include "xwayland.hpp"
 
 #include <wayland-server.h>
 
@@ -70,20 +71,23 @@ int main(int argc, char *argv[]) {
         ret = load_wayland_backend(ec);
     else
         ret = load_drm_backend(ec);
+
     if (ret < 0) {
         debug << "failed to load weston backend, exiting" << std::endl;
         return 0;
     }
-    //load_wayland_backend(ec);
 
-    auto socket_name = wl_display_add_socket_auto(display);
-    if (!socket_name) {
-        error << "Failed to create listening socket, bailing out" << std::endl;
+    auto server_name = wl_display_add_socket_auto(display);
+    if (!server_name) {
+        error << "Failed to create listening server, bailing out" << std::endl;
         return -1;
     }
 
-    debug << "running at socket " << socket_name << std::endl;
-    setenv("WAYLAND_SERVER", socket_name, 1);
+    debug << "running at server " << server_name << std::endl;
+    setenv("WAYLAND_SERVER", server_name, 1);
+
+    load_xwayland(ec);
+
     desktop_api.struct_size = sizeof(weston_desktop_api);
     desktop_api.surface_added = desktop_surface_added;
     desktop_api.surface_removed = desktop_surface_removed;
