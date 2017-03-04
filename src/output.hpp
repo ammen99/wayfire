@@ -55,44 +55,40 @@ struct render_manager {
     private:
         wayfire_output *output;
 
-        int redraw_timer = 0;
+        bool dirty_context = true;
+        OpenGL::context_t *ctx;
+        void load_context();
+        void release_context();
+
         struct {
             GLuint tex = -1;
             GLuint fbuff;
             unsigned long w, h;
         } background;
 
-        render_hook_t renderer;
+        pixman_region32_t old_damage;
+        int (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
+                render_hook_t renderer;
+
 #define ALL_VISIBLE 4294967295 // All 32 bits are on
         uint32_t visibility_mask = ALL_VISIBLE;
 
         void load_background();
+        void update_damage (pixman_region32_t* damage, pixman_region32_t *total);
     public:
         render_manager(wayfire_output *o);
 
-        bool dirty_context = true;
-        OpenGL::context_t *ctx;
-        void load_context();
-        void release_context();
-
 #ifdef USE_GLES3
-        void blit_background(GLuint destination_fbuff);
+        void blit_background(GLuint destination_fbuff, pixman_region32_t *damage);
 #endif
         GLuint get_background() {return background.tex;}
 
         void set_renderer(uint32_t visibility_mask = ALL_VISIBLE, render_hook_t rh = nullptr);
         void transformation_renderer();
         void reset_renderer();
-        bool renderer_running() { return renderer != nullptr || redraw_timer; }
-        void paint();
+
+        void paint(pixman_region32_t *damage);
         void post_paint();
-
-        bool should_repaint_everything() { return redraw_timer > 0; }
-
-        void force_full_redraw(bool state) {
-            if(state) ++redraw_timer;
-            else if(redraw_timer) --redraw_timer;
-        }
 
         /* this function renders a viewport and
          * saves the image in texture which is returned */
@@ -158,10 +154,6 @@ class wayfire_output {
     viewport_manager *viewport;
     signal_manager *signal;
 
-    bool should_redraw() {
-        return render->renderer_running();
-    }
-
     wayfire_output(weston_output*, wayfire_config *config);
     ~wayfire_output();
 
@@ -172,8 +164,10 @@ class wayfire_output {
     wayfire_view active_view;
     wayfire_view get_view_at_point(int x, int y);
 
+    /* normal layer is where we place weston_views for now
+     * background layer contains the texture from the background */
     /* TODO: add other layers, draw cursor in cursor_layer */
-    weston_layer normal_layer;
+    weston_layer normal_layer, background_layer;
 
     void for_each_view(view_callback_proc_t);
     void for_each_view_reverse(view_callback_proc_t);

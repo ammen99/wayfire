@@ -334,19 +334,48 @@ void render_manager::release_context() {
 }
 
 #ifdef USE_GLES3
-void render_manager::blit_background(GLuint dest) {
+void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
-    GL_CALL(glBlitFramebuffer(0, 0, background.w, background.h,
-                0, output->handle->height, output->handle->width, 0, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+
+    int nrects;
+    auto rects = pixman_region32_rectangles(damage, &nrects);
+    for (int i = 0; i < nrects; i++) {
+        float topx = rects[i].x1 * 1.0 / output->handle->width;
+        float topy = rects[i].y1 * 1.0 / output->handle->height;
+        float botx = rects[i].x2 * 1.0 / output->handle->width;
+        float boty = rects[i].y2 * 1.0 / output->handle->height;
+
+        /* invy1 and invy2 are actually (1 - topy) and (1 - boty),
+         * but we calculate them separately because otherwise precision issues might arise */
+        float invy1 = (output->handle->height - rects[i].y1) * 1.0 / output->handle->height;
+        float invy2 = (output->handle->height - rects[i].y2) * 1.0 / output->handle->height;
+
+        GL_CALL(glBlitFramebuffer(topx * background.w, topy * background.h,
+                    botx * background.w, boty * background.h,
+                    topx * output->handle->width, invy1 * output->handle->height,
+                    botx * output->handle->width, invy2 * output->handle->height, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+    }
+
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
+    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, 0));
 }
 #endif
 
+int repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
+    auto output = core->get_output(o);
+    if (output) {
+        output->render->paint(damage);
+        output->render->post_paint();
+    }
+    return 0;
+}
+
 render_manager::render_manager(wayfire_output *o) {
     output = o;
-    /* TODO: load context now or later?
-     * Also hijack weston renderer */
-    //load_context();
+    weston_renderer_repaint = output->handle->repaint;
+    output->handle->repaint = repaint_output_callback;
+    pixman_region32_init(&old_damage);
 }
 
 void render_manager::reset_renderer() {
@@ -373,16 +402,29 @@ void render_manager::set_renderer(uint32_t vis_mask, render_hook_t rh) {
     visibility_mask = vis_mask;
 }
 
-void render_manager::paint() {
-    if (dirty_context)
-        load_context();
+void render_manager::update_damage(pixman_region32_t *cur_damage, pixman_region32_t *total) {
+    pixman_region32_init(total);
+    pixman_region32_union(total, cur_damage, &old_damage);
+    pixman_region32_copy(&old_damage, cur_damage);
+}
 
-    OpenGL::bind_context(ctx);
+void render_manager::paint(pixman_region32_t *damage) {
+    pixman_region32_t total_damage;
+
+    if (dirty_context) {
+        load_context();
+        update_damage(damage, &total_damage);
+        weston_renderer_repaint(output->handle, damage);
+        return;
+    }
 
     if (renderer) {
+        OpenGL::bind_context(ctx);
         renderer();
-    } else {//TODO: paint background
-        //blit_background(0);
+    } else {
+        update_damage(damage, &total_damage);
+        blit_background(0, &total_damage);
+        weston_renderer_repaint(output->handle, damage);
     }
 }
 
@@ -424,7 +466,7 @@ void render_manager::texture_from_viewport(std::tuple<int, int> vp,
 
     /* Rendering code, taken from wlc's get_visible_wayfire_views */
 
-    blit_background(fbuff);
+    //blit_background(fbuff);
     //GetTuple(x, y, vp);
 
     //uint32_t mask = output->viewport->get_mask_for_viewport(x, y);
@@ -661,6 +703,9 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
 
     weston_layer_init(&normal_layer, core->ec);
     weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);
+
+    weston_output_damage(handle);
+    weston_output_schedule_repaint(handle);
 }
 
 wayfire_output::~wayfire_output(){
@@ -675,7 +720,8 @@ void wayfire_output::activate() {
 }
 
 void wayfire_output::deactivate() {
-    render->dirty_context = true;
+    // TODO: what do we do?
+    //render->dirty_context = true;
 }
 
 void wayfire_output::attach_view(wayfire_view v) {

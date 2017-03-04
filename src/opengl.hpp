@@ -1,13 +1,8 @@
 #ifndef DRIVER_H
 #define DRIVER_H
 
-#ifndef USE_GLES3
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#else
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
-#endif
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>

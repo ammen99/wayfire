@@ -236,6 +236,7 @@ R"(#version 100
         GLuint fss = load_shader(std::string(shaderSrcPath)
                     .append("/frag.glsl").c_str(),
                      GL_FRAGMENT_SHADER);
+        debug << "load context" << std::endl;
 
         ctx->program = GL_CALL(glCreateProgram());
 
@@ -244,17 +245,19 @@ R"(#version 100
         GL_CALL(glLinkProgram(ctx->program));
         GL_CALL(glUseProgram(ctx->program));
 
+        debug << "what r u doing" << std::endl;
         ctx->mvpID   = GL_CALL(glGetUniformLocation(ctx->program, "MVP"));
         ctx->colorID = GL_CALL(glGetUniformLocation(ctx->program, "color"));
 
         glm::mat4 identity;
         GL_CALL(glUniformMatrix4fv(ctx->mvpID, 1, GL_FALSE, &identity[0][0]));
 
+        debug << "hey mate" << std::endl;
         auto w2ID = GL_CALL(glGetUniformLocation(ctx->program, "w2"));
         auto h2ID = GL_CALL(glGetUniformLocation(ctx->program, "h2"));
 
-        glUniform1f(w2ID, bound->width / 2.);
-        glUniform1f(h2ID, bound->height / 2.);
+        glUniform1f(w2ID, ctx->width / 2.);
+        glUniform1f(h2ID, ctx->height / 2.);
 
         ctx->position   = GL_CALL(glGetAttribLocation(ctx->program, "position"));
         ctx->uvPosition = GL_CALL(glGetAttribLocation(ctx->program, "uvPosition"));
