@@ -27,6 +27,7 @@ pid_t spawn_callback(void *data, const char *display, int abstract_fd, int unix_
     info << "Xwayland display: " << display << std::endl;
 
     core->xwayland_display = display;
+    setenv("DISPLAY", display, 1);
     int sv[2], wm[2];
 
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv) < 0) {
@@ -55,6 +56,7 @@ pid_t spawn_callback(void *data, const char *display, int abstract_fd, int unix_
         signal(SIGUSR1, SIG_IGN);
 
         auto path = "/usr/bin/Xwayland";
+        debug << "execute" << std::endl;
         if (execl(path, path, display, "-rootless", "-listen", abstractstr.c_str(),
                     "-listen", unixstr.c_str(), "-wm", wmstr.c_str(), "-terminate", NULL) < 0) {
             error << "failed to execute server" << std::endl;

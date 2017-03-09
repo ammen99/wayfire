@@ -154,7 +154,8 @@ void wayfire_core::run(const char *command) {
     debug << "run " << command << std::endl;
 
     std::string cmd = command;
-    cmd = "WAYLAND_DISPLAY=" + wayland_display + " DISPLAY=" + xwayland_display + " " + cmd;
+    cmd = "WAYLAND_DISPLAY=" + wayland_display + " " + cmd;
+    debug << "full cmd: " << cmd << std::endl;
     auto pid = fork();
 
     if (!pid) {

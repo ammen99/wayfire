@@ -1,4 +1,3 @@
-/* Plugin used to map various KeyBindings to commands */
 #include <output.hpp>
 
 #define NUMBER_COMMANDS 10
@@ -31,16 +30,13 @@ namespace {
     }
 }
 
-class Commands: public Plugin {
-    std::unordered_map<std::string, KeyBinding> commands;
+class wayfire_command : public wayfire_plugin_t {
+    std::unordered_map<std::string, key_callback> commands;
 
     public:
-    void initOwnership() {
+    void init(wayfire_config *config) {
         owner->name = "command";
         owner->compatAll = true;
-    }
-
-    void updateConfiguration() {
         using namespace std::placeholders;
 
         for(int i = 1; i <= NUMBER_COMMANDS; i++) {
@@ -62,8 +58,6 @@ class Commands: public Plugin {
             output->hook->add_key(&commands[com], true);
         }
 
-    }
-    void init() {
         for(int i = 1; i <= NUMBER_COMMANDS; i++) {
             auto str1 = getStringFromCommandNumber(i, TYPE_COMMAND);
             auto str2 = getStringFromCommandNumber(i, TYPE_BINDING);
