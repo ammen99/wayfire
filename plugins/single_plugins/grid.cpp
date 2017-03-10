@@ -49,8 +49,8 @@ class Grid : public Plugin {
     }
 
     void initOwnership(){
-        owner->name = "grid";
-        owner->compatAll = false;
+        grab_interface->name = "grid";
+        grab_interface->compatAll = false;
     }
 
     void updateConfiguration() {

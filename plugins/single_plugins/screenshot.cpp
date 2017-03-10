@@ -11,8 +11,8 @@ class Screenshot : public Plugin {
     std::string path;
     public:
         void initOwnership() {
-            owner->name = "screenshot";
-            owner->compatAll = true;
+            grab_interface->name = "screenshot";
+            grab_interface->compatAll = true;
         }
 
         void updateConfiguration() {

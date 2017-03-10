@@ -4,7 +4,7 @@
 #include <sstream>
 #include <fstream>
 #include <libweston-1/compositor.h>
-#include <xkbcommon/xkbcommon.h>
+#include <libevdev/libevdev.h>
 #include <linux/input.h>
 
 using std::string;
@@ -50,8 +50,7 @@ wayfire_key wayfire_config_section::get_key(string name, wayfire_key df) {
             ans.mod |= MODIFIER_SUPER;
     }
 
-    ans.keyval = xkb_keysym_from_name(items[items.size() - 1].c_str(), XKB_KEYSYM_NO_FLAGS);
-
+    ans.keyval = libevdev_event_code_from_name(EV_KEY, items[items.size() - 1].c_str());
     return ans;
 }
 

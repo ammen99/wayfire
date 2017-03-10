@@ -14,13 +14,14 @@ pkg_check_modules(gl REQUIRED gl)
 # Main executable
 include_directories(src)
 include_directories(SYSTEM /usr/include/pixman-1)
+include_directories(SYSTEM /usr/include/libevdev-1.0)
 file(GLOB SOURCES "src/*.cpp")
 
 add_executable(wayfire ${SOURCES})
 
 # Libraries
 target_link_libraries(wayfire jpeg GLESv2)
-target_link_libraries(wayfire dl wayland-server weston-2 weston-desktop-2 png xkbcommon input pixman-1)
+target_link_libraries(wayfire dl wayland-server weston-2 weston-desktop-2 png xkbcommon input pixman-1 evdev)
 
 # Installation
 install(TARGETS wayfire DESTINATION bin)

@@ -14,9 +14,9 @@ class VSwitch : public Plugin {
     public:
 
     void initOwnership() {
-        owner->name = "vswitch";
-        owner->compatAll = false;
-        owner->compat.insert("move");
+        grab_interface->name = "vswitch";
+        grab_interface->compatAll = false;
+        grab_interface->compat.insert("move");
     }
 
     void updateConfiguration() {
@@ -75,7 +75,7 @@ class VSwitch : public Plugin {
         if (!output->input->activate_owner(owner))
             return;
 
-        owner->grab();
+        grab_interface->grab();
 
         auto xev = ctx.xev.xkey;
 

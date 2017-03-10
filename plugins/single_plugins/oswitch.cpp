@@ -7,8 +7,8 @@ class OutputSwitcher : public Plugin {
 
     public:
         void initOwnership() {
-            owner->name = "oswitch";
-            owner->compatAll = true;
+            grab_interface->name = "oswitch";
+            grab_interface->compatAll = true;
         }
 
         void updateConfiguration() {

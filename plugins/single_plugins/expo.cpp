@@ -83,9 +83,9 @@ class Expo : public Plugin {
         output->signal->connect_signal("reload-gl", &reload_gl);
     }
     void initOwnership() {
-        owner->name = "expo";
-        owner->compatAll = false;
-        owner->compat.insert("screenshot");
+        grab_interface->name = "expo";
+        grab_interface->compatAll = false;
+        grab_interface->compat.insert("screenshot");
     }
 
     struct tup {
@@ -114,7 +114,7 @@ class Expo : public Plugin {
             if (!output->input->activate_owner(owner))
                 return;
 
-            owner->grab();
+            grab_interface->grab();
             output->render->set_renderer(0, std::bind(std::mem_fn(&Expo::render), this));
             move.enable();
             press.enable();

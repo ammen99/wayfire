@@ -1,83 +1,61 @@
 #include <output.hpp>
+#include <config.hpp>
+#include <core.hpp>
+#include <linux/input.h>
+#include <linux/input-event-codes.h>
 
 #define NUMBER_COMMANDS 10
 
 #define TYPE_COMMAND 1
 #define TYPE_BINDING 2
 
-namespace {
-    std::string numToString(int a) {
-        std::string str = "";
-        while(a > 0)
-            str = char(a % 10 + '0') + str,
-            a /= 10;
-
-        if(str.length() < 2)
-            str = '0' + str;
-
-        return str;
-    }
-
-    std::string getStringFromCommandNumber(int no, int type) {
-        std::string s = numToString(no) + "_";
-
-        if(type == TYPE_COMMAND)
-            s += "command";
-        if(type == TYPE_BINDING)
-            s += "binding";
-
-        return s;
-    }
-}
-
 class wayfire_command : public wayfire_plugin_t {
-    std::unordered_map<std::string, key_callback> commands;
+    std::vector<key_callback> v;
 
     public:
     void init(wayfire_config *config) {
-        owner->name = "command";
-        owner->compatAll = true;
+        grab_interface->name = "command";
+        grab_interface->compatAll = true;
         using namespace std::placeholders;
 
-        for(int i = 1; i <= NUMBER_COMMANDS; i++) {
-            auto str1 = getStringFromCommandNumber(i, TYPE_COMMAND);
-            auto str2 = getStringFromCommandNumber(i, TYPE_BINDING);
 
-            auto com = *options[str1]->data.sval;
-            if(com == "")
-                continue;
+        debug << "load commmand" << std::endl;
+        auto section = config->get_section("command");
 
-            auto key = *options[str2]->data.key;
-            if(key.mod == 0 && key.key == 0)
-                continue;
-
-            commands[com].action = std::bind(std::mem_fn(&Commands::onCommandActivated), this, _1);
-            commands[com].type   = BindingTypePress;
-            commands[com].key    = key.key;
-            commands[com].mod    = key.mod;
-            output->hook->add_key(&commands[com], true);
+        std::vector<std::string> commands;
+        for (auto command : section->options) {
+            if (command.first.length() > 8 && command.first.substr(0, 8) == "command_") {
+                commands.push_back(command.first.substr(8, command.first.size() - 8));
+            }
         }
 
-        for(int i = 1; i <= NUMBER_COMMANDS; i++) {
-            auto str1 = getStringFromCommandNumber(i, TYPE_COMMAND);
-            auto str2 = getStringFromCommandNumber(i, TYPE_BINDING);
+        v.resize(commands.size());
+        debug << "size: " << commands.size() << std::endl;
+        int i = 0;
 
-            options.insert(newStringOption(str1, ""));
-            options.insert(newKeyOption(str2, Key{0, 0}));
+        for (auto num : commands) {
+            auto command = "command_" + num;
+            auto binding = "binding_" + num;
+
+            auto comvalue = section->get_string(command, "");
+            auto key = section->get_key(binding, {0, 0});
+
+            debug << "got " << comvalue << std::endl;
+            if (key.mod == 0 || key.keyval == 0 || command == "")
+                continue;
+
+            debug << "register" << key.mod << " " << key.keyval << " " << XKB_KEY_d  << " " << KEY_D << std::endl;
+            v[i++] = [=] (weston_keyboard* kbd, uint32_t key) {
+                core->run(comvalue.c_str());
+            };
+
+            output->input->add_key((weston_keyboard_modifier)key.mod, key.keyval, &v[i - 1]);
         }
-    }
-
-    void onCommandActivated(EventContext ctx){
-        auto xev = ctx.xev.xkey;
-
-        for(auto com : commands)
-            if (output->input->check_key(&com.second, xev.key, xev.mod))
-                core->run(com.first.c_str());
     }
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new Commands();
+    wayfire_plugin_t *newInstance() {
+        return new wayfire_command();
     }
 }

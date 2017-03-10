@@ -46,9 +46,9 @@ class Switcher : public Plugin {
     public:
 
     void initOwnership() {
-        owner->name = "switcher";
-        owner->compatAll = false;
-        owner->compat.insert("screenshot");
+        grab_interface->name = "switcher";
+        grab_interface->compatAll = false;
+        grab_interface->compat.insert("screenshot");
     }
 
     void updateConfiguration() {
@@ -173,7 +173,7 @@ class Switcher : public Plugin {
         if (!output->input->activate_owner(owner))
             return;
 
-        owner->grab();
+        grab_interface->grab();
         active = true;
 
         auto view = glm::lookAt(glm::vec3(0., 0., 1.67),
@@ -186,7 +186,7 @@ class Switcher : public Plugin {
         views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
 
         if (!views.size()) {
-            owner->ungrab();
+            grab_interface->ungrab();
             output->input->deactivate_owner(owner);
             return;
         }
@@ -502,7 +502,7 @@ class Switcher : public Plugin {
     void terminate() {
         exit.enable();
         output->input->deactivate_owner(owner);
-        owner->ungrab();
+        grab_interface->ungrab();
 
         GetTuple(sw, sh, output->get_screen_size());
 
