@@ -23,6 +23,7 @@ void gl_call(const char*, uint32_t, const char*);
 
 #define TEXTURE_TRANSFORM_INVERT_Y  (1 << 0)
 #define TEXTURE_TRANSFORM_USE_COLOR (1 << 1)
+#define DONT_RELOAD_PROGRAM         (1 << 2)
 
 namespace OpenGL {
 
@@ -33,6 +34,8 @@ namespace OpenGL {
 
         GLuint mvpID, colorID;
         GLuint position, uvPosition;
+
+        GLuint w2ID, h2ID;
 
         int32_t width, height;
     };

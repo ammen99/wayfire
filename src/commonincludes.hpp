@@ -11,7 +11,7 @@ extern std::ofstream* file_debug;
 
 #define debug (*file_debug) << "[DD] "
 #define info  file_info  << "[II] "
-#define error file_info  << "[EE] "
+#define errio file_info  << "[EE] "
 
 #define USE_GLES3 1
 

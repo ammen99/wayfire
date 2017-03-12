@@ -83,7 +83,7 @@ void configure_wayland_backend_output (wl_listener *listener, void *data) {
     weston_output_set_scale(output, 1);
     weston_output_set_transform(output, WL_OUTPUT_TRANSFORM_NORMAL);
     if (api->output_set_size(output, default_width, default_height) < 0) {
-        error << "can't configure output " << output->id << std::endl;
+        errio << "can't configure output " << output->id << std::endl;
         return;
     }
 

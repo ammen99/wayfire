@@ -104,6 +104,11 @@ class wayfire_view_t {
         void set_mask(uint32_t mask);
         void restore_mask();
         void set_temporary_mask(uint32_t tmask);
+
+        struct {
+            uint tex = -1;
+        } render_state;
+
         void render(uint32_t bits = 0);
 };
 

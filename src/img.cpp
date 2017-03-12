@@ -172,7 +172,7 @@ namespace image_io {
         jpeg_create_decompress(&infot);
 
         if(!file) {
-            error << "Error reading JPEG file" << FileName << std::endl;
+            errio << "Error reading JPEG file" << FileName << std::endl;
             return 0;
         }
 
@@ -207,7 +207,7 @@ namespace image_io {
     GLuint load_from_file(std::string name, ulong &w, ulong &h) {
         int len = name.length();
         if (len < 4 || name[len - 4] != '.') {
-            error << "load_from_file() called with file without extension or with invalid extension!\n";
+            errio << "load_from_file() called with file without extension or with invalid extension!\n";
             return -1;
         }
 
@@ -217,7 +217,7 @@ namespace image_io {
 
         auto it = loaders.find(ext);
         if (it == loaders.end()) {
-            error << "load_from_file() called with unsupported extension " << ext << std::endl;
+            errio << "load_from_file() called with unsupported extension " << ext << std::endl;
             return -1;
         } else {
             return it->second(name.c_str(), w, h);
@@ -228,7 +228,7 @@ namespace image_io {
         auto it = writers.find(type);
 
         if (it == writers.end()) {
-            error << "IMG: unsupported writer backend" << std::endl;
+            errio << "IMG: unsupported writer backend" << std::endl;
         } else {
             it->second(name.c_str(), pixels, w, h);
         }

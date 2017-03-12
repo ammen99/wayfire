@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 
     auto server_name = wl_display_add_socket_auto(display);
     if (!server_name) {
-        error << "Failed to create listening server, bailing out" << std::endl;
+        errio << "Failed to create listening server, bailing out" << std::endl;
         return -1;
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
 
     auto desktop = weston_desktop_create(ec, &desktop_api, NULL);
     if (!desktop) {
-        error << "Failed to create weston_desktop" << std::endl;
+        errio << "Failed to create weston_desktop" << std::endl;
         return -1;
     }
 

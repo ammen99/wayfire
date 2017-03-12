@@ -66,9 +66,9 @@ struct render_manager {
             unsigned long w, h;
         } background;
 
-        pixman_region32_t old_damage;
-        int (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
-                render_hook_t renderer;
+        pixman_region32_t old_damage, null_damage;
+        void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
+        render_hook_t renderer;
 
 #define ALL_VISIBLE 4294967295 // All 32 bits are on
         uint32_t visibility_mask = ALL_VISIBLE;

@@ -21,7 +21,7 @@ add_executable(wayfire ${SOURCES})
 
 # Libraries
 target_link_libraries(wayfire jpeg GLESv2)
-target_link_libraries(wayfire dl wayland-server weston-2 weston-desktop-2 png xkbcommon input pixman-1 evdev)
+target_link_libraries(wayfire dl wayland-server weston-2 weston-desktop-2 png xkbcommon input pixman-1 evdev EGL)
 
 # Installation
 install(TARGETS wayfire DESTINATION bin)

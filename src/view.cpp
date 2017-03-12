@@ -2,6 +2,7 @@
 #include "opengl.hpp"
 #include "output.hpp"
 #include <glm/glm.hpp>
+#include "img.hpp"
 
 
 /* misc definitions */
@@ -52,6 +53,8 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds) {
 
     geometry.size.w = surface->width;
     geometry.size.h = surface->height;
+
+    transform.color = glm::vec4(1,1,1,1);
     /// FIXME : get geometry
     //geometry.origin.x = view->geometry.xjko;
     //auto geom = wlc_view_get_geometry(view);
@@ -159,13 +162,10 @@ void wayfire_view_t::set_temporary_mask(uint32_t tmask) {
     has_temporary_mask = true;
 }
 
+void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4);
 void wayfire_view_t::render(uint32_t bits) {
-    /*
-    wlc_geometry g;
-    wlc_view_get_visible_geometry(get_id(), &g);
-    render_surface(surface, g, transform.compose(), bits);
-
-    */
+    render_surface(surface, geometry.origin.x, geometry.origin.y,
+            transform.calculate_total_transform(), transform.color);
     /*
     std::vector<EffectHook*> hooks_to_run;
     for (auto hook : effects) {
@@ -177,6 +177,42 @@ void wayfire_view_t::render(uint32_t bits) {
     for (auto hook : hooks_to_run)
         hook->action();
     */
+}
+
+/* This is a hack, we use it so that we can reach the memory used by
+ * the texture pointer in the surface
+ * weston has the function surface_copy_content,
+ * but that approach would require glReadPixels to copy data from GPU->CPU
+ * and then again we upload it CPU->GPU, which is slow */
+struct weston_gl_surface_state {
+    GLfloat color[4];
+    void *shader;
+    GLuint textures[3];
+};
+
+
+void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, glm::vec4 color) {
+    if (!surface->is_mapped || !surface->renderer_state)
+        return;
+
+    auto gs = (weston_gl_surface_state*) surface->renderer_state;
+
+    wayfire_geometry geometry;
+    geometry.origin = {x, y};
+    geometry.size = {surface->width, surface->height};
+
+    for (int i = 0; i < 3 && gs->textures[i]; i++) {
+        OpenGL::render_transformed_texture(gs->textures[i], geometry, transform,
+                color, 0);
+    }
+
+    weston_subsurface *sub;
+    if (!wl_list_empty(&surface->subsurface_list)) {
+        wl_list_for_each(sub, &surface->subsurface_list, parent_link) {
+            if (sub && sub->surface != surface)
+                render_surface(sub->surface, sub->position.x + x, sub->position.y + y, transform, color);
+        }
+    }
 }
 
 /*

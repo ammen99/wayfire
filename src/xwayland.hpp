@@ -17,7 +17,6 @@ struct xwayland_t {
 } xwayland;
 
 int handle_sigusr1(int ignore, void *data) {
-    debug << "loaded" << std::endl;
     xwayland.api->xserver_loaded(xwayland.handle, xwayland.client, xwayland.fd);
     wl_event_source_remove(xwayland.sigusr1);
     return 0;
@@ -31,11 +30,11 @@ pid_t spawn_callback(void *data, const char *display, int abstract_fd, int unix_
     int sv[2], wm[2];
 
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv) < 0) {
-        error << "Can't create first socket pair" << std::endl;
+        errio << "Can't create first socket pair" << std::endl;
         return 1;
     }
     if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, wm) < 0) {
-        error << "Can't create second socket pair" << std::endl;
+        errio << "Can't create second socket pair" << std::endl;
         return 1;
     }
 
@@ -56,15 +55,14 @@ pid_t spawn_callback(void *data, const char *display, int abstract_fd, int unix_
         signal(SIGUSR1, SIG_IGN);
 
         auto path = "/usr/bin/Xwayland";
-        debug << "execute" << std::endl;
         if (execl(path, path, display, "-rootless", "-listen", abstractstr.c_str(),
                     "-listen", unixstr.c_str(), "-wm", wmstr.c_str(), "-terminate", NULL) < 0) {
-            error << "failed to execute server" << std::endl;
+            errio << "failed to execute server" << std::endl;
         }
 
         _exit(EXIT_FAILURE);
     } else if (pid == -1) {
-        error << "failed to fork Xwayland" << std::endl;
+        errio << "failed to fork Xwayland" << std::endl;
     } else {
         close(sv[1]);
         xwayland.client = wl_client_create(core->ec->wl_display, sv[0]);
@@ -88,7 +86,7 @@ int load_xwayland(weston_compositor *ec) {
         return -1;
 
     if (xwayland.api->listen(xwayland.handle, &xwayland, spawn_callback) < 0) {
-        error << "Can't listen for xwayland" << std::endl;
+        errio << "Can't listen for xwayland" << std::endl;
         return -1;
     }
 

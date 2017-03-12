@@ -10,13 +10,13 @@
 #define max_frames 100
 
 void print_trace() {
-    error << "stack trace:\n";
+    errio << "stack trace:\n";
 
     void* addrlist[max_frames + 1];
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
     if (addrlen == 0) {
-        error << "<empty, possibly corrupt>\n";
+        errio << "<empty, possibly corrupt>\n";
         return;
     }
 
@@ -48,12 +48,12 @@ void print_trace() {
             char *ret = abi::__cxa_demangle(begin_name, funcname, &funcnamesize, &status);
             if(status == 0) {
                 funcname = ret;
-                error << symbollist[i] << ":" << funcname << "+" << begin_offset << std::endl;
+                errio << symbollist[i] << ":" << funcname << "+" << begin_offset << std::endl;
             } else {
-                error << symbollist[i] << ":" << begin_name << "+" << begin_offset << std::endl;
+                errio << symbollist[i] << ":" << begin_name << "+" << begin_offset << std::endl;
             }
         } else {
-            error << symbollist[i] << std::endl;
+            errio << symbollist[i] << std::endl;
         }
     }
 
@@ -67,7 +67,7 @@ void print_trace() {
 extern weston_compositor *crash_compositor;
 
 void signalHandle(int sig) {
-    error << "Crash detected!" << std::endl;
+    errio << "Crash detected!" << std::endl;
     print_trace();
 
     crash_compositor->backend->restore(crash_compositor);

@@ -10,6 +10,9 @@
 #include <dlfcn.h>
 #include <algorithm>
 
+#include </usr/include/EGL/egl.h>
+#include </usr/include/EGL/eglext.h>
+
 /* Start plugin manager */
 plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config) {
     init_default_plugins();
@@ -48,15 +51,15 @@ namespace {
 wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h) {
     void *handle = dlopen(path.c_str(), RTLD_NOW);
     if(handle == NULL){
-        error << "Can't load plugin " << path << std::endl;
-        error << "\t" << dlerror() << std::endl;
+        errio << "Can't load plugin " << path << std::endl;
+        errio << "\t" << dlerror() << std::endl;
         return nullptr;
     }
 
     auto initptr = dlsym(handle, "newInstance");
     if(initptr == NULL) {
-        error << "Missing function newInstance in file " << path << std::endl;
-        error << dlerror();
+        errio << "Missing function newInstance in file " << path << std::endl;
+        errio << dlerror();
         return nullptr;
     }
     get_plugin_instance_t init = union_cast<void*, get_plugin_instance_t> (initptr);
@@ -91,7 +94,6 @@ void plugin_manager::init_default_plugins() {
     // TODO: rewrite default plugins */
     plugins.push_back(create_plugin<wayfire_focus>());
     /*
-    plugins.push_back(create_plugin<Focus>());
     plugins.push_back(create_plugin<Exit>());
     plugins.push_back(create_plugin<Close>());
     plugins.push_back(create_plugin<Refresh>());
@@ -309,7 +311,7 @@ void render_manager::load_background() {
 
     auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
     if (status != GL_FRAMEBUFFER_COMPLETE)
-        error << "Can't setup background framebuffer!" << std::endl;
+        errio << "Can't setup background framebuffer!" << std::endl;
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
@@ -363,20 +365,28 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
 }
 #endif
 
-int repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
+void repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
     auto output = core->get_output(o);
     if (output) {
         output->render->paint(damage);
         output->render->post_paint();
     }
-    return 0;
 }
 
 render_manager::render_manager(wayfire_output *o) {
     output = o;
-    weston_renderer_repaint = output->handle->repaint;
-    output->handle->repaint = repaint_output_callback;
+
+    /* TODO: this should be done in core, otherwise this might cause infite recusion
+     * if using multiple outputs */
+    weston_renderer_repaint = core->ec->renderer->repaint_output;
+    core->ec->renderer->repaint_output = repaint_output_callback;
+
     pixman_region32_init(&old_damage);
+    pixman_region32_copy(&old_damage, &output->handle->region);
+
+    pixman_region32_init(&null_damage);
+
+    //set_renderer(ALL_VISIBLE, nullptr);
 }
 
 void render_manager::reset_renderer() {
@@ -409,19 +419,38 @@ void render_manager::update_damage(pixman_region32_t *cur_damage, pixman_region3
     pixman_region32_copy(&old_damage, cur_damage);
 }
 
+struct weston_gl_renderer {
+    weston_renderer base;
+    int a, b;
+    void *c, *d;
+    EGLDisplay display;
+    EGLContext context;
+};
+
 void render_manager::paint(pixman_region32_t *damage) {
     pixman_region32_t total_damage;
 
     if (dirty_context) {
         load_context();
-        update_damage(damage, &total_damage);
+        pixman_region32_init(&total_damage);
+        pixman_region32_copy(&total_damage, &output->handle->region);
+
         weston_renderer_repaint(output->handle, damage);
         return;
     }
 
     if (renderer) {
+        // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
+        // In the future this might change so we need to track changes in weston
+        EGLSurface surf = *(EGLSurface*)output->handle->renderer_state;
+        weston_gl_renderer *gr = (weston_gl_renderer*) core->ec->renderer;
+        eglMakeCurrent(gr->display, surf, surf, gr->context);
+
         OpenGL::bind_context(ctx);
         renderer();
+
+        wl_signal_emit(&output->handle->frame_signal, output->handle);
+        eglSwapBuffers(gr->display, surf);
     } else {
         update_damage(damage, &total_damage);
         blit_background(0, &total_damage);
@@ -441,18 +470,11 @@ void render_manager::post_paint() {
 
 void render_manager::transformation_renderer() {
     // TODO: paint background
-    //blit_background(0);
+    blit_background(0, &output->handle->region);
     output->for_each_view_reverse([=](wayfire_view v) {
-        if(!v->is_hidden && (v->default_mask & visibility_mask) && !v->destroyed) {
-        // TODO: render with weston
-        /*
-            wlc_geometry g;
-            wlc_wayfire_view_get_visible_geometry(v->get_id(), &g);
-
-            auto surf = wlc_wayfire_view_get_surface(v->get_id());
-            render_surface(surf, g, v->transform.compose());
-            */
-        }
+        //if(!v->is_hidden && (v->default_mask & visibility_mask) && !v->destroyed) {
+            v->render();
+        //}
     });
 }
 
@@ -691,9 +713,6 @@ void signal_manager::emit_signal(std::string name, signal_data *data) {
 /* End SignalManager */
 /* Start output */
 
-/* TODO: move to command plugin */
-key_callback terminal_callback;
-
 wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     this->handle = handle;
 
@@ -710,12 +729,6 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
 
     weston_output_damage(handle);
     weston_output_schedule_repaint(handle);
-
-    terminal_callback = [=] (weston_keyboard *kbd, uint32_t key) {
-        core->run("weston-terminal");
-    };
-
-    input->add_key(MODIFIER_SUPER, KEY_T, &terminal_callback);
 }
 
 wayfire_output::~wayfire_output(){
@@ -751,10 +764,10 @@ void wayfire_output::attach_view(wayfire_view v) {
 
 void wayfire_output::detach_view(wayfire_view v) {
     weston_layer_entry_remove(&v->handle->layer_link);
-    weston_view *wview, *next;
+    weston_view *wview, *next = nullptr;
 
     wl_list_for_each(wview, &normal_layer.view_list.link, layer_link.link) {
-        if (wview->surface == v->surface)
+        if (wview == v->handle)
             continue;
 
         if (core->find_view(wview)->output != this)
@@ -764,8 +777,13 @@ void wayfire_output::detach_view(wayfire_view v) {
         break;
     }
 
-    if (active_view == v)
-        focus_view(core->find_view(next), core->get_current_seat());
+    if (active_view == v) {
+        if (next == nullptr) {
+            active_view = nullptr;
+        } else {
+            focus_view(core->find_view(next), core->get_current_seat());
+        }
+    }
 
     auto sig_data = new destroy_view_signal{v};
     signal->emit_signal("destroy-view", sig_data);
@@ -796,20 +814,22 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
 
 void wayfire_output::for_each_view(view_callback_proc_t call) {
     weston_view *view;
+    wayfire_view v;
 
     wl_list_for_each(view, &handle->compositor->view_list, link) {
-        if (view->output == handle) {
-            call(core->find_view(view));
+        if (view->output == handle && (v = core->find_view(view))) {
+            call(v);
         }
     }
 }
 
 void wayfire_output::for_each_view_reverse(view_callback_proc_t call) {
     weston_view *view;
+    wayfire_view v;
 
-    wl_list_for_each_reverse(view, &handle->compositor->view_list, link) {
-        if (view->output == handle) {
-            call(core->find_view(view));
+    wl_list_for_each_reverse(view, &normal_layer.view_list.link, layer_link.link) {
+        if (view->output == handle && (v = core->find_view(view))) {
+            call(v);
         }
     }
 }

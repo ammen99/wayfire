@@ -12,7 +12,6 @@ uniform mediump vec4      color;
 void main() {
     //if(depth == 32)
         gl_FragColor = texture2D(smp, uvpos) * color;
-//        gl_FragColor = vec4(1., 1., 1., 1.);
     //else
     //gl_FragColor = vec4(1, 0, 0, 1);
 //        gl_FragColor = vec4(texture2D(smp, uvpos).xyz, 1);
