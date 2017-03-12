@@ -89,25 +89,10 @@ class wayfire_view_t {
         bool destroyed = false;
         int keep_count = 0;
 
-        /* default_mask is the mask of all viewports the current view is visible on */
-        uint32_t default_mask;
-        bool has_temporary_mask = false;
-
         /* Set if the current view should not be rendered by built-in renderer */
         bool is_hidden = false;
 
         std::vector<effect_hook> effects;
-
-        /* vx and vy are the coords of the viewport where the top left corner is located */
-        int vx, vy;
-
-        void set_mask(uint32_t mask);
-        void restore_mask();
-        void set_temporary_mask(uint32_t tmask);
-
-        struct {
-            uint tex = -1;
-        } render_state;
 
         void render(uint32_t bits = 0);
 };

@@ -70,9 +70,6 @@ struct render_manager {
         void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
         render_hook_t renderer;
 
-#define ALL_VISIBLE 4294967295 // All 32 bits are on
-        uint32_t visibility_mask = ALL_VISIBLE;
-
         void load_background();
         void update_damage (pixman_region32_t* damage, pixman_region32_t *total);
     public:
@@ -83,7 +80,7 @@ struct render_manager {
 #endif
         GLuint get_background() {return background.tex;}
 
-        void set_renderer(uint32_t visibility_mask = ALL_VISIBLE, render_hook_t rh = nullptr);
+        void set_renderer(render_hook_t rh = nullptr);
         void transformation_renderer();
         void reset_renderer();
 
@@ -101,6 +98,8 @@ struct render_manager {
         void rem_effect(const effect_hook&, wayfire_view v = nullptr);
 };
 
+// TODO: maybe it is better to merge with wayfire_output,
+// as render manager is way too small to be separated
 struct viewport_manager {
     private:
         int vwidth, vheight, vx, vy;
@@ -108,16 +107,6 @@ struct viewport_manager {
 
     public:
         viewport_manager(wayfire_output *o);
-        /* returns viewport mask for a View, assuming it is on current viewport */
-        uint32_t get_mask_for_view(wayfire_view);
-
-        /* returns the coords of the viewport where top left corner of a view is,
-         * assuming the view coords are on current viewport */
-        void get_viewport_for_view(wayfire_view, int&, int&);
-
-        uint32_t get_mask_for_viewport(int x, int y) {
-            return (1 << (x + y * vwidth));
-        }
 
         std::vector<wayfire_view> get_views_on_viewport(std::tuple<int, int>);
         void set_viewport(std::tuple<int, int>);

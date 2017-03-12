@@ -391,26 +391,15 @@ render_manager::render_manager(wayfire_output *o) {
 
 void render_manager::reset_renderer() {
     renderer = nullptr;
-
-    output->for_each_view([] (wayfire_view v) {
-        v->restore_mask();
-    });
-
     weston_output_schedule_repaint(output->handle);
 }
 
-void render_manager::set_renderer(uint32_t vis_mask, render_hook_t rh) {
+void render_manager::set_renderer(render_hook_t rh) {
     if (!rh) {
         renderer = std::bind(std::mem_fn(&render_manager::transformation_renderer), this);
     } else {
         renderer = rh;
     }
-
-    output->for_each_view([=] (wayfire_view v) {
-        v->set_temporary_mask(0);
-    });
-
-    visibility_mask = vis_mask;
 }
 
 void render_manager::update_damage(pixman_region32_t *cur_damage, pixman_region32_t *total) {
@@ -469,12 +458,10 @@ void render_manager::post_paint() {
 }
 
 void render_manager::transformation_renderer() {
-    // TODO: paint background
     blit_background(0, &output->handle->region);
     output->for_each_view_reverse([=](wayfire_view v) {
-        //if(!v->is_hidden && (v->default_mask & visibility_mask) && !v->destroyed) {
+        if (!v->destroyed && !v->is_hidden)
             v->render();
-        //}
     });
 }
 
@@ -572,72 +559,6 @@ int clamp(int x, int min, int max) {
     return x;
 }
 
-uint32_t viewport_manager::get_mask_for_view(wayfire_view v) {
-    assert(output);
-    GetTuple(width, height, output->get_screen_size());
-    int sdx, sdy, edx, edy;
-
-    if (v->geometry.origin.x < 0) {
-        sdx = v->geometry.origin.x / width - 1;
-    } else {
-        sdx = v->geometry.origin.x / width;
-    }
-
-    if (v->geometry.origin.y < 0) {
-        sdy = v->geometry.origin.y / height - 1;
-    } else {
-        sdy = v->geometry.origin.y / height;
-    }
-
-    int sx = v->vx + sdx;
-    int sy = v->vy + sdy;
-
-    /* We must substract a bit to prevent having windows with only 5 pixels visible */
-    int bottom_right_x = v->geometry.origin.x + (int32_t)v->geometry.size.w - 5;
-    int bottom_right_y = v->geometry.origin.y + (int32_t)v->geometry.size.h - 5;
-
-    if (bottom_right_x < 0) {
-        edx = bottom_right_x / width - 1;
-    } else {
-        edx = bottom_right_x / width;
-    }
-
-    if (bottom_right_y < 0) {
-        edy = bottom_right_y / height - 1;
-    } else {
-        edy = bottom_right_y / height;
-    }
-
-    int ex = v->vx + edx;
-    int ey = v->vy + edy;
-
-    uint32_t mask = 0;
-
-    for (int i = sx; i <= ex; i++)
-        for (int j = sy; j <= ey; j++)
-            mask |= get_mask_for_viewport(i, j);
-
-    return mask;
-}
-
-void viewport_manager::get_viewport_for_view(wayfire_view v, int &x, int &y) {
-    GetTuple(width, height, output->get_screen_size());
-    int dx, dy;
-    if (v->geometry.origin.x < 0) {
-        dx = v->geometry.origin.x / width - 1;
-    } else {
-        dx = v->geometry.origin.x / width;
-    }
-    if (v->geometry.origin.y < 0) {
-        dy = v->geometry.origin.y / height - 1;
-    } else {
-        dy = v->geometry.origin.y / height;
-    }
-
-    x = clamp(v->vx + dx, 0, vwidth - 1);
-    y = clamp(v->vy + dy, 0, vheight - 1);
-}
-
 void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
     GetTuple(nx, ny, nPos);
     if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
@@ -649,57 +570,50 @@ void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
     auto dy = (vy - ny) * output->handle->height;
 
     output->for_each_view([=] (wayfire_view v) {
-        //bool has_been_before = v->default_mask & get_mask_for_viewport(vx, vy);
-        //bool visible_now = v->default_mask & get_mask_for_viewport(nx, ny);
-
-        //if(has_been_before && visible_now) {
-            debug << "move v: " << dx << " " << dy << std::endl;
-            v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy);
-         //   v->vx = nx,
-         //   v->vy = ny;
-        //}
+        v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy);
     });
+
+
+    weston_output_schedule_repaint(output->handle);
 
     //wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_wayfire_viewport(nx, ny));
 
-    /* TODO: use tuples for SignalListenerData, this is just an ugly hack */
-    /* FIXME
-    SignalListenerData data;
-    data.push_back(&vx);
-    data.push_back(&vy);
-    data.push_back(&nx);
-    data.push_back(&ny);
+    change_viewport_signal data;
+    data.old_vx = vx;
+    data.old_vy = vy;
 
-    output->signal->emit_signal("viewport-change-notify", data);
+    data.new_vx = nx;
+    data.new_vy = ny;
 
     vx = nx;
     vy = ny;
 
-    auto new_mask = get_mask_for_wayfire_viewport(vx, vy);
-
-    output->for_each_wayfire_view_reverse([=] (wayfire_view v) {
-        if(v->default_mask & new_mask)
-            core->focus_wayfire_view(v);
-    });
-    */
+    output->focus_view(nullptr, core->get_current_seat());
+    /* we iterate through views on current viewport from bottom to top
+     * that way we ensure that they will be focused befor all others */
+    auto views = get_views_on_viewport({vx, vy});
+    auto it = views.rbegin();
+    while(it != views.rend()) {
+        output->focus_view(*it, core->get_current_seat());
+        ++it;
+    }
 }
 
 std::vector<wayfire_view> viewport_manager::get_views_on_viewport(std::tuple<int, int> vp) {
+    GetTuple(tx, ty, vp);
 
-    /*
-    GetTuple(x, y, vp);
-    uint32_t mask = get_mask_for_wayfire_viewport(x, y);
+    wayfire_geometry g;
+    g.origin = {(tx - vx) * output->handle->width, (ty - vy) * (output->handle->height)};
+    g.size = {output->handle->width, output->handle->height};
 
     std::vector<wayfire_view> ret;
-
-    output->for_each_wayfire_view_reverse([&ret, mask] (wayfire_view v) {
-                if(v->default_mask & mask)
-                    ret.push_back(v);
-            });
+    output->for_each_view([&ret, g] (wayfire_view view) {
+        if (rect_inside(g, view->geometry)) {
+            ret.push_back(view);
+        }
+    });
 
     return ret;
-    */
-    return std::vector<wayfire_view>();
 }
 /* End viewport_manager */
 
@@ -781,25 +695,21 @@ void wayfire_output::attach_view(wayfire_view v) {
 
 void wayfire_output::detach_view(wayfire_view v) {
     weston_layer_entry_remove(&v->handle->layer_link);
-    weston_view *wview, *next = nullptr;
-    wayfire_view view;
+    wayfire_view next = nullptr;
 
-    wl_list_for_each(wview, &normal_layer.view_list.link, layer_link.link) {
-        if (wview == v->handle)
-            continue;
-
-        if ((view = core->find_view(wview)) && view->output != this)
-            continue;
-
-        next = wview;
-        break;
+    auto views = viewport->get_views_on_viewport(viewport->get_current_viewport());
+    for (auto wview : views) {
+        if (wview->handle != v->handle) {
+            next = wview;
+            break;
+        }
     }
 
     if (active_view == v && false) {
         if (next == nullptr) {
             active_view = nullptr;
         } else {
-            focus_view(core->find_view(next), core->get_current_seat());
+            focus_view(next, core->get_current_seat());
         }
     }
 
@@ -809,24 +719,28 @@ void wayfire_output::detach_view(wayfire_view v) {
 }
 
 void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
-    if (!v || v == active_view)
+    if (v == active_view)
         return;
 
     if (active_view && !active_view->destroyed)
         weston_desktop_surface_set_activated(active_view->desktop_surface, false);
 
     active_view = v;
-    weston_view_activate(v->handle, seat,
-            WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
-    weston_desktop_surface_set_activated(v->desktop_surface, true);
+    if (active_view) {
+        weston_view_activate(v->handle, seat,
+                WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+        weston_desktop_surface_set_activated(v->desktop_surface, true);
 
-    weston_view_geometry_dirty(v->handle);
-    weston_layer_entry_remove(&v->handle->layer_link);
-    weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
-    weston_view_geometry_dirty(v->handle);
-    weston_surface_damage(v->surface);
+        weston_view_geometry_dirty(v->handle);
+        weston_layer_entry_remove(&v->handle->layer_link);
+        weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
+        weston_view_geometry_dirty(v->handle);
+        weston_surface_damage(v->surface);
 
-    weston_desktop_surface_propagate_layer(v->desktop_surface);
+        weston_desktop_surface_propagate_layer(v->desktop_surface);
+    } else {
+        weston_keyboard_set_focus(weston_seat_get_keyboard(seat), NULL);
+    }
 }
 
 void wayfire_output::for_each_view(view_callback_proc_t call) {

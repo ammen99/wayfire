@@ -20,7 +20,8 @@ struct destroy_view_signal : public signal_data {
 
 /* same as both change_viewport_request and change_viewport_notify */
 struct change_viewport_signal : public signal_data {
-    int nvx, nvy;
+    int old_vx, old_vy;
+    int new_vx, new_vy;
 };
 using change_viewport_notify = change_viewport_signal;
 

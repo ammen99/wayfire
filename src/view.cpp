@@ -31,12 +31,12 @@ bool point_inside(wayfire_point point, wayfire_geometry rect) {
 }
 
 bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
-    if (win.origin.x + (int32_t)win.size.w < screen.origin.x ||
-        win.origin.y + (int32_t)win.size.h < screen.origin.y)
+    if (win.origin.x + (int32_t)win.size.w <= screen.origin.x ||
+        win.origin.y + (int32_t)win.size.h <= screen.origin.y)
         return false;
 
-    if (screen.origin.x + (int32_t)screen.size.w < win.origin.x ||
-        screen.origin.y + (int32_t)screen.size.h < win.origin.y)
+    if (screen.origin.x + (int32_t)screen.size.w <= win.origin.x ||
+        screen.origin.y + (int32_t)screen.size.h <= win.origin.y)
         return false;
     return true;
 }
@@ -146,22 +146,6 @@ void wayfire_view_t::map(int sx, int sy) {
         /* TODO: see shell.c#activate() */
 }
 
-void wayfire_view_t::set_mask(uint32_t mask) {
-    default_mask = mask;
-    if (!has_temporary_mask)
-        restore_mask();
-}
-
-void wayfire_view_t::restore_mask() {
-    //wlc_view_set_mask(view, default_mask);
-    //has_temporary_mask = false;
-}
-
-void wayfire_view_t::set_temporary_mask(uint32_t tmask) {
-    //wlc_view_set_mask(view, tmask);
-    has_temporary_mask = true;
-}
-
 void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4);
 void wayfire_view_t::render(uint32_t bits) {
     render_surface(surface, geometry.origin.x, geometry.origin.y,
@@ -214,62 +198,3 @@ void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, 
         }
     }
 }
-
-/*
-void wayfire_view_t::snapshot() {
-    v.clear();
-    wlc_geometry vis;
-    wlc_view_get_visible_geometry(view, &vis);
-    collect_subsurfaces(surface, vis, v);
-}
-*/
-
-
-/*
-void collect_subsurfaces(wlc_resource surface, wlc_geometry g, std::vector<Surface>& v) {
-    Surface s;
-    wlc_surface_get_textures(surface, s.tex, &s.fmt);
-    for (int i = 0; i < 3 && s.tex[i]; i++) {
-        s.tex[i] = OpenGL::duplicate_texture(s.tex[i], g.size.w, g.size.h);
-    }
-
-    s.g = g;
-    v.push_back(s);
-
-    size_t num_subsurfaces;
-    auto subsurfaces = wlc_surface_get_subsurfaces(surface, &num_subsurfaces);
-    if (!subsurfaces || !num_subsurfaces)
-        return;
-
-    for (int i = num_subsurfaces - 1; i >= 0; i--) {
-        wlc_geometry sub_g;
-        wlc_get_subsurface_geometry(subsurfaces[i], &sub_g);
-
-        sub_g.origin.x += g.origin.x;
-        sub_g.origin.y += g.origin.y;
-
-        collect_subsurfaces(subsurfaces[i], sub_g, v);
-    }
-}
-
-static void render_surface(wlc_resource surface, wlc_geometry g, glm::mat4 transform, uint32_t bits) {
-    Surface surf;
-    wlc_surface_get_textures(surface, surf.tex, &surf.fmt);
-    for(int i = 0; i < 3 && surf.tex[i]; i++)
-        OpenGL::renderTransformedTexture(surf.tex[i], g, transform, bits);
-
-    size_t num_subsurfaces;
-    auto subsurfaces = wlc_surface_get_subsurfaces(surface, &num_subsurfaces);
-    if (!subsurfaces) return;
-
-    for(int i = num_subsurfaces - 1; i >= 0; i--) {
-        wlc_geometry sub_g;
-        wlc_get_subsurface_geometry(subsurfaces[i], &sub_g);
-
-        sub_g.origin.x += g.origin.x;
-        sub_g.origin.y += g.origin.y;
-
-        render_surface(subsurfaces[i], sub_g, transform, bits);
-    }
-}
-*/
