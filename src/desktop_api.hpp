@@ -16,10 +16,11 @@ void desktop_surface_added(weston_desktop_surface *desktop_surface, void *shell)
 void desktop_surface_removed(weston_desktop_surface *surface, void *user_data) {
     debug << "desktop_surface_removed" << std::endl;
     auto view = core->find_view(surface);
-    view->output->detach_view(view);
-
-    weston_desktop_surface_unlink_view(view->handle);
     core->erase_view(view);
+    weston_desktop_surface_unlink_view(view->handle);
+
+    if (view->keep_count <= 0) /* animate plugin should use keep_count to animate, other plugins also */
+        weston_view_destroy(view->handle);
 }
 
 void desktop_surface_commited (weston_desktop_surface *desktop_surface,

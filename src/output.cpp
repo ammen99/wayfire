@@ -539,12 +539,28 @@ void render_manager::rem_effect(const effect_hook& hook, wayfire_view v) {
 /* End render_manager */
 
 /* Start viewport_manager */
+key_callback switch_l, switch_r;
 viewport_manager::viewport_manager(wayfire_output *o) {
     output = o;
     vx = vy = 0;
 
     vwidth = core->vwidth;
     vheight = core->vheight;
+
+    switch_r = [=] (weston_keyboard *kbd, uint32_t key) {
+        debug << "change viewport right" << std::endl;
+        if (vx < vwidth - 1)
+            set_viewport({vx + 1, vy});
+    };
+
+    switch_l = [=] (weston_keyboard *kbd, uint32_t key) {
+        debug << "change viewport left" << std::endl;
+        if (vx > 0)
+            set_viewport({vx - 1, vy});
+    };
+
+    output->input->add_key(MODIFIER_SUPER, KEY_LEFT, &switch_l);
+    output->input->add_key(MODIFIER_SUPER, KEY_RIGHT, &switch_r);
 }
 
 std::tuple<int, int> viewport_manager::get_current_viewport() { return std::make_tuple(vx, vy); }
@@ -633,14 +649,15 @@ void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
     auto dy = (vy - ny) * output->handle->height;
 
     output->for_each_view([=] (wayfire_view v) {
-        bool has_been_before = v->default_mask & get_mask_for_viewport(vx, vy);
-        bool visible_now = v->default_mask & get_mask_for_viewport(nx, ny);
+        //bool has_been_before = v->default_mask & get_mask_for_viewport(vx, vy);
+        //bool visible_now = v->default_mask & get_mask_for_viewport(nx, ny);
 
-        if(has_been_before && visible_now) {
-            v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy),
-            v->vx = nx,
-            v->vy = ny;
-        }
+        //if(has_been_before && visible_now) {
+            debug << "move v: " << dx << " " << dy << std::endl;
+            v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy);
+         //   v->vx = nx,
+         //   v->vy = ny;
+        //}
     });
 
     //wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_wayfire_viewport(nx, ny));
@@ -765,19 +782,20 @@ void wayfire_output::attach_view(wayfire_view v) {
 void wayfire_output::detach_view(wayfire_view v) {
     weston_layer_entry_remove(&v->handle->layer_link);
     weston_view *wview, *next = nullptr;
+    wayfire_view view;
 
     wl_list_for_each(wview, &normal_layer.view_list.link, layer_link.link) {
         if (wview == v->handle)
             continue;
 
-        if (core->find_view(wview)->output != this)
+        if ((view = core->find_view(wview)) && view->output != this)
             continue;
 
         next = wview;
         break;
     }
 
-    if (active_view == v) {
+    if (active_view == v && false) {
         if (next == nullptr) {
             active_view = nullptr;
         } else {
@@ -794,10 +812,9 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
     if (!v || v == active_view)
         return;
 
-    if (active_view)
+    if (active_view && !active_view->destroyed)
         weston_desktop_surface_set_activated(active_view->desktop_surface, false);
 
-    debug << "focus view" << std::endl;
     active_view = v;
     weston_view_activate(v->handle, seat,
             WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
