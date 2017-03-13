@@ -48,8 +48,8 @@ struct input_manager {
         void end_grabs();
 
         /* TODO: support touch */
-        weston_binding* add_key(weston_keyboard_modifier mod, uint32_t key, key_callback*);
-        weston_binding* add_button(weston_keyboard_modifier mod, uint32_t button, button_callback*);
+        weston_binding* add_key(uint32_t mod, uint32_t key, key_callback*);
+        weston_binding* add_button(uint32_t mod, uint32_t button, button_callback*);
 };
 struct render_manager {
     private:
@@ -66,7 +66,7 @@ struct render_manager {
             unsigned long w, h;
         } background;
 
-        pixman_region32_t old_damage, null_damage;
+        pixman_region32_t old_damage;
         void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
         render_hook_t renderer;
 

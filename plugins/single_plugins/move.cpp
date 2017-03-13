@@ -12,7 +12,6 @@ class wayfire_move : public wayfire_plugin_t {
 
     public:
         void init(wayfire_config *config) {
-            debug << "loading move plugin" << std::endl;
             grab_interface->name = "move";
             grab_interface->compatAll = true;
 

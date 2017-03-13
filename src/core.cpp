@@ -146,10 +146,6 @@ void wayfire_core::erase_view(wayfire_view v) {
     }
 }
 
-namespace {
-    int last_id = 0;
-}
-
 void wayfire_core::run(const char *command) {
     debug << "run " << command << std::endl;
 

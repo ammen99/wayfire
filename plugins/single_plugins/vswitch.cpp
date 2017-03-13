@@ -1,194 +1,137 @@
 #include <output.hpp>
+#include <queue>
+#include <linux/input.h>
+#include <utility>
 
-class VSwitch : public Plugin {
+#define MAX_DIRS_IN_QUEUE 4
+
+class vswitch;
+struct slide_data {
+    vswitch* plugin;
+    int index;
+};
+
+void slide_done_cb(weston_view_animation *animation, void *data);
+
+using pair = std::pair<int, int>;
+class vswitch : public wayfire_plugin_t {
     private:
-        KeyBinding kbs[4];
-        uint32_t switch_workspaceBindings[4];
+        key_callback callback_left, callback_right, callback_up, callback_down;
+        int duration;
 
-        Hook hook;
-        int stepNum;
-        int vstep;
-        int dx, dy;
-        int nx, ny;
-        std::queue<std::tuple<int, int> >dirs; // series of moves we have to do
+        std::queue<pair>dirs; // series of moves we have to do
     public:
 
-    void initOwnership() {
+    void init(wayfire_config *config) {
         grab_interface->name = "vswitch";
         grab_interface->compatAll = false;
         grab_interface->compat.insert("move");
+
+        callback_left = [=] (weston_keyboard*, uint32_t) {
+            add_direction(-1, 0);
+        };
+        callback_right = [=] (weston_keyboard*, uint32_t) {
+            add_direction(1, 0);
+        };
+        callback_up = [=] (weston_keyboard*, uint32_t) {
+            add_direction(0, -1);
+        };
+        callback_down = [=] (weston_keyboard*, uint32_t) {
+            add_direction(0, 1);
+        };
+
+        auto section   = config->get_section("vswitch");
+        auto key_left  = section->get_key("binding_left",  {MODIFIER_SUPER, KEY_LEFT});
+        auto key_right = section->get_key("binding_right", {MODIFIER_SUPER, KEY_RIGHT});
+        auto key_up    = section->get_key("binding_up",    {MODIFIER_SUPER, KEY_UP});
+        auto key_down  = section->get_key("binding_down",  {MODIFIER_SUPER, KEY_DOWN});
+
+        output->input->add_key(key_left.mod,  key_left.keyval,  &callback_left);
+        output->input->add_key(key_right.mod, key_right.keyval, &callback_right);
+        output->input->add_key(key_up.mod,    key_up.keyval,    &callback_up);
+        output->input->add_key(key_down.mod,  key_down.keyval,  &callback_down);
     }
 
-    void updateConfiguration() {
-        vstep = options["duration"]->data.ival;
+    void add_direction(int dx, int dy) {
+        bool was_empty = false;
+        if (dirs.size() == 0) {
+            was_empty = true;
+            dirs.push({0, 0});
+        }
+
+        if (dirs.size() < MAX_DIRS_IN_QUEUE)
+            dirs.push({dx, dy});
+
+        /* this is the first direction, we have pushed {0, 0} so that slide_done()
+         * will do nothing on the first time */
+        if (was_empty) {
+            slide_done();
+        }
     }
 
-    void beginSwitch() {
-        auto tup = dirs.front();
+    void slide_done() {
+        auto front = dirs.front();
         dirs.pop();
 
-        GetTuple(ddx, ddy, tup);
+
         GetTuple(vx, vy, output->viewport->get_current_viewport());
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        GetTuple(sw, sh, output->get_screen_size());
+        int dx = front.first, dy = front.second;
 
-        nx = vx - ddx;
-        ny = vy - ddy;
+        vx += dx;
+        vy += dy;
+        output->viewport->set_viewport({vx, vy});
 
-        if (nx < 0 || nx >= vw || ny < 0 || ny >= vh) {
-            dirs = std::queue<std::tuple<int, int>>();
+        if (dirs.size() == 0)
+            return;
+
+        dx = dirs.front().first, dy = dirs.front().second;
+        GetTuple(vwidth, vheight, output->viewport->get_viewport_grid_size());
+        if (vx + dx < 0 || vx + dx >= vwidth || vy + dy < 0 || vy + dy >= vheight) {
+            dirs = std::queue<pair> ();
             return;
         }
 
-        output->viewport->switch_workspace(std::make_tuple(nx, ny));
+        auto current_views = output->viewport->get_views_on_viewport(
+                output->viewport->get_current_viewport());
+        auto next_views = output->viewport->get_views_on_viewport({vx + dx, vy + dy});
 
-        dx = (vx - nx) * sw;
-        dy = (vy - ny) * sh;
+        int index = 0;
 
-        uint32_t new_mask = output->viewport->get_mask_for_viewport(nx, ny);
-        uint32_t old_mask = output->viewport->get_mask_for_viewport(vx, vy);
+        std::unordered_set<wayfire_view> views_to_move;
+        for (auto view : current_views)
+            views_to_move.insert(view);
+        for (auto view : next_views)
+            views_to_move.insert(view);
 
-        output->for_each_view([=] (View v) {
-            if(v->default_mask & new_mask)
-                v->transform.translation =
-                    glm::translate(glm::mat4(), glm::vec3(2.f * (nx - vx), 2.f * (vy - ny), 0));
-        });
-
-        output->render->set_redraw_everything(true);
-        output->render->set_renderer(new_mask | old_mask);
-
-        output->input->activate_owner(owner);
-        stepNum = 0;
-    }
-
-#define MAXDIRS 6
-    void insertNextDirection(int ddx, int ddy) {
-        if(!hook.getState())
-            hook.enable(),
-            dirs.push(std::make_tuple(ddx, ddy)),
-            beginSwitch();
-        else if(dirs.size() < MAXDIRS)
-            dirs.push(std::make_tuple(ddx, ddy));
-    }
-
-    void handleKey(EventContext ctx) {
-        if (!output->input->activate_owner(owner))
-            return;
-
-        grab_interface->grab();
-
-        auto xev = ctx.xev.xkey;
-
-        if(xev.key == switch_workspaceBindings[0])
-            insertNextDirection(1,  0);
-        if(xev.key == switch_workspaceBindings[1])
-            insertNextDirection(-1, 0);
-        if(xev.key == switch_workspaceBindings[2])
-            insertNextDirection(0, -1);
-        if(xev.key == switch_workspaceBindings[3])
-            insertNextDirection(0,  1);
-    }
-
-    void Step() {
-        GetTuple(w, h, output->get_screen_size());
-
-        if (stepNum == vstep) {
-            Transform::gtrs = glm::mat4();
-            output->render->set_redraw_everything(false);
-            output->render->reset_renderer();
-
-            auto views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
-            for(auto v : views) {
-                v->transform.translation = glm::mat4();
-            }
-
-            if (dirs.size() == 0) {
-                hook.disable();
-                output->input->deactivate_owner(owner);
-            } else {
-                beginSwitch();
-            }
-
-            return;
+        for (auto view : views_to_move) {
+            weston_move_run(view->handle, -dx * output->handle->width, -dy * output->handle->height,
+                    1, 1, false, slide_done_cb, new slide_data {this, index++});
         }
 
-        float progress = float(stepNum++) / float(vstep);
-
-        float offx =  2.f * progress * float(dx) / float(w);
-        float offy = -2.f * progress * float(dy) / float(h);
-
-        Transform::gtrs = glm::translate(glm::mat4(), glm::vec3(offx, offy, 0.0));
-    }
-
-    SignalListener viewport_change_request;
-
-    void init() {
-        using namespace std::placeholders;
-
-        options.insert(newIntOption("duration", 500));
-
-        switch_workspaceBindings[0] = XKB_KEY_h;
-        switch_workspaceBindings[1] = XKB_KEY_l;
-        switch_workspaceBindings[2] = XKB_KEY_j;
-        switch_workspaceBindings[3] = XKB_KEY_k;
-
-        for(int i = 0; i < 4; i++) {
-            kbs[i].type = BindingTypePress;
-            kbs[i].mod = WLC_BIT_MOD_CTRL | WLC_BIT_MOD_ALT;
-            kbs[i].key = switch_workspaceBindings[i];
-            kbs[i].action = std::bind(std::mem_fn(&VSwitch::handleKey), this, _1);
-            output->hook->add_key(&kbs[i], true);
-        }
-
-        hook.action = std::bind(std::mem_fn(&VSwitch::Step), this);
-        output->hook->add_hook(&hook);
-
-        viewport_change_request.action =
-            std::bind(std::mem_fn(&VSwitch::on_viewport_change_request), this, _1);
-
-        output->signal->connect_signal("viewport-change-request", &viewport_change_request);
-    }
-
-    void on_viewport_change_request(SignalListenerData data) {
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
-        int nx = *(int*)data[0];
-        int ny = *(int*)data[1];
-
-        int dx = nx - vx;
-        int dy = ny - vy;
-
-        if (!dx && !dy)
-            return;
-
-        /* Do not deny request if we cannot activate owner,
-         * it might have come from another plugin which is incompatible with us (for ex. expo) */
-        if (!output->input->activate_owner(owner)) {
-            output->viewport->switch_workspace(std::make_tuple(nx, ny));
-            return;
-        }
-
-        int dirx = dx > 0 ? 1 : -1;
-        int keyx = dx > 0 ? switch_workspaceBindings[1] : switch_workspaceBindings[0];
-        int diry = dy > 0 ? 1 : -1;
-        int keyy = dy > 0 ? switch_workspaceBindings[3] : switch_workspaceBindings[2];
-
-        EventContext ctx(0, 0, 0, 0);
-
-        while (vx != nx) {
-            ctx.xev.xkey.key = keyx;
-            handleKey(ctx);
-            vx += dirx;
-        }
-
-        while (vy != ny) {
-            ctx.xev.xkey.key = keyy;
-            handleKey(ctx);
-            vy += diry;
-        }
+        /* both workspaces are empty, so no animation, just switch */
+        if (index == 0)
+            slide_done();
     }
 };
+
+
+void timer_cb(void *data) {
+    vswitch *plugin = (vswitch*) data;
+    plugin->slide_done();
+}
+
+
+void slide_done_cb(weston_view_animation*, void *data) {
+    auto converted = (slide_data*) data;
+
+    if (converted->index == 0)
+        converted->plugin->slide_done();
+
+    delete converted;
+}
+
 extern "C" {
-    Plugin *newInstance() {
-        return new VSwitch();
+    wayfire_plugin_t* newInstance() {
+        return new vswitch();
     }
 }

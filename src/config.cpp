@@ -150,5 +150,8 @@ wayfire_config_section* wayfire_config::get_section(string name) {
         if (section->name == name)
             return section;
 
-    return nullptr;
+    auto nsect = new wayfire_config_section();
+    nsect->name = name;
+    sections.push_back(nsect);
+    return nsect;
 }

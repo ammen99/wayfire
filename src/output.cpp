@@ -4,14 +4,15 @@
 #include <linux/input.h>
 
 #include "wm.hpp"
+#include "img.hpp"
 
 #include <sstream>
 #include <memory>
 #include <dlfcn.h>
 #include <algorithm>
 
-#include </usr/include/EGL/egl.h>
-#include </usr/include/EGL/eglext.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
 
 /* Start plugin manager */
 plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config) {
@@ -112,7 +113,6 @@ void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_
 void pointer_grab_axis_source(weston_pointer_grab*, uint32_t) {}
 void pointer_grab_frame(weston_pointer_grab*) {}
 void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev) {
-    debug << "pointer_grab_motion" << std::endl;
     weston_pointer_move(grab->pointer, ev);
     core->get_active_output()->input->propagate_pointer_grab_motion(grab->pointer, ev);
 }
@@ -283,20 +283,37 @@ static void buttonbinding_handler(weston_pointer *ptr, uint32_t time, uint32_t b
     button_callback call = *((button_callback*)data);
     call(ptr, button);
 }
-weston_binding* input_manager::add_key(weston_keyboard_modifier mod, uint32_t key, key_callback *call) {
-    return weston_compositor_add_key_binding(core->ec, key, mod, keybinding_handler, (void*)call);
+weston_binding* input_manager::add_key(uint32_t mod, uint32_t key, key_callback *call) {
+    return weston_compositor_add_key_binding(core->ec, key, (weston_keyboard_modifier)mod, keybinding_handler, (void*)call);
 }
 
-weston_binding* input_manager::add_button(weston_keyboard_modifier mod,
+weston_binding* input_manager::add_button(uint32_t mod,
         uint32_t button, button_callback *call) {
-    return weston_compositor_add_button_binding(core->ec, button, mod,
+    return weston_compositor_add_button_binding(core->ec, button, (weston_keyboard_modifier)mod,
             buttonbinding_handler, (void*)call);
 }
 /* End input_manager */
 
 /* Start render_manager */
+void repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
+    auto output = core->get_output(o);
+    if (output) {
+        output->render->paint(damage);
+        output->render->post_paint();
+    }
+}
 
-#include "img.hpp"
+render_manager::render_manager(wayfire_output *o) {
+    output = o;
+
+    /* TODO: this should be done in core, otherwise this might cause infite recusion
+     * if using multiple outputs */
+    weston_renderer_repaint = core->ec->renderer->repaint_output;
+    core->ec->renderer->repaint_output = repaint_output_callback;
+
+    pixman_region32_init(&old_damage);
+    pixman_region32_copy(&old_damage, &output->handle->region);
+}
 
 /* TODO: do not rely on glBlitFramebuffer, provide fallback
  * to texture rendering for older systems */
@@ -327,10 +344,8 @@ void render_manager::load_context() {
 }
 
 void render_manager::release_context() {
-    /*
     GL_CALL(glDeleteFramebuffers(1, &background.fbuff));
     GL_CALL(glDeleteTextures(1, &background.tex));
-    */
 
     OpenGL::release_context(ctx);
     dirty_context = true;
@@ -365,29 +380,6 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
 }
 #endif
 
-void repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
-    auto output = core->get_output(o);
-    if (output) {
-        output->render->paint(damage);
-        output->render->post_paint();
-    }
-}
-
-render_manager::render_manager(wayfire_output *o) {
-    output = o;
-
-    /* TODO: this should be done in core, otherwise this might cause infite recusion
-     * if using multiple outputs */
-    weston_renderer_repaint = core->ec->renderer->repaint_output;
-    core->ec->renderer->repaint_output = repaint_output_callback;
-
-    pixman_region32_init(&old_damage);
-    pixman_region32_copy(&old_damage, &output->handle->region);
-
-    pixman_region32_init(&null_damage);
-
-    //set_renderer(ALL_VISIBLE, nullptr);
-}
 
 void render_manager::reset_renderer() {
     renderer = nullptr;
@@ -533,21 +525,6 @@ viewport_manager::viewport_manager(wayfire_output *o) {
 
     vwidth = core->vwidth;
     vheight = core->vheight;
-
-    switch_r = [=] (weston_keyboard *kbd, uint32_t key) {
-        debug << "change viewport right" << std::endl;
-        if (vx < vwidth - 1)
-            set_viewport({vx + 1, vy});
-    };
-
-    switch_l = [=] (weston_keyboard *kbd, uint32_t key) {
-        debug << "change viewport left" << std::endl;
-        if (vx > 0)
-            set_viewport({vx - 1, vy});
-    };
-
-    output->input->add_key(MODIFIER_SUPER, KEY_LEFT, &switch_l);
-    output->input->add_key(MODIFIER_SUPER, KEY_RIGHT, &switch_r);
 }
 
 std::tuple<int, int> viewport_manager::get_current_viewport() { return std::make_tuple(vx, vy); }
@@ -563,8 +540,6 @@ void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
     GetTuple(nx, ny, nPos);
     if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
         return;
-
-    debug << "switching workspace target:" << nx << " " << ny << " current:" << vx << " " << vy << std::endl;
 
     auto dx = (vx - nx) * output->handle->width;
     auto dy = (vy - ny) * output->handle->height;
@@ -587,6 +562,7 @@ void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
 
     vx = nx;
     vy = ny;
+    output->signal->emit_signal("viewport-changed", &data);
 
     output->focus_view(nullptr, core->get_current_seat());
     /* we iterate through views on current viewport from bottom to top
