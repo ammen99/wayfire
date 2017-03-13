@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include "img.hpp"
 
+#include <libweston-2/xwayland-api.h>
 
 /* misc definitions */
 
@@ -41,6 +42,9 @@ bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
     return true;
 }
 
+
+const weston_xwayland_surface_api *xwayland_surface_api = nullptr;
+
 wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds) {
     output  = core->get_active_output();
     handle = weston_desktop_surface_create_view(ds);
@@ -55,10 +59,10 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds) {
     geometry.size.h = surface->height;
 
     transform.color = glm::vec4(1,1,1,1);
-    /// FIXME : get geometry
-    //geometry.origin.x = view->geometry.xjko;
-    //auto geom = wlc_view_get_geometry(view);
-    //attrib = *geom;
+
+    if (!xwayland_surface_api) {
+        xwayland_surface_api = weston_xwayland_surface_get_api(core->ec);
+    }
 }
 
 wayfire_view_t::~wayfire_view_t() {
@@ -78,6 +82,8 @@ void wayfire_view_t::move(int x, int y) {
     geometry.origin = {x, y};
     weston_view_set_position(handle, x, y);
 
+    if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
+        xwayland_surface_api->send_position(surface, x, y);
     //auto v = core->find_view(view);
     //attrib.origin = {x, y};
     //wlc_view_set_geometry(view, 0, &attrib);
