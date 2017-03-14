@@ -1,5 +1,6 @@
 #include <output.hpp>
 #include <opengl.hpp>
+#include <queue>
 
 /* TODO: add configuration options for left, right and exit keybindings */
 
@@ -16,14 +17,11 @@ float get_scale_factor(float w, float h, float sw, float sh, float c) {
     return clamp(0.8, std::sqrt((sd / d) * c), 1.3);
 }
 
-class Switcher : public Plugin {
+class view_switcher : public wayfire_plugin_t {
 
-    KeyBinding init_binding, term, fast_switch_kb;
-    KeyBinding forward, backward;
+    key_callback init_binding, fast_switch_binding;
 
-    Key actKey;
-    std::vector<View> views;
-
+    wayfire_key next_view, prev_view, terminate;
 #define MAXDIRS 4
     std::queue<int> dirs;
 

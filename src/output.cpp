@@ -306,7 +306,6 @@ void repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
         output->render->post_paint();
     }
 }
-
 render_manager::render_manager(wayfire_output *o) {
     output = o;
 
@@ -357,6 +356,7 @@ void render_manager::release_context() {
 
 #ifdef USE_GLES3
 void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
+    background.times_blitted++;
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
 
@@ -407,16 +407,29 @@ struct weston_gl_renderer {
     EGLContext context;
 };
 
+void initial_background_render_idle_cb(void *data) {
+    auto output = (weston_output*) data;
+    weston_output_schedule_repaint(output);
+}
+
 void render_manager::paint(pixman_region32_t *damage) {
     pixman_region32_t total_damage;
 
     if (dirty_context) {
         load_context();
-        pixman_region32_init(&total_damage);
-        pixman_region32_copy(&total_damage, &output->handle->region);
-
         weston_renderer_repaint(output->handle, damage);
+
+        auto loop = wl_display_get_event_loop(core->ec->wl_display);
+        wl_event_loop_add_idle(loop, initial_background_render_idle_cb, output->handle);
         return;
+    }
+
+    /* if we are on the second frame, we haven't fully drawn the background
+     * to the second buffer(which is now back buffer), so just blit the whole */
+    if (background.times_blitted == 1) {
+        pixman_region32_fini(damage);
+        pixman_region32_init(damage);
+        pixman_region32_copy(damage, &output->handle->region);
     }
 
     if (renderer) {

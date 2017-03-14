@@ -64,6 +64,7 @@ struct render_manager {
             GLuint tex = -1;
             GLuint fbuff;
             unsigned long w, h;
+            long long times_blitted = 0;
         } background;
 
         pixman_region32_t old_damage;
