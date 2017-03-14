@@ -363,20 +363,15 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
     int nrects;
     auto rects = pixman_region32_rectangles(damage, &nrects);
     for (int i = 0; i < nrects; i++) {
-        float topx = rects[i].x1 * 1.0 / output->handle->width;
-        float topy = rects[i].y1 * 1.0 / output->handle->height;
-        float botx = rects[i].x2 * 1.0 / output->handle->width;
-        float boty = rects[i].y2 * 1.0 / output->handle->height;
-
-        /* invy1 and invy2 are actually (1 - topy) and (1 - boty),
-         * but we calculate them separately because otherwise precision issues might arise */
-        float invy1 = (output->handle->height - rects[i].y1) * 1.0 / output->handle->height;
-        float invy2 = (output->handle->height - rects[i].y2) * 1.0 / output->handle->height;
+        double topx = rects[i].x1 * 1.0 / output->handle->width;
+        double topy = rects[i].y1 * 1.0 / output->handle->height;
+        double botx = rects[i].x2 * 1.0 / output->handle->width;
+        double boty = rects[i].y2 * 1.0 / output->handle->height;
 
         GL_CALL(glBlitFramebuffer(topx * background.w, topy * background.h,
                     botx * background.w, boty * background.h,
-                    topx * output->handle->width, invy1 * output->handle->height,
-                    botx * output->handle->width, invy2 * output->handle->height, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+                    rects[i].x1, output->handle->height - rects[i].y1,
+                    rects[i].x2, output->handle->height - rects[i].y2, GL_COLOR_BUFFER_BIT, GL_LINEAR));
     }
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
