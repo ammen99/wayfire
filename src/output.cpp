@@ -295,6 +295,10 @@ weston_binding* input_manager::add_button(uint32_t mod,
 /* End input_manager */
 
 /* Start render_manager */
+
+/* TODO: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
+ * However, this isn't always true. Also, hijacking isn't the best option
+ * We should render to a surface which is made standalone */
 void repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
     auto output = core->get_output(o);
     if (output) {

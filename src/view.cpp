@@ -75,7 +75,6 @@ wayfire_view_t::~wayfire_view_t() {
 // TODO: implement is_visible
 bool wayfire_view_t::is_visible() {
     return true;
-    //return wlc_output_get_mask(wlc_get_focused_output()) & default_mask;
 }
 
 void wayfire_view_t::move(int x, int y) {
@@ -84,9 +83,6 @@ void wayfire_view_t::move(int x, int y) {
 
     if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
         xwayland_surface_api->send_position(surface, x, y);
-    //auto v = core->find_view(view);
-    //attrib.origin = {x, y};
-    //wlc_view_set_geometry(view, 0, &attrib);
 }
 
 void wayfire_view_t::resize(int w, int h) {

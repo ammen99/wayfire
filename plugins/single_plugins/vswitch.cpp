@@ -20,6 +20,8 @@ class vswitch : public wayfire_plugin_t {
         int duration;
 
         std::queue<pair>dirs; // series of moves we have to do
+
+        bool running = false;
     public:
 
     void init(wayfire_config *config) {
@@ -53,18 +55,16 @@ class vswitch : public wayfire_plugin_t {
     }
 
     void add_direction(int dx, int dy) {
-        bool was_empty = false;
-        if (dirs.size() == 0) {
-            was_empty = true;
+        if (!running)
             dirs.push({0, 0});
-        }
 
         if (dirs.size() < MAX_DIRS_IN_QUEUE)
             dirs.push({dx, dy});
 
         /* this is the first direction, we have pushed {0, 0} so that slide_done()
          * will do nothing on the first time */
-        if (was_empty) {
+        if (!running) {
+            running = true;
             slide_done();
         }
     }
@@ -73,7 +73,6 @@ class vswitch : public wayfire_plugin_t {
         auto front = dirs.front();
         dirs.pop();
 
-
         GetTuple(vx, vy, output->viewport->get_current_viewport());
         int dx = front.first, dy = front.second;
 
@@ -81,13 +80,16 @@ class vswitch : public wayfire_plugin_t {
         vy += dy;
         output->viewport->set_viewport({vx, vy});
 
-        if (dirs.size() == 0)
+        if (dirs.size() == 0) {
+            running = false;
             return;
+        }
 
         dx = dirs.front().first, dy = dirs.front().second;
         GetTuple(vwidth, vheight, output->viewport->get_viewport_grid_size());
         if (vx + dx < 0 || vx + dx >= vwidth || vy + dy < 0 || vy + dy >= vheight) {
             dirs = std::queue<pair> ();
+            running = false;
             return;
         }
 
