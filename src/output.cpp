@@ -427,6 +427,21 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage)
 }
 #endif
 
+void redraw_idle_cb(void *data)
+{
+    wayfire_output *output = (wayfire_output*) data;
+    assert(output);
+
+    weston_output_schedule_repaint(output->handle);
+    }
+
+void render_manager::auto_redraw(bool redraw)
+{
+    if (redraw == constant_redraw) /* no change, exit */
+        return;
+
+    constant_redraw = redraw;
+}
 
 void render_manager::reset_renderer()
 {
@@ -505,6 +520,11 @@ void render_manager::paint(pixman_region32_t *damage)
         update_damage(damage, &total_damage);
         blit_background(0, &total_damage);
         weston_renderer_repaint(output->handle, damage);
+    }
+
+    if (constant_redraw) {
+        wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
+                redraw_idle_cb, output);
     }
 }
 
@@ -592,7 +612,6 @@ void render_manager::rem_effect(const effect_hook& hook, wayfire_view v)
 /* End render_manager */
 
 /* Start viewport_manager */
-key_callback switch_l, switch_r;
 viewport_manager::viewport_manager(wayfire_output *o)
 {
     output = o;

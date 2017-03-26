@@ -30,10 +30,7 @@ float get_scale_factor(float w, float h, float sw, float sh, float c) {
     return clamp(0.8, std::sqrt((sd / d) * c), 1.3);
 }
 
-void frame_idle_callback(void *data);
 class view_switcher : public wayfire_plugin_t {
-    friend void frame_idle_callback(void *data);
-
     key_callback init_binding, fast_switch_binding;
     wayfire_key next_view, prev_view, terminate;
     wayfire_key activate_key, fast_switch_key;
@@ -119,12 +116,14 @@ class view_switcher : public wayfire_plugin_t {
         renderer = std::bind(std::mem_fn(&view_switcher::render), this);
     }
 
-    void update_views() {
+    void update_views()
+    {
         views = output->viewport->get_views_on_viewport(output->viewport->get_current_viewport());
         //std::reverse(views.begin(), views.end());
     }
 
-    void activate() {
+    void activate()
+    {
         if (!output->input->activate_plugin(grab_interface))
             return;
 
@@ -142,6 +141,7 @@ class view_switcher : public wayfire_plugin_t {
         grab_interface->grab();
         output->focus_view(nullptr, core->get_current_seat());
 
+        output->render->auto_redraw(true);
         output->render->set_renderer(renderer);
         weston_output_schedule_repaint(output->handle);
 
@@ -184,7 +184,8 @@ class view_switcher : public wayfire_plugin_t {
         current_step = 0;
     }
 
-    void render_view(wayfire_view v) {
+    void render_view(wayfire_view v)
+    {
         GetTuple(sw, sh, output->get_screen_size());
 
         int cx = sw / 2;
@@ -200,7 +201,8 @@ class view_switcher : public wayfire_plugin_t {
         v->geometry = compositor_geometry;
     }
 
-    void render() {
+    void render()
+    {
         OpenGL::use_default_program();
         GL_CALL(glEnable(GL_DEPTH_TEST));
 
@@ -220,11 +222,6 @@ class view_switcher : public wayfire_plugin_t {
 
         for(int i = active_views.size() - 1; i >= 0; i--)
             render_view(active_views[i].view);
-
-        /* TODO: probably add a function in output/core for this
-         * as such things are needed for all plugins that require constant redrawing */
-        auto loop = wl_display_get_event_loop(core->ec->wl_display);
-        wl_event_loop_add_idle(loop, frame_idle_callback, this);
     }
 
     void stop_continuous_switch(weston_keyboard *kbd, uint32_t depressed, uint32_t locked,
@@ -539,6 +536,7 @@ class view_switcher : public wayfire_plugin_t {
 
         if (current_step == max_steps) {
              active = false;
+             output->render->auto_redraw(false);
              output->render->reset_renderer();
              grab_interface->ungrab();
              output->input->deactivate_plugin(grab_interface);

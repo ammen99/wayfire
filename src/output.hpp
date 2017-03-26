@@ -56,6 +56,7 @@ struct input_manager {
 struct render_manager {
     private:
         wayfire_output *output;
+        bool constant_redraw = false;
 
         bool dirty_context = true;
         OpenGL::context_t *ctx;
@@ -84,6 +85,7 @@ struct render_manager {
         GLuint get_background() {return background.tex;}
 
         void set_renderer(render_hook_t rh = nullptr);
+        void auto_redraw(bool redraw); /* schedule repaint immediately after finishing the last */
         void transformation_renderer();
         void reset_renderer();
 

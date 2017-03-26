@@ -1,5 +1,6 @@
 #include <output.hpp>
 #include <algorithm>
+
 struct GridWindow {
     View v;
     wlc_geometry initial_geometry, target_geometry;
