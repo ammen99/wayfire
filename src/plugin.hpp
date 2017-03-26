@@ -40,6 +40,7 @@ struct wayfire_grab_interface_t {
 
         struct {
             std::function<void(weston_keyboard*,uint32_t,uint32_t)> key; // button, state
+            std::function<void(weston_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t)> mod; // depressed, locks, latched, group
         } keyboard;
 
         /* TODO: touch grabs */

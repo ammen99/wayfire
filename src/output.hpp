@@ -44,6 +44,8 @@ struct input_manager {
         void propagate_pointer_grab_button(weston_pointer *ptr, uint32_t button, uint32_t state);
 
         void propagate_keyboard_grab_key(weston_keyboard *kdb, uint32_t key, uint32_t state);
+        void propagate_keyboard_grab_mod(weston_keyboard *kbd, uint32_t depressed,
+                uint32_t locked, uint32_t latched, uint32_t group);
 
         void end_grabs();
 
@@ -165,6 +167,7 @@ class wayfire_output {
     void attach_view(wayfire_view v);
     void detach_view(wayfire_view v);
     void focus_view(wayfire_view v, weston_seat *seat);
+    void bring_to_front(wayfire_view v);
 };
 
 #endif /* end of include guard: OUTPUT_HPP */

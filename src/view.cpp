@@ -13,12 +13,14 @@ glm::mat4 wayfire_view_transform::global_scale;
 glm::mat4 wayfire_view_transform::global_translate;
 glm::mat4 wayfire_view_transform::global_view_projection;
 
-glm::mat4 wayfire_view_transform::calculate_total_transform() {
+glm::mat4 wayfire_view_transform::calculate_total_transform()
+{
     return global_view_projection * (global_translate * translation) *
-        (global_rotation * rotation) * (global_scale *scale);
+           (global_rotation * rotation) * (global_scale * scale);
 }
 
-bool point_inside(wayfire_point point, wayfire_geometry rect) {
+bool point_inside(wayfire_point point, wayfire_geometry rect)
+{
     if(point.x < rect.origin.x || point.y < rect.origin.y)
         return false;
 
@@ -31,13 +33,14 @@ bool point_inside(wayfire_point point, wayfire_geometry rect) {
     return true;
 }
 
-bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
+bool rect_inside(wayfire_geometry screen, wayfire_geometry win)
+{
     if (win.origin.x + (int32_t)win.size.w <= screen.origin.x ||
-        win.origin.y + (int32_t)win.size.h <= screen.origin.y)
+            win.origin.y + (int32_t)win.size.h <= screen.origin.y)
         return false;
 
     if (screen.origin.x + (int32_t)screen.size.w <= win.origin.x ||
-        screen.origin.y + (int32_t)screen.size.h <= win.origin.y)
+            screen.origin.y + (int32_t)screen.size.h <= win.origin.y)
         return false;
     return true;
 }
@@ -45,7 +48,8 @@ bool rect_inside(wayfire_geometry screen, wayfire_geometry win) {
 
 const weston_xwayland_surface_api *xwayland_surface_api = nullptr;
 
-wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds) {
+wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
+{
     output  = core->get_active_output();
     handle = weston_desktop_surface_create_view(ds);
 
@@ -58,14 +62,15 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds) {
     geometry.size.w = surface->width;
     geometry.size.h = surface->height;
 
-    transform.color = glm::vec4(1,1,1,1);
+    transform.color = glm::vec4(1, 1, 1, 1);
 
     if (!xwayland_surface_api) {
         xwayland_surface_api = weston_xwayland_surface_get_api(core->ec);
     }
 }
 
-wayfire_view_t::~wayfire_view_t() {
+wayfire_view_t::~wayfire_view_t()
+{
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
@@ -73,11 +78,13 @@ wayfire_view_t::~wayfire_view_t() {
 
 
 // TODO: implement is_visible
-bool wayfire_view_t::is_visible() {
+bool wayfire_view_t::is_visible()
+{
     return true;
 }
 
-void wayfire_view_t::move(int x, int y) {
+void wayfire_view_t::move(int x, int y)
+{
     geometry.origin = {x, y};
     weston_view_set_position(handle, x, y);
 
@@ -85,20 +92,23 @@ void wayfire_view_t::move(int x, int y) {
         xwayland_surface_api->send_position(surface, x, y);
 }
 
-void wayfire_view_t::resize(int w, int h) {
+void wayfire_view_t::resize(int w, int h)
+{
     geometry.size = {w, h};
     weston_desktop_surface_set_size(desktop_surface, w, h);
 }
 
-void wayfire_view_t::set_geometry(wayfire_geometry g) {
+void wayfire_view_t::set_geometry(wayfire_geometry g)
+{
     move(g.origin.x, g.origin.y);
     resize(g.size.w, g.size.h);
 }
 
-void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
+void wayfire_view_t::set_geometry(int x, int y, int w, int h)
+{
     geometry = (wayfire_geometry) {
         .origin = {x, y},
-        .size = {(int32_t)w, (int32_t)h}
+         .size = {(int32_t)w, (int32_t)h}
     };
 
     set_geometry(geometry);
@@ -106,7 +116,8 @@ void wayfire_view_t::set_geometry(int x, int y, int w, int h) {
     //wlc_view_set_geometry(view, 0, &attrib);
 }
 
-void wayfire_view_t::set_maximized(bool maxim) {
+void wayfire_view_t::set_maximized(bool maxim)
+{
     if (fullscreen)
         return;
 
@@ -118,7 +129,8 @@ void wayfire_view_t::set_maximized(bool maxim) {
     }
 }
 
-void wayfire_view_t::map(int sx, int sy) {
+void wayfire_view_t::map(int sx, int sy)
+{
     if (!weston_surface_is_mapped(surface)) {
         if (xwayland.is_xorg) {
             auto g = weston_desktop_surface_get_geometry(desktop_surface);
@@ -129,9 +141,9 @@ void wayfire_view_t::map(int sx, int sy) {
         }
 
         weston_view_update_transform(handle);
-        handle->is_mapped = true;
+        handle->is_mapped  = true;
         surface->is_mapped = true;
-        handle->is_mapped = true;
+        handle->is_mapped  = true;
         geometry.size = {surface->width, surface->height};
     }
 
@@ -145,13 +157,14 @@ void wayfire_view_t::map(int sx, int sy) {
     sy = handle->geometry.y + (newy - oldy);
 
     move(sx, sy);
-        /* TODO: see shell.c#activate() */
+    /* TODO: see shell.c#activate() */
 }
 
 void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4);
-void wayfire_view_t::render(uint32_t bits) {
+void wayfire_view_t::render(uint32_t bits)
+{
     render_surface(surface, geometry.origin.x, geometry.origin.y,
-            transform.calculate_total_transform(), transform.color);
+                   transform.calculate_total_transform(), transform.color);
     /*
     std::vector<EffectHook*> hooks_to_run;
     for (auto hook : effects) {
@@ -177,11 +190,12 @@ struct weston_gl_surface_state {
 };
 
 
-void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, glm::vec4 color) {
+void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, glm::vec4 color)
+{
     if (!surface->is_mapped || !surface->renderer_state)
         return;
 
-    auto gs = (weston_gl_surface_state*) surface->renderer_state;
+    auto gs = (weston_gl_surface_state *) surface->renderer_state;
 
     wayfire_geometry geometry;
     geometry.origin = {x, y};
@@ -189,7 +203,7 @@ void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, 
 
     for (int i = 0; i < 3 && gs->textures[i]; i++) {
         OpenGL::render_transformed_texture(gs->textures[i], geometry, transform,
-                color, 0);
+                                           color, TEXTURE_TRANSFORM_USE_COLOR);
     }
 
     weston_subsurface *sub;

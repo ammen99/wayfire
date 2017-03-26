@@ -8,7 +8,7 @@
 using output_callback_proc = std::function<void(wayfire_output*)>;
 
 class wayfire_core {
-    friend class plugin_manager;
+    friend struct plugin_manager;
 
     uint32_t nextID = 0;
     wayfire_config *config;

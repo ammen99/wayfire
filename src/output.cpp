@@ -15,7 +15,8 @@
 #include <EGL/eglext.h>
 
 /* Start plugin manager */
-plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config) {
+plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config)
+{
     init_default_plugins();
     load_dynamic_plugins();
 
@@ -27,7 +28,8 @@ plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config) {
     }
 }
 
-plugin_manager::~plugin_manager() {
+plugin_manager::~plugin_manager()
+{
     for (auto p : plugins) {
         p->fini();
         delete p->grab_interface;
@@ -38,20 +40,23 @@ plugin_manager::~plugin_manager() {
     }
 }
 
-namespace {
-    template<class A, class B> B union_cast(A object) {
-        union {
-            A x;
-            B y;
-        } helper;
-        helper.x = object;
-        return helper.y;
-    }
+namespace
+{
+template<class A, class B> B union_cast(A object)
+{
+    union {
+        A x;
+        B y;
+    } helper;
+    helper.x = object;
+    return helper.y;
+}
 }
 
-wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h) {
+wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h)
+{
     void *handle = dlopen(path.c_str(), RTLD_NOW);
-    if(handle == NULL){
+    if(handle == NULL) {
         errio << "Can't load plugin " << path << std::endl;
         errio << "\t" << dlerror() << std::endl;
         return nullptr;
@@ -68,12 +73,13 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h)
     return wayfire_plugin(init());
 }
 
-void plugin_manager::load_dynamic_plugins() {
+void plugin_manager::load_dynamic_plugins()
+{
     std::stringstream stream(core->plugins);
     auto path = core->plugin_path + "/wayfire/";
 
     std::string plugin;
-    while(stream >> plugin){
+    while(stream >> plugin) {
         if(plugin != "") {
             void *handle;
             auto ptr = load_plugin_from_file(path + "/lib" + plugin + ".so", &handle);
@@ -87,11 +93,13 @@ void plugin_manager::load_dynamic_plugins() {
 }
 
 template<class T>
-wayfire_plugin plugin_manager::create_plugin() {
+wayfire_plugin plugin_manager::create_plugin()
+{
     return std::static_pointer_cast<wayfire_plugin_t>(std::make_shared<T>());
 }
 
-void plugin_manager::init_default_plugins() {
+void plugin_manager::init_default_plugins()
+{
     // TODO: rewrite default plugins */
     plugins.push_back(create_plugin<wayfire_focus>());
     /*
@@ -107,69 +115,80 @@ void plugin_manager::init_default_plugins() {
 
 /* pointer grab callbacks */
 void pointer_grab_focus(weston_pointer_grab*) { }
-void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev) {
+void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev)
+{
     core->get_active_output()->input->propagate_pointer_grab_axis(grab->pointer, ev);
 }
 void pointer_grab_axis_source(weston_pointer_grab*, uint32_t) {}
 void pointer_grab_frame(weston_pointer_grab*) {}
-void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev) {
+void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev)
+{
     weston_pointer_move(grab->pointer, ev);
     core->get_active_output()->input->propagate_pointer_grab_motion(grab->pointer, ev);
 }
-void pointer_grab_button(weston_pointer_grab *grab, uint32_t, uint32_t b, uint32_t s) {
+void pointer_grab_button(weston_pointer_grab *grab, uint32_t, uint32_t b, uint32_t s)
+{
     core->get_active_output()->input->propagate_pointer_grab_button(grab->pointer, b, s);
 }
-void pointer_grab_cancel(weston_pointer_grab *grab) {
+void pointer_grab_cancel(weston_pointer_grab *grab)
+{
     core->get_active_output()->input->end_grabs();
 }
 
-namespace {
-    const weston_pointer_grab_interface pointer_grab_interface = {
-        pointer_grab_focus,
-        pointer_grab_motion,
-        pointer_grab_button,
-        pointer_grab_axis,
-        pointer_grab_axis_source,
-        pointer_grab_frame,
-        pointer_grab_cancel
-    };
+namespace
+{
+const weston_pointer_grab_interface pointer_grab_interface = {
+    pointer_grab_focus, pointer_grab_motion,      pointer_grab_button,
+    pointer_grab_axis,  pointer_grab_axis_source, pointer_grab_frame,
+    pointer_grab_cancel
+};
 }
 
 /* keyboard grab callbacks */
-void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key, uint32_t state) {
+void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key,
+                       uint32_t state)
+{
     core->get_active_output()->input->propagate_keyboard_grab_key(grab->keyboard, key, state);
 }
-void keyboard_grab_mod(weston_keyboard_grab*, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t) {}
-void keyboard_grab_cancel(weston_keyboard_grab*) {
+void keyboard_grab_mod(weston_keyboard_grab *grab, uint32_t time,
+                       uint32_t depressed, uint32_t locked, uint32_t latched,
+                       uint32_t group)
+{
+    core->get_active_output()->input->propagate_keyboard_grab_mod(grab->keyboard, depressed, locked, latched, group);
+}
+void keyboard_grab_cancel(weston_keyboard_grab *)
+{
     core->get_active_output()->input->end_grabs();
 }
-namespace {
-    const weston_keyboard_grab_interface keyboard_grab_interface = {
-        keyboard_grab_key,
-        keyboard_grab_mod,
-        keyboard_grab_cancel
-    };
+namespace
+{
+const weston_keyboard_grab_interface keyboard_grab_interface = {
+    keyboard_grab_key, keyboard_grab_mod, keyboard_grab_cancel
+};
 }
 
-input_manager::input_manager() {
+input_manager::input_manager()
+{
     pgrab.interface = &pointer_grab_interface;
     kgrab.interface = &keyboard_grab_interface;
 }
 
-void input_manager::grab_input(wayfire_grab_interface iface) {
+void input_manager::grab_input(wayfire_grab_interface iface)
+{
     if (!iface->grabbed)
         return;
 
     active_grabs.insert(iface);
     if (1 == active_grabs.size()) {
         weston_pointer_start_grab(weston_seat_get_pointer(core->get_current_seat()),
-                &pgrab);
+                                  &pgrab);
         weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
-                &kgrab);
+                                   &kgrab);
     }
 }
 
-void input_manager::ungrab_input(wayfire_grab_interface iface) {
+void input_manager::ungrab_input(wayfire_grab_interface iface)
+{
     active_grabs.erase(iface);
     if (active_grabs.empty()) {
         weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
@@ -178,31 +197,32 @@ void input_manager::ungrab_input(wayfire_grab_interface iface) {
 }
 
 void input_manager::propagate_pointer_grab_axis(weston_pointer *ptr,
-        weston_pointer_axis_event *ev) {
+        weston_pointer_axis_event *ev)
+{
     std::vector<wayfire_grab_interface> grab;
     for (auto x : active_grabs) {
         if (x->callbacks.pointer.axis)
             grab.push_back(x);
     }
 
-    for (auto x : grab)
-        x->callbacks.pointer.axis(ptr, ev);
+    for (auto x : grab) x->callbacks.pointer.axis(ptr, ev);
 }
 
-void input_manager::propagate_pointer_grab_motion(weston_pointer *ptr,
-        weston_pointer_motion_event *ev) {
+void input_manager::propagate_pointer_grab_motion(
+    weston_pointer *ptr, weston_pointer_motion_event *ev)
+{
     std::vector<wayfire_grab_interface> grab;
     for (auto x : active_grabs) {
-        if (x->callbacks.pointer.motion)
-            grab.push_back(x);
+        if (x->callbacks.pointer.motion) grab.push_back(x);
     }
 
-    for (auto x : grab)
-        x->callbacks.pointer.motion(ptr, ev);
+    for (auto x : grab) x->callbacks.pointer.motion(ptr, ev);
 }
 
 void input_manager::propagate_pointer_grab_button(weston_pointer *ptr,
-        uint32_t button, uint32_t state) {
+        uint32_t button,
+        uint32_t state)
+{
     std::vector<wayfire_grab_interface> grab;
     for (auto x : active_grabs) {
         if (x->callbacks.pointer.button)
@@ -214,7 +234,8 @@ void input_manager::propagate_pointer_grab_button(weston_pointer *ptr,
 }
 
 void input_manager::propagate_keyboard_grab_key(weston_keyboard *kbd,
-        uint32_t key, uint32_t state) {
+        uint32_t key, uint32_t state)
+{
     std::vector<wayfire_grab_interface> grab;
     for (auto x : active_grabs) {
         if (x->callbacks.keyboard.key)
@@ -225,7 +246,21 @@ void input_manager::propagate_keyboard_grab_key(weston_keyboard *kbd,
         x->callbacks.keyboard.key(kbd, key, state);
 }
 
-void input_manager::end_grabs() {
+void input_manager::propagate_keyboard_grab_mod(weston_keyboard *kbd,
+        uint32_t depressed, uint32_t locked, uint32_t latched, uint32_t group)
+{
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.keyboard.mod)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.keyboard.mod(kbd, depressed, locked, latched, group);
+}
+
+void input_manager::end_grabs()
+{
     std::vector<wayfire_grab_interface> v;
 
     for (auto x : active_grabs)
@@ -235,7 +270,8 @@ void input_manager::end_grabs() {
         ungrab_input(x);
 }
 
-bool input_manager::activate_plugin(wayfire_grab_interface owner) {
+bool input_manager::activate_plugin(wayfire_grab_interface owner)
+{
     if (!owner)
         return false;
 
@@ -260,13 +296,15 @@ bool input_manager::activate_plugin(wayfire_grab_interface owner) {
     return true;
 }
 
-bool input_manager::deactivate_plugin(wayfire_grab_interface owner) {
+bool input_manager::deactivate_plugin(wayfire_grab_interface owner)
+{
     owner->ungrab();
     active_plugins.erase(owner);
     return true;
 }
 
-bool input_manager::is_plugin_active(owner_t name) {
+bool input_manager::is_plugin_active(owner_t name)
+{
     for (auto act : active_plugins)
         if (act && act->name == name)
             return true;
@@ -274,21 +312,25 @@ bool input_manager::is_plugin_active(owner_t name) {
     return false;
 }
 
-static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data) {
+static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data)
+{
     key_callback call = *((key_callback*)data);
     call(kbd, key);
 }
 
-static void buttonbinding_handler(weston_pointer *ptr, uint32_t time, uint32_t button, void *data) {
+static void buttonbinding_handler(weston_pointer *ptr, uint32_t time, uint32_t button, void *data)
+{
     button_callback call = *((button_callback*)data);
     call(ptr, button);
 }
-weston_binding* input_manager::add_key(uint32_t mod, uint32_t key, key_callback *call) {
+weston_binding* input_manager::add_key(uint32_t mod, uint32_t key, key_callback *call)
+{
     return weston_compositor_add_key_binding(core->ec, key, (weston_keyboard_modifier)mod, keybinding_handler, (void*)call);
 }
 
 weston_binding* input_manager::add_button(uint32_t mod,
-        uint32_t button, button_callback *call) {
+        uint32_t button, button_callback *call)
+{
     return weston_compositor_add_button_binding(core->ec, button, (weston_keyboard_modifier)mod,
             buttonbinding_handler, (void*)call);
 }
@@ -299,14 +341,16 @@ weston_binding* input_manager::add_button(uint32_t mod,
 /* TODO: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
  * However, this isn't always true. Also, hijacking isn't the best option
  * We should render to a surface which is made standalone */
-void repaint_output_callback(weston_output *o, pixman_region32_t *damage) {
+void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
+{
     auto output = core->get_output(o);
     if (output) {
         output->render->paint(damage);
         output->render->post_paint();
     }
 }
-render_manager::render_manager(wayfire_output *o) {
+render_manager::render_manager(wayfire_output *o)
+{
     output = o;
 
     /* TODO: this should be done in core, otherwise this might cause infite recusion
@@ -320,14 +364,15 @@ render_manager::render_manager(wayfire_output *o) {
 
 /* TODO: do not rely on glBlitFramebuffer, provide fallback
  * to texture rendering for older systems */
-void render_manager::load_background() {
+void render_manager::load_background()
+{
     background.tex = image_io::load_from_file(core->background, background.w, background.h);
 
     GL_CALL(glGenFramebuffers(1, &background.fbuff));
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, background.fbuff));
 
     GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                background.tex, 0));
+                                   background.tex, 0));
 
     auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
     if (status != GL_FRAMEBUFFER_COMPLETE)
@@ -336,7 +381,8 @@ void render_manager::load_background() {
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
-void render_manager::load_context() {
+void render_manager::load_context()
+{
     ctx = OpenGL::create_gles_context(output, core->shadersrc.c_str());
     OpenGL::bind_context(ctx);
     load_background();
@@ -346,7 +392,8 @@ void render_manager::load_context() {
     output->signal->emit_signal("reload-gl", nullptr);
 }
 
-void render_manager::release_context() {
+void render_manager::release_context()
+{
     GL_CALL(glDeleteFramebuffers(1, &background.fbuff));
     GL_CALL(glDeleteTextures(1, &background.tex));
 
@@ -355,7 +402,8 @@ void render_manager::release_context() {
 }
 
 #ifdef USE_GLES3
-void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
+void render_manager::blit_background(GLuint dest, pixman_region32_t *damage)
+{
     background.times_blitted++;
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
@@ -369,9 +417,9 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
         double boty = rects[i].y2 * 1.0 / output->handle->height;
 
         GL_CALL(glBlitFramebuffer(topx * background.w, topy * background.h,
-                    botx * background.w, boty * background.h,
-                    rects[i].x1, output->handle->height - rects[i].y1,
-                    rects[i].x2, output->handle->height - rects[i].y2, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+                                  botx * background.w, boty * background.h,
+                                  rects[i].x1, output->handle->height - rects[i].y1,
+                                  rects[i].x2, output->handle->height - rects[i].y2, GL_COLOR_BUFFER_BIT, GL_LINEAR));
     }
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
@@ -380,12 +428,18 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage) {
 #endif
 
 
-void render_manager::reset_renderer() {
+void render_manager::reset_renderer()
+{
+    debug << "reset renderer" << std::endl;
     renderer = nullptr;
+    /* TODO: move to core.cpp */
+    //core->ec->renderer->repaint_output = weston_renderer_repaint;
+    weston_output_damage(output->handle);
     weston_output_schedule_repaint(output->handle);
 }
 
-void render_manager::set_renderer(render_hook_t rh) {
+void render_manager::set_renderer(render_hook_t rh)
+{
     if (!rh) {
         renderer = std::bind(std::mem_fn(&render_manager::transformation_renderer), this);
     } else {
@@ -393,7 +447,8 @@ void render_manager::set_renderer(render_hook_t rh) {
     }
 }
 
-void render_manager::update_damage(pixman_region32_t *cur_damage, pixman_region32_t *total) {
+void render_manager::update_damage(pixman_region32_t *cur_damage, pixman_region32_t *total)
+{
     pixman_region32_init(total);
     pixman_region32_union(total, cur_damage, &old_damage);
     pixman_region32_copy(&old_damage, cur_damage);
@@ -407,12 +462,14 @@ struct weston_gl_renderer {
     EGLContext context;
 };
 
-void initial_background_render_idle_cb(void *data) {
+void initial_background_render_idle_cb(void *data)
+{
     auto output = (weston_output*) data;
     weston_output_schedule_repaint(output);
 }
 
-void render_manager::paint(pixman_region32_t *damage) {
+void render_manager::paint(pixman_region32_t *damage)
+{
     pixman_region32_t total_damage;
 
     if (dirty_context) {
@@ -451,17 +508,19 @@ void render_manager::paint(pixman_region32_t *damage) {
     }
 }
 
-void render_manager::post_paint() {
+void render_manager::post_paint()
+{
     std::vector<effect_hook> active_effects;
     for (auto effect : output_effects) {
-         active_effects.push_back(effect);
+        active_effects.push_back(effect);
     }
 
     for (auto& effect : active_effects)
         effect.action();
 }
 
-void render_manager::transformation_renderer() {
+void render_manager::transformation_renderer()
+{
     blit_background(0, &output->handle->region);
     output->for_each_view_reverse([=](wayfire_view v) {
         if (!v->destroyed && !v->is_hidden)
@@ -471,7 +530,8 @@ void render_manager::transformation_renderer() {
 
 #ifdef USE_GLES3
 void render_manager::texture_from_viewport(std::tuple<int, int> vp,
-        GLuint &fbuff, GLuint &tex) {
+        GLuint &fbuff, GLuint &tex)
+{
 
     OpenGL::bind_context(ctx);
 
@@ -506,7 +566,8 @@ void render_manager::texture_from_viewport(std::tuple<int, int> vp,
 #endif
 
 static int effect_hook_last_id = 0;
-void render_manager::add_output_effect(effect_hook& hook, wayfire_view v){
+void render_manager::add_output_effect(effect_hook& hook, wayfire_view v)
+{
     hook.id = effect_hook_last_id++;
 
     if (v)
@@ -515,15 +576,16 @@ void render_manager::add_output_effect(effect_hook& hook, wayfire_view v){
         output_effects.push_back(hook);
 }
 
-void render_manager::rem_effect(const effect_hook& hook, wayfire_view v) {
+void render_manager::rem_effect(const effect_hook& hook, wayfire_view v)
+{
     decltype(output_effects)& container = output_effects;
     if (v) container = v->effects;
     auto it = std::remove_if(output_effects.begin(), output_effects.end(),
-            [hook] (const effect_hook& h) {
-                if (h.id == hook.id)
+    [hook] (const effect_hook& h) {
+        if (h.id == hook.id)
             return true;
-            return false;
-            });
+        return false;
+    });
 
     container.erase(it, container.end());
 }
@@ -531,7 +593,8 @@ void render_manager::rem_effect(const effect_hook& hook, wayfire_view v) {
 
 /* Start viewport_manager */
 key_callback switch_l, switch_r;
-viewport_manager::viewport_manager(wayfire_output *o) {
+viewport_manager::viewport_manager(wayfire_output *o)
+{
     output = o;
     vx = vy = 0;
 
@@ -539,16 +602,24 @@ viewport_manager::viewport_manager(wayfire_output *o) {
     vheight = core->vheight;
 }
 
-std::tuple<int, int> viewport_manager::get_current_viewport() { return std::make_tuple(vx, vy); }
-std::tuple<int, int> viewport_manager::get_viewport_grid_size() { return std::make_tuple(vwidth, vheight); }
+std::tuple<int, int> viewport_manager::get_current_viewport()
+{
+    return std::make_tuple(vx, vy);
+}
+std::tuple<int, int> viewport_manager::get_viewport_grid_size()
+{
+    return std::make_tuple(vwidth, vheight);
+}
 
-int clamp(int x, int min, int max) {
+int clamp(int x, int min, int max)
+{
     if(x < min) return min;
     if(x > max) return max;
     return x;
 }
 
-void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
+void viewport_manager::set_viewport(std::tuple<int, int> nPos)
+{
     GetTuple(nx, ny, nPos);
     if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
         return;
@@ -587,7 +658,8 @@ void viewport_manager::set_viewport(std::tuple<int, int> nPos) {
     }
 }
 
-std::vector<wayfire_view> viewport_manager::get_views_on_viewport(std::tuple<int, int> vp) {
+std::vector<wayfire_view> viewport_manager::get_views_on_viewport(std::tuple<int, int> vp)
+{
     GetTuple(tx, ty, vp);
 
     wayfire_geometry g;
@@ -607,20 +679,23 @@ std::vector<wayfire_view> viewport_manager::get_views_on_viewport(std::tuple<int
 
 /* Start SignalManager */
 
-void signal_manager::connect_signal(std::string name, signal_callback_t* callback) {
+void signal_manager::connect_signal(std::string name, signal_callback_t* callback)
+{
     sig[name].push_back(callback);
 }
 
-void signal_manager::disconnect_signal(std::string name, signal_callback_t* callback) {
+void signal_manager::disconnect_signal(std::string name, signal_callback_t* callback)
+{
     auto it = std::remove_if(sig[name].begin(), sig[name].end(),
-            [=] (const signal_callback_t *call) {
-                return call == callback;
-            });
+    [=] (const signal_callback_t *call) {
+        return call == callback;
+    });
 
     sig[name].erase(it, sig[name].end());
 }
 
-void signal_manager::emit_signal(std::string name, signal_data *data) {
+void signal_manager::emit_signal(std::string name, signal_data *data)
+{
     std::vector<signal_callback_t> callbacks;
     for (auto x : sig[name])
         callbacks.push_back(*x);
@@ -632,7 +707,8 @@ void signal_manager::emit_signal(std::string name, signal_data *data) {
 /* End SignalManager */
 /* Start output */
 
-wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
+wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
+{
     this->handle = handle;
 
     /* TODO: init output */
@@ -650,7 +726,8 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c) {
     weston_output_schedule_repaint(handle);
 }
 
-wayfire_output::~wayfire_output(){
+wayfire_output::~wayfire_output()
+{
     delete plugin;
     delete signal;
     delete viewport;
@@ -658,15 +735,18 @@ wayfire_output::~wayfire_output(){
     delete input;
 }
 
-void wayfire_output::activate() {
+void wayfire_output::activate()
+{
 }
 
-void wayfire_output::deactivate() {
+void wayfire_output::deactivate()
+{
     // TODO: what do we do?
     //render->dirty_context = true;
 }
 
-void wayfire_output::attach_view(wayfire_view v) {
+void wayfire_output::attach_view(wayfire_view v)
+{
     v->output = this;
 
     weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
@@ -681,7 +761,8 @@ void wayfire_output::attach_view(wayfire_view v) {
     delete sig_data;
 }
 
-void wayfire_output::detach_view(wayfire_view v) {
+void wayfire_output::detach_view(wayfire_view v)
+{
     weston_layer_entry_remove(&v->handle->layer_link);
     wayfire_view next = nullptr;
 
@@ -706,7 +787,19 @@ void wayfire_output::detach_view(wayfire_view v) {
     delete sig_data;
 }
 
-void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
+void wayfire_output::bring_to_front(wayfire_view v) {
+    assert(v);
+
+    weston_view_geometry_dirty(v->handle);
+    weston_layer_entry_remove(&v->handle->layer_link);
+    weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
+    weston_view_geometry_dirty(v->handle);
+    weston_surface_damage(v->surface);
+    weston_desktop_surface_propagate_layer(v->desktop_surface);
+}
+
+void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
+{
     if (v == active_view)
         return;
 
@@ -716,22 +809,16 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat) {
     active_view = v;
     if (active_view) {
         weston_view_activate(v->handle, seat,
-                WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+                             WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
         weston_desktop_surface_set_activated(v->desktop_surface, true);
-
-        weston_view_geometry_dirty(v->handle);
-        weston_layer_entry_remove(&v->handle->layer_link);
-        weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
-        weston_view_geometry_dirty(v->handle);
-        weston_surface_damage(v->surface);
-
-        weston_desktop_surface_propagate_layer(v->desktop_surface);
+        bring_to_front(v);
     } else {
         weston_keyboard_set_focus(weston_seat_get_keyboard(seat), NULL);
     }
 }
 
-void wayfire_output::for_each_view(view_callback_proc_t call) {
+void wayfire_output::for_each_view(view_callback_proc_t call)
+{
     weston_view *view;
     wayfire_view v;
 
@@ -742,7 +829,8 @@ void wayfire_output::for_each_view(view_callback_proc_t call) {
     }
 }
 
-void wayfire_output::for_each_view_reverse(view_callback_proc_t call) {
+void wayfire_output::for_each_view_reverse(view_callback_proc_t call)
+{
     weston_view *view;
     wayfire_view v;
 
@@ -753,13 +841,14 @@ void wayfire_output::for_each_view_reverse(view_callback_proc_t call) {
     }
 }
 
-wayfire_view wayfire_output::get_view_at_point(int x, int y) {
+wayfire_view wayfire_output::get_view_at_point(int x, int y)
+{
     wayfire_view chosen = nullptr;
 
     for_each_view([x, y, &chosen] (wayfire_view v) {
         if (v->is_visible() && point_inside({x, y}, v->geometry)) {
             if (chosen == nullptr)
-               chosen = v;
+                chosen = v;
         }
     });
 

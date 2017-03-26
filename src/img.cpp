@@ -11,7 +11,7 @@
 #define TEXTURE_LOAD_ERROR 0
 
 namespace image_io {
-    using Loader = std::function<GLuint(const char*, ulong&, ulong&)>;
+    using Loader = std::function<GLuint(const char *, ulong&, ulong&)>;
     using Writer = std::function<void(const char *name, uint8_t *pixels, ulong, ulong)>;
     namespace {
         std::unordered_map<std::string, Loader> loaders;
@@ -21,7 +21,8 @@ namespace image_io {
     /* All backend functions are taken from the internet.
      * If you want to be credited, contact me */
 
-    GLuint texture_from_png(const char *file_name, ulong& width, ulong& height) {
+    GLuint texture_from_png(const char *file_name, ulong& width, ulong& height)
+    {
         png_byte header[8];
 
         FILE *fp = fopen(file_name, "rb");
@@ -38,7 +39,7 @@ namespace image_io {
         }
 
         png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL,
-                NULL, NULL);
+                              NULL, NULL);
         if (!png_ptr) {
             fclose(fp);
             return (TEXTURE_LOAD_ERROR);
@@ -72,7 +73,7 @@ namespace image_io {
         int bit_depth, color_type;
         png_uint_32 twidth, theight;
         png_get_IHDR(png_ptr, info_ptr, &twidth, &theight, &bit_depth, &color_type,
-                NULL, NULL, NULL);
+                     NULL, NULL, NULL);
 
         width = twidth;
         height = theight;
@@ -104,7 +105,7 @@ namespace image_io {
         GL_CALL(glGenTextures(1, &texture));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, texture));
         GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*) image_data));
+                             GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid *) image_data));
 
         png_destroy_read_struct(&png_ptr, &info_ptr, &end_info);
         delete[] image_data;
@@ -114,7 +115,8 @@ namespace image_io {
         return texture;
     }
 
-    void texture_to_png(const char *name, uint8_t *pixels, int w, int h) {
+    void texture_to_png(const char *name, uint8_t *pixels, int w, int h)
+    {
         png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
         if (!png)
             return;
@@ -133,7 +135,7 @@ namespace image_io {
 
         png_init_io(png, fp);
         png_set_IHDR(png, infot, w, h, 8 /* depth */, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
-                PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+                     PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
         png_colorp palette = (png_colorp)png_malloc(png, PNG_MAX_PALETTE_LENGTH * sizeof(png_color));
         if (!palette) {
             fclose(fp);
@@ -157,17 +159,18 @@ namespace image_io {
         delete[] rows;
     }
 
-    GLuint texture_from_jpeg(const char* FileName, unsigned long &x, unsigned long &y) {
+    GLuint texture_from_jpeg(const char *FileName, unsigned long& x, unsigned long& y)
+    {
         unsigned int texture_id;
         unsigned long data_size;
         int channels;
         unsigned int type;
-        unsigned char * rowptr[1];
-        unsigned char * jdata;
+        unsigned char *rowptr[1];
+        unsigned char *jdata;
         struct jpeg_decompress_struct infot;
         struct jpeg_error_mgr err;
 
-        std::FILE* file = fopen(FileName, "rb");
+        std::FILE *file = fopen(FileName, "rb");
         infot.err = jpeg_std_error(& err);
         jpeg_create_decompress(&infot);
 
@@ -204,7 +207,8 @@ namespace image_io {
         return texture_id;
     }
 
-    GLuint load_from_file(std::string name, ulong &w, ulong &h) {
+    GLuint load_from_file(std::string name, ulong& w, ulong& h)
+    {
         int len = name.length();
         if (len < 4 || name[len - 4] != '.') {
             errio << "load_from_file() called with file without extension or with invalid extension!\n";
@@ -224,7 +228,8 @@ namespace image_io {
         }
     }
 
-    void write_to_file(std::string name, uint8_t *pixels, int w, int h, std::string type) {
+    void write_to_file(std::string name, uint8_t *pixels, int w, int h, std::string type)
+    {
         auto it = writers.find(type);
 
         if (it == writers.end()) {
@@ -234,7 +239,8 @@ namespace image_io {
         }
     }
 
-    void init() {
+    void init()
+    {
         loaders["png"] = Loader(texture_from_png);
         loaders["jpg"] = Loader(texture_from_jpeg);
         writers["png"] = Writer(texture_to_png);

@@ -1,8 +1,21 @@
 #include <output.hpp>
 #include <opengl.hpp>
 #include <queue>
+#include <core.hpp>
+#include <linux/input-event-codes.h>
+#include <algorithm>
 
-/* TODO: add configuration options for left, right and exit keybindings */
+/* A general TODO: make the code much more organized */
+
+struct duple {
+    float start, end;
+};
+
+struct view_paint_attribs {
+    wayfire_view view;
+    duple scale_x, scale_y, off_x, off_y, off_z;
+    duple rot;
+};
 
 float clamp(float min, float x, float max) {
     if (x < min) return min;
@@ -17,22 +30,38 @@ float get_scale_factor(float w, float h, float sw, float sh, float c) {
     return clamp(0.8, std::sqrt((sd / d) * c), 1.3);
 }
 
+void frame_idle_callback(void *data);
 class view_switcher : public wayfire_plugin_t {
+    friend void frame_idle_callback(void *data);
 
     key_callback init_binding, fast_switch_binding;
-
     wayfire_key next_view, prev_view, terminate;
+    wayfire_key activate_key, fast_switch_key;
+
 #define MAXDIRS 4
     std::queue<int> dirs;
+
+    struct {
+        bool active = false;
+        bool in_center = false;
+        bool in_place = false;
+        bool in_switch = false;
+        bool in_terminate = false;
+
+        bool first_press_skipped = false;
+        /* the following are needed for fast switching, for ex.
+         * if the user presses alt-tab(assuming this is our binding)
+         * and then presses tab several times, holding alt, we assume
+         * he/she wants to switch between windows, so we track if this is the case */
+        bool in_continuous_switch = false;
+        bool in_fast_switch = false;
+        bool first_key = false;
+    } state;
 
     bool active = false, block = false; // block is waiting to exit
     size_t index;
 
-    Hook center, place, rotate, exit;
-
-    int initsteps;
-    int maxsteps = 20;
-    int curstep = 0;
+    int max_steps, current_step, initial_animation_steps;
 
     struct {
         float offset = 0.6f;
@@ -40,167 +69,101 @@ class view_switcher : public wayfire_plugin_t {
         float back = 0.3f;
     } attribs;
 
+    render_hook_t renderer;
+
+    std::vector<wayfire_view> views; // all views on current viewport
+    std::vector<view_paint_attribs> active_views; // views that are rendered
 
     public:
 
-    void initOwnership() {
+    void init(wayfire_config *config) {
         grab_interface->name = "switcher";
         grab_interface->compatAll = false;
         grab_interface->compat.insert("screenshot");
-    }
 
-    void updateConfiguration() {
-        maxsteps = options["duration"]->data.ival;
-        initsteps = options["init"]->data.ival;
+        auto section = config->get_section("switcher");
+
+        fast_switch_key = section->get_key("fast_switch", {MODIFIER_ALT, KEY_ESC});
+        fast_switch_binding = [=] (weston_keyboard *kbd, uint32_t key) {
+            fast_switch();
+        };
+
+        output->input->add_key(fast_switch_key.mod, fast_switch_key.keyval, &fast_switch_binding);
+
+        /* TODO: we should do this in seconds and convert it to steps using framerate */
+        max_steps = section->get_int("duration", 30);
+        initial_animation_steps = section->get_int("initial_animation", 30);;
+
+        activate_key = section->get_key("activate", {MODIFIER_ALT, KEY_TAB});
+
+        init_binding = [=] (weston_keyboard *, uint32_t) {
+            if (!state.active)
+                activate();
+            else {
+                start_exit();
+            }
+        };
+        output->input->add_key(activate_key.mod, activate_key.keyval, &init_binding);
 
         using namespace std::placeholders;
-        Key fast = *options["fast_switch"]->data.key;
-        fast_switch_kb.key = fast.key;
-        fast_switch_kb.mod = fast.mod;
-        fast_switch_kb.type = BindingTypePress;
-        fast_switch_kb.action = std::bind(std::mem_fn(&Switcher::fast_switch), this, _1);
+        grab_interface->callbacks.keyboard.key = std::bind(std::mem_fn(&view_switcher::handle_key),
+                this, _1, _2, _3);
 
-        if (fast.key)
-            output->hook->add_key(&fast_switch_kb, true);
+        grab_interface->callbacks.keyboard.mod = std::bind(std::mem_fn(&view_switcher::handle_mod),
+                this, _1, _2, _3, _4, _5);
 
-        actKey = *options["activate"]->data.key;
-        if(actKey.key == 0)
+        next_view = section->get_key("next", {0, KEY_RIGHT});
+        prev_view = section->get_key("prev", {0, KEY_LEFT});
+        terminate = section->get_key("exit", {0, KEY_ENTER});
+
+        renderer = std::bind(std::mem_fn(&view_switcher::render), this);
+    }
+
+    void update_views() {
+        views = output->viewport->get_views_on_viewport(output->viewport->get_current_viewport());
+        //std::reverse(views.begin(), views.end());
+    }
+
+    void activate() {
+        if (!output->input->activate_plugin(grab_interface))
             return;
 
-        init_binding.mod = actKey.mod;
-        init_binding.key = actKey.key;
-        init_binding.type = BindingTypePress;
-        init_binding.action =
-            std::bind(std::mem_fn(&Switcher::handle_key), this, _1);
-        output->hook->add_key(&init_binding, true);
-
-        forward.mod = 0;
-        forward.key = XKB_KEY_Right;
-        forward.type = BindingTypePress;
-        forward.action = init_binding.action;
-        output->hook->add_key(&forward, false);
-
-        backward.mod = 0;
-        backward.key = XKB_KEY_Left;
-        backward.type = BindingTypePress;
-        backward.action = init_binding.action;
-        output->hook->add_key(&backward, false);
-
-        term.mod = 0;
-        term.key = XKB_KEY_Return;
-        term.type = BindingTypePress;
-        term.action = init_binding.action;
-        output->hook->add_key(&term, false);
-
-        center.action = std::bind(std::mem_fn(&Switcher::center_hook), this);
-        place.action  = std::bind(std::mem_fn(&Switcher::place_hook), this);
-        rotate.action = std::bind(std::mem_fn(&Switcher::rotate_hook), this);
-        exit.action   = std::bind(std::mem_fn(&Switcher::exit_hook), this);
-
-        output->hook->add_hook(&center);
-        output->hook->add_hook(&place);
-        output->hook->add_hook(&rotate);
-        output->hook->add_hook(&exit);
-    }
-
-    void init() {
-        options.insert(newIntOption("duration", 1000));
-        options.insert(newIntOption("init", 1000));
-        options.insert(newKeyOption("activate", Key{0, 0}));
-        options.insert(newKeyOption("fast_switch", Key{0, 0}));
-    }
-
-    void handle_key(EventContext ctx) {
-        auto xev = ctx.xev.xkey;
-        if (xev.key == options["activate"]->data.key->key) {
-            if (active) {
-                if (rotate.getState()) {
-                    if (!block) {
-                        dirs.push(0),
-                        block = true;
-                     }
-                } else {
-                    terminate();
-                }
-            } else if (!place.getState() && !center.getState()) {
-                initiate();
-            }
-        }
-
-        if (xev.key == XKB_KEY_Left) {
-            if (place.getState() || center.getState() || rotate.getState()) {
-                if (dirs.size() < MAXDIRS)
-                    dirs.push(1);
-            } else {
-                move(1);
-            }
-        }
-
-        if (xev.key == XKB_KEY_Right) {
-            if (place.getState() || center.getState() || rotate.getState()) {
-                if (dirs.size() < MAXDIRS)
-                dirs.push(-1);
-            } else {
-                move(-1);
-            }
-        }
-
-        if (xev.key == XKB_KEY_Return) {
-            if (active && !block) {
-                dirs.push(0);
-                block = true;
-            } else if (active) {
-                terminate();
-            }
-        }
-    }
-
-    struct duple {
-        float start, end;
-    };
-
-    struct view_paint_attribs {
-        View v;
-        duple scale_x, scale_y, off_x, off_y, off_z;
-        duple rot;
-    };
-
-    std::vector<view_paint_attribs> active_views;
-
-    void initiate() {
-        if (!output->input->activate_owner(owner))
+        update_views();
+        if (!views.size()) {
+            output->input->deactivate_plugin(grab_interface);
             return;
+        }
+
+        state.active = true;
+        state.in_center = true;
+        state.first_press_skipped = false;
+        state.first_key = true;
 
         grab_interface->grab();
-        active = true;
+        output->focus_view(nullptr, core->get_current_seat());
 
-        auto view = glm::lookAt(glm::vec3(0., 0., 1.67),
+        output->render->set_renderer(renderer);
+        weston_output_schedule_repaint(output->handle);
+
+        auto view = glm::lookAt(glm::vec3(0., 0., 1. * output->handle->width / output->handle->height),
                 glm::vec3(0., 0., 0.),
                 glm::vec3(0., 1., 0.));
         auto proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
-        Transform::ViewProj = proj * view;
-
-        views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
-
-        if (!views.size()) {
-            grab_interface->ungrab();
-            output->input->deactivate_owner(owner);
-            return;
-        }
-        std::reverse(views.begin(), views.end());
+        wayfire_view_transform::global_view_projection = proj * view;
 
         GetTuple(sw, sh, output->get_screen_size());
 
+        active_views.clear();
         for (auto v : views) {
             /* center of screen minus center of view */
-            float cx = -(sw / 2 - (v->attrib.origin.x + v->attrib.size.w / 2.f)) / sw * 2.f;
-            float cy =  (sh / 2 - (v->attrib.origin.y + v->attrib.size.h / 2.f)) / sh * 2.f;
+            float cx = -(sw / 2 - (v->geometry.origin.x + v->geometry.size.w / 2.f)) / sw * 2.f;
+            float cy =  (sh / 2 - (v->geometry.origin.y + v->geometry.size.h / 2.f)) / sh * 2.f;
 
-            float scale_factor = get_scale_factor(v->attrib.size.w, v->attrib.size.h, sw, sh, 0.28888);
+            float scale_factor = get_scale_factor(v->geometry.size.w, v->geometry.size.h, sw, sh, 0.28888);
 
             active_views.push_back(
-                    { .v = v,
+                    { .view = v,
                       .off_x = {cx, 0},
                       .off_y = {cy, 0},
                       .scale_x = {1, scale_factor},
@@ -218,194 +181,303 @@ class view_switcher : public wayfire_plugin_t {
         }
 
         index = 0;
-
-        output->render->set_redraw_everything(true);
-        output->render->set_renderer(0, std::bind(std::mem_fn(&Switcher::render), this));
-
-        curstep = 0;
-
-        center.enable();
+        current_step = 0;
     }
 
-    void render_view(View v) {
+    void render_view(wayfire_view v) {
         GetTuple(sw, sh, output->get_screen_size());
 
         int cx = sw / 2;
         int cy = sh / 2;
 
-        wlc_geometry g;
-        wlc_view_get_visible_geometry(v->get_id(), &g);
 
-        int mx = cx - g.size.w / 2;
-        int my = cy - g.size.h / 2;
+        wayfire_geometry compositor_geometry = v->geometry;
+        v->geometry.origin.x = cx - compositor_geometry.size.w / 2;
+        v->geometry.origin.y = cy - compositor_geometry.size.h / 2;
 
-        g.origin.x = mx;
-        g.origin.y = my;
+        v->render(0);
 
-        render_surface(v->get_surface(), g, v->transform.compose());
+        v->geometry = compositor_geometry;
     }
 
     void render() {
-        OpenGL::useDefaultProgram();
-        GL_CALL(glDisable(GL_DEPTH_TEST));
+        OpenGL::use_default_program();
+        GL_CALL(glEnable(GL_DEPTH_TEST));
 
         auto bg = output->render->get_background();
-        wlc_geometry g = {.origin = {0, 0}, .size = {1366, 768}};
-        output->render->ctx->color = glm::vec4(0.7, 0.7, 0.7, 1.0);
-        OpenGL::renderTransformedTexture(bg, g, glm::mat4(), TEXTURE_TRANSFORM_USE_COLOR);
+        wayfire_geometry g = {.origin = {0, 0}, .size = {output->handle->width, output->handle->height}};
+        OpenGL::render_transformed_texture(bg, g, glm::mat4(),
+                glm::vec4(0.7, 0.7, 0.7, 1.0), TEXTURE_TRANSFORM_USE_COLOR);
+
+        if (state.in_center)
+            update_center();
+        else if (state.in_place)
+            update_place();
+        else if (state.in_switch)
+            update_rotate();
+        else if (state.in_terminate)
+            update_exit();
 
         for(int i = active_views.size() - 1; i >= 0; i--)
-            render_view(active_views[i].v);
+            render_view(active_views[i].view);
+
+        /* TODO: probably add a function in output/core for this
+         * as such things are needed for all plugins that require constant redrawing */
+        auto loop = wl_display_get_event_loop(core->ec->wl_display);
+        wl_event_loop_add_idle(loop, frame_idle_callback, this);
     }
 
-#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
-                                            *((steps)-(curstep)))/(steps))
+    void stop_continuous_switch(weston_keyboard *kbd, uint32_t depressed, uint32_t locked,
+            uint32_t latched, uint32_t group)
+    {
 
-    void center_hook() {
-        curstep++;
-        for (auto v : active_views) {
-            if (curstep < initsteps) {
-                v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                            GetProgress(v.off_x.start, v.off_x.end, curstep, initsteps),
-                            GetProgress(v.off_y.start, v.off_y.end, curstep, initsteps),
-                            GetProgress(v.off_z.start, v.off_z.end, curstep, initsteps)));
-
-                v.v->transform.scalation = glm::scale(glm::mat4(), glm::vec3(
-                            GetProgress(v.scale_x.start, v.scale_x.end, curstep, initsteps),
-                            GetProgress(v.scale_y.start, v.scale_y.end, curstep, initsteps), 1));
+        weston_keyboard_send_modifiers(kbd, wl_display_get_serial(core->ec->wl_display),
+                depressed, locked, latched, group);
+        state.in_continuous_switch = false;
+        if (state.in_fast_switch) {
+            fast_switch_terminate();
+        } else {
+            if (state.in_place || state.in_center || state.in_switch) {
+                dirs.push(0);
             } else {
-                v.v->transform.translation = glm::mat4();
+                start_exit();
+            }
+        }
+    }
+
+    void handle_mod(weston_keyboard *kbd, uint32_t depressed, uint32_t locked,
+            uint32_t latched, uint32_t group)
+    {
+        bool mod_released = (depressed & activate_key.mod) == 0;
+        bool fast_mod_released = (depressed & fast_switch_key.mod) == 0;
+
+        if ((mod_released && state.in_continuous_switch) ||
+                (fast_mod_released && state.in_fast_switch))
+            stop_continuous_switch(kbd, depressed, locked, latched, group);
+        else if (mod_released)
+            state.first_key = false;
+    }
+
+    /* either queue the next direction if we are currently switching/animating,
+     * otherwise simply start animating */
+    void enqueue (int dx)
+    {
+        if (state.in_center || state.in_place || state.in_switch) {
+            if (dirs.size() < MAXDIRS)
+                dirs.push(dx);
+        } else if (!state.in_terminate) {
+            start_move(dx);
+        }
+    }
+
+    void handle_key(weston_keyboard *kbd, uint32_t key, uint32_t kstate) {
+        /* when we setup keyboard grab, we receive a signal for it
+         * it is not necessary so we skip it, as there is no way to circumvent */
+        if ((key == activate_key.keyval || key == fast_switch_key.keyval) && !state.first_press_skipped) {
+            state.first_press_skipped = true;
+            return;
+        }
+
+        if (kstate != WL_KEYBOARD_KEY_STATE_PRESSED)
+            return;
+
+#define fast_switch_on (state.in_fast_switch && key == fast_switch_key.keyval)
+        if (state.first_key && (key == activate_key.keyval || fast_switch_on)) {
+            state.in_continuous_switch = true;
+        }
+
+        state.first_key = false;
+
+        if (key == activate_key.keyval && state.in_continuous_switch) {
+            enqueue(1);
+            return;
+        }
+
+        if (fast_switch_on && state.in_continuous_switch) {
+            fast_switch_next();
+            return;
+        }
+
+        if (state.active && (key == terminate.keyval || key == activate_key.keyval)) {
+            if (state.in_center || state.in_place || state.in_switch) {
+                dirs.push(0);
+            } else {
+                start_exit();
             }
         }
 
-        if(curstep == initsteps) {
-            center.disable();
+        if (key == prev_view.keyval || key == next_view.keyval) {
+            int dx = (key == prev_view.keyval ? -1 : 1);
+            enqueue(dx);
+        }
+    }
 
-            if (views.size() == 1)
+
+#define GetProgress(start,end,steps) ((float(end)*(current_step)+float(start) \
+                                            *((steps)-(current_step)))/(steps))
+
+    void update_center()
+    {
+        ++current_step;
+        for (auto v : active_views) {
+            if (current_step < initial_animation_steps) {
+                v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                            GetProgress(v.off_x.start, v.off_x.end, initial_animation_steps),
+                            GetProgress(v.off_y.start, v.off_y.end, initial_animation_steps),
+                            GetProgress(v.off_z.start, v.off_z.end, initial_animation_steps)));
+
+                v.view->transform.scale = glm::scale(glm::mat4(), glm::vec3(
+                            GetProgress(v.scale_x.start, v.scale_x.end, initial_animation_steps),
+                            GetProgress(v.scale_y.start, v.scale_y.end, initial_animation_steps),
+                            1));
+            } else {
+                v.view->transform.translation = glm::mat4();
+            }
+        }
+
+        if(current_step == initial_animation_steps) {
+            state.in_center = false;
+
+            if (active_views.size() == 1)
                 return;
 
-            place.enable();
-            curstep = 0;
-
-            active_views.clear();
-
-            if (views.size() == 2) {
-                active_views.push_back({
-                        .v = views[0],
-                        .off_x = {0, attribs.offset},
-                        .off_y = {0, 0},
-                        .off_z = {0, -attribs.back},
-                        .rot= {0, -attribs.angle}});
-
-                active_views.push_back({
-                        .v = views[1],
-                        .off_x = {0, -attribs.offset},
-                        .off_y = {0, 0},
-                        .off_z = {0, -attribs.back},
-                        .rot = {0, attribs.angle}});
-            } else {
-                int prev = views.size() - 1;
-                int next = 1;
-                active_views.push_back({
-                        .v = views[0],
-                        .off_x = {0, 0},
-                        .off_y = {0, 0},
-                        .off_z = {0, 0},
-                        .rot = {0, 0}});
-
-
-                active_views.push_back({
-                        .v = views[prev],
-                        .off_x = {0, -attribs.offset},
-                        .off_y = {0, 0},
-                        .off_z = {0, -attribs.back},
-                        .rot = {0, +attribs.angle}});
-
-                active_views.push_back({
-                        .v = views[next],
-                        .off_x = {0, +attribs.offset},
-                        .off_y = {0, 0},
-                        .off_z = {0, -attribs.back},
-                        .rot = {0, -attribs.angle}});
-            }
+            start_place();
         }
     }
 
-    void place_hook() {
-        ++curstep;
-        for (auto v : active_views) {
-            v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                        GetProgress(v.off_x.start, v.off_x.end, curstep, maxsteps),
-                        0,
-                        GetProgress(v.off_z.start, v.off_z.end, curstep, maxsteps)));
+    void start_place() {
+        state.in_place = true;
+        current_step = 0;
 
-            v.v->transform.rotation = glm::rotate(glm::mat4(),
-                    GetProgress(v.rot.start, v.rot.end, curstep, maxsteps),
-                    glm::vec3(0, 1, 0));
-        }
+        active_views.clear();
+        //update_views();
 
-        if (curstep == maxsteps) {
-            place.disable();
-            forward.enable();
-            backward.enable();
-            active = true;
+        if (views.size() == 2) {
+            active_views.push_back({
+                    .view = views[0],
+                    .off_x = {0, attribs.offset},
+                    .off_y = {0, 0},
+                    .off_z = {0, -attribs.back},
+                    .rot= {0, -attribs.angle}});
+
+            active_views.push_back({
+                    .view = views[1],
+                    .off_x = {0, -attribs.offset},
+                    .off_y = {0, 0},
+                    .off_z = {0, -attribs.back},
+                    .rot = {0, attribs.angle}});
+        } else {
+            int prev = views.size() - 1;
+            int next = 1;
+            active_views.push_back({
+                    .view = views[0],
+                    .off_x = {0, 0},
+                    .off_y = {0, 0},
+                    .off_z = {0, 0},
+                    .rot = {0, 0}});
+
+
+            active_views.push_back({
+                    .view = views[prev],
+                    .off_x = {0, -attribs.offset},
+                    .off_y = {0, 0},
+                    .off_z = {0, -attribs.back},
+                    .rot = {0, +attribs.angle}});
+
+            active_views.push_back({
+                    .view = views[next],
+                    .off_x = {0, +attribs.offset},
+                    .off_y = {0, 0},
+                    .off_z = {0, -attribs.back},
+                    .rot = {0, -attribs.angle}});
         }
     }
 
-    void rotate_hook() {
-         ++curstep;
+    void update_place() {
+        ++current_step;
         for (auto v : active_views) {
-            v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                        GetProgress(v.off_x.start, v.off_x.end, curstep, maxsteps),
+            v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                        GetProgress(v.off_x.start, v.off_x.end, max_steps),
                         0,
-                        GetProgress(v.off_z.start, v.off_z.end, curstep, maxsteps)));
+                        GetProgress(v.off_z.start, v.off_z.end, max_steps)));
 
-            v.v->transform.rotation = glm::rotate(glm::mat4(),
-                    GetProgress(v.rot.start, v.rot.end, curstep, maxsteps),
+            v.view->transform.rotation = glm::rotate(glm::mat4(),
+                    GetProgress(v.rot.start, v.rot.end, max_steps),
                     glm::vec3(0, 1, 0));
         }
 
-        if (curstep == maxsteps) {
-            rotate.disable();
+        if (current_step == max_steps) {
+            state.in_place = false;
+
             if (!dirs.empty()) {
                 int next_dir = dirs.front();
                 dirs.pop();
 
                 if(next_dir == 0) {
-                    terminate();
+                    start_exit();
                 } else {
-                    move(next_dir);
+                    start_move(next_dir);
                 }
             }
         }
     }
 
-    void move(int dir) {
+    void update_rotate() {
+        ++current_step;
+        for (auto v : active_views) {
+            v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                        GetProgress(v.off_x.start, v.off_x.end, max_steps),
+                        0,
+                        GetProgress(v.off_z.start, v.off_z.end, max_steps)));
+
+            v.view->transform.rotation = glm::rotate(glm::mat4(),
+                    GetProgress(v.rot.start, v.rot.end, max_steps),
+                    glm::vec3(0, 1, 0));
+        }
+
+        if (current_step == max_steps) {
+            state.in_switch = false;
+            if (!dirs.empty()) {
+                int next_dir = dirs.front();
+                dirs.pop();
+
+                if(next_dir == 0) {
+                    start_exit();
+                } else {
+                    start_move(next_dir);
+                }
+            }
+        }
+    }
+
+    void start_move(int dir) {
+        //update_views();
         int sz = views.size();
 
-        index    = ((index + dir) % sz + sz) % sz;
-        int next = ((index + 1  ) % sz + sz) % sz;
-        int prev = ((index - 1  ) % sz + sz) % sz;
+        /* TODO: whap happens if view gets destroyed? */
+        index    = (index + dir + sz) % sz;
+        int next = (index + 1) % sz;
+        int prev = (index - 1 + sz) % sz;
 
         active_views.clear();
         /* only two views */
         if (next == prev) {
             active_views.push_back({
-                        .v = views[index],
+                    .view = views[index],
                         .off_x = {-attribs.offset, attribs.offset},
                         .off_z = {attribs.back, attribs.back},
                         .rot   = {attribs.angle, -attribs.angle},
                     });
 
             active_views.push_back({
-                        .v = views[next],
+                        .view = views[next],
                         .off_x = {attribs.offset, -attribs.offset},
                         .off_z = {attribs.back, attribs.back},
                         .rot   = {-attribs.angle, attribs.angle},
                     });
         } else {
             active_views.push_back({
-                        .v = views[index],
+                        .view = views[index],
                         .off_x = {attribs.offset * dir, 0},
                         .off_z = {-attribs.back, 0},
                         .rot   = {-attribs.angle * dir, 0},
@@ -413,14 +485,14 @@ class view_switcher : public wayfire_plugin_t {
 
             if (dir == 1) {
                 active_views.push_back({
-                            .v = views[prev],
+                            .view = views[prev],
                             .off_x = {0, -attribs.offset},
                             .off_z = {0, -attribs.back},
                             .rot   = {0, attribs.angle},
                         });
 
                 active_views.push_back({
-                            .v = views[next],
+                            .view = views[next],
                             .off_x = {attribs.offset, attribs.offset},
                             .off_z = {-attribs.back, -attribs.back},
                             .rot   = {-attribs.angle, -attribs.angle}
@@ -428,14 +500,14 @@ class view_switcher : public wayfire_plugin_t {
 
             } else {
                  active_views.push_back({
-                            .v = views[next],
+                            .view = views[next],
                             .off_x = {0, attribs.offset},
                             .off_z = {0, attribs.back},
                             .rot   = {0, -attribs.angle}
                         });
 
                 active_views.push_back({
-                            .v = views[prev],
+                            .view = views[prev],
                             .off_x = {-attribs.offset, -attribs.offset},
                             .off_z = {-attribs.back, -attribs.back},
                             .rot   = {attribs.angle, attribs.angle}
@@ -443,64 +515,48 @@ class view_switcher : public wayfire_plugin_t {
             }
         }
 
-        rotate.enable();
-        curstep = 0;
+        current_step = 0;
+        state.in_switch = true;
     }
 
-    void move_right() {
-        if(views.size() == 1)
-            return;
-
-        move(-1);
-
-    }
-
-    void move_left() {
-        if(views.size() == 1)
-            return;
-
-        move(1);
-    }
-
-    void exit_hook() {
-        ++curstep;
+    void update_exit() {
+        ++current_step;
 
         for(auto v : active_views) {
-            v.v->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                        GetProgress(v.off_x.start, v.off_x.end, curstep, maxsteps),
-                        GetProgress(v.off_y.start, v.off_y.end, curstep, maxsteps),
-                        GetProgress(v.off_z.start, v.off_z.end, curstep, maxsteps)));
+            v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                        GetProgress(v.off_x.start, v.off_x.end, max_steps),
+                        GetProgress(v.off_y.start, v.off_y.end, max_steps),
+                        GetProgress(v.off_z.start, v.off_z.end, max_steps)));
 
-            v.v->transform.rotation = glm::rotate(glm::mat4(),
-                        GetProgress(v.rot.start, v.rot.end, curstep, maxsteps),
+            v.view->transform.rotation = glm::rotate(glm::mat4(),
+                        GetProgress(v.rot.start, v.rot.end, max_steps),
                         glm::vec3(0, 1, 0));
 
-            v.v->transform.scalation = glm::scale(glm::mat4(), glm::vec3(
-                        GetProgress(v.scale_x.start, v.scale_x.end, curstep, maxsteps),
-                        GetProgress(v.scale_y.start, v.scale_y.end, curstep, maxsteps), 1));
+            v.view->transform.scale = glm::scale(glm::mat4(), glm::vec3(
+                        GetProgress(v.scale_x.start, v.scale_x.end, max_steps),
+                        GetProgress(v.scale_y.start, v.scale_y.end, max_steps), 1));
         }
 
-
-        if (curstep == maxsteps) {
+        if (current_step == max_steps) {
              active = false;
              output->render->reset_renderer();
-             output->render->set_redraw_everything(false);
+             grab_interface->ungrab();
+             output->input->deactivate_plugin(grab_interface);
 
-             core->focus_view(views[index]);
-             exit.disable();
+             state.in_terminate = false;
+             state.active = false;
 
-             Transform::ViewProj = glm::mat4();
+             wayfire_view_transform::global_view_projection = glm::mat4();
 
+             //update_views();
              for(auto v : views) {
-                v->transform.scalation = v->transform.translation = v->transform.rotation = glm::mat4();
+                v->transform.scale = v->transform.translation = v->transform.rotation = glm::mat4();
              }
         }
     }
 
-    void terminate() {
-        exit.enable();
-        output->input->deactivate_owner(owner);
-        grab_interface->ungrab();
+    void start_exit() {
+        state.in_terminate = true;
 
         GetTuple(sw, sh, output->get_screen_size());
 
@@ -508,8 +564,9 @@ class view_switcher : public wayfire_plugin_t {
 
         if (!sz) return;
 
-        size_t next = ((index + 1) % sz + sz) % sz;
-        size_t prev = ((index - 1) % sz + sz) % sz;
+        output->focus_view(views[index], core->get_current_seat());
+        size_t next = (index + 1) % sz;
+        size_t prev = (index - 1 + sz) % sz;
 
         active_views.clear();
 
@@ -517,13 +574,13 @@ class view_switcher : public wayfire_plugin_t {
 
             const auto& v = views[i];
             /* center of screen minus center of view */
-            float cx = -(sw / 2 - (v->attrib.origin.x + v->attrib.size.w / 2.f)) / sw * 2.f;
-            float cy =  (sh / 2 - (v->attrib.origin.y + v->attrib.size.h / 2.f)) / sh * 2.f;
+            float cx = -(sw / 2 - (v->geometry.origin.x + v->geometry.size.w / 2.f)) / sw * 2.f;
+            float cy =  (sh / 2 - (v->geometry.origin.y + v->geometry.size.h / 2.f)) / sh * 2.f;
 
-            float scale_factor = get_scale_factor(v->attrib.size.w, v->attrib.size.h, sw, sh, 0.28888);
+            float scale_factor = get_scale_factor(v->geometry.size.w, v->geometry.size.h, sw, sh, 0.28888);
 
             if (i != next && i != prev && prev != next) {
-                view_paint_attribs attr = { .v = v,
+                view_paint_attribs attr = { .view = v,
                           .off_x = {0, cx},
                           .off_y = {0, cy},
                           .scale_x = {scale_factor, 1},
@@ -537,7 +594,7 @@ class view_switcher : public wayfire_plugin_t {
                 }
             } else if ((prev != next && prev == i) || (prev == next && i == prev)) {
                 active_views.push_back(
-                        { .v = v,
+                        { .view = v,
                           .off_x = {-attribs.offset, cx},
                           .off_y = {0, cy},
                           .scale_x = {scale_factor, 1},
@@ -545,7 +602,7 @@ class view_switcher : public wayfire_plugin_t {
                           .rot     = {attribs.angle, 0}});
             } else if ((prev != next && next == i) || (prev == next && i == index)) {
                 active_views.insert(active_views.begin(),
-                        { .v = v,
+                        { .view = v,
                           .off_x = {attribs.offset, cx},
                           .off_y = {0, cy},
                           .scale_x = {scale_factor, 1},
@@ -554,29 +611,52 @@ class view_switcher : public wayfire_plugin_t {
             }
         }
 
-        curstep = 0;
-
-        backward.disable();
-        forward.disable();
-        term.disable();
+        current_step = 0;
     }
 
-    void fast_switch(EventContext ctx) {
-        if (!active && !exit.getState()) {
-            if (!output->input->activate_owner(owner))
+    void fast_switch() {
+        if (!state.active) {
+            if (!output->input->activate_plugin(grab_interface))
                 return;
 
-            auto views = output->viewport->get_windows_on_viewport(output->viewport->get_current_viewport());
-            if (views.size() >= 2)
-                core->focus_view(views[views.size() - 2]);
+            update_views();
+            index = 0;
+            state.in_fast_switch = true;
+            state.in_continuous_switch = true;
+            state.active = true;
+            state.first_key = false;
+            state.first_press_skipped = false;
 
-            output->input->deactivate_owner(owner);
+            grab_interface->grab();
+            output->focus_view(nullptr, core->get_current_seat());
+
+            fast_switch_next();
         }
+    }
+
+    void fast_switch_terminate()
+    {
+        output->focus_view(views[index], core->get_current_seat());
+        grab_interface->ungrab();
+        output->input->deactivate_plugin(grab_interface);
+        state.active = false;
+        state.in_fast_switch = false;
+    }
+
+    void fast_switch_next()
+    {
+        index = (index + 1) % views.size();
+        output->bring_to_front(views[index]);
     }
 };
 
+void frame_idle_callback(void *data) {
+    auto switcher = (view_switcher*) data;
+    weston_output_schedule_repaint(switcher->output->handle);
+}
+
 extern "C" {
-    Plugin *newInstance() {
-        return new Switcher();
+    wayfire_plugin_t* newInstance() {
+        return new view_switcher();
     }
 }
