@@ -60,6 +60,9 @@ class wayfire_resize : public wayfire_plugin_t {
             int pointer_x = wl_fixed_to_int(initial_x);
             int pointer_y = wl_fixed_to_int(initial_y);
 
+            initial_x = ptr->x;
+            initial_y = ptr->y;
+
             //const int32_t halfw = view->geometry.origin.x + view->geometry.size.w / 2;
             //const int32_t halfh = view->geometry.origin.y + view->geometry.size.h / 2;
             const int32_t halfw = view->geometry.size.w / 2;
@@ -92,14 +95,15 @@ class wayfire_resize : public wayfire_plugin_t {
         void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
             auto newg = view->geometry;
 
-            wl_fixed_t current_x, current_y;
+            wl_fixed_t current_x, current_y, old_x, old_y;
             weston_view_from_global_fixed(view->handle, ptr->x, ptr->y, &current_x, &current_y);
+            weston_view_from_global_fixed(view->handle, initial_x, initial_y, &old_x, &old_y);
 
-            int dx = wl_fixed_to_int(current_x - initial_x);
-            int dy = wl_fixed_to_int(current_y - initial_y);
+            int dx = wl_fixed_to_int(current_x - old_x);
+            int dy = wl_fixed_to_int(current_y - old_y);
 
-            initial_x = current_x;
-            initial_y = current_y;
+            initial_x = ptr->x;
+            initial_y = ptr->y;
 
             if (edges & WL_SHELL_SURFACE_RESIZE_LEFT) {
                 newg.origin.x += dx;
