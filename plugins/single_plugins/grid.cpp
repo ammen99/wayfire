@@ -1,94 +1,128 @@
 #include <output.hpp>
+#include <core.hpp>
 #include <algorithm>
+#include <linux/input-event-codes.h>
 
-struct GridWindow {
-    View v;
-    wlc_geometry initial_geometry, target_geometry;
-};
+/* TODO: implement "snap" signal */
 
-class Grid : public Plugin {
+class wayfire_grid : public wayfire_plugin_t {
 
-    std::unordered_map<wlc_handle, wlc_geometry> saved_view_geometry;
+    std::unordered_map<wayfire_view, wayfire_geometry> saved_view_geometry;
 
-    KeyBinding keys[10];
-    uint32_t codes[10];
+    std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
+    std::vector<wayfire_key> default_keys = {
+        {0, 0},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP1},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP2},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP3},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP4},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP5},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP6},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP7},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP8},
+        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP9},
+    };
+    key_callback bindings[10];
+    wayfire_key keys[10];
 
-    Hook rnd;
-    int steps = 1;
-    int curstep;
-    GridWindow currentWin;
+    render_hook_t renderer;
+
+    struct {
+        wayfire_geometry original, target;
+        wayfire_view view;
+    } current_view;
+
+    int total_steps, current_step;
 
     public:
-    Grid() {
-    }
-
-    void init() {
-        options.insert(newIntOption("duration", 200));
-
-        codes[1] = XKB_KEY_KP_End;
-        codes[2] = XKB_KEY_KP_Down;
-        codes[3] = XKB_KEY_KP_Page_Down;
-        codes[4] = XKB_KEY_KP_Left;
-        codes[5] = XKB_KEY_KP_Begin;
-        codes[6] = XKB_KEY_KP_Right;
-        codes[7] = XKB_KEY_KP_Home;
-        codes[8] = XKB_KEY_KP_Up;
-        codes[9] = XKB_KEY_KP_Page_Up;
-
-        using namespace std::placeholders;
-
-        for(int i = 1; i < 10; i++) {
-            keys[i].key    = codes[i];
-            keys[i].mod    = WLC_BIT_MOD_ALT | WLC_BIT_MOD_CTRL;
-            keys[i].action = std::bind(std::mem_fn(&Grid::handleKey), this, _1);
-            keys[i].type   = BindingTypePress;
-            output->hook->add_key(&keys[i], true);
-        }
-
-        rnd.action = std::bind(std::mem_fn(&Grid::step), this);
-        output->hook->add_hook(&rnd);
-    }
-
-    void initOwnership(){
+    void init(wayfire_config *config)
+    {
         grab_interface->name = "grid";
         grab_interface->compatAll = false;
+        grab_interface->compat.insert("move");
+
+        auto section = config->get_section("grid");
+        total_steps = section->get_int("duration", 100);
+
+        for (int i = 1; i < 10; i++) {
+            keys[i] = section->get_key("slot_" + slots[i], default_keys[i]);
+
+            bindings[i] = [=] (weston_keyboard *kbd, uint32_t key) {
+                if (output->active_view)
+                    handle_key(output->active_view, i);
+            };
+
+            output->input->add_key(keys[i].mod, keys[i].keyval, &bindings[i]);
+        }
+
+        renderer = std::bind(std::mem_fn(&wayfire_grid::render), this);
     }
 
-    void updateConfiguration() {
-        steps = options["duration"]->data.ival;
+    void handle_key(wayfire_view view, int key)
+    {
+
+        if (!output->input->activate_plugin(grab_interface))
+            return;
+        output->input->grab_input(grab_interface);
+
+        int tx, ty, tw, th; // target dimensions
+        if (slots[key] == "c") {
+            toggle_maximized(view, tx, ty, tw, th);
+        } else {
+            get_slot_dimensions(key, tx, ty, tw, th);
+        }
+
+        current_step = 0;
+        current_view.view = view;
+        current_view.original = view->geometry;
+        current_view.target = {{tx, ty}, {tw, th}};
+
+        weston_desktop_surface_set_resizing(view->desktop_surface, true);
+        output->render->set_renderer(renderer);
+        output->render->auto_redraw(true);
     }
 
+    void render()
+    {
+        update_pos_size();
+        output->render->transformation_renderer();
+    }
 
 #define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
                                             *((steps)-(curstep)))/(steps))
 
-    void step() {
-        int cx = GetProgress(currentWin.initial_geometry.origin.x,
-                currentWin.target_geometry.origin.x, curstep, steps);
-        int cy = GetProgress(currentWin.initial_geometry.origin.y,
-                currentWin.target_geometry.origin.y, curstep, steps);
-        int cw = GetProgress(currentWin.initial_geometry.size.w,
-                currentWin.target_geometry.size.w, curstep, steps);
-        int ch = GetProgress(currentWin.initial_geometry.size.h,
-                currentWin.target_geometry.size.h, curstep, steps);
+    void update_pos_size()
+    {
+        int cx = GetProgress(current_view.original.origin.x,
+                current_view.target.origin.x, current_step, total_steps);
+        int cy = GetProgress(current_view.original.origin.y,
+                current_view.target.origin.y, current_step, total_steps);
+        int cw = GetProgress(current_view.original.size.w,
+                current_view.target.size.w, current_step, total_steps);
+        int ch = GetProgress(current_view.original.size.h,
+                current_view.target.size.h, current_step, total_steps);
 
-        currentWin.v->set_geometry(cx, cy, cw, ch);
+        current_view.view->set_geometry(cx, cy, cw, ch);
 
-        curstep++;
-        if (curstep == steps) {
-            currentWin.v->set_geometry(currentWin.target_geometry);
+        current_step++;
+        if (current_step == total_steps) {
+            current_view.view->set_geometry(current_view.target);
 
-            wlc_view_set_state(currentWin.v->get_id(), WLC_BIT_RESIZING, false);
-            output->render->set_redraw_everything(false);
-            rnd.disable();
+            weston_desktop_surface_set_resizing(current_view.view->desktop_surface, false);
+            output->render->reset_renderer();
+            output->render->auto_redraw(false);
+
+            output->input->ungrab_input(grab_interface);
+            output->input->deactivate_plugin(grab_interface);
         }
     }
 
-    void toggleMaxim(View v, int &x, int &y, int &w, int &h) {
-        auto it = saved_view_geometry.find(v->get_id());
+    void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h)
+    {
+        auto it = saved_view_geometry.find(v);
 
         if (it == saved_view_geometry.end()) {
-            saved_view_geometry[v->get_id()] = v->attrib;
+            saved_view_geometry[v] = v->geometry;
             GetTuple(sw, sh, output->get_screen_size());
             x = y = 0, w = sw, h = sh;
         } else {
@@ -101,7 +135,8 @@ class Grid : public Plugin {
         }
     }
 
-    void getSlot(int n, int &x, int &y, int &w, int &h) {
+    void get_slot_dimensions(int n, int &x, int &y, int &w, int &h)
+    {
         GetTuple(width, height, output->get_screen_size());
 
         int w2 = width  / 2;
@@ -123,37 +158,11 @@ class Grid : public Plugin {
         if(n == 3)
             x = w2, y = h2, w = w2, h = h2;
     }
-
-    void handleKey(EventContext ctx) {
-        auto view = output->get_active_view();
-        if (!view)
-            return;
-
-        int x, y, w, h;
-        for(int i = 1; i < 10; i++) {
-            if (ctx.xev.xkey.key == codes[i]) {
-                if (i == 5)
-                    toggleMaxim(view, x, y, w, h);
-                else
-                    getSlot(i, x, y, w, h);
-            }
-        }
-
-        currentWin = {
-            .v = view,
-            .initial_geometry = view->attrib,
-            .target_geometry = {{x, y}, {(uint)w, (uint)h}}
-        };
-
-        curstep = 0;
-        rnd.enable();
-        wlc_view_set_state(view->get_id(), WLC_BIT_RESIZING, true);
-        output->render->set_redraw_everything(true);
-    }
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new Grid();
+    wayfire_plugin_t *newInstance()
+    {
+        return new wayfire_grid;
     }
 }

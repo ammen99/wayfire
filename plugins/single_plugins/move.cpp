@@ -3,6 +3,8 @@
 #include <linux/input.h>
 #include <signal_definitions.hpp>
 
+/* TODO: feature - enable interoperability with grid plugin to achieve snap functionality */
+
 class wayfire_move : public wayfire_plugin_t {
     signal_callback_t move_request;
     button_callback activate_binding;
