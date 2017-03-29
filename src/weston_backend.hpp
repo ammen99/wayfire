@@ -3,9 +3,9 @@
 
 #include "commonincludes.hpp"
 #include "core.hpp"
-#include <libweston-2/compositor-drm.h>
-#include <libweston-2/compositor-wayland.h>
-#include <libweston-2/windowed-output-api.h>
+#include <libweston-3/compositor-drm.h>
+#include <libweston-3/compositor-wayland.h>
+#include <libweston-3/windowed-output-api.h>
 #include <cstring>
 #include <assert.h>
 #include <libinput.h>

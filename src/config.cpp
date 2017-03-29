@@ -3,9 +3,10 @@
 #include <cstdlib>
 #include <sstream>
 #include <fstream>
-#include <libweston-1/compositor.h>
 #include <libevdev/libevdev.h>
 #include <linux/input.h>
+
+#include <libweston-3/compositor.h>
 
 using std::string;
 /* TODO: add checks to see if values are correct */

@@ -1,7 +1,7 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 #include "commonincludes.hpp"
-#include <libweston-2/libweston-desktop.h>
+#include <libweston-3/libweston-desktop.h>
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>

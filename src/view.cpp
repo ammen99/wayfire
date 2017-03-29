@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include "img.hpp"
 
-#include <libweston-2/xwayland-api.h>
+#include <libweston-3/xwayland-api.h>
 
 /* misc definitions */
 
