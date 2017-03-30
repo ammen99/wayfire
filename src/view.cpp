@@ -86,10 +86,12 @@ bool wayfire_view_t::is_visible()
 void wayfire_view_t::move(int x, int y)
 {
     geometry.origin = {x, y};
-    weston_view_set_position(handle, x, y);
+    weston_view_set_position(handle, x - ds_geometry.x, y - ds_geometry.y);
 
+    /* TODO: we should check if surface is wayland/xwayland in the beginning, since
+     * this won't change, it doesn't make sense to check this every time */
     if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
-        xwayland_surface_api->send_position(surface, x, y);
+        xwayland_surface_api->send_position(surface, x - ds_geometry.x, y - ds_geometry.y);
 }
 
 void wayfire_view_t::resize(int w, int h)
@@ -121,6 +123,7 @@ void wayfire_view_t::set_maximized(bool maxim)
     if (fullscreen)
         return;
 
+    /* TODO: use the future grid's snap functionality */
     if (maxim && !maximized) {
         saved_geometry = geometry;
         set_geometry(0, 0, output->handle->width, output->handle->height);
@@ -153,17 +156,20 @@ void wayfire_view_t::map(int sx, int sy)
     weston_view_to_global_fixed(handle, 0, 0, &oldx, &oldy);
     weston_view_to_global_fixed(handle, sx, sy, &newx, &newy);
 
-    sx = handle->geometry.x + (newx - oldx);
-    sy = handle->geometry.y + (newy - oldy);
+    ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
 
-    move(sx, sy);
+    sx = handle->geometry.x + (newx - oldx) + ds_geometry.x;
+    sy = handle->geometry.y + (newy - oldy) + ds_geometry.y;
+
+    if (sx != geometry.origin.x || sy != geometry.origin.y)
+        move(sx, sy);
     /* TODO: see shell.c#activate() */
 }
 
 void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4);
 void wayfire_view_t::render(uint32_t bits)
 {
-    render_surface(surface, geometry.origin.x, geometry.origin.y,
+    render_surface(surface, geometry.origin.x - ds_geometry.x, geometry.origin.y - ds_geometry.y,
                    transform.calculate_total_transform(), transform.color);
     /*
     std::vector<EffectHook*> hooks_to_run;

@@ -40,6 +40,8 @@ struct wayfire_size {
     int w, h;
 };
 
+/* TODO: we already have weston_geometry, it makes more sense to use it wherever possible,
+ * we should remove this one */
 struct wayfire_geometry {
     wayfire_point origin;
     wayfire_size size;
@@ -60,6 +62,7 @@ class wayfire_view_t {
         wayfire_output *output;
 
         wayfire_geometry geometry, saved_geometry;
+        weston_geometry ds_geometry;
 
         struct {
             bool is_xorg = false;
