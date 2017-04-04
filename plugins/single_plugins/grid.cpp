@@ -25,7 +25,7 @@ class wayfire_grid : public wayfire_plugin_t {
     key_callback bindings[10];
     wayfire_key keys[10];
 
-    render_hook_t renderer;
+    effect_hook_t hook;
 
     struct {
         wayfire_geometry original, target;
@@ -55,7 +55,7 @@ class wayfire_grid : public wayfire_plugin_t {
             output->input->add_key(keys[i].mod, keys[i].keyval, &bindings[i]);
         }
 
-        renderer = std::bind(std::mem_fn(&wayfire_grid::render), this);
+        hook = std::bind(std::mem_fn(&wayfire_grid::update_pos_size), this);
     }
 
     void handle_key(wayfire_view view, int key)
@@ -78,14 +78,9 @@ class wayfire_grid : public wayfire_plugin_t {
         current_view.target = {{tx, ty}, {tw, th}};
 
         weston_desktop_surface_set_resizing(view->desktop_surface, true);
-        output->render->set_renderer(renderer);
         output->render->auto_redraw(true);
-    }
 
-    void render()
-    {
-        update_pos_size();
-        output->render->transformation_renderer();
+        output->render->add_output_effect(&hook);
     }
 
 #define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
@@ -109,9 +104,9 @@ class wayfire_grid : public wayfire_plugin_t {
             current_view.view->set_geometry(current_view.target);
 
             weston_desktop_surface_set_resizing(current_view.view->desktop_surface, false);
-            output->render->reset_renderer();
             output->render->auto_redraw(false);
 
+            output->render->rem_effect(&hook);
             output->input->ungrab_input(grab_interface);
             output->input->deactivate_plugin(grab_interface);
         }

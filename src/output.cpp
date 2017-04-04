@@ -345,8 +345,8 @@ void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
 {
     auto output = core->get_output(o);
     if (output) {
+        output->render->pre_paint();
         output->render->paint(damage);
-        output->render->post_paint();
     }
 }
 render_manager::render_manager(wayfire_output *o)
@@ -528,15 +528,15 @@ void render_manager::paint(pixman_region32_t *damage)
     }
 }
 
-void render_manager::post_paint()
+void render_manager::pre_paint()
 {
-    std::vector<effect_hook> active_effects;
+    std::vector<effect_hook_t*> active_effects;
     for (auto effect : output_effects) {
         active_effects.push_back(effect);
     }
 
     for (auto& effect : active_effects)
-        effect.action();
+        (*effect)();
 }
 
 void render_manager::transformation_renderer()
@@ -586,23 +586,21 @@ void render_manager::texture_from_viewport(std::tuple<int, int> vp,
 #endif
 
 static int effect_hook_last_id = 0;
-void render_manager::add_output_effect(effect_hook& hook, wayfire_view v)
+void render_manager::add_output_effect(effect_hook_t* hook, wayfire_view v)
 {
-    hook.id = effect_hook_last_id++;
-
     if (v)
         v->effects.push_back(hook);
     else
         output_effects.push_back(hook);
 }
 
-void render_manager::rem_effect(const effect_hook& hook, wayfire_view v)
+void render_manager::rem_effect(const effect_hook_t *hook, wayfire_view v)
 {
     decltype(output_effects)& container = output_effects;
     if (v) container = v->effects;
-    auto it = std::remove_if(output_effects.begin(), output_effects.end(),
-    [hook] (const effect_hook& h) {
-        if (h.id == hook.id)
+    auto it = std::remove_if(container.begin(), container.end(),
+    [hook] (const effect_hook_t *h) {
+        if (h == hook)
             return true;
         return false;
     });

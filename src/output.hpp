@@ -85,12 +85,13 @@ struct render_manager {
         GLuint get_background() {return background.tex;}
 
         void set_renderer(render_hook_t rh = nullptr);
+
         void auto_redraw(bool redraw); /* schedule repaint immediately after finishing the last */
         void transformation_renderer();
         void reset_renderer();
 
         void paint(pixman_region32_t *damage);
-        void post_paint();
+        void pre_paint();
 
         /* this function renders a viewport and
          * saves the image in texture which is returned */
@@ -98,9 +99,9 @@ struct render_manager {
         void texture_from_viewport(std::tuple<int, int>, GLuint& fbuff, GLuint &tex);
 #endif
 
-        std::vector<effect_hook> output_effects;
-        void add_output_effect(effect_hook&, wayfire_view v = nullptr);
-        void rem_effect(const effect_hook&, wayfire_view v = nullptr);
+        std::vector<effect_hook_t*> output_effects;
+        void add_output_effect(effect_hook_t*, wayfire_view v = nullptr);
+        void rem_effect(const effect_hook_t*, wayfire_view v = nullptr);
 };
 
 // TODO: maybe it is better to merge with wayfire_output,

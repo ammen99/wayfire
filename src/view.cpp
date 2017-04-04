@@ -171,17 +171,14 @@ void wayfire_view_t::render(uint32_t bits)
 {
     render_surface(surface, geometry.origin.x - ds_geometry.x, geometry.origin.y - ds_geometry.y,
                    transform.calculate_total_transform(), transform.color);
-    /*
-    std::vector<EffectHook*> hooks_to_run;
+
+    std::vector<effect_hook_t*> hooks_to_run;
     for (auto hook : effects) {
-        if (hook.second->getState()) {
-            hooks_to_run.push_back(hook.second);
-        }
+        hooks_to_run.push_back(hook);
     }
 
     for (auto hook : hooks_to_run)
-        hook->action();
-    */
+        (*hook)();
 }
 
 /* This is a hack, we use it so that we can reach the memory used by

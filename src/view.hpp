@@ -25,11 +25,6 @@ class wayfire_view_transform {
 
 /* effect hooks are called after main rendering */
 using effect_hook_t = std::function<void()>;
-struct effect_hook {
-    effect_hook_t action;
-    int id;
-};
-
 class wayfire_output;
 
 struct wayfire_point {
@@ -95,7 +90,7 @@ class wayfire_view_t {
         /* Set if the current view should not be rendered by built-in renderer */
         bool is_hidden = false;
 
-        std::vector<effect_hook> effects;
+        std::vector<effect_hook_t*> effects;
 
         void render(uint32_t bits = 0);
 };
