@@ -247,11 +247,11 @@ namespace OpenGL {
     }
 
     void prepare_framebuffer(GLuint &fbuff, GLuint &texture) {
-#ifdef USE_GLES3
-        GL_CALL(glGenFramebuffers(1, &fbuff));
+        if (fbuff != (uint)-1)
+            GL_CALL(glGenFramebuffers(1, &fbuff));
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
 
-        bool existing_texture = texture != (uint)-1;
+        bool existing_texture = (texture != (uint)-1);
         if (!existing_texture)
             GL_CALL(glGenTextures(1, &texture));
 
@@ -273,8 +273,6 @@ namespace OpenGL {
         auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
         if (status != GL_FRAMEBUFFER_COMPLETE)
             errio << "Error in framebuffer!\n";
-
-#endif /* USE_GLES3 */
     }
 
 

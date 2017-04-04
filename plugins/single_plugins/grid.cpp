@@ -128,6 +128,8 @@ class wayfire_grid : public wayfire_plugin_t {
             saved_view_geometry[v] = v->geometry;
             GetTuple(sw, sh, output->get_screen_size());
             x = y = 0, w = sw, h = sh;
+
+            weston_desktop_surface_set_maximized(v->desktop_surface, true);
         } else {
             x = it->second.origin.x;
             y = it->second.origin.y;
@@ -135,6 +137,7 @@ class wayfire_grid : public wayfire_plugin_t {
             h = it->second.size.h;
 
             saved_view_geometry.erase(it);
+            weston_desktop_surface_set_maximized(v->desktop_surface, false);
         }
     }
 

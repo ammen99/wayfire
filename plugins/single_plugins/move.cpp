@@ -9,7 +9,6 @@ class wayfire_move : public wayfire_plugin_t {
     button_callback activate_binding;
     wayfire_view view;
 
-
     bool enable_snap;
     int slot;
     int snap_pixels;

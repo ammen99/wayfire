@@ -1,91 +1,241 @@
 #include <output.hpp>
 #include <opengl.hpp>
-#include <output.hpp>
+#include <core.hpp>
+/* TODO: this file should be included in some header maybe(plugin.hpp) */
+#include <linux/input-event-codes.h>
 
-void trigger_scale_change(Output *o, int scX, int scY) {
-    SignalListenerData sigData;
-    sigData.push_back(&scX);
-    sigData.push_back(&scY);
-    o->signal->trigger_signal("screen-scale-changed", sigData);
-}
-
-class Expo : public Plugin {
+class wayfire_expo : public wayfire_plugin_t {
     private:
-        KeyBinding toggle;
-        ButtonBinding press, move;
-
-        SignalListener viewport_changed, reload_gl;
+        key_callback toggle_cb, press_cb, move_cb;
+        wayfire_button action_button;
 
         int max_steps;
 
-        Hook hook, move_hook;
-        bool active;
+        render_hook_t renderer;
 
-        Key toggleKey;
+        struct {
+            bool active = false;
+            bool moving = false;
+            bool in_zoom = false;
+            bool button_pressed = false;
+            bool first_press_skipped = false;
 
+            int zoom_delta = 1;
+        } state;
         int target_vx, target_vy;
+        std::vector<std::vector<GLuint>> fbuffs, textures;
 
-        /* maximal viewports are 32, so these are enough for making it */
-        GLuint fbuffs[32][32], textures[32][32];
     public:
-    void updateConfiguration() {
-        max_steps = options["duration"]->data.ival;
-        toggleKey = *options["activate"]->data.key;
-
-        if (toggleKey.key == 0)
-            return;
-
-        on_reload_gl({});
-
-        using namespace std::placeholders;
-        toggle.key = toggleKey.key;
-        toggle.mod = toggleKey.mod;
-        toggle.action = std::bind(std::mem_fn(&Expo::Toggle), this, _1);
-        output->hook->add_key(&toggle, true);
-
-        auto move_button = *options["activate"]->data.but;
-
-        if (move_button.button != 0) {
-            move.action = std::bind(std::mem_fn(&Expo::on_move), this, _1);
-            move.type = BindingTypePress;
-            move.mod = move_button.mod;
-            move.button = move_button.button;
-
-            move.mod = WLC_BIT_MOD_ALT;
-            move.button = BTN_LEFT;
-
-            output->hook->add_but(&move, false);
-        }
-
-        press.action = std::bind(std::mem_fn(&Expo::on_press), this, _1);
-        press.type = BindingTypePress;
-        press.mod = 0;
-        press.button = BTN_LEFT;
-        output->hook->add_but(&press, false);
-
-        hook.action = std::bind(std::mem_fn(&Expo::zoom), this);
-        output->hook->add_hook(&hook);
-    }
-
-    void init() {
-        options.insert(newIntOption("duration", 1000));
-        options.insert(newKeyOption("activate", Key{0, 0}));
-        options.insert(newButtonOption("move", Button{0, 0}));
-
-        output->signal->add_signal("screen-scale-changed");
-        active = false;
-
-        using namespace std::placeholders;
-        viewport_changed.action = std::bind(std::mem_fn(&Expo::on_viewport_changed), this, _1);
-        output->signal->connect_signal("viewport-change-notify", &viewport_changed);
-
-        reload_gl.action = std::bind(std::mem_fn(&Expo::on_reload_gl), this, _1);
-        output->signal->connect_signal("reload-gl", &reload_gl);
-    }
-    void initOwnership() {
+    void init(wayfire_config *config) {
         grab_interface->name = "expo";
         grab_interface->compatAll = false;
         grab_interface->compat.insert("screenshot");
+
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        for (int i = 0; i < vw; i++) {
+            fbuffs.push_back(std::vector<GLuint> (vh, -1));
+            textures.push_back(std::vector<GLuint> (vh, -1));
+        }
+
+        auto section = config->get_section("expo");
+        max_steps = section->get_int("duration", 20);
+        auto toggle_key = section->get_key("toggle", {MODIFIER_SUPER, KEY_E});
+
+        if (!toggle_key.keyval || !toggle_key.mod)
+            return;
+
+        toggle_cb = [=] (weston_keyboard *kbd, uint32_t key) {
+            activate();
+        };
+
+        output->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb);
+
+        action_button = section->get_button("action", {0, BTN_LEFT});
+        grab_interface->callbacks.keyboard.key =
+            [=] (weston_keyboard *kbd, uint32_t key, uint32_t st) {
+                /* TODO: check if we use the same mod */
+                if (st != WL_KEYBOARD_KEY_STATE_RELEASED || key != toggle_key.keyval)
+                    return;
+
+                if (!state.first_press_skipped) {
+                    state.first_press_skipped = true;
+                    return;
+                }
+                deactivate();
+        };
+
+        grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
+                weston_pointer_motion_event *ev)
+        {
+            handle_pointer_move(ptr);
+        };
+
+        using namespace std::placeholders;
+        grab_interface->callbacks.pointer.button = std::bind(
+                std::mem_fn(&wayfire_expo::handle_pointer_button), this, _1, _2, _3);
+
+
+        renderer = std::bind(std::mem_fn(&wayfire_expo::render), this);
+
+    }
+
+    void activate()
+    {
+        if (!output->input->activate_plugin(grab_interface))
+            return;
+
+        grab_interface->grab();
+
+        state.active = true;
+        state.in_zoom = true;
+        state.button_pressed = false;
+        state.moving = false;
+        state.first_press_skipped = false;
+
+        state.zoom_delta = 1;
+
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
+
+        target_vx = vx;
+        target_vy = vy;
+
+        calculate_zoom(true);
+
+        output->render->set_renderer(renderer);
+        output->render->auto_redraw(true);
+        output->focus_view(nullptr, core->get_current_seat());
+    }
+
+    void deactivate()
+    {
+        state.in_zoom = true;
+        state.zoom_delta = -1;
+        state.moving = false;
+
+        output->viewport->set_viewport(std::make_tuple(target_vx, target_vy));
+        calculate_zoom(false);
+        update_zoom();
+    }
+
+    int sx, sy;
+    wayfire_view moving_view;
+    void handle_pointer_move(weston_pointer *ptr)
+    {
+        if (state.button_pressed) {
+            state.button_pressed = false;
+            start_move();
+        }
+
+        if (!state.moving || !moving_view)
+            return;
+
+        int cx = wl_fixed_to_int(ptr->x);
+        int cy = wl_fixed_to_int(ptr->y);
+
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+
+        moving_view->move(moving_view->geometry.origin.x + (cx - sx) * vw,
+                moving_view->geometry.origin.y + (cy - sy) * vh);
+
+        sx = cx;
+        sy = cy;
+
+        update_target_viewport(sx, sy);
+    }
+
+    void start_move()
+    {
+        state.moving = true;
+    }
+
+    wayfire_view find_view_at(int sx, int sy)
+    {
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        sx *= vw;
+        sy *= vh;
+
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        sx -= vx * output->handle->width;
+        sy -= vy * output->handle->height;
+
+        wayfire_view search = nullptr;
+        output->for_each_view([&search, sx, sy] (wayfire_view v) {
+            if (!search && point_inside({sx, sy}, v->geometry))
+            search = v;
+        });
+
+        return search;
+    }
+
+    void update_target_viewport(int x, int y) {
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+
+        /* TODO: these are approximate, maybe won't work between them */
+        int ew = output->handle->width / vw;
+        int eh = output->handle->height / vh;
+
+        target_vx = x / ew;
+        target_vy = y / eh;
+    }
+
+    void handle_pointer_button(weston_pointer *ptr, uint32_t button, uint32_t state)
+    {
+        auto kbd = weston_seat_get_keyboard(ptr->seat);
+        if (kbd->modifiers.mods_depressed != action_button.mod)
+            return;
+        if (button != action_button.button)
+            return;
+
+        if (state == WL_POINTER_BUTTON_STATE_RELEASED && !this->state.moving) {
+            deactivate();
+        } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+            this->state.moving = false;
+        } else {
+            this->state.button_pressed = true;
+            sx = wl_fixed_to_int(ptr->x);
+            sy = wl_fixed_to_int(ptr->y);
+
+            moving_view = find_view_at(sx, sy);
+            update_target_viewport(sx, sy);
+        }
+    }
+
+    struct {
+        float scale_x, scale_y,
+              off_x, off_y;
+    } render_params;
+
+    void render()
+    {
+        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(w,  h,  output->get_screen_size());
+
+        auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
+        matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
+
+        OpenGL::use_default_program();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        for(int i = 0; i < vw; i++) {
+            for(int j = 0; j < vh; j++) {
+                output->render->texture_from_viewport(std::make_tuple(i, j),
+                        fbuffs[i][j], textures[i][j]);
+
+#define EDGE_OFFSET 13
+#define MOSAIC 0
+
+                int mosaic_factor = EDGE_OFFSET - (1 - ((i + j) & 1)) * MOSAIC;
+                wayfire_geometry g = {
+                    .origin = {(i - vx) * w + mosaic_factor, (j - vy) * h + mosaic_factor},
+                    .size = {w - 2 * mosaic_factor, h - 2 * mosaic_factor}};
+
+                OpenGL::render_transformed_texture(textures[i][j], g, matrix,
+                        glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y);
+            }
+        }
+
+        if (state.in_zoom)
+            update_zoom();
     }
 
     struct tup {
@@ -98,181 +248,66 @@ class Expo : public Plugin {
             off_x, off_y;
     } zoom_target;
 
-    struct {
-        float scale_x, scale_y,
-              off_x, off_y;
-    } render_params;
-
-    void Toggle(EventContext ctx) {
+    void calculate_zoom(bool zoom_in)
+    {
         GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
 
         float center_w = vw / 2.f;
         float center_h = vh / 2.f;
 
-        if (!active) {
-            if (!output->input->activate_owner(owner))
-                return;
-
-            grab_interface->grab();
-            output->render->set_renderer(0, std::bind(std::mem_fn(&Expo::render), this));
-            move.enable();
-            press.enable();
-
-            target_vx = vx;
-            target_vy = vy;
-
+        if (zoom_in) {
             zoom_target.steps = 0;
-            zoom_target.scale_x = {1, 1.f / vw};
-            zoom_target.scale_y = {1, 1.f / vh};
-            zoom_target.off_x   = {0, ((vx - center_w) * 2.f + 1.f) / vw};
-            zoom_target.off_y   = {0, ((center_h - vy) * 2.f - 1.f) / vh};
-
         } else {
-            move.disable();
-            press.disable();
-            output->viewport->switch_workspace(std::make_tuple(target_vx, target_vy));
-
-            zoom_target.steps = 0;
-            zoom_target.scale_x = {1.f / vw, 1};
-            zoom_target.scale_y = {1.f / vh, 1};
-            zoom_target.off_x   = {((target_vx - center_w) * 2.f + 1.f) / vw, 0};
-            zoom_target.off_y   = {((center_h - target_vy) * 2.f - 1.f) / vh, 0};
+            zoom_target.steps = max_steps;
         }
 
-        active = !active;
-        hook.enable();
-    }
+        int mosaic_factor = (EDGE_OFFSET - (1 - ((target_vx + target_vy) & 1)) * MOSAIC);
+        float mf_x = 2. * mosaic_factor / output->handle->width;
+        float mf_y = 2. * mosaic_factor / output->handle->height;
 
+        zoom_target.scale_x = {1, 1.f / vw};
+        zoom_target.scale_y = {1, 1.f / vh};
+        zoom_target.off_x   = {-mf_x, ((target_vx - center_w) * 2.f + 1.f) / vw};
+        zoom_target.off_y   = { mf_y, ((center_h - target_vy) * 2.f - 1.f) / vh};
+    }
 
 #define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
                                             *((steps)-(curstep)))/(steps))
-    void zoom() {
-        if(zoom_target.steps == max_steps) {
-            hook.disable();
-            if (!active) {
-                output->input->deactivate_owner(owner);
-                output->render->set_redraw_everything(false);
-                output->render->reset_renderer();
 
-                move.disable();
-                trigger_scale_change(output, 1, 1);
+    void update_zoom()
+    {
+        render_params.scale_x = GetProgress(zoom_target.scale_x.begin,
+                zoom_target.scale_x.end, zoom_target.steps, max_steps);
+        render_params.scale_y = GetProgress(zoom_target.scale_y.begin,
+                zoom_target.scale_y.end, zoom_target.steps, max_steps);
+        render_params.off_x = GetProgress(zoom_target.off_x.begin,
+                zoom_target.off_x.end, zoom_target.steps, max_steps);
+        render_params.off_y = GetProgress(zoom_target.off_y.begin,
+                zoom_target.off_y.end, zoom_target.steps, max_steps);
 
-            } else {
-                GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-                trigger_scale_change(output, vw, vh);
-            }
+        zoom_target.steps += state.zoom_delta;
 
-            render_params.scale_x = zoom_target.scale_x.end;
-            render_params.scale_y = zoom_target.scale_y.end;
-            render_params.off_x   = zoom_target.off_x.end;
-            render_params.off_y   = zoom_target.off_y.end;
-
-        } else {
-            render_params.scale_x = GetProgress(zoom_target.scale_x.begin,
-                    zoom_target.scale_x.end, zoom_target.steps, max_steps);
-            render_params.scale_y = GetProgress(zoom_target.scale_y.begin,
-                    zoom_target.scale_y.end, zoom_target.steps, max_steps);
-            render_params.off_x = GetProgress(zoom_target.off_x.begin,
-                    zoom_target.off_x.end, zoom_target.steps, max_steps);
-            render_params.off_y = GetProgress(zoom_target.off_y.begin,
-                    zoom_target.off_y.end, zoom_target.steps, max_steps);
-            ++zoom_target.steps;
+        if (zoom_target.steps == max_steps + 1 && state.zoom_delta == 1) {
+            state.in_zoom = false;
+        } else if (state.zoom_delta == -1 && zoom_target.steps == -1) {
+            state.in_zoom = false;
+            finalize_and_exit();
         }
     }
 
-    void render() {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
-        GetTuple(w,  h,  output->get_screen_size());
+    void finalize_and_exit()
+    {
+        state.active = false;
+        output->input->deactivate_plugin(grab_interface);
+        grab_interface->ungrab();
 
-        auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
-        matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
-
-        OpenGL::useDefaultProgram();
-
-        for(int i = 0; i < vw; i++) {
-            for(int j = 0; j < vh; j++) {
-                output->render->texture_from_viewport(std::make_tuple(i, j),
-                        fbuffs[i][j], textures[i][j]);
-
-#define EDGE_OFFSET 13
-#define MOSAIC 0
-
-                int mosaic_factor = EDGE_OFFSET - (1 - ((i + j) & 1)) * MOSAIC;
-                wlc_geometry g = {
-                    .origin = {(i - vx) * w + mosaic_factor, (j - vy) * h + mosaic_factor},
-                    .size = {(uint32_t) w - 2 * mosaic_factor, (uint32_t) h - 2 * mosaic_factor}};
-
-                OpenGL::renderTransformedTexture(textures[i][j], g, matrix, TEXTURE_TRANSFORM_INVERT_Y);
-            }
-        }
-    }
-
-    void on_press(EventContext ctx) {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        GetTuple(sw, sh, output->get_screen_size());
-
-        int vpw = sw / vw;
-        int vph = sh / vh;
-
-        target_vx = ctx.xev.xbutton.x_root / vpw;
-        target_vy = ctx.xev.xbutton.y_root / vph;
-        Toggle(ctx);
-    }
-
-    void on_move(EventContext ctx) {
-        auto v = find_view_at_point(ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root);
-        if (!v) return;
-
-        SignalListenerData data;
-        data.push_back(&v);
-        wlc_point p = {ctx.xev.xbutton.x_root, ctx.xev.xbutton.y_root};
-        data.push_back(&p);
-
-        output->signal->trigger_signal("move-request", data);
-    }
-
-    View find_view_at_point(int px, int py) {
-        GetTuple(w, h, output->get_screen_size());
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-
-        wlc_point p = {px * vw, py * vh};
-        View chosen_view = nullptr;
-
-        output->for_each_view([&chosen_view, w, h, p] (View v) {
-            wlc_geometry g = v->attrib;
-            g.origin.x += v->vx * w;
-            g.origin.y += v->vy * h;
-
-            if (!chosen_view && point_inside(p, g))
-                chosen_view = v;
-        });
-
-        return chosen_view;
-    }
-
-    void on_viewport_changed(SignalListenerData data) {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-
-        float center_w = vw / 2.f;
-        float center_h = vh / 2.f;
-
-        target_vx = *(int*)data[2];
-        target_vy = *(int*)data[3];
-
-        render_params.off_x   = ((target_vx - center_w) * 2.f + 1.f) / vw;
-        render_params.off_y   = ((center_h - target_vy) * 2.f - 1.f) / vh;
-    }
-
-    void on_reload_gl(SignalListenerData data) {
-        std::memset(fbuffs, -1, sizeof(fbuffs));
-        std::memset(textures, -1, sizeof(textures));
+        output->render->reset_renderer();
+        output->render->auto_redraw(false);
     }
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new Expo();
+    wayfire_plugin_t *newInstance() {
+        return new wayfire_expo();
     }
 }

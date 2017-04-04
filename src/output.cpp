@@ -238,8 +238,9 @@ void input_manager::propagate_keyboard_grab_key(weston_keyboard *kbd,
 {
     std::vector<wayfire_grab_interface> grab;
     for (auto x : active_grabs) {
-        if (x->callbacks.keyboard.key)
+        if (x->callbacks.keyboard.key) {
             grab.push_back(x);
+        }
     }
 
     for (auto x : grab)
@@ -433,7 +434,7 @@ void redraw_idle_cb(void *data)
     assert(output);
 
     weston_output_schedule_repaint(output->handle);
-    }
+}
 
 void render_manager::auto_redraw(bool redraw)
 {
@@ -441,11 +442,20 @@ void render_manager::auto_redraw(bool redraw)
         return;
 
     constant_redraw = redraw;
+    auto loop = wl_display_get_event_loop(core->ec->wl_display);
+    wl_event_loop_add_idle(loop, redraw_idle_cb, output);
+
+    if (!constant_redraw) {
+        background.times_blitted = 0;
+
+        pixman_region32_fini(&old_damage);
+        pixman_region32_init(&old_damage);
+        pixman_region32_copy(&old_damage, &output->handle->region);
+    }
 }
 
 void render_manager::reset_renderer()
 {
-    debug << "reset renderer" << std::endl;
     renderer = nullptr;
     /* TODO: move to core.cpp */
     //core->ec->renderer->repaint_output = weston_renderer_repaint;
@@ -479,8 +489,8 @@ struct weston_gl_renderer {
 
 void initial_background_render_idle_cb(void *data)
 {
-    auto output = (weston_output*) data;
-    weston_output_schedule_repaint(output);
+    auto output = (wayfire_output*) data;
+    weston_output_schedule_repaint(output->handle);
 }
 
 void render_manager::paint(pixman_region32_t *damage)
@@ -492,7 +502,7 @@ void render_manager::paint(pixman_region32_t *damage)
         weston_renderer_repaint(output->handle, damage);
 
         auto loop = wl_display_get_event_loop(core->ec->wl_display);
-        wl_event_loop_add_idle(loop, initial_background_render_idle_cb, output->handle);
+        wl_event_loop_add_idle(loop, redraw_idle_cb, output);
         return;
     }
 
@@ -558,28 +568,33 @@ void render_manager::texture_from_viewport(std::tuple<int, int> vp,
     if (fbuff == (uint)-1 || tex == (uint)-1)
         OpenGL::prepare_framebuffer(fbuff, tex);
 
-    /* Rendering code, taken from wlc's get_visible_wayfire_views */
+    pixman_region32_t full_region;
+    pixman_region32_init_rect(&full_region, 0, 0, output->handle->width, output->handle->height);
+    blit_background(fbuff, &full_region);
 
-    //blit_background(fbuff);
-    //GetTuple(x, y, vp);
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
 
-    //uint32_t mask = output->viewport->get_mask_for_viewport(x, y);
+    GetTuple(x, y, vp);
+    GetTuple(cx, cy, output->viewport->get_current_viewport());
 
-    /* TODO: implement this function as well
+    int dx = (cx - x)  * output->handle->width,
+        dy = (cy - y)  * output->handle->height;
+
+    wayfire_geometry output_rect = {
+        .origin = {-dx, -dy},
+        .size = {output->handle->width, output->handle->height}
+    };
+
     output->for_each_view_reverse([=] (wayfire_view v) {
-        if (v->default_mask & mask) {
-            int dx = (v->vx - x) * output->handle->width;
-            int dy = (v->vy - y) * output->handle->height;
-
-            wayfire_geometry g;
-            wlc_wayfire_view_get_visible_geometry(v->get_id(), &g);
-            g.origin.x += dx;
-            g.origin.y += dy;
-
-            render_surface(v->get_surface(), g, v->transform.compose());
+        /* TODO: check if it really is visible */
+        if (rect_inside(output_rect, v->geometry)) {
+            v->geometry.origin.x += dx;
+            v->geometry.origin.y += dy;
+            v->render(0);
+            v->geometry.origin.x -= dx;
+            v->geometry.origin.y -= dy;
         }
     });
-    */
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
@@ -638,8 +653,15 @@ int clamp(int x, int min, int max)
 void viewport_manager::set_viewport(std::tuple<int, int> nPos)
 {
     GetTuple(nx, ny, nPos);
-    if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0 || (nx == vx && ny == vy))
+    if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0)
         return;
+
+    if (nx == vx && ny == vy) {
+        auto views = get_views_on_viewport({vx, vy});
+        if (views.size() >= 1)
+            output->focus_view(views[0], core->get_current_seat());
+        return;
+    }
 
     auto dx = (vx - nx) * output->handle->width;
     auto dy = (vy - ny) * output->handle->height;
@@ -650,8 +672,6 @@ void viewport_manager::set_viewport(std::tuple<int, int> nPos)
 
 
     weston_output_schedule_repaint(output->handle);
-
-    //wlc_output_set_mask(wlc_get_focused_output(), get_mask_for_wayfire_viewport(nx, ny));
 
     change_viewport_signal data;
     data.old_vx = vx;
