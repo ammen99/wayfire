@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <linux/input-event-codes.h>
 
+#include "snap_signal.hpp"
+
 /* TODO: implement "snap" signal */
 
 class wayfire_grid : public wayfire_plugin_t {
@@ -26,6 +28,8 @@ class wayfire_grid : public wayfire_plugin_t {
     wayfire_key keys[10];
 
     effect_hook_t hook;
+
+    signal_callback_t snap_cb;
 
     struct {
         wayfire_geometry original, target;
@@ -56,6 +60,10 @@ class wayfire_grid : public wayfire_plugin_t {
         }
 
         hook = std::bind(std::mem_fn(&wayfire_grid::update_pos_size), this);
+
+        using namespace std::placeholders;
+        snap_cb = std::bind(std::mem_fn(&wayfire_grid::snap_signal_cb), this, _1);
+        output->signal->connect_signal("view-snap", &snap_cb);
     }
 
     void handle_key(wayfire_view view, int key)
@@ -152,6 +160,13 @@ class wayfire_grid : public wayfire_plugin_t {
             x = 0, y = h2, w = width, h = h2;
         if(n == 3)
             x = w2, y = h2, w = w2, h = h2;
+    }
+
+    void snap_signal_cb(signal_data *ddata)
+    {
+        snap_signal *data = static_cast<snap_signal*>(ddata);
+        assert(data);
+        handle_key(data->view, data->tslot);
     }
 };
 
