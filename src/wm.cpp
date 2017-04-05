@@ -48,7 +48,7 @@ void wayfire_focus::init(wayfire_config *)
         auto surf = weston_surface_get_main_surface(ptr->focus->surface);
         weston_desktop_surface *ds;
         wayfire_view view;
-        if ((ds = weston_surface_get_desktop_surface(surf)) && (view = core->find_view(ds))) {
+        if ((ds = weston_surface_get_desktop_surface(surf)) && (view = core->find_view(ds)) && !view->destroyed) {
             view->output->focus_view(view, ptr->seat);
         }
     };

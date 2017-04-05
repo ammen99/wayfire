@@ -117,13 +117,14 @@ class vswitch : public wayfire_plugin_t {
 };
 
 
-void timer_cb(void *data) {
+void timer_cb(void *data)
+{
     vswitch *plugin = (vswitch*) data;
     plugin->slide_done();
 }
 
-
-void slide_done_cb(weston_view_animation*, void *data) {
+void slide_done_cb(weston_view_animation*, void *data)
+{
     auto converted = (slide_data*) data;
 
     if (converted->index == 0)

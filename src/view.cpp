@@ -3,6 +3,7 @@
 #include "output.hpp"
 #include <glm/glm.hpp>
 #include "img.hpp"
+#include "signal_definitions.hpp"
 
 #include <libweston-3/xwayland-api.h>
 
@@ -138,16 +139,18 @@ void wayfire_view_t::map(int sx, int sy)
         if (xwayland.is_xorg) {
             auto g = weston_desktop_surface_get_geometry(desktop_surface);
             weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
-            /* TODO: position xorg views, see weston shell.c#2432 */
         } else {
             weston_view_set_position(handle, sx, sy);
         }
 
+        geometry.size = {surface->width, surface->height};
+
         weston_view_update_transform(handle);
         handle->is_mapped  = true;
+        auto sig_data = create_view_signal{core->find_view(handle)};
+        output->signal->emit_signal("create-view", &sig_data);
+
         surface->is_mapped = true;
-        handle->is_mapped  = true;
-        geometry.size = {surface->width, surface->height};
     }
 
     int oldx, oldy;

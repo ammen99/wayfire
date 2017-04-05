@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(animate CXX)
 
-file(GLOB SRC "animate.cpp" "fade.cpp")
+file(GLOB SRC "animate.cpp")
 add_library(animate SHARED ${SRC})
 
 install(TARGETS   animate    DESTINATION lib/wayfire/)

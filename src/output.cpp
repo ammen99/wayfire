@@ -773,14 +773,11 @@ void wayfire_output::attach_view(wayfire_view v)
 
     //v->set_mask(wayfire_viewport->get_mask_for_wayfire_view(v));
 
-    auto sig_data = new create_view_signal{v};
-    signal->emit_signal("create-view", sig_data);
-    delete sig_data;
+//    weston_fade_run(v->handle, 0.5, 1, 300, NULL, NULL);
 }
 
 void wayfire_output::detach_view(wayfire_view v)
 {
-    weston_layer_entry_remove(&v->handle->layer_link);
     wayfire_view next = nullptr;
 
     auto views = viewport->get_views_on_viewport(viewport->get_current_viewport());
@@ -799,9 +796,8 @@ void wayfire_output::detach_view(wayfire_view v)
         }
     }
 
-    auto sig_data = new destroy_view_signal{v};
-    signal->emit_signal("destroy-view", sig_data);
-    delete sig_data;
+    auto sig_data = destroy_view_signal{v};
+    signal->emit_signal("destroy-view", &sig_data);
 }
 
 void wayfire_output::bring_to_front(wayfire_view v) {

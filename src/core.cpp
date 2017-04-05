@@ -81,13 +81,14 @@ wayfire_output* wayfire_core::get_next_output() {
     }
 }
 
-void wayfire_core::for_each_output(output_callback_proc call) {
+void wayfire_core::for_each_output(output_callback_proc call)
+{
     for (auto o : outputs)
         call(o.second);
 }
 
-
-void wayfire_core::add_view(weston_desktop_surface *ds) {
+void wayfire_core::add_view(weston_desktop_surface *ds)
+{
     auto view = std::make_shared<wayfire_view_t> (ds);
     views[view->handle] = view;
 
@@ -97,7 +98,8 @@ void wayfire_core::add_view(weston_desktop_surface *ds) {
     focus_view(view, get_current_seat());
 }
 
-wayfire_view wayfire_core::find_view(weston_view *handle) {
+wayfire_view wayfire_core::find_view(weston_view *handle)
+{
     auto it = views.find(handle);
     if (it == views.end()) {
         return nullptr;
@@ -106,7 +108,8 @@ wayfire_view wayfire_core::find_view(weston_view *handle) {
     }
 }
 
-wayfire_view wayfire_core::find_view(weston_desktop_surface *desktop_surface) {
+wayfire_view wayfire_core::find_view(weston_desktop_surface *desktop_surface)
+{
     for (auto v : views)
         if (v.second->desktop_surface == desktop_surface)
             return v.second;
@@ -114,7 +117,8 @@ wayfire_view wayfire_core::find_view(weston_desktop_surface *desktop_surface) {
     return nullptr;
 }
 
-void wayfire_core::focus_view(wayfire_view v, weston_seat *seat) {
+void wayfire_core::focus_view(wayfire_view v, weston_seat *seat)
+{
     if (!v)
         return;
 

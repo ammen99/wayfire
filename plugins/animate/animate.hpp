@@ -3,20 +3,21 @@
 
 #include <core.hpp>
 
-class Animation {
+class animation_base {
     public:
     virtual bool step(); /* return true if continue, false otherwise */
-    virtual bool run(); /* should we start? */
-    virtual ~Animation();
+    virtual bool should_run(); /* should we start? */
+    virtual ~animation_base();
 };
 
-class AnimationHook {
-    EffectHook hook;
-    Animation *anim;
-    Output *output;
+class animation_hook {
+    effect_hook_t hook;
+    animation_base *anim;
+    wayfire_output *output;
+    wayfire_view view;
 
     public:
-    AnimationHook(Animation *_anim, Output *output, View v = nullptr);
+    animation_hook(animation_base *base, wayfire_output *output, wayfire_view v = nullptr);
     void step();
 };
 

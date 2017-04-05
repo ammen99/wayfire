@@ -1,98 +1,164 @@
-#include "fade.hpp"
-#include "fire.hpp"
-#include <opengl.hpp>
+//#include "fire.hpp"
+//#include <opengl.hpp>
+#include "animate.hpp"
 #include <output.hpp>
+#include <signal_definitions.hpp>
 
+/* TODO: kein compute shader
 #define HAS_COMPUTE_SHADER (OpenGL::VersionMajor > 4 ||  \
         (OpenGL::VersionMajor == 4 && OpenGL::VersionMinor >= 3))
+        */
 
-bool Animation::step() {return false;}
-bool Animation::run() {return true;}
-Animation::~Animation() {}
+bool animation_base::step() {return false;}
+bool animation_base::should_run() {return true;}
+animation_base::~animation_base() {}
 
-AnimationHook::AnimationHook(Animation *_anim, Output *output, View v) {
-    anim = _anim;
+animation_hook::animation_hook(animation_base *anim,
+        wayfire_output *output, wayfire_view v)
+{
+    this->anim = anim;
     this->output = output;
 
-    if (anim->run()) {
-        hook.action = std::bind(std::mem_fn(&AnimationHook::step), this);
-        hook.type = (v == nullptr ? EFFECT_OVERLAY : EFFECT_WINDOW);
-        hook.win = v;
+    if (anim->should_run()) {
+        hook = std::bind(std::mem_fn(&animation_hook::step), this);
+        this->view = v;
 
-        output->render->add_effect(&hook);
-        hook.enable();
+        output->render->add_output_effect(&hook, view);
     } else {
         delete anim;
         delete this;
     }
 }
 
-void AnimationHook::step() {
+void animation_hook::step()
+{
     if (!this->anim->step()) {
-        output->render->rem_effect(hook.id);
+        output->render->rem_effect(&hook, view);
         delete anim;
         delete this;
     }
 }
 
-class AnimatePlugin : public Plugin {
-    SignalListener create, destroy;
+void fade_out_done_idle_cb(void *data)
+{
+    weston_surface *surface = (weston_surface*) data;
+    debug << "idle_cb " << surface->resource << std::endl;
+    if (surface)
+        weston_surface_destroy(surface);
+}
 
-    std::string animation;
+void fade_out_animation_cb(weston_view_animation*, void *data)
+{
+    auto loop = wl_display_get_event_loop(core->ec->wl_display);
+    auto view = (weston_view*) data;
+    if (weston_view_is_mapped(view)) {
+        debug << "view->surface " << view << " " <<
+            view->surface << " " << view->surface->resource << std::endl;
+        view->is_mapped = false;
+        wl_event_loop_add_idle(loop, fade_out_done_idle_cb, view->surface);
+    }
+}
 
+class fade_animation : public animation_base {
+    wayfire_view view;
+    bool rev;
     public:
-        void initOwnership() {
-            owner->name = "animate";
-            owner->compatAll = false;
-        }
+    fade_animation(wayfire_view v, bool reverse)
+    {
+        view = v;
+        rev = reverse;
+    }
 
-        void updateConfiguration() {
-            fadeDuration = options["fade_duration"]->data.ival;
-            animation = *options["map_animation"]->data.sval;
-#if false
-            if(map_animation == "fire") {
-                if(!HAS_COMPUTE_SHADER) {
-                    error << "[EE] OpenGL version below 4.3," <<
-                        " so no support for Fire effect" <<
-                        "defaulting to fade effect" << std::endl;
-                    map_animation = "fade";
-                }
+    bool should_run()
+    {
+        if (!rev) {
+            weston_fade_run(view->handle, 0, 1, 300, NULL, NULL);
+        } else {
+            debug << "close animation" << std::endl;
+            if (weston_surface_is_mapped(view->surface)) {
+                pixman_region32_fini(&view->surface->pending.input);
+                pixman_region32_init(&view->surface->pending.input);
+                pixman_region32_fini(&view->surface->input);
+                pixman_region32_init(&view->surface->input);
+
+                debug << "fade run resource " << view->surface->resource << std::endl;
+                weston_fade_run(view->handle, 1.0, 0.0, 300.0, fade_out_animation_cb,
+                        view->handle);
+            } else {
+                weston_view_destroy(view->handle);
             }
-#endif
         }
-
-        void init() {
-            options.insert(newIntOption("fade_duration", 150));
-            options.insert(newStringOption("map_animation", "fade"));
-
-            using namespace std::placeholders;
-            create.action = std::bind(std::mem_fn(&AnimatePlugin::mapWindow),
-                        this, _1);
-            destroy.action = std::bind(std::mem_fn(&AnimatePlugin::unmapWindow),
-                        this, _1);
-
-            output->signal->connect_signal("create-view", &create);
-            output->signal->connect_signal("destroy-view", &destroy);
-        }
-
-        void mapWindow(SignalListenerData data) {
-            auto win = *((View*) data[0]);
-            new AnimationHook(new Fade<FadeIn>(win, output), output);
-        }
-
-        void unmapWindow(SignalListenerData data) {
-            auto win = *((View*) data[0]);
-            new AnimationHook(new Fade<FadeOut>(win, output), output);
-        }
-
-        void fini() {
-            output->signal->disconnect_signal("create-view", create.id);
-            output->signal->disconnect_signal("destroy-view", destroy.id);
-        }
+        return false;
+    }
 };
 
+class wayfire_animation : public wayfire_plugin_t {
+    signal_callback_t create_cb, destroy_cb;
+
+    std::string open_animation, close_animation;
+
+    public:
+    void init(wayfire_config *config)
+    {
+        grab_interface->name = "animate";
+        grab_interface->compatAll = false;
+
+        debug << "load animate plugin" << std::endl;;
+        auto section = config->get_section("animate");
+        open_animation = section->get_string("open_animation", "fade");
+        close_animation = section->get_string("close_animation", "fade");
+
+#if false
+        if(map_animation == "fire") {
+            if(!HAS_COMPUTE_SHADER) {
+                error << "[EE] OpenGL version below 4.3," <<
+                    " so no support for Fire effect" <<
+                    "defaulting to fade effect" << std::endl;
+                map_animation = "fade";
+            }
+#endif
+
+        using namespace std::placeholders;
+        create_cb = std::bind(std::mem_fn(&wayfire_animation::view_created),
+                this, _1);
+        destroy_cb = std::bind(std::mem_fn(&wayfire_animation::view_destroyed),
+                this, _1);
+
+        output->signal->connect_signal("create-view", &create_cb);
+        output->signal->connect_signal("destroy-view", &destroy_cb);
+    }
+
+    /* TODO: enhance - add more animations */
+    void view_created(signal_data *ddata)
+    {
+        create_view_signal *data = static_cast<create_view_signal*> (ddata);
+        assert(data);
+
+        data->created_view->surface->ref_count++;
+        debug << "view created cb" << std::endl;
+        if (open_animation == "fade")
+            new animation_hook(new fade_animation(data->created_view, false), output);
+    }
+
+    void view_destroyed(signal_data *ddata)
+    {
+        destroy_view_signal *data = static_cast<destroy_view_signal*> (ddata);
+        assert(data);
+
+        if (open_animation == "fade") {
+            data->destroyed_view->keep_count++;
+            new animation_hook(new fade_animation(data->destroyed_view, true), output);
+        }
+    }
+
+    void fini() {
+        output->signal->disconnect_signal("create-view", &create_cb);
+        output->signal->disconnect_signal("destroy-view", &destroy_cb);
+    }
+    };
+
 extern "C" {
-    Plugin *newInstance() {
-        return new AnimatePlugin();
+    wayfire_plugin_t *newInstance() {
+        return new wayfire_animation();
     }
 }
