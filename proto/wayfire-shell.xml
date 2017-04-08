@@ -1,0 +1,43 @@
+<protocol name="wayfire_shell">
+    <interface name="wayfire_shell" version="1">
+        <description summary="create desktop panels, background, lock screens"/>
+        <request name="add_background">
+            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="surface" type="object" interface="wl_surface"/>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+        </request>
+
+        <enum name="panel_position">
+            <entry name="left"  value="1"/>
+            <entry name="right" value="2"/>
+            <entry name="up"    value="3"/>
+            <entry name="down"  value="4"/>
+        </enum>
+
+        <request name="add_panel">
+            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="surface" type="object" interface="wl_surface"/>
+        </request>
+
+        <request name="configure_panel">
+            <arg name="output" type="object" interface = "wl_output"/>
+            <arg name="surface" type="object" interface = "wl_surface"/>
+            <arg name="x" type="int"/>
+            <arg name="y" type="int"/>
+        </request>
+
+        <request name="reserve">
+            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="side" type="uint"/>
+            <arg name="width" type="uint"/>
+            <arg name="height" type="uint"/>
+        </request>
+
+        <event name="output_created">
+            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="width" type="uint"/>
+            <arg name="height" type="uint"/>
+        </event>
+    </interface>
+</protocol>
