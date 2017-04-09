@@ -73,12 +73,12 @@ class vswitch : public wayfire_plugin_t {
         auto front = dirs.front();
         dirs.pop();
 
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(vx, vy, output->workspace->get_current_workspace());
         int dx = front.first, dy = front.second;
 
         vx += dx;
         vy += dy;
-        output->viewport->set_viewport({vx, vy});
+        output->workspace->set_workspace({vx, vy});
 
         if (dirs.size() == 0) {
             running = false;
@@ -86,16 +86,16 @@ class vswitch : public wayfire_plugin_t {
         }
 
         dx = dirs.front().first, dy = dirs.front().second;
-        GetTuple(vwidth, vheight, output->viewport->get_viewport_grid_size());
+        GetTuple(vwidth, vheight, output->workspace->get_workspace_grid_size());
         if (vx + dx < 0 || vx + dx >= vwidth || vy + dy < 0 || vy + dy >= vheight) {
             dirs = std::queue<pair> ();
             running = false;
             return;
         }
 
-        auto current_views = output->viewport->get_views_on_viewport(
-                output->viewport->get_current_viewport());
-        auto next_views = output->viewport->get_views_on_viewport({vx + dx, vy + dy});
+        auto current_views = output->workspace->get_views_on_workspace(
+                output->workspace->get_current_workspace());
+        auto next_views = output->workspace->get_views_on_workspace({vx + dx, vy + dy});
 
         int index = 0;
 

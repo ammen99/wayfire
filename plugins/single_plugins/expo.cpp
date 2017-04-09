@@ -31,7 +31,7 @@ class wayfire_expo : public wayfire_plugin_t {
         grab_interface->compatAll = false;
         grab_interface->compat.insert("screenshot");
 
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         for (int i = 0; i < vw; i++) {
             fbuffs.push_back(std::vector<GLuint> (vh, -1));
             textures.push_back(std::vector<GLuint> (vh, -1));
@@ -94,7 +94,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
         state.zoom_delta = 1;
 
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(vx, vy, output->workspace->get_current_workspace());
 
         target_vx = vx;
         target_vy = vy;
@@ -112,7 +112,7 @@ class wayfire_expo : public wayfire_plugin_t {
         state.zoom_delta = -1;
         state.moving = false;
 
-        output->viewport->set_viewport(std::make_tuple(target_vx, target_vy));
+        output->workspace->set_workspace(std::make_tuple(target_vx, target_vy));
         calculate_zoom(false);
         update_zoom();
     }
@@ -132,7 +132,7 @@ class wayfire_expo : public wayfire_plugin_t {
         int cx = wl_fixed_to_int(ptr->x);
         int cy = wl_fixed_to_int(ptr->y);
 
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
         moving_view->move(moving_view->geometry.origin.x + (cx - sx) * vw,
                 moving_view->geometry.origin.y + (cy - sy) * vh);
@@ -140,7 +140,7 @@ class wayfire_expo : public wayfire_plugin_t {
         sx = cx;
         sy = cy;
 
-        update_target_viewport(sx, sy);
+        update_target_workspace(sx, sy);
     }
 
     void start_move()
@@ -150,11 +150,11 @@ class wayfire_expo : public wayfire_plugin_t {
 
     wayfire_view find_view_at(int sx, int sy)
     {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         sx *= vw;
         sy *= vh;
 
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(vx, vy, output->workspace->get_current_workspace());
         sx -= vx * output->handle->width;
         sy -= vy * output->handle->height;
 
@@ -167,8 +167,8 @@ class wayfire_expo : public wayfire_plugin_t {
         return search;
     }
 
-    void update_target_viewport(int x, int y) {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+    void update_target_workspace(int x, int y) {
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
         /* TODO: these are approximate, maybe won't work between them */
         int ew = output->handle->width / vw;
@@ -196,7 +196,7 @@ class wayfire_expo : public wayfire_plugin_t {
             sy = wl_fixed_to_int(ptr->y);
 
             moving_view = find_view_at(sx, sy);
-            update_target_viewport(sx, sy);
+            update_target_workspace(sx, sy);
         }
     }
 
@@ -207,8 +207,8 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void render()
     {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        GetTuple(vx, vy, output->viewport->get_current_viewport());
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+        GetTuple(vx, vy, output->workspace->get_current_workspace());
         GetTuple(w,  h,  output->get_screen_size());
 
         auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
@@ -218,7 +218,7 @@ class wayfire_expo : public wayfire_plugin_t {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         for(int i = 0; i < vw; i++) {
             for(int j = 0; j < vh; j++) {
-                output->render->texture_from_viewport(std::make_tuple(i, j),
+                output->workspace->texture_from_workspace(std::make_tuple(i, j),
                         fbuffs[i][j], textures[i][j]);
 
 #define EDGE_OFFSET 13
@@ -250,7 +250,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void calculate_zoom(bool zoom_in)
     {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
         float center_w = vw / 2.f;
         float center_h = vh / 2.f;

@@ -118,7 +118,7 @@ class view_switcher : public wayfire_plugin_t {
 
     void update_views()
     {
-        views = output->viewport->get_views_on_viewport(output->viewport->get_current_viewport());
+        views = output->workspace->get_views_on_workspace(output->workspace->get_current_workspace());
         //std::reverse(views.begin(), views.end());
     }
 

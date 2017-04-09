@@ -62,6 +62,8 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h)
         return nullptr;
     }
 
+    debug << "Loading plugin " << path << std::endl;
+
     auto initptr = dlsym(handle, "newInstance");
     if(initptr == NULL) {
         errio << "Missing function newInstance in file " << path << std::endl;
@@ -558,48 +560,6 @@ void render_manager::transformation_renderer()
     });
 }
 
-#ifdef USE_GLES3
-void render_manager::texture_from_viewport(std::tuple<int, int> vp,
-        GLuint &fbuff, GLuint &tex)
-{
-
-    OpenGL::bind_context(ctx);
-
-    if (fbuff == (uint)-1 || tex == (uint)-1)
-        OpenGL::prepare_framebuffer(fbuff, tex);
-
-    pixman_region32_t full_region;
-    pixman_region32_init_rect(&full_region, 0, 0, output->handle->width, output->handle->height);
-    blit_background(fbuff, &full_region);
-
-    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
-
-    GetTuple(x, y, vp);
-    GetTuple(cx, cy, output->viewport->get_current_viewport());
-
-    int dx = (cx - x)  * output->handle->width,
-        dy = (cy - y)  * output->handle->height;
-
-    wayfire_geometry output_rect = {
-        .origin = {-dx, -dy},
-        .size = {output->handle->width, output->handle->height}
-    };
-
-    output->for_each_view_reverse([=] (wayfire_view v) {
-        /* TODO: check if it really is visible */
-        if (rect_inside(output_rect, v->geometry)) {
-            v->geometry.origin.x += dx;
-            v->geometry.origin.y += dy;
-            v->render(0);
-            v->geometry.origin.x -= dx;
-            v->geometry.origin.y -= dy;
-        }
-    });
-
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-}
-#endif
-
 static int effect_hook_last_id = 0;
 void render_manager::add_output_effect(effect_hook_t* hook, wayfire_view v)
 {
@@ -623,96 +583,6 @@ void render_manager::rem_effect(const effect_hook_t *hook, wayfire_view v)
     container.erase(it, container.end());
 }
 /* End render_manager */
-
-/* Start viewport_manager */
-viewport_manager::viewport_manager(wayfire_output *o)
-{
-    output = o;
-    vx = vy = 0;
-
-    vwidth = core->vwidth;
-    vheight = core->vheight;
-}
-
-std::tuple<int, int> viewport_manager::get_current_viewport()
-{
-    return std::make_tuple(vx, vy);
-}
-std::tuple<int, int> viewport_manager::get_viewport_grid_size()
-{
-    return std::make_tuple(vwidth, vheight);
-}
-
-int clamp(int x, int min, int max)
-{
-    if(x < min) return min;
-    if(x > max) return max;
-    return x;
-}
-
-void viewport_manager::set_viewport(std::tuple<int, int> nPos)
-{
-    GetTuple(nx, ny, nPos);
-    if(nx >= vwidth || ny >= vheight || nx < 0 || ny < 0)
-        return;
-
-    if (nx == vx && ny == vy) {
-        auto views = get_views_on_viewport({vx, vy});
-        if (views.size() >= 1)
-            output->focus_view(views[0], core->get_current_seat());
-        return;
-    }
-
-    auto dx = (vx - nx) * output->handle->width;
-    auto dy = (vy - ny) * output->handle->height;
-
-    output->for_each_view([=] (wayfire_view v) {
-        v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy);
-    });
-
-
-    weston_output_schedule_repaint(output->handle);
-
-    change_viewport_signal data;
-    data.old_vx = vx;
-    data.old_vy = vy;
-
-    data.new_vx = nx;
-    data.new_vy = ny;
-
-    vx = nx;
-    vy = ny;
-    output->signal->emit_signal("viewport-changed", &data);
-
-    output->focus_view(nullptr, core->get_current_seat());
-    /* we iterate through views on current viewport from bottom to top
-     * that way we ensure that they will be focused befor all others */
-    auto views = get_views_on_viewport({vx, vy});
-    auto it = views.rbegin();
-    while(it != views.rend()) {
-        output->focus_view(*it, core->get_current_seat());
-        ++it;
-    }
-}
-
-std::vector<wayfire_view> viewport_manager::get_views_on_viewport(std::tuple<int, int> vp)
-{
-    GetTuple(tx, ty, vp);
-
-    wayfire_geometry g;
-    g.origin = {(tx - vx) * output->handle->width, (ty - vy) * (output->handle->height)};
-    g.size = {output->handle->width, output->handle->height};
-
-    std::vector<wayfire_view> ret;
-    output->for_each_view([&ret, g] (wayfire_view view) {
-        if (rect_inside(g, view->geometry)) {
-            ret.push_back(view);
-        }
-    });
-
-    return ret;
-}
-/* End viewport_manager */
 
 /* Start SignalManager */
 
@@ -751,7 +621,6 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
     /* TODO: init output */
     input = new input_manager();
     render = new render_manager(this);
-    viewport = new viewport_manager(this);
     signal = new signal_manager();
 
     plugin = new plugin_manager(this, c);
@@ -767,7 +636,6 @@ wayfire_output::~wayfire_output()
 {
     delete plugin;
     delete signal;
-    delete viewport;
     delete render;
     delete input;
 }
@@ -800,7 +668,7 @@ void wayfire_output::detach_view(wayfire_view v)
 {
     wayfire_view next = nullptr;
 
-    auto views = viewport->get_views_on_viewport(viewport->get_current_viewport());
+    auto views = workspace->get_views_on_workspace(workspace->get_current_workspace());
     for (auto wview : views) {
         if (wview->handle != v->handle) {
             next = wview;

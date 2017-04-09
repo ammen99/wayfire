@@ -59,8 +59,7 @@ struct render_manager {
         bool constant_redraw = false;
 
         bool dirty_context = true;
-        OpenGL::context_t *ctx;
-        void load_context();
+                void load_context();
         void release_context();
 
         struct {
@@ -77,11 +76,10 @@ struct render_manager {
         void load_background();
         void update_damage (pixman_region32_t* damage, pixman_region32_t *total);
     public:
+        OpenGL::context_t *ctx;
         render_manager(wayfire_output *o);
 
-#ifdef USE_GLES3
         void blit_background(GLuint destination_fbuff, pixman_region32_t *damage);
-#endif
         GLuint get_background() {return background.tex;}
 
         void set_renderer(render_hook_t rh = nullptr);
@@ -104,21 +102,18 @@ struct render_manager {
         void rem_effect(const effect_hook_t*, wayfire_view v = nullptr);
 };
 
-// TODO: maybe it is better to merge with wayfire_output,
-// as render manager is way too small to be separated
-struct viewport_manager {
-    private:
-        int vwidth, vheight, vx, vy;
-        wayfire_output *output;
-
+class workspace_manager {
     public:
-        viewport_manager(wayfire_output *o);
+        virtual void init(wayfire_output *output) = 0;
+        virtual std::vector<wayfire_view> get_views_on_workspace(std::tuple<int, int>) = 0;
 
-        std::vector<wayfire_view> get_views_on_viewport(std::tuple<int, int>);
-        void set_viewport(std::tuple<int, int>);
+        virtual void set_workspace(std::tuple<int, int>) = 0;
+        virtual std::tuple<int, int> get_current_workspace() = 0;
+        virtual std::tuple<int, int> get_workspace_grid_size() = 0;
 
-        std::tuple<int, int> get_current_viewport();
-        std::tuple<int, int> get_viewport_grid_size();
+        /* this function renders a viewport and
+         * saves the image in texture which is returned */
+        virtual void texture_from_workspace(std::tuple<int, int>, GLuint& fbuff, GLuint &tex) = 0;
 };
 
 /* when creating a signal there should be the definition of the derived class */
@@ -146,8 +141,8 @@ class wayfire_output {
 
     input_manager *input;
     render_manager *render;
-    viewport_manager *viewport;
     signal_manager *signal;
+    workspace_manager *workspace;
 
     wayfire_output(weston_output*, wayfire_config *config);
     ~wayfire_output();
