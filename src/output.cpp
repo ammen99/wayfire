@@ -554,7 +554,7 @@ void render_manager::pre_paint()
 void render_manager::transformation_renderer()
 {
     blit_background(0, &output->handle->region);
-    output->for_each_view_reverse([=](wayfire_view v) {
+    output->workspace->for_each_view_reverse([=](wayfire_view v) {
         if (!v->destroyed && !v->is_hidden)
             v->render();
     });
@@ -613,6 +613,88 @@ void signal_manager::emit_signal(std::string name, signal_data *data)
 
 /* End SignalManager */
 /* Start output */
+wayfire_output* wl_output_to_wayfire_output(uint32_t output)
+{
+    wayfire_output *result = nullptr;
+    core->for_each_output([output, &result] (wayfire_output *wo) {
+        if (wo->handle->id == output)
+            result = wo;
+    });
+
+    return result;
+}
+
+void shell_add_background(struct wl_client *client, struct wl_resource *resource,
+        uint32_t output, struct wl_resource *surface, int32_t x, int32_t y)
+{
+    weston_surface *wsurf = (weston_surface*) wl_resource_get_user_data(surface);
+    auto wo = wl_output_to_wayfire_output(output);
+
+    wayfire_view view = nullptr;
+
+    if (!wo || !wsurf || !(view = core->find_view(wsurf))) {
+        errio << "shell_add_background called with invalid surface or output" << std::endl;
+        return;
+    }
+
+    debug << "wf_shell: add_background" << std::endl;
+    wo->workspace->add_background(view, x, y);
+}
+
+void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
+        uint32_t output, struct wl_resource *surface)
+{
+    weston_surface *wsurf = (weston_surface*) wl_resource_get_user_data(surface);
+    auto wo = wl_output_to_wayfire_output(output);
+
+    wayfire_view view = nullptr;
+
+    if (!wo || !wsurf || !(view = core->find_view(wsurf))) {
+        errio << "shell_add_panel called with invalid surface or output" << std::endl;
+        return;
+    }
+
+    debug << "wf_shell: add_panel" << std::endl;
+    wo->workspace->add_panel(view);
+}
+
+void shell_configure_panel(struct wl_client *client, struct wl_resource *resource,
+        uint32_t output, struct wl_resource *surface, int32_t x, int32_t y)
+{
+    weston_surface *wsurf = (weston_surface*) wl_resource_get_user_data(surface);
+    auto wo = wl_output_to_wayfire_output(output);
+
+    wayfire_view view = nullptr;
+
+    if (!wo || !wsurf || !(view = core->find_view(wsurf))) {
+        errio << "shell_configure_panel called with invalid surface or output" << std::endl;
+        return;
+    }
+
+    debug << "wf_shell: configure_panel" << std::endl;
+    wo->workspace->configure_panel(view, x, y);
+}
+
+void shell_reserve(struct wl_client *client, struct wl_resource *resource,
+        uint32_t output, uint32_t side, uint32_t width, uint32_t height)
+{
+    auto wo = wl_output_to_wayfire_output(output);
+
+    if (!wo) {
+        errio << "shell_reserve called with invalid output" << std::endl;
+        return;
+    }
+
+    debug << "wf_shell: reserve" << std::endl;
+    wo->workspace->reserve_workarea((wayfire_shell_panel_position)side, width, height);
+}
+
+const struct wayfire_shell_interface shell_interface_impl {
+    .add_background = shell_add_background,
+    .add_panel = shell_add_panel,
+    .configure_panel = shell_configure_panel,
+    .reserve = shell_reserve
+};
 
 wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
 {
@@ -624,10 +706,6 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
     signal = new signal_manager();
 
     plugin = new plugin_manager(this, c);
-
-    weston_layer_init(&normal_layer, core->ec);
-    weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);
-
     weston_output_damage(handle);
     weston_output_schedule_repaint(handle);
 }
@@ -654,18 +732,15 @@ void wayfire_output::attach_view(wayfire_view v)
 {
     v->output = this;
 
-    weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
-    //GetTuple(vx, vy, wayfire_viewport->get_current_wayfire_viewport());
-    //v->vx = vx;
-    //v->vy = vy;
-
-    //v->set_mask(wayfire_viewport->get_mask_for_wayfire_view(v));
-
-//    weston_fade_run(v->handle, 0.5, 1, 300, NULL, NULL);
+    workspace->view_bring_to_front(v);
+    auto sig_data = create_view_signal{v};
+    signal->emit_signal("create-view", &sig_data);
 }
 
 void wayfire_output::detach_view(wayfire_view v)
 {
+    workspace->view_removed(v);
+
     wayfire_view next = nullptr;
 
     auto views = workspace->get_views_on_workspace(workspace->get_current_workspace());
@@ -693,7 +768,9 @@ void wayfire_output::bring_to_front(wayfire_view v) {
 
     weston_view_geometry_dirty(v->handle);
     weston_layer_entry_remove(&v->handle->layer_link);
-    weston_layer_entry_insert(&normal_layer.view_list, &v->handle->layer_link);
+
+    workspace->view_bring_to_front(v);
+
     weston_view_geometry_dirty(v->handle);
     weston_surface_damage(v->surface);
     weston_desktop_surface_propagate_layer(v->desktop_surface);
@@ -718,35 +795,11 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
     }
 }
 
-void wayfire_output::for_each_view(view_callback_proc_t call)
-{
-    weston_view *view;
-    wayfire_view v;
-
-    wl_list_for_each(view, &handle->compositor->view_list, link) {
-        if (view->output == handle && (v = core->find_view(view))) {
-            call(v);
-        }
-    }
-}
-
-void wayfire_output::for_each_view_reverse(view_callback_proc_t call)
-{
-    weston_view *view;
-    wayfire_view v;
-
-    wl_list_for_each_reverse(view, &normal_layer.view_list.link, layer_link.link) {
-        if (view->output == handle && (v = core->find_view(view))) {
-            call(v);
-        }
-    }
-}
-
 wayfire_view wayfire_output::get_view_at_point(int x, int y)
 {
     wayfire_view chosen = nullptr;
 
-    for_each_view([x, y, &chosen] (wayfire_view v) {
+    workspace->for_each_view([x, y, &chosen] (wayfire_view v) {
         if (v->is_visible() && point_inside({x, y}, v->geometry)) {
             if (chosen == nullptr)
                 chosen = v;

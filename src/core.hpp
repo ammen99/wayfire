@@ -22,6 +22,11 @@ class wayfire_core {
     public:
     std::string wayland_display, xwayland_display;
 
+    struct {
+        wl_client *client;
+        wl_resource *resource;
+    } wf_shell;
+
     weston_compositor *ec;
     void init(weston_compositor *ec, wayfire_config *config);
 
@@ -30,6 +35,7 @@ class wayfire_core {
     void add_view(weston_desktop_surface*);
     wayfire_view find_view(weston_view*);
     wayfire_view find_view(weston_desktop_surface*);
+    wayfire_view find_view(weston_surface*);
     /* Only removes the view from the "database".
      * Use only when view is already destroyed and detached from output */
     void erase_view(wayfire_view view);

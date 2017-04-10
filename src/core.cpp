@@ -2,8 +2,10 @@
 #include "output.hpp"
 #include "img.hpp"
 #include <unistd.h>
+#include "../proto/wayfire-shell-server.h"
 
-void wayfire_core::configure(wayfire_config *config) {
+void wayfire_core::configure(wayfire_config *config)
+{
     this->config = config;
     auto section = config->get_section("core");
 
@@ -14,7 +16,6 @@ void wayfire_core::configure(wayfire_config *config) {
     shadersrc = section->get_string("shadersrc", "/usr/share/wayfire/shaders");
     plugin_path = section->get_string("plugin_path_prefix", "/usr/lib/");
     plugins = section->get_string("plugins", "");
-    debug << "plugins are " << plugins << std::endl;
 
     /*
        options.insert(newStringOption("key_repeat_rate", "50"));
@@ -26,13 +27,47 @@ void wayfire_core::configure(wayfire_config *config) {
        options.insert(newStringOption("kbd_options", "grp:win_space_toggle"));
        */
 }
-void wayfire_core::init(weston_compositor *comp, wayfire_config *conf) {
+
+void notify_output_created_idle_cb(void *data)
+{
+    core->for_each_output([] (wayfire_output *out) {
+            wayfire_shell_send_output_created(core->wf_shell.resource,
+                    out->handle->id,
+                    out->handle->width, out->handle->height);
+            });
+}
+
+void unbind_desktop_shell(wl_resource *resource)
+{
+    core->wf_shell.client = NULL;
+}
+
+void bind_desktop_shell(wl_client *client, void *data, uint32_t version, uint32_t id)
+{
+    core->wf_shell.resource = wl_resource_create(client, &wayfire_shell_interface, 1, id);
+    core->wf_shell.client = client;
+
+    wl_resource_set_implementation(core->wf_shell.resource, &shell_interface_impl,
+            NULL, unbind_desktop_shell);
+
+    auto loop = wl_display_get_event_loop(core->ec->wl_display);
+    wl_event_loop_add_idle(loop, notify_output_created_idle_cb, NULL);
+}
+
+void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
+{
     ec = comp;
     configure(conf);
     image_io::init();
+
+    if (wl_global_create(ec->wl_display, &wayfire_shell_interface,
+                1, NULL, bind_desktop_shell) == NULL) {
+        errio << "Failed to create wayfire_shell interface" << std::endl;
+    }
 }
 
-weston_seat* wayfire_core::get_current_seat() {
+weston_seat* wayfire_core::get_current_seat()
+{
     weston_seat *seat;
     wl_list_for_each(seat, &ec->seat_list, link) {
         return seat;
@@ -40,23 +75,30 @@ weston_seat* wayfire_core::get_current_seat() {
     return nullptr;
 }
 
-void wayfire_core::add_output(weston_output *output) {
-    debug << "add output" << std::endl;
+void wayfire_core::add_output(weston_output *output)
+{
+    debug << "Adding output " << output->id << std::endl;
     if (outputs.find(output->id) != outputs.end())
         return;
 
     outputs[output->id] = new wayfire_output(output, config);
     focus_output(outputs[output->id]);
+
+    if (wf_shell.client)
+        wayfire_shell_send_output_created(wf_shell.resource, output->id,
+                output->width, output->height);
 }
 
-void wayfire_core::focus_output(wayfire_output *o) {
+void wayfire_core::focus_output(wayfire_output *o)
+{
     if (!o)
         return;
 
     active_output = o;
 }
 
-wayfire_output* wayfire_core::get_output(weston_output *handle) {
+wayfire_output* wayfire_core::get_output(weston_output *handle)
+{
     auto it = outputs.find(handle->id);
     if (it != outputs.end()) {
         return it->second;
@@ -65,11 +107,13 @@ wayfire_output* wayfire_core::get_output(weston_output *handle) {
     }
 }
 
-wayfire_output* wayfire_core::get_active_output() {
+wayfire_output* wayfire_core::get_active_output()
+{
     return active_output;
 }
 
-wayfire_output* wayfire_core::get_next_output() {
+wayfire_output* wayfire_core::get_next_output()
+{
     auto id = active_output->handle->id;
     auto it = outputs.find(id);
     ++it;
@@ -117,6 +161,15 @@ wayfire_view wayfire_core::find_view(weston_desktop_surface *desktop_surface)
     return nullptr;
 }
 
+wayfire_view wayfire_core::find_view(weston_surface *surface)
+{
+    for (auto v : views)
+        if (v.second->surface == surface)
+            return v.second;
+
+    return nullptr;
+}
+
 void wayfire_core::focus_view(wayfire_view v, weston_seat *seat)
 {
     if (!v)
@@ -128,19 +181,22 @@ void wayfire_core::focus_view(wayfire_view v, weston_seat *seat)
     active_output->focus_view(v, seat);
 }
 
-void wayfire_core::close_view(wayfire_view v) {
+void wayfire_core::close_view(wayfire_view v)
+{
     if (!v)
        return;
 
     weston_desktop_surface_close(v->desktop_surface);
 }
 
-void wayfire_core::erase_view(wayfire_view v) {
+void wayfire_core::erase_view(wayfire_view v)
+{
     if (!v) return;
     views.erase(v->handle);
 }
 
-void wayfire_core::run(const char *command) {
+void wayfire_core::run(const char *command)
+{
     debug << "run " << command << std::endl;
 
     std::string cmd = command;
@@ -153,7 +209,8 @@ void wayfire_core::run(const char *command) {
     }
 }
 
-void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output) {
+void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output)
+{
     if (old && v->output && old == v->output)
         old->detach_view(v);
 

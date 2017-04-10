@@ -16,9 +16,11 @@ void panel_redraw(void *data, wl_callback*, uint32_t)
     panel->render_frame();
 }
 
-void output_created_cb(void *data, wayfire_shell *wayfire_shell, wl_output *output,
+void output_created_cb(void *data, wayfire_shell *wayfire_shell, uint32_t output,
         uint32_t width, uint32_t height)
 {
+
+    std::cout << "output_created_cb" << std::endl;
     wayfire_panel *panel = (wayfire_panel*) data;
     panel->create_panel(output, width, height);
 }
@@ -28,6 +30,7 @@ static const struct wl_callback_listener frame_listener = {
 };
 
 static const struct wayfire_shell_listener shell_listener = {
+    .output_created = output_created_cb
 };
 
 wayfire_panel::wayfire_panel()
@@ -35,7 +38,7 @@ wayfire_panel::wayfire_panel()
     wayfire_shell_add_listener(display.wfshell, &shell_listener, this);
 }
 
-void wayfire_panel::create_panel(wl_output *output, uint32_t width, uint32_t height)
+void wayfire_panel::create_panel(uint32_t output, uint32_t width, uint32_t height)
 {
     this->width = width;
     this->height = 60;
@@ -67,8 +70,10 @@ void wayfire_panel::create_panel(wl_output *output, uint32_t width, uint32_t hei
     repaint_callback = nullptr;
     render_frame();
 
+    std::cout << "wayfire shell calls" << std::endl;
     wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_DOWN, width, height);
-    wayfire_shell_add_panel(display.wfshell, output, window->surface, 0, 0);
+    wayfire_shell_add_panel(display.wfshell, output, window->surface);
+    std::cout << "wayfire shell created" << std::endl;
 }
 
 void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
@@ -89,6 +94,8 @@ void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, 
 
 void wayfire_panel::render_frame()
 {
+
+    std::cout << "render frame" << std::endl;
     set_active_window(window);
 
     double font_size = 20;
@@ -120,6 +127,8 @@ void wayfire_panel::render_frame()
 
     repaint_callback = wl_surface_frame(window->surface);
     wl_callback_add_listener(repaint_callback, &frame_listener, this);
+    std::cout << "am ende" << std::endl;
 
     cairo_gl_surface_swapbuffers(window->cairo_surface);
+    std::cout << "render end" << std::endl;
 }

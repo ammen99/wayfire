@@ -159,7 +159,7 @@ class wayfire_expo : public wayfire_plugin_t {
         sy -= vy * output->handle->height;
 
         wayfire_view search = nullptr;
-        output->for_each_view([&search, sx, sy] (wayfire_view v) {
+        output->workspace->for_each_view([&search, sx, sy] (wayfire_view v) {
             if (!search && point_inside({sx, sy}, v->geometry))
             search = v;
         });

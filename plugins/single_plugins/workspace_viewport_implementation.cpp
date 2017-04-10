@@ -8,8 +8,23 @@ class viewport_manager : public workspace_manager {
         int vwidth, vheight, vx, vy;
         wayfire_output *output;
 
+        weston_layer panel_layer, normal_layer, background_layer;
+
+        struct {
+            int top_padding;
+            int bot_padding;
+            int left_padding;
+            int right_padding;
+        } workarea;
+
     public:
         void init(wayfire_output *output);
+
+        void view_bring_to_front(wayfire_view view);
+        void view_removed(wayfire_view view);
+
+        void for_each_view(view_callback_proc_t call);
+        void for_each_view_reverse(view_callback_proc_t call);
 
         std::vector<wayfire_view> get_views_on_workspace(std::tuple<int, int>);
         void set_workspace(std::tuple<int, int>);
@@ -19,6 +34,14 @@ class viewport_manager : public workspace_manager {
 
         void texture_from_workspace(std::tuple<int, int> vp,
                 GLuint &fbuff, GLuint &tex);
+
+        void add_background(wayfire_view background, int x, int y);
+        void add_panel(wayfire_view panel);
+        void reserve_workarea(wayfire_shell_panel_position position,
+                uint32_t width, uint32_t height);
+        void configure_panel(wayfire_view view, int x, int y);
+
+        wayfire_geometry get_workarea();
 };
 
 /* Start viewport_manager */
@@ -27,14 +50,55 @@ void viewport_manager::init(wayfire_output *o)
     output = o;
     vx = vy = 0;
 
+    weston_layer_init(&normal_layer, core->ec);
+    weston_layer_init(&panel_layer, core->ec);
+    weston_layer_init(&background_layer, core->ec);
+
+    weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);
+    weston_layer_set_position(&panel_layer, WESTON_LAYER_POSITION_TOP_UI);
+    weston_layer_set_position(&background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+
     vwidth = core->vwidth;
     vheight = core->vheight;
+}
+
+void viewport_manager::view_bring_to_front(wayfire_view view)
+{
+    weston_layer_entry_insert(&normal_layer.view_list, &view->handle->layer_link);
+}
+
+void viewport_manager::view_removed(wayfire_view view)
+{
+    weston_layer_entry_remove(&view->handle->layer_link);
+}
+
+void viewport_manager::for_each_view(view_callback_proc_t call)
+{
+    weston_view *view;
+    wayfire_view v;
+
+    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link) {
+        if ((v = core->find_view(view)))
+            call(v);
+    }
+}
+
+void viewport_manager::for_each_view_reverse(view_callback_proc_t call)
+{
+    weston_view *view;
+    wayfire_view v;
+
+    wl_list_for_each_reverse(view, &normal_layer.view_list.link, layer_link.link) {
+        if ((v = core->find_view(view)))
+            call(v);
+    }
 }
 
 std::tuple<int, int> viewport_manager::get_current_workspace()
 {
     return std::make_tuple(vx, vy);
 }
+
 std::tuple<int, int> viewport_manager::get_workspace_grid_size()
 {
     return std::make_tuple(vwidth, vheight);
@@ -56,7 +120,7 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     auto dx = (vx - nx) * output->handle->width;
     auto dy = (vy - ny) * output->handle->height;
 
-    output->for_each_view([=] (wayfire_view v) {
+    for_each_view([=] (wayfire_view v) {
         v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy);
     });
 
@@ -94,7 +158,7 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
     g.size = {output->handle->width, output->handle->height};
 
     std::vector<wayfire_view> ret;
-    output->for_each_view([&ret, g] (wayfire_view view) {
+    for_each_view([&ret, g] (wayfire_view view) {
         if (rect_inside(g, view->geometry)) {
             ret.push_back(view);
         }
@@ -102,8 +166,6 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 
     return ret;
 }
-/* End viewport_manager */
-
 
 void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
         GLuint &fbuff, GLuint &tex)
@@ -130,7 +192,7 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
         .size = {output->handle->width, output->handle->height}
     };
 
-    output->for_each_view_reverse([=] (wayfire_view v) {
+    for_each_view_reverse([=] (wayfire_view v) {
         /* TODO: check if it really is visible */
         if (rect_inside(output_rect, v->geometry)) {
             v->geometry.origin.x += dx;
@@ -142,6 +204,54 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
     });
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+void viewport_manager::add_background(wayfire_view background, int x, int y)
+{
+    background->move(x, y);
+    weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
+}
+
+void viewport_manager::add_panel(wayfire_view panel)
+{
+    /* views have first been created as desktop views,
+     * so they are currently in the normal layer, we must remove them first */
+    output->detach_view(panel);
+    weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
+}
+
+void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
+        uint32_t width, uint32_t height)
+{
+    switch(position) {
+        case WAYFIRE_SHELL_PANEL_POSITION_LEFT:
+            workarea.left_padding = width;
+            break;
+        case WAYFIRE_SHELL_PANEL_POSITION_RIGHT:
+            workarea.right_padding = width;
+            break;
+        case WAYFIRE_SHELL_PANEL_POSITION_UP:
+            workarea.top_padding = height;
+            break;
+        case WAYFIRE_SHELL_PANEL_POSITION_DOWN:
+            workarea.bot_padding = height;
+            break;
+    }
+}
+
+void viewport_manager::configure_panel(wayfire_view view, int x, int y)
+{
+    view->move(x, y);
+}
+
+wayfire_geometry viewport_manager::get_workarea()
+{
+    return
+    {
+        .origin = {workarea.left_padding, workarea.top_padding},
+        .size = {output->handle->width - workarea.left_padding - workarea.right_padding,
+                 output->handle->height - workarea.top_padding - workarea.bot_padding}
+    };
 }
 
 class viewport_impl_plugin : public wayfire_plugin_t {

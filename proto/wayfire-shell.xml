@@ -2,7 +2,7 @@
     <interface name="wayfire_shell" version="1">
         <description summary="create desktop panels, background, lock screens"/>
         <request name="add_background">
-            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="output" type="uint"/>
             <arg name="surface" type="object" interface="wl_surface"/>
             <arg name="x" type="int"/>
             <arg name="y" type="int"/>
@@ -16,26 +16,26 @@
         </enum>
 
         <request name="add_panel">
-            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="output" type="uint"/>
             <arg name="surface" type="object" interface="wl_surface"/>
         </request>
 
         <request name="configure_panel">
-            <arg name="output" type="object" interface = "wl_output"/>
+            <arg name="output" type="uint"/>
             <arg name="surface" type="object" interface = "wl_surface"/>
             <arg name="x" type="int"/>
             <arg name="y" type="int"/>
         </request>
 
         <request name="reserve">
-            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="output" type="uint"/>
             <arg name="side" type="uint"/>
             <arg name="width" type="uint"/>
             <arg name="height" type="uint"/>
         </request>
 
         <event name="output_created">
-            <arg name="output" type="object" interface="wl_output"/>
+            <arg name="output" type="uint"/>
             <arg name="width" type="uint"/>
             <arg name="height" type="uint"/>
         </event>
