@@ -147,10 +147,10 @@ void wayfire_view_t::map(int sx, int sy)
 
         weston_view_update_transform(handle);
         handle->is_mapped  = true;
+        surface->is_mapped = true;
+
         auto sig_data = create_view_signal{core->find_view(handle)};
         output->signal->emit_signal("create-view", &sig_data);
-
-        surface->is_mapped = true;
     }
 
     int oldx, oldy;

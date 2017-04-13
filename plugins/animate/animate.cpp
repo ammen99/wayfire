@@ -42,7 +42,6 @@ void animation_hook::step()
 void fade_out_done_idle_cb(void *data)
 {
     weston_surface *surface = (weston_surface*) data;
-    debug << "idle_cb " << surface->resource << std::endl;
     if (surface)
         weston_surface_destroy(surface);
 }
@@ -52,8 +51,6 @@ void fade_out_animation_cb(weston_view_animation*, void *data)
     auto loop = wl_display_get_event_loop(core->ec->wl_display);
     auto view = (weston_view*) data;
     if (weston_view_is_mapped(view)) {
-        debug << "view->surface " << view << " " <<
-            view->surface << " " << view->surface->resource << std::endl;
         view->is_mapped = false;
         wl_event_loop_add_idle(loop, fade_out_done_idle_cb, view->surface);
     }
@@ -72,17 +69,15 @@ class fade_animation : public animation_base {
     bool should_run()
     {
         if (!rev) {
-            weston_fade_run(view->handle, 0, 1, 300, NULL, NULL);
+            weston_fade_run(view->handle, 0, 1, 200, NULL, NULL);
         } else {
-            debug << "close animation" << std::endl;
             if (weston_surface_is_mapped(view->surface)) {
                 pixman_region32_fini(&view->surface->pending.input);
                 pixman_region32_init(&view->surface->pending.input);
                 pixman_region32_fini(&view->surface->input);
                 pixman_region32_init(&view->surface->input);
 
-                debug << "fade run resource " << view->surface->resource << std::endl;
-                weston_fade_run(view->handle, 1.0, 0.0, 300.0, fade_out_animation_cb,
+                weston_fade_run(view->handle, 1.0, 0.0, 200.0, fade_out_animation_cb,
                         view->handle);
             } else {
                 weston_view_destroy(view->handle);
@@ -103,7 +98,6 @@ class wayfire_animation : public wayfire_plugin_t {
         grab_interface->name = "animate";
         grab_interface->compatAll = false;
 
-        debug << "load animate plugin" << std::endl;;
         auto section = config->get_section("animate");
         open_animation = section->get_string("open_animation", "fade");
         close_animation = section->get_string("close_animation", "fade");
@@ -135,7 +129,6 @@ class wayfire_animation : public wayfire_plugin_t {
         assert(data);
 
         data->created_view->surface->ref_count++;
-        debug << "view created cb" << std::endl;
         if (open_animation == "fade")
             new animation_hook(new fade_animation(data->created_view, false), output);
     }

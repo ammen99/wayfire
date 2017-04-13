@@ -137,17 +137,7 @@ void wayfire_core::close_view(wayfire_view v) {
 
 void wayfire_core::erase_view(wayfire_view v) {
     if (!v) return;
-    auto it = views.find(v->handle);
-    if (it != views.end()) {
-        auto view = it->second;
-
-        view->destroyed = true;
-        view->output->detach_view(view);
-        if (view->keep_count == 0) {
-            it->second.reset();
-            views.erase(it);
-        }
-    }
+    views.erase(v->handle);
 }
 
 void wayfire_core::run(const char *command) {
