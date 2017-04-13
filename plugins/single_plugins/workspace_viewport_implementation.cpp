@@ -64,12 +64,16 @@ void viewport_manager::init(wayfire_output *o)
 
 void viewport_manager::view_bring_to_front(wayfire_view view)
 {
-    weston_layer_entry_insert(&normal_layer.view_list, &view->handle->layer_link);
+    debug << "view bring_to_front" << view->desktop_surface << std::endl;
+    if (view->handle->layer_link.layer == NULL)
+        weston_layer_entry_insert(&normal_layer.view_list, &view->handle->layer_link);
 }
 
 void viewport_manager::view_removed(wayfire_view view)
 {
-    weston_layer_entry_remove(&view->handle->layer_link);
+    debug << "view removed" << view->desktop_surface << std::endl;
+    if (view->handle->layer_link.layer)
+        weston_layer_entry_remove(&view->handle->layer_link);
 }
 
 void viewport_manager::for_each_view(view_callback_proc_t call)
@@ -209,7 +213,9 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
 void viewport_manager::add_background(wayfire_view background, int x, int y)
 {
     background->move(x, y);
+    output->detach_view(background);
     weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
+    background->is_special = true;
 }
 
 void viewport_manager::add_panel(wayfire_view panel)
@@ -218,6 +224,7 @@ void viewport_manager::add_panel(wayfire_view panel)
      * so they are currently in the normal layer, we must remove them first */
     output->detach_view(panel);
     weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
+    panel->is_special = true;
 }
 
 void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,

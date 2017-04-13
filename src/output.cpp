@@ -745,13 +745,13 @@ void wayfire_output::detach_view(wayfire_view v)
 
     auto views = workspace->get_views_on_workspace(workspace->get_current_workspace());
     for (auto wview : views) {
-        if (wview->handle != v->handle) {
+        if (wview->handle != v->handle && wview->is_mapped) {
             next = wview;
             break;
         }
     }
 
-    if (active_view == v && false) {
+    if (active_view == v) {
         if (next == nullptr) {
             active_view = nullptr;
         } else {

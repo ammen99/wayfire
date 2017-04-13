@@ -7,52 +7,45 @@
 #define WIDTH 256
 #define HEIGHT 256
 
-static void pointer_enter(void *data,
-    struct wl_pointer *wl_pointer,
-    uint32_t serial, struct wl_surface *surface,
+wayfire_window *current_window = nullptr;
+
+void pointer_enter(void *data, struct wl_pointer *wl_pointer,
+    uint32_t serial, struct wl_surface *surface, wl_fixed_t surface_x, wl_fixed_t surface_y)
+{
+    auto window = (wayfire_window*) wl_surface_get_user_data(surface);
+    if (window && window->pointer_enter)
+        window->pointer_enter(wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y));
+    else if (window)
+        current_window = window;
+}
+
+void pointer_leave(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
+    struct wl_surface *surface)
+{
+    auto window = (wayfire_window*) wl_surface_get_user_data(surface);
+    if (window && window->pointer_leave)
+        window->pointer_leave();
+    current_window = nullptr;
+}
+
+void pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
     wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
-    /*
-    struct pointer_data *pointer_data;
-
-    pointer_data = wl_pointer_get_user_data(wl_pointer);
-    pointer_data->target_surface = surface;
-    wl_surface_attach(pointer_data->surface,
-        pointer_data->buffer, 0, 0);
-    wl_surface_commit(pointer_data->surface);
-    wl_pointer_set_cursor(wl_pointer, serial,
-        pointer_data->surface, pointer_data->hot_spot_x,
-        pointer_data->hot_spot_y);
-        */
+    if (current_window && current_window->pointer_move)
+        current_window->pointer_move(wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y));
 }
 
-static void pointer_leave(void *data,
-    struct wl_pointer *wl_pointer, uint32_t serial,
-    struct wl_surface *wl_surface) { }
-
-static void pointer_motion(void *data,
-    struct wl_pointer *wl_pointer, uint32_t time,
-    wl_fixed_t surface_x, wl_fixed_t surface_y) { }
-
-static void pointer_button(void *data,
-    struct wl_pointer *wl_pointer, uint32_t serial,
+void pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     uint32_t time, uint32_t button, uint32_t state)
 {
-    /*
-    struct pointer_data *pointer_data;
-    void (*callback)(uint32_t);
-
-    pointer_data = wl_pointer_get_user_data(wl_pointer);
-    callback = wl_surface_get_user_data(
-        pointer_data->target_surface);
-    if (callback != NULL)
-        callback(button);
-        */
+    if (current_window && current_window->pointer_button)
+        current_window->pointer_button(button, state);
 }
 
-static void pointer_axis(void *data,
-    struct wl_pointer *wl_pointer, uint32_t time,
-    uint32_t axis, wl_fixed_t value) { }
+void pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,
+    uint32_t axis, wl_fixed_t value)
+{
+}
 
 static const struct wl_pointer_listener pointer_listener = {
     .enter = pointer_enter,
@@ -63,7 +56,7 @@ static const struct wl_pointer_listener pointer_listener = {
 };
 
 // listeners
-void registry_add_object (void *data, struct wl_registry *registry, uint32_t name,
+void registry_add_object(void *data, struct wl_registry *registry, uint32_t name,
         const char *interface, uint32_t version)
 {
 	if (!strcmp(interface,"wl_compositor")) {
@@ -166,9 +159,10 @@ void finish_egl()
 
 wayfire_window *create_window(int32_t width, int32_t height)
 {
-
     wayfire_window *window = new wayfire_window;
 	window->surface = wl_compositor_create_surface(display.compositor);
+    wl_surface_set_user_data(window->surface, window);
+
 	window->shell_surface = wl_shell_get_shell_surface(display.shell, window->surface);
 	wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
 	wl_shell_surface_set_toplevel(window->shell_surface);

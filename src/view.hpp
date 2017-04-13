@@ -90,6 +90,10 @@ class wayfire_view_t {
         /* Set if the current view should not be rendered by built-in renderer */
         bool is_hidden = false;
 
+        /* backgrounds, panels, lock surfaces -> they shouldn't be touched
+         * by plugins like move, animate, etc. */
+        bool is_special = false;
+
         std::vector<effect_hook_t*> effects;
 
         void render(uint32_t bits = 0);

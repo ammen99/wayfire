@@ -123,11 +123,14 @@ class wayfire_grid : public wayfire_plugin_t {
     void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h)
     {
         auto it = saved_view_geometry.find(v);
+        auto g = output->workspace->get_workarea();
 
         if (it == saved_view_geometry.end()) {
             saved_view_geometry[v] = v->geometry;
-            GetTuple(sw, sh, output->get_screen_size());
-            x = y = 0, w = sw, h = sh;
+            x = g.origin.x;
+            y = g.origin.y;
+            w = g.size.w;
+            h = g.size.h;
 
             weston_desktop_surface_set_maximized(v->desktop_surface, true);
         } else {
@@ -143,26 +146,28 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void get_slot_dimensions(int n, int &x, int &y, int &w, int &h)
     {
-        GetTuple(width, height, output->get_screen_size());
 
-        int w2 = width  / 2;
-        int h2 = height / 2;
+        auto g = output->workspace->get_workarea();
+
+        int w2 = g.size.w / 2;
+        int h2 = g.size.h / 2;
+
         if(n == 7)
-            x = 0, y = 0, w = w2, h = h2;
+            x = g.origin.x, y = g.origin.y, w = w2, h = h2;
         if(n == 8)
-            x = 0, y = 0, w = width, h = h2;
+            x = g.origin.x, y = g.origin.y, w = g.size.w, h = h2;
         if(n == 9)
-            x = w2, y = 0, w = w2, h = h2;
+            x = g.origin.x + w2, y = g.origin.y, w = w2, h = h2;
         if(n == 4)
-            x = 0, y = 0, w = w2, h = height;
+            x = g.origin.x, y = g.origin.y, w = w2, h = g.size.h;
         if(n == 6)
-            x = w2, y = 0, w = w2, h = height;
+            x = g.origin.x + w2, y = g.origin.y, w = w2, h = g.size.h;
         if(n == 1)
-            x = 0, y = h2, w = w2, h = h2;
+            x = g.origin.x, y = g.origin.y + h2, w = w2, h = h2;
         if(n == 2)
-            x = 0, y = h2, w = width, h = h2;
+            x = g.origin.x, y = g.origin.y + h2, w = g.size.w, h = h2;
         if(n == 3)
-            x = w2, y = h2, w = w2, h = h2;
+            x = g.origin.x + w2, y = g.origin.y + h2, w = w2, h = h2;
     }
 
     void snap_signal_cb(signal_data *ddata)

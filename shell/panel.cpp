@@ -11,7 +11,6 @@
 
 void panel_redraw(void *data, wl_callback*, uint32_t)
 {
-    std::cout << "frame cb" << std::endl;
     wayfire_panel *panel = (wayfire_panel*) data;
     panel->render_frame();
 }
@@ -20,7 +19,6 @@ void output_created_cb(void *data, wayfire_shell *wayfire_shell, uint32_t output
         uint32_t width, uint32_t height)
 {
 
-    std::cout << "output_created_cb" << std::endl;
     wayfire_panel *panel = (wayfire_panel*) data;
     panel->create_panel(output, width, height);
 }
@@ -38,13 +36,14 @@ wayfire_panel::wayfire_panel()
     wayfire_shell_add_listener(display.wfshell, &shell_listener, this);
 }
 
-void wayfire_panel::create_panel(uint32_t output, uint32_t width, uint32_t height)
+void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)
 {
-    this->width = width;
-    this->height = 60;
+    width = _width;
+    /* TODO: should take font size into account */
+    height = 1.3 * font_size;
     this->output = output;
 
-    window = create_window(width, height);
+    window = create_window(width, this->height);
 
     cr = cairo_create(window->cairo_surface);
 
@@ -66,14 +65,40 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t width, uint32_t heigh
     }
 
     font = cairo_ft_font_face_create_for_ft_face (face, 0);
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
+    cairo_set_font_size(cr, font_size);
+    cairo_set_font_face(cr, font);
+
+    animation.dy = -5;
+    animation.target_y = hidden_height - height;
+    animation.start_y = 0;
+    animation.current_y = animation.start_y;
 
     repaint_callback = nullptr;
     render_frame();
 
-    std::cout << "wayfire shell calls" << std::endl;
-    wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_DOWN, width, height);
+    //wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width, hidden_height);
     wayfire_shell_add_panel(display.wfshell, output, window->surface);
-    std::cout << "wayfire shell created" << std::endl;
+
+    window->pointer_enter = std::bind(std::mem_fn(&wayfire_panel::on_enter), this);
+    window->pointer_leave = std::bind(std::mem_fn(&wayfire_panel::on_leave), this);
+}
+
+void wayfire_panel::toggle_animation()
+{
+    std::swap(animation.target_y, animation.start_y);
+    animation.dy *= -1;
+}
+
+void wayfire_panel::on_enter()
+{
+    toggle_animation();
+    add_callback(false);
+}
+
+void wayfire_panel::on_leave()
+{
+    toggle_animation();
 }
 
 void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
@@ -92,43 +117,70 @@ void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, 
     cairo_fill_preserve(cr);
 }
 
-void wayfire_panel::render_frame()
+void wayfire_panel::add_callback(bool swapped)
 {
-
-    std::cout << "render frame" << std::endl;
-    set_active_window(window);
-
-    double font_size = 20;
-    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
-    cairo_set_font_size(cr, font_size);
-    cairo_set_font_face(cr, font);
-    //cairo_paint(cr);
-
-    using std::chrono::system_clock;
-    time_t now = system_clock::to_time_t(system_clock::now());
-
-    const char *time_string = std::ctime(&now);
-
-    render_rounded_rectangle(cr, 0, 0, width, font_size * 1.3, 7, 0.102, 0.137, 0.494, 1);
-
-    double x = 5, y = 20;
-    cairo_set_source_rgb(cr, 0.91, 0.918, 0.965); /* blank to white */
-
-    cairo_move_to(cr, x, y);
-    cairo_show_text(cr, time_string);
-
-    //cairo_stroke(cr);
-    //cairo_destroy(cr);
-
-    usleep(1e6*59./60.);
-
     if (repaint_callback)
         wl_callback_destroy(repaint_callback);
 
     repaint_callback = wl_surface_frame(window->surface);
     wl_callback_add_listener(repaint_callback, &frame_listener, this);
-    std::cout << "am ende" << std::endl;
 
-    cairo_gl_surface_swapbuffers(window->cairo_surface);
-    std::cout << "render end" << std::endl;
+    if (!swapped)
+        wl_surface_commit(window->surface);
+}
+
+const std::string months[] = {
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+};
+
+void wayfire_panel::render_frame()
+{
+    set_active_window(window);
+
+    using std::chrono::system_clock;
+
+    time_t now = system_clock::to_time_t(system_clock::now());
+    auto time = std::localtime(&now);
+
+    std::string time_string = std::to_string(time->tm_mday) + " " +
+        months[time->tm_mon] + " " + std::to_string(time->tm_hour) +
+        ":" + std::to_string(time->tm_min);
+
+    if (animation.current_y != animation.target_y) {
+        animation.current_y += animation.dy;
+        wayfire_shell_configure_panel(display.wfshell, output,
+                window->surface, 0, animation.current_y);
+    }
+
+    bool should_swap = false;
+    if (time_string != this->current_text && animation.current_y > hidden_height - (int)height) {
+        render_rounded_rectangle(cr, 0, 0, width, height, 7, 0.117, 0.137, 0.152, 1);
+
+        double x = 5, y = 20;
+        cairo_set_source_rgb(cr, 0.91, 0.918, 0.965); /* blank to white */
+
+        cairo_move_to(cr, x, y);
+        cairo_show_text(cr, time_string.c_str());
+        should_swap = true;
+    }
+
+    current_text = time_string;
+
+    //std::cout << animation.current_y << std::endl;
+    if (animation.current_y != hidden_height - (int)height)
+        add_callback(should_swap);
+
+    if (should_swap)
+        cairo_gl_surface_swapbuffers(window->cairo_surface);
 }

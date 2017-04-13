@@ -6,6 +6,7 @@
 #include <wayland-egl.h>
 #include <EGL/egl.h>
 #include <iostream>
+#include <functional>
 
 #include <cairo/cairo-gl.h>
 
@@ -35,7 +36,10 @@ struct wayfire_window {
 	wl_shell_surface *shell_surface;
 	wl_egl_window *egl_window;
 
-
+    std::function<void(int x, int y)> pointer_enter;
+    std::function<void()> pointer_leave;
+    std::function<void(int x, int y)> pointer_move;
+    std::function<void(uint32_t button, uint32_t state)> pointer_button;
 
     cairo_surface_t *cairo_surface;
 

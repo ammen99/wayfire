@@ -47,7 +47,7 @@ class wayfire_resize : public wayfire_plugin_t {
                 return;
 
             view = core->find_view(ptr->focus);
-            if (!view)
+            if (!view || view->is_special)
                 return;
 
             if (!output->input->activate_plugin(grab_interface))

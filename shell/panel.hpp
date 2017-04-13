@@ -11,6 +11,22 @@ class wayfire_panel {
     uint32_t output;
     uint32_t width, height;
 
+    double font_size = 20;
+    int hidden_height = 1;
+
+    std::string current_text;
+
+    struct {
+        int dy;
+        int start_y, current_y, target_y;
+    } animation;
+
+    void toggle_animation();
+    void on_enter();
+    void on_leave();
+
+    void add_callback(bool swapped);
+
     public:
         wayfire_window *window;
         wayfire_panel();
