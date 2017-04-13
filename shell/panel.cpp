@@ -167,8 +167,13 @@ void wayfire_panel::render_frame()
     if (time_string != this->current_text && animation.current_y > hidden_height - (int)height) {
         render_rounded_rectangle(cr, 0, 0, width, height, 7, 0.117, 0.137, 0.152, 1);
 
+        cairo_text_extents_t te;
+        cairo_text_extents(cr, time_string.c_str(), &te);
+
         double x = 5, y = 20;
         cairo_set_source_rgb(cr, 0.91, 0.918, 0.965); /* blank to white */
+
+        x = (width - te.width) / 2;
 
         cairo_move_to(cr, x, y);
         cairo_show_text(cr, time_string.c_str());
