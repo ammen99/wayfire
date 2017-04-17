@@ -52,11 +52,12 @@ class wayfire_grid : public wayfire_plugin_t {
             keys[i] = section->get_key("slot_" + slots[i], default_keys[i]);
 
             bindings[i] = [=] (weston_keyboard *kbd, uint32_t key) {
-                if (output->active_view)
-                    handle_key(output->active_view, i);
+                auto view = output->get_top_view();
+                if (view)
+                    handle_key(view, i);
             };
 
-            output->input->add_key(keys[i].mod, keys[i].keyval, &bindings[i]);
+            core->input->add_key(keys[i].mod, keys[i].keyval, &bindings[i], output);
         }
 
         hook = std::bind(std::mem_fn(&wayfire_grid::update_pos_size), this);
@@ -69,9 +70,9 @@ class wayfire_grid : public wayfire_plugin_t {
     void handle_key(wayfire_view view, int key)
     {
 
-        if (!output->input->activate_plugin(grab_interface))
+        if (!output->activate_plugin(grab_interface))
             return;
-        output->input->grab_input(grab_interface);
+        core->input->grab_input(grab_interface);
 
         int tx, ty, tw, th; // target dimensions
         if (slots[key] == "c") {
@@ -115,8 +116,8 @@ class wayfire_grid : public wayfire_plugin_t {
             output->render->auto_redraw(false);
 
             output->render->rem_effect(&hook);
-            output->input->ungrab_input(grab_interface);
-            output->input->deactivate_plugin(grab_interface);
+            core->input->ungrab_input(grab_interface);
+            output->deactivate_plugin(grab_interface);
         }
     }
 

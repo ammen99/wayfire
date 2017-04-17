@@ -7,7 +7,6 @@
 #include <unordered_map>
 #include "../proto/wayfire-shell-server.h"
 
-/* TODO: add plugin->output so that plugins know which output they're running on */
 /* Controls loading of plugins */
 struct plugin_manager {
     std::vector<wayfire_plugin> plugins;
@@ -20,40 +19,6 @@ struct plugin_manager {
     ~plugin_manager();
 };
 
-/* Manages input grabs */
-/* TODO: make compatible with weston */
-struct input_manager {
-    private:
-        std::unordered_set<wayfire_grab_interface> active_plugins;
-        std::unordered_set<wayfire_grab_interface> active_grabs;
-
-        weston_keyboard_grab kgrab;
-        weston_pointer_grab pgrab;
-
-    public:
-        input_manager();
-        bool activate_plugin  (wayfire_grab_interface owner);
-        bool deactivate_plugin(wayfire_grab_interface owner);
-
-        bool is_plugin_active (owner_t owner_name);
-
-        void grab_input(wayfire_grab_interface);
-        void ungrab_input(wayfire_grab_interface);
-
-        void propagate_pointer_grab_axis  (weston_pointer *ptr, weston_pointer_axis_event *ev);
-        void propagate_pointer_grab_motion(weston_pointer *ptr, weston_pointer_motion_event *ev);
-        void propagate_pointer_grab_button(weston_pointer *ptr, uint32_t button, uint32_t state);
-
-        void propagate_keyboard_grab_key(weston_keyboard *kdb, uint32_t key, uint32_t state);
-        void propagate_keyboard_grab_mod(weston_keyboard *kbd, uint32_t depressed,
-                uint32_t locked, uint32_t latched, uint32_t group);
-
-        void end_grabs();
-
-        /* TODO: support touch */
-        weston_binding* add_key(uint32_t mod, uint32_t key, key_callback*);
-        weston_binding* add_button(uint32_t mod, uint32_t button, button_callback*);
-};
 struct render_manager {
     private:
         wayfire_output *output;
@@ -71,7 +36,7 @@ struct render_manager {
         } background;
 
         pixman_region32_t old_damage;
-        void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
+
         render_hook_t renderer;
 
         void load_background();
@@ -155,24 +120,30 @@ struct signal_manager {
 class wayfire_output {
     friend class core_t;
     private:
-        plugin_manager *plugin;
+       std::unordered_set<wayfire_grab_interface> active_plugins;
+       plugin_manager *plugin;
 
+       wayfire_view active_view;
     public:
     weston_output* handle;
     std::tuple<int, int> get_screen_size() {return std::make_tuple(handle->width, handle->height);}
 
-    input_manager *input;
     render_manager *render;
     signal_manager *signal;
     workspace_manager *workspace;
 
     wayfire_output(weston_output*, wayfire_config *config);
     ~wayfire_output();
+    wayfire_geometry get_full_geometry();
+
+    bool activate_plugin  (wayfire_grab_interface owner);
+    bool deactivate_plugin(wayfire_grab_interface owner);
+    bool is_plugin_active (owner_t owner_name);
 
     void activate();
     void deactivate();
 
-    wayfire_view active_view;
+    wayfire_view get_top_view();
     wayfire_view get_view_at_point(int x, int y);
 
     void attach_view(wayfire_view v);

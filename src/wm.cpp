@@ -51,5 +51,5 @@ void wayfire_focus::init(wayfire_config *)
         if ((ds = weston_surface_get_desktop_surface(surf)) && (view = core->find_view(ds)) && !view->destroyed) {
             view->output->focus_view(view, ptr->seat);
     };
-    output->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, callback);
+    core->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, callback, output);
 }

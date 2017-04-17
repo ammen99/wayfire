@@ -6,6 +6,34 @@
 #include <map>
 
 using output_callback_proc = std::function<void(wayfire_output*)>;
+/* Manages input grabs */
+/* TODO: make compatible with weston */
+struct input_manager {
+    private:
+        std::unordered_set<wayfire_grab_interface> active_grabs;
+
+        weston_keyboard_grab kgrab;
+        weston_pointer_grab pgrab;
+
+    public:
+        input_manager();
+        void grab_input(wayfire_grab_interface);
+        void ungrab_input(wayfire_grab_interface);
+
+        void propagate_pointer_grab_axis  (weston_pointer *ptr, weston_pointer_axis_event *ev);
+        void propagate_pointer_grab_motion(weston_pointer *ptr, weston_pointer_motion_event *ev);
+        void propagate_pointer_grab_button(weston_pointer *ptr, uint32_t button, uint32_t state);
+
+        void propagate_keyboard_grab_key(weston_keyboard *kdb, uint32_t key, uint32_t state);
+        void propagate_keyboard_grab_mod(weston_keyboard *kbd, uint32_t depressed,
+                uint32_t locked, uint32_t latched, uint32_t group);
+
+        void end_grabs();
+
+        /* TODO: support touch */
+        weston_binding* add_key(uint32_t mod, uint32_t key, key_callback*, wayfire_output *output);
+        weston_binding* add_button(uint32_t mod, uint32_t button, button_callback*, wayfire_output *output);
+};
 
 class wayfire_core {
     friend struct plugin_manager;
@@ -18,9 +46,13 @@ class wayfire_core {
     std::map<weston_view*, wayfire_view> views;
 
     void configure(wayfire_config *config);
+    void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
 
+    void refocus_active_output_active_view();
     public:
     std::string wayland_display, xwayland_display;
+
+    input_manager *input;
 
     struct {
         wl_client *client;
@@ -29,6 +61,9 @@ class wayfire_core {
 
     weston_compositor *ec;
     void init(weston_compositor *ec, wayfire_config *config);
+
+    void hijack_renderer();
+    void weston_repaint(weston_output *output, pixman_region32_t *damage);
 
     weston_seat *get_current_seat();
 
@@ -53,7 +88,8 @@ class wayfire_core {
     void remove_output(wayfire_output* o);
 
     wayfire_output *get_active_output();
-    wayfire_output *get_next_output();
+    wayfire_output *get_next_output(wayfire_output *output);
+    size_t          get_num_outputs();
 
     void for_each_output(output_callback_proc);
 
@@ -62,6 +98,8 @@ class wayfire_core {
     int vwidth, vheight;
 
     std::string background, shadersrc, plugin_path, plugins;
+
+    weston_compositor_backend backend;
 };
 
 extern wayfire_core *core;

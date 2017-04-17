@@ -1,4 +1,5 @@
 #include <output.hpp>
+#include <core.hpp>
 #include <queue>
 #include <linux/input.h>
 #include <utility>
@@ -48,10 +49,10 @@ class vswitch : public wayfire_plugin_t {
         auto key_up    = section->get_key("binding_up",    {MODIFIER_SUPER, KEY_UP});
         auto key_down  = section->get_key("binding_down",  {MODIFIER_SUPER, KEY_DOWN});
 
-        output->input->add_key(key_left.mod,  key_left.keyval,  &callback_left);
-        output->input->add_key(key_right.mod, key_right.keyval, &callback_right);
-        output->input->add_key(key_up.mod,    key_up.keyval,    &callback_up);
-        output->input->add_key(key_down.mod,  key_down.keyval,  &callback_down);
+        core->input->add_key(key_left.mod,  key_left.keyval,  &callback_left, output);
+        core->input->add_key(key_right.mod, key_right.keyval, &callback_right, output);
+        core->input->add_key(key_up.mod,    key_up.keyval,    &callback_up, output);
+        core->input->add_key(key_down.mod,  key_down.keyval,  &callback_down, output);
     }
 
     void add_direction(int dx, int dy) {

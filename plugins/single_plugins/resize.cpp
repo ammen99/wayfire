@@ -22,7 +22,7 @@ class wayfire_resize : public wayfire_plugin_t {
             };
 
             using namespace std::placeholders;
-            output->input->add_button(MODIFIER_SUPER, BTN_LEFT, &activate_binding);
+            core->input->add_button(MODIFIER_SUPER, BTN_LEFT, &activate_binding, output);
             grab_interface->callbacks.pointer.button =
                 std::bind(std::mem_fn(&wayfire_resize::button_pressed), this, _1, _2, _3);
             grab_interface->callbacks.pointer.motion =
@@ -50,7 +50,7 @@ class wayfire_resize : public wayfire_plugin_t {
             if (!view || view->is_special)
                 return;
 
-            if (!output->input->activate_plugin(grab_interface))
+            if (!output->activate_plugin(grab_interface))
                 return;
             if (!grab_interface->grab())
                 return;
@@ -88,7 +88,7 @@ class wayfire_resize : public wayfire_plugin_t {
                 return;
 
             grab_interface->ungrab();
-            output->input->deactivate_plugin(grab_interface);
+            output->deactivate_plugin(grab_interface);
             weston_desktop_surface_set_resizing(view->desktop_surface, false);
         }
 

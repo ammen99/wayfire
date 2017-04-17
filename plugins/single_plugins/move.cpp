@@ -26,7 +26,7 @@ class wayfire_move : public wayfire_plugin_t {
 
             auto section = config->get_section("move");
             wayfire_button button = section->get_button("activate", {MODIFIER_ALT, BTN_LEFT});
-            output->input->add_button(button.mod, button.button, &activate_binding);
+            core->input->add_button(button.mod, button.button, &activate_binding, output);
 
             enable_snap = section->get_int("enable_snap", 1);
             snap_pixels = section->get_int("snap_threshold", 2);
@@ -55,7 +55,7 @@ class wayfire_move : public wayfire_plugin_t {
             if (!view || view->is_special)
                 return;
 
-            if (!output->input->activate_plugin(grab_interface))
+            if (!output->activate_plugin(grab_interface))
                 return;
 
             weston_seat_break_desktop_grabs(ptr->seat);
@@ -81,7 +81,7 @@ class wayfire_move : public wayfire_plugin_t {
             }
 
             grab_interface->ungrab();
-            output->input->deactivate_plugin(grab_interface);
+            output->deactivate_plugin(grab_interface);
         }
 
         int calc_slot() {

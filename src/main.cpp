@@ -108,6 +108,7 @@ int main(int argc, char *argv[]) {
         core->add_output(output);
     }
 
+    core->hijack_renderer();
     weston_compositor_wake(ec);
 
     wl_display_run(display);

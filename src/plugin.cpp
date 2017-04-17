@@ -5,11 +5,11 @@ bool wayfire_grab_interface_t::grab() {
     if (grabbed)
         return true;
 
-    if (!output->input->is_plugin_active(name))
+    if (!output->is_plugin_active(name))
         return false;
 
     grabbed = true;
-    output->input->grab_input(this);
+    core->input->grab_input(this);
     return true;
 }
 
@@ -18,7 +18,7 @@ void wayfire_grab_interface_t::ungrab() {
         return;
 
     grabbed = false;
-    output->input->ungrab_input(this);
+    core->input->ungrab_input(this);
 }
 
 void wayfire_plugin_t::fini() {}

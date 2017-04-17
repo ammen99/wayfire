@@ -48,7 +48,7 @@ class wayfire_expo : public wayfire_plugin_t {
             activate();
         };
 
-        output->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb);
+        core->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb, output);
 
         action_button = section->get_button("action", {0, BTN_LEFT});
         grab_interface->callbacks.keyboard.key =
@@ -81,7 +81,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void activate()
     {
-        if (!output->input->activate_plugin(grab_interface))
+        if (!output->activate_plugin(grab_interface))
             return;
 
         grab_interface->grab();
@@ -298,7 +298,7 @@ class wayfire_expo : public wayfire_plugin_t {
     void finalize_and_exit()
     {
         state.active = false;
-        output->input->deactivate_plugin(grab_interface);
+        output->deactivate_plugin(grab_interface);
         grab_interface->ungrab();
 
         output->render->reset_renderer();

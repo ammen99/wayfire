@@ -3,6 +3,209 @@
 #include "img.hpp"
 #include <unistd.h>
 #include "../proto/wayfire-shell-server.h"
+#include "signal_definitions.hpp"
+/* Manages input grabs */
+/* TODO: make compatible with weston */
+
+/* Start input_manager */
+
+/* pointer grab callbacks */
+void pointer_grab_focus(weston_pointer_grab*) { }
+void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev)
+{
+    core->input->propagate_pointer_grab_axis(grab->pointer, ev);
+}
+void pointer_grab_axis_source(weston_pointer_grab*, uint32_t) {}
+void pointer_grab_frame(weston_pointer_grab*) {}
+void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev)
+{
+    weston_pointer_move(grab->pointer, ev);
+    core->input->propagate_pointer_grab_motion(grab->pointer, ev);
+}
+void pointer_grab_button(weston_pointer_grab *grab, uint32_t, uint32_t b, uint32_t s)
+{
+    core->input->propagate_pointer_grab_button(grab->pointer, b, s);
+}
+void pointer_grab_cancel(weston_pointer_grab *grab)
+{
+    core->input->end_grabs();
+}
+
+namespace
+{
+const weston_pointer_grab_interface pointer_grab_interface = {
+    pointer_grab_focus, pointer_grab_motion,      pointer_grab_button,
+    pointer_grab_axis,  pointer_grab_axis_source, pointer_grab_frame,
+    pointer_grab_cancel
+};
+}
+
+/* keyboard grab callbacks */
+void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key,
+                       uint32_t state)
+{
+    core->input->propagate_keyboard_grab_key(grab->keyboard, key, state);
+}
+void keyboard_grab_mod(weston_keyboard_grab *grab, uint32_t time,
+                       uint32_t depressed, uint32_t locked, uint32_t latched,
+                       uint32_t group)
+{
+    core->input->propagate_keyboard_grab_mod(grab->keyboard, depressed, locked, latched, group);
+}
+void keyboard_grab_cancel(weston_keyboard_grab *)
+{
+    core->input->end_grabs();
+}
+namespace
+{
+const weston_keyboard_grab_interface keyboard_grab_interface = {
+    keyboard_grab_key, keyboard_grab_mod, keyboard_grab_cancel
+};
+}
+
+input_manager::input_manager()
+{
+    pgrab.interface = &pointer_grab_interface;
+    kgrab.interface = &keyboard_grab_interface;
+}
+
+void input_manager::grab_input(wayfire_grab_interface iface)
+{
+    if (!iface->grabbed)
+        return;
+
+    active_grabs.insert(iface);
+    if (1 == active_grabs.size()) {
+        weston_pointer_start_grab(weston_seat_get_pointer(core->get_current_seat()),
+                                  &pgrab);
+        weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
+                                   &kgrab);
+    }
+}
+
+void input_manager::ungrab_input(wayfire_grab_interface iface)
+{
+    active_grabs.erase(iface);
+    if (active_grabs.empty()) {
+        weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
+        weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
+    }
+}
+
+void input_manager::propagate_pointer_grab_axis(weston_pointer *ptr,
+        weston_pointer_axis_event *ev)
+{
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.pointer.axis)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab) x->callbacks.pointer.axis(ptr, ev);
+}
+
+void input_manager::propagate_pointer_grab_motion(
+    weston_pointer *ptr, weston_pointer_motion_event *ev)
+{
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.pointer.motion) grab.push_back(x);
+    }
+
+    for (auto x : grab) x->callbacks.pointer.motion(ptr, ev);
+}
+
+void input_manager::propagate_pointer_grab_button(weston_pointer *ptr,
+        uint32_t button,
+        uint32_t state)
+{
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.pointer.button)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.pointer.button(ptr, button, state);
+}
+
+void input_manager::propagate_keyboard_grab_key(weston_keyboard *kbd,
+        uint32_t key, uint32_t state)
+{
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.keyboard.key) {
+            grab.push_back(x);
+        }
+    }
+
+    for (auto x : grab)
+        x->callbacks.keyboard.key(kbd, key, state);
+}
+
+void input_manager::propagate_keyboard_grab_mod(weston_keyboard *kbd,
+        uint32_t depressed, uint32_t locked, uint32_t latched, uint32_t group)
+{
+    std::vector<wayfire_grab_interface> grab;
+    for (auto x : active_grabs) {
+        if (x->callbacks.keyboard.mod)
+            grab.push_back(x);
+    }
+
+    for (auto x : grab)
+        x->callbacks.keyboard.mod(kbd, depressed, locked, latched, group);
+}
+
+void input_manager::end_grabs()
+{
+    std::vector<wayfire_grab_interface> v;
+
+    for (auto x : active_grabs)
+        v.push_back(x);
+
+    for (auto x : v)
+        ungrab_input(x);
+}
+
+struct key_callback_data {
+    key_callback *call;
+    wayfire_output *output;
+};
+
+static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data)
+{
+    auto ddata = (key_callback_data*) data;
+    if (core->get_active_output() == ddata->output)
+        (*ddata->call) (kbd, key);
+}
+
+struct button_callback_data {
+    button_callback *call;
+    wayfire_output *output;
+};
+
+static void buttonbinding_handler(weston_pointer *ptr, uint32_t time,
+        uint32_t button, void *data)
+{
+    auto ddata = (button_callback_data*) data;
+    if (core->get_active_output() == ddata->output)
+        (*ddata->call) (ptr, button);
+}
+
+weston_binding* input_manager::add_key(uint32_t mod, uint32_t key,
+        key_callback *call, wayfire_output *output)
+{
+    return weston_compositor_add_key_binding(core->ec, key,
+            (weston_keyboard_modifier)mod, keybinding_handler, new key_callback_data {call, output});
+}
+
+weston_binding* input_manager::add_button(uint32_t mod,
+        uint32_t button, button_callback *call, wayfire_output *output)
+{
+    return weston_compositor_add_button_binding(core->ec, button,
+            (weston_keyboard_modifier)mod, buttonbinding_handler, new button_callback_data {call, output});
+}
+/* End input_manager */
 
 void wayfire_core::configure(wayfire_config *config)
 {
@@ -64,6 +267,31 @@ void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
                 1, NULL, bind_desktop_shell) == NULL) {
         errio << "Failed to create wayfire_shell interface" << std::endl;
     }
+
+    input = new input_manager();
+}
+
+/* TODO: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
+ * However, this isn't always true. Also, hijacking isn't the best option
+ * We should render to a surface which is made standalone */
+void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
+{
+    auto output = core->get_output(o);
+    if (output) {
+        output->render->pre_paint();
+        output->render->paint(damage);
+    }
+}
+
+void wayfire_core::hijack_renderer()
+{
+    weston_renderer_repaint = core->ec->renderer->repaint_output;
+    core->ec->renderer->repaint_output = repaint_output_callback;
+}
+
+void wayfire_core::weston_repaint(weston_output *output, pixman_region32_t *damage)
+{
+    weston_renderer_repaint(output, damage);
 }
 
 weston_seat* wayfire_core::get_current_seat()
@@ -89,12 +317,46 @@ void wayfire_core::add_output(weston_output *output)
                 output->width, output->height);
 }
 
-void wayfire_core::focus_output(wayfire_output *o)
+void wayfire_core::refocus_active_output_active_view()
 {
-    if (!o)
+    auto view = active_output->get_top_view();
+    if (view) {
+        active_output->focus_view(nullptr, get_current_seat());
+        active_output->focus_view(view, get_current_seat());
+    }
+}
+
+void wayfire_core::focus_output(wayfire_output *wo)
+{
+
+    assert(wo);
+    if (active_output == wo)
         return;
 
-    active_output = o;
+    auto ptr = weston_seat_get_pointer(get_current_seat());
+    int px = wl_fixed_to_int(ptr->x), py = wl_fixed_to_int(ptr->y);
+
+    auto g = wo->get_full_geometry();
+    if (!point_inside({px, py}, g)) {
+        wl_fixed_t cx = wl_fixed_from_int(g.origin.x + g.size.w / 2);
+        wl_fixed_t cy = wl_fixed_from_int(g.origin.y + g.size.h / 2);
+
+        weston_pointer_motion_event ev;
+        ev.mask |= WESTON_POINTER_MOTION_ABS;
+        ev.x = wl_fixed_to_double(cx);
+        ev.y = wl_fixed_to_double(cy);
+
+        weston_pointer_move(ptr, &ev);
+    }
+
+
+    debug << "focus_output old: " << (active_output ? active_output->handle->id : -1)
+        << " new output: " << wo->handle->id << std::endl;
+    if (active_output)
+        active_output->focus_view(nullptr, get_current_seat());
+
+    active_output = wo;
+    refocus_active_output_active_view();
 }
 
 wayfire_output* wayfire_core::get_output(weston_output *handle)
@@ -112,9 +374,9 @@ wayfire_output* wayfire_core::get_active_output()
     return active_output;
 }
 
-wayfire_output* wayfire_core::get_next_output()
+wayfire_output* wayfire_core::get_next_output(wayfire_output *output)
 {
-    auto id = active_output->handle->id;
+    auto id = output->handle->id;
     auto it = outputs.find(id);
     ++it;
 
@@ -123,6 +385,11 @@ wayfire_output* wayfire_core::get_next_output()
     } else {
         return it->second;
     }
+}
+
+size_t wayfire_core::get_num_outputs()
+{
+    return outputs.size();
 }
 
 void wayfire_core::for_each_output(output_callback_proc call)

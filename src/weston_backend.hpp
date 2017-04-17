@@ -10,8 +10,6 @@
 #include <assert.h>
 #include <libinput.h>
 
-//TODO: drm backend doesn't work since libweston 2.0
-//
 wl_listener output_pending_listener;
 void set_output_pending_handler(weston_compositor *ec, wl_notify_func_t handler) {
     output_pending_listener.notify = handler;
@@ -71,10 +69,12 @@ int load_drm_backend(weston_compositor *ec) {
             configure_drm_backend_output(&output_pending_listener, output);
         pending_outputs.clear();
     }
+
+    core->backend = WESTON_BACKEND_DRM;
     return ret;
 }
 
-const int default_width = 1600, default_height = 900;
+const int default_width = 800, default_height = 450;
 void configure_wayland_backend_output (wl_listener *listener, void *data) {
     weston_output *output = (weston_output*)data;
     auto api = weston_windowed_output_get_api(output->compositor);
@@ -116,6 +116,9 @@ int load_wayland_backend(weston_compositor *ec) {
 
     if (api->output_create(ec, "wl1") < 0)
         return -1;
+    if (api->output_create(ec, "wl2") < 0)
+        return -1;
+    core->backend = WESTON_BACKEND_WAYLAND;
     return 0;
 }
 

@@ -1,58 +1,63 @@
 #include <output.hpp>
 #include <core.hpp>
+#include <linux/input-event-codes.h>
 
-class OutputSwitcher : public Plugin {
-    KeyBinding switch_output, switch_output_with_window;
-    Key without, with;
+#define MAX_OUTPUT_WIDTH 4096
+
+void next_output_idle_cb(void *data)
+{
+    auto wo = (wayfire_output*) data;
+    core->focus_output(wo);
+}
+
+class wayfire_output_manager : public wayfire_plugin_t {
+    key_callback switch_output, switch_output_with_window;
 
     public:
-        void initOwnership() {
+        void init(wayfire_config *config)
+        {
             grab_interface->name = "oswitch";
             grab_interface->compatAll = true;
-        }
 
-        void updateConfiguration() {
-            using namespace std::placeholders;
+            auto section = config->get_section("oswitch");
 
-            without = *options["switch_output"]->data.key;
-            with    = *options["switch_output_with_window"]->data.key;
+            auto actkey  = section->get_key("next_output", {MODIFIER_SUPER, KEY_K});
+            auto withwin = section->get_key("next_output_with_key", {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_K});
 
-            if (without.key) {
-                switch_output.key = without.key;
-                switch_output.mod = without.mod;
-                switch_output.active = true;
-                switch_output.action = std::bind(std::mem_fn(&OutputSwitcher::handle_key), this, _1);
-                output->hook->add_key(&switch_output);
-            }
+            switch_output = [=] (weston_keyboard *kbd, uint32_t key) {
+                /* when we switch the output, the oswitch keybinding
+                 * will be activated for the next output, which we don't want,
+                 * so we postpone the switch */
+                auto next = core->get_next_output(output);
 
-            if (with.key) {
-                switch_output_with_window.key = with.key;
-                switch_output_with_window.mod = with.mod;
-                switch_output_with_window.active = true;
-                switch_output_with_window.action = std::bind(std::mem_fn(&OutputSwitcher::handle_key), this, _1);
-                output->hook->add_key(&switch_output_with_window);
-            }
-        }
+                auto loop = wl_display_get_event_loop(core->ec->wl_display);
+                wl_event_loop_add_idle(loop, next_output_idle_cb, next);
+            };
 
-        void init() {
-            options.insert(newKeyOption("switch_output", Key{0, 0}));
-            options.insert(newKeyOption("switch_output_with_window", Key{0, 0}));
-        }
+            switch_output_with_window = [=] (weston_keyboard *kbd, uint32_t key) {
+                auto next = core->get_next_output(output);
+                auto view = output->get_top_view();
 
-        void handle_key(EventContext ctx) {
-            auto key = ctx.xev.xkey;
-            auto next = core->get_next_output();
-            auto view = output->get_active_view();
-            core->focus_output(next);
+                core->move_view_to_output(view, view->output, next);
 
-            if (key.key == with.key && key.mod == with.mod) {
-                wlc_view_set_output(view->get_id(), next->get_handle());
-            }
+                auto loop = wl_display_get_event_loop(core->ec->wl_display);
+                wl_event_loop_add_idle(loop, next_output_idle_cb, next);
+            };
+
+            core->input->add_key(actkey.mod, actkey.keyval, &switch_output, output);
+            core->input->add_key(withwin.mod, withwin.keyval, &switch_output_with_window, output);
+
+            /* we exploit the fact that when we're called a new output is
+             * created, so we can configure it here */
+
+            int n = core->get_num_outputs() - 1;
+            weston_output_move(output->handle, 6 * n * MAX_OUTPUT_WIDTH, 0);
         }
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new OutputSwitcher();
+    wayfire_plugin_t *newInstance()
+    {
+        return new wayfire_output_manager();
     }
 }

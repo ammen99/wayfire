@@ -85,7 +85,7 @@ class view_switcher : public wayfire_plugin_t {
             fast_switch();
         };
 
-        output->input->add_key(fast_switch_key.mod, fast_switch_key.keyval, &fast_switch_binding);
+        core->input->add_key(fast_switch_key.mod, fast_switch_key.keyval, &fast_switch_binding, output);
 
         /* TODO: we should do this in seconds and convert it to steps using framerate */
         max_steps = section->get_int("duration", 30);
@@ -100,7 +100,7 @@ class view_switcher : public wayfire_plugin_t {
                 start_exit();
             }
         };
-        output->input->add_key(activate_key.mod, activate_key.keyval, &init_binding);
+        core->input->add_key(activate_key.mod, activate_key.keyval, &init_binding, output);
 
         using namespace std::placeholders;
         grab_interface->callbacks.keyboard.key = std::bind(std::mem_fn(&view_switcher::handle_key),
@@ -124,12 +124,12 @@ class view_switcher : public wayfire_plugin_t {
 
     void activate()
     {
-        if (!output->input->activate_plugin(grab_interface))
+        if (!output->activate_plugin(grab_interface))
             return;
 
         update_views();
         if (!views.size()) {
-            output->input->deactivate_plugin(grab_interface);
+            output->deactivate_plugin(grab_interface);
             return;
         }
 
@@ -539,7 +539,7 @@ class view_switcher : public wayfire_plugin_t {
              output->render->auto_redraw(false);
              output->render->reset_renderer();
              grab_interface->ungrab();
-             output->input->deactivate_plugin(grab_interface);
+             output->deactivate_plugin(grab_interface);
 
              state.in_terminate = false;
              state.active = false;
@@ -614,7 +614,7 @@ class view_switcher : public wayfire_plugin_t {
 
     void fast_switch() {
         if (!state.active) {
-            if (!output->input->activate_plugin(grab_interface))
+            if (!output->activate_plugin(grab_interface))
                 return;
 
             update_views();
@@ -636,7 +636,7 @@ class view_switcher : public wayfire_plugin_t {
     {
         output->focus_view(views[index], core->get_current_seat());
         grab_interface->ungrab();
-        output->input->deactivate_plugin(grab_interface);
+        output->deactivate_plugin(grab_interface);
         state.active = false;
         state.in_fast_switch = false;
     }

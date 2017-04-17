@@ -24,7 +24,7 @@ struct wayfire_grab_interface_t {
     owner_t name;
     std::unordered_set<owner_t> compat;
     bool compatAll = true;
-    const wayfire_output *output;
+    wayfire_output *output;
 
     wayfire_grab_interface_t(wayfire_output *_output) : output(_output) {}
 

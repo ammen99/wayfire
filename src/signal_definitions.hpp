@@ -2,6 +2,11 @@
 #define SIGNAL_DEFINITIONS_HPP
 
 #include "output.hpp"
+
+struct output_created_signal : public signal_data {
+    wayfire_output* output;
+};
+
 struct create_view_signal : public signal_data {
     wayfire_view created_view;
 
