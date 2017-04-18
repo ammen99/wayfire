@@ -253,11 +253,12 @@ void viewport_manager::configure_panel(wayfire_view view, int x, int y)
 
 wayfire_geometry viewport_manager::get_workarea()
 {
+    auto g = output->get_full_geometry();
     return
     {
-        .origin = {workarea.left_padding, workarea.top_padding},
-        .size = {output->handle->width - workarea.left_padding - workarea.right_padding,
-                 output->handle->height - workarea.top_padding - workarea.bot_padding}
+        .origin = {g.origin.x + workarea.left_padding, g.origin.y + workarea.top_padding},
+        .size = {g.size.w - workarea.left_padding - workarea.right_padding,
+                 g.size.h - workarea.top_padding - workarea.bot_padding}
     };
 }
 
