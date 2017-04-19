@@ -180,7 +180,9 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
         OpenGL::prepare_framebuffer(fbuff, tex);
 
     pixman_region32_t full_region;
-    pixman_region32_init_rect(&full_region, 0, 0, output->handle->width, output->handle->height);
+    auto g = output->get_full_geometry();
+    pixman_region32_init_rect(&full_region, g.origin.x, g.origin.y,
+            g.size.w, g.size.h);
     output->render->blit_background(fbuff, &full_region);
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
@@ -188,8 +190,8 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
     GetTuple(x, y, vp);
     GetTuple(cx, cy, get_current_workspace());
 
-    int dx = (cx - x)  * output->handle->width,
-        dy = (cy - y)  * output->handle->height;
+    int dx = -g.origin.x + (cx - x)  * output->handle->width,
+        dy = -g.origin.y + (cy - y)  * output->handle->height;
 
     wayfire_geometry output_rect = {
         .origin = {-dx, -dy},
@@ -197,8 +199,7 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
     };
 
     for_each_view_reverse([=] (wayfire_view v) {
-        /* TODO: check if it really is visible */
-        if (rect_inside(output_rect, v->geometry)) {
+        if (v->is_visible() && rect_inside(output_rect, v->geometry)) {
             v->geometry.origin.x += dx;
             v->geometry.origin.y += dy;
             v->render(0);

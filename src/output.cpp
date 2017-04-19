@@ -114,9 +114,6 @@ void plugin_manager::init_default_plugins()
 /* End plugin_manager */
 
 /* Start render_manager */
-/* this is a hack, wayland backend has borders set to 38, 38 so honour them */
-static int bg_dx = 0, bg_dy = 0;
-
 render_manager::render_manager(wayfire_output *o)
 {
     output = o;
@@ -126,7 +123,9 @@ render_manager::render_manager(wayfire_output *o)
 
     if (core->backend == WESTON_BACKEND_WAYLAND) {
         debug << "Yes, try it" << std::endl;
-        bg_dx = bg_dy = 38;
+        output->output_dx = output->output_dy = 38;
+    } else {
+        output->output_dx = output->output_dy = 0;
     }
 }
 
@@ -191,8 +190,11 @@ void render_manager::blit_background(GLuint dest, pixman_region32_t *damage)
 
         GL_CALL(glBlitFramebuffer(topx * background.w, topy * background.h,
                                   botx * background.w, boty * background.h,
-                                  bg_dx + rects[i].x1, output->handle->height - rects[i].y1 + bg_dy,
-                                  bg_dx + rects[i].x2, output->handle->height - rects[i].y2 + bg_dy, GL_COLOR_BUFFER_BIT, GL_LINEAR));
+                                  output->output_dx + rects[i].x1,
+                                  output->handle->height - rects[i].y1 + output->output_dy,
+                                  output->output_dx + rects[i].x2,
+                                  output->handle->height - rects[i].y2 + output->output_dy,
+                                  GL_COLOR_BUFFER_BIT, GL_LINEAR));
     }
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
@@ -229,8 +231,7 @@ void render_manager::auto_redraw(bool redraw)
 void render_manager::reset_renderer()
 {
     renderer = nullptr;
-    /* TODO: move to core.cpp */
-    //core->ec->renderer->repaint_output = weston_renderer_repaint;
+
     weston_output_damage(output->handle);
     weston_output_schedule_repaint(output->handle);
 }
@@ -259,23 +260,14 @@ struct weston_gl_renderer {
     EGLContext context;
 };
 
-void initial_background_render_idle_cb(void *data)
-{
-    auto output = (wayfire_output*) data;
-    weston_output_schedule_repaint(output->handle);
-}
 void render_manager::paint(pixman_region32_t *damage)
 {
     pixman_region32_t total_damage;
 
     if (dirty_context) {
         load_context();
-        core->weston_repaint(output->handle, damage);
-
-        auto loop = wl_display_get_event_loop(core->ec->wl_display);
-        wl_event_loop_add_idle(loop, redraw_idle_cb, output);
-        return;
     }
+
     // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
     // In the future this might change so we need to track changes in weston
     EGLSurface surf = *(EGLSurface*)output->handle->renderer_state;

@@ -315,6 +315,8 @@ void wayfire_core::add_output(weston_output *output)
     if (wf_shell.client)
         wayfire_shell_send_output_created(wf_shell.resource, output->id,
                 output->width, output->height);
+
+    weston_output_schedule_repaint(output);
 }
 
 void wayfire_core::refocus_active_output_active_view()

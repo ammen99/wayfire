@@ -50,7 +50,7 @@ class wayfire_output_manager : public wayfire_plugin_t {
             /* we exploit the fact that when we're called a new output is
              * created, so we can configure it here */
 
-            int n = core->get_num_outputs() - 1;
+            int n = core->get_num_outputs();
             weston_output_move(output->handle, 6 * n * MAX_OUTPUT_WIDTH, 0);
         }
 };

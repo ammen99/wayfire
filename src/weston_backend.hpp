@@ -43,8 +43,8 @@ void configure_drm_backend_output (wl_listener *listener, void *data) {
     api->set_seat(output, "");
 
     weston_output_enable(output);
-    if (core)
-        core->add_output(output);
+    //if (core)
+     //   core->add_output(output);
 }
 
 int load_drm_backend(weston_compositor *ec) {
@@ -112,13 +112,14 @@ int load_wayland_backend(weston_compositor *ec) {
     if (api == NULL)
         return -1;
 
+    core->backend = WESTON_BACKEND_WAYLAND;
     set_output_pending_handler(ec, configure_wayland_backend_output);
 
     if (api->output_create(ec, "wl1") < 0)
         return -1;
     if (api->output_create(ec, "wl2") < 0)
         return -1;
-    core->backend = WESTON_BACKEND_WAYLAND;
+
     return 0;
 }
 

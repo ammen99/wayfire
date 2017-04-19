@@ -126,6 +126,9 @@ class wayfire_output {
        wayfire_view active_view;
     public:
     weston_output* handle;
+
+    /* used for differences between backends */
+    int output_dx, output_dy;
     std::tuple<int, int> get_screen_size() {return std::make_tuple(handle->width, handle->height);}
 
     render_manager *render;

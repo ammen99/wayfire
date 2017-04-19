@@ -207,6 +207,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void render()
     {
+        debug << "rendering expo " << output->handle->x << " " << output->handle->y << std::endl;
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         GetTuple(vx, vy, output->workspace->get_current_workspace());
         GetTuple(w,  h,  output->get_screen_size());

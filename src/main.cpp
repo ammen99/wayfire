@@ -14,6 +14,12 @@
 std::ofstream file_info, file_null, *file_debug;
 weston_compositor *crash_compositor;
 
+void output_created_cb (wl_listener*, void *data)
+{
+    auto output = (weston_output*) data;
+    core->add_output(output);
+}
+
 weston_desktop_api desktop_api;
 int main(int argc, char *argv[]) {
     char *debugging_enabled = secure_getenv("WAYFIRE_DEBUG");
@@ -66,6 +72,10 @@ int main(int argc, char *argv[]) {
     core = new wayfire_core();
     core->init(ec, config);
 
+    wl_listener output_created_listener;
+    output_created_listener.notify = output_created_cb;
+    wl_signal_add(&ec->output_created_signal, &output_created_listener);
+
     int ret;
     if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
         ret = load_wayland_backend(ec);
@@ -76,6 +86,8 @@ int main(int argc, char *argv[]) {
         debug << "failed to load weston backend, exiting" << std::endl;
         return 0;
     }
+
+    core->hijack_renderer();
 
     auto server_name = wl_display_add_socket_auto(display);
     if (!server_name) {
@@ -103,12 +115,13 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
+    /*
     weston_output *output;
     wl_list_for_each(output, &ec->output_list, link) {
         core->add_output(output);
     }
+    */
 
-    core->hijack_renderer();
     weston_compositor_wake(ec);
 
     wl_display_run(display);
