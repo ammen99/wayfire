@@ -5,6 +5,8 @@
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
+#include <functional>
+
 
 class wayfire_view_transform {
     public: // applied to all views

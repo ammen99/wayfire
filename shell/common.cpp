@@ -14,7 +14,8 @@ void pointer_enter(void *data, struct wl_pointer *wl_pointer,
 {
     auto window = (wayfire_window*) wl_surface_get_user_data(surface);
     if (window && window->pointer_enter)
-        window->pointer_enter(wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y));
+        window->pointer_enter(wl_pointer, serial,
+                wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y));
     else if (window)
         current_window = window;
 }
@@ -60,15 +61,20 @@ void registry_add_object(void *data, struct wl_registry *registry, uint32_t name
         const char *interface, uint32_t version)
 {
 	if (!strcmp(interface,"wl_compositor")) {
-		display.compositor = (wl_compositor*) wl_registry_bind (registry, name, &wl_compositor_interface, std::min(version, 2u));
+		display.compositor = (wl_compositor*) wl_registry_bind (registry, name,
+                &wl_compositor_interface, std::min(version, 2u));
 	} else if (!strcmp(interface,"wl_shell")) {
-		display.shell = (wl_shell*) wl_registry_bind (registry, name, &wl_shell_interface, std::min(version, 2u));
+		display.shell = (wl_shell*) wl_registry_bind(registry, name,
+                &wl_shell_interface, std::min(version, 2u));
 	} else if (strcmp(interface, wl_seat_interface.name) == 0) {
         display.seat = (wl_seat*) wl_registry_bind(registry, name,
             &wl_seat_interface, std::min(version, 2u));
         display.pointer = wl_seat_get_pointer(display.seat);
         wl_pointer_add_listener(display.pointer, &pointer_listener,
             NULL);
+    } else if (strcmp(interface, "wl_shm") == 0) {
+        display.shm = (wl_shm*) wl_registry_bind(registry, name, &wl_shm_interface,
+                std::min(version, 1u));
     } else if (strcmp(interface, wayfire_shell_interface.name) == 0) {
         display.wfshell = (wayfire_shell*) wl_registry_bind(registry, name, &wayfire_shell_interface,
                 std::min(version, 1u));

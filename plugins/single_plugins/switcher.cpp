@@ -162,12 +162,13 @@ class view_switcher : public wayfire_plugin_t {
 
             float scale_factor = get_scale_factor(v->geometry.size.w, v->geometry.size.h, sw, sh, 0.28888);
 
-            active_views.push_back(
-                    { .view = v,
-                      .off_x = {cx, 0},
-                      .off_y = {cy, 0},
-                      .scale_x = {1, scale_factor},
-                      .scale_y = {1, scale_factor}});
+            view_paint_attribs elem;
+            elem.view = v;
+            elem.off_x = {cx, 0};
+            elem.off_y = {cy, 0};
+            elem.scale_x = {1, scale_factor};
+            elem.scale_y = {1, scale_factor};
+            active_views.push_back(elem);
         }
 
         if (views.size() == 2) {
@@ -206,10 +207,11 @@ class view_switcher : public wayfire_plugin_t {
         OpenGL::use_default_program();
         GL_CALL(glEnable(GL_DEPTH_TEST));
 
-        auto bg = output->render->get_background();
-        wayfire_geometry g = {.origin = {0, 0}, .size = {output->handle->width, output->handle->height}};
-        OpenGL::render_transformed_texture(bg, g, glm::mat4(),
-                glm::vec4(0.7, 0.7, 0.7, 1.0), TEXTURE_TRANSFORM_USE_COLOR);
+        auto bg = output->workspace->get_background_view();
+        if (bg) {
+            bg->transform.color = glm::vec4(0.7, 0.7, 0.7, 1.0);
+            bg->render(0);
+        }
 
         if (state.in_center)
             update_center();
@@ -350,43 +352,45 @@ class view_switcher : public wayfire_plugin_t {
         //update_views();
 
         if (views.size() == 2) {
-            active_views.push_back({
-                    .view = views[0],
-                    .off_x = {0, attribs.offset},
-                    .off_y = {0, 0},
-                    .off_z = {0, -attribs.back},
-                    .rot= {0, -attribs.angle}});
+            view_paint_attribs elem;
+            elem.view = views[0];
+            elem.off_x = {0, attribs.offset};
+            elem.off_y = {0, 0};
+            elem.off_z = {0, -attribs.back};
+            elem.rot= {0, -attribs.angle};
 
-            active_views.push_back({
-                    .view = views[1],
-                    .off_x = {0, -attribs.offset},
-                    .off_y = {0, 0},
-                    .off_z = {0, -attribs.back},
-                    .rot = {0, attribs.angle}});
+            active_views.push_back(elem);
+            elem.view = views[1];
+            elem.off_x = {0, -attribs.offset};
+            elem.off_y = {0, 0};
+            elem.off_z = {0, -attribs.back};
+            elem.rot = {0, attribs.angle};
+            active_views.push_back(elem);
         } else {
             int prev = views.size() - 1;
             int next = 1;
-            active_views.push_back({
-                    .view = views[0],
-                    .off_x = {0, 0},
-                    .off_y = {0, 0},
-                    .off_z = {0, 0},
-                    .rot = {0, 0}});
 
+            view_paint_attribs elem;
+            elem.view = views[0];
+            elem.off_x = {0, 0};
+            elem.off_y = {0, 0};
+            elem.off_z = {0, 0};
+            elem.rot = {0, 0};
+            active_views.push_back(elem);
 
-            active_views.push_back({
-                    .view = views[prev],
-                    .off_x = {0, -attribs.offset},
-                    .off_y = {0, 0},
-                    .off_z = {0, -attribs.back},
-                    .rot = {0, +attribs.angle}});
+            elem.view = views[prev];
+            elem.off_x = {0, -attribs.offset};
+            elem.off_y = {0, 0};
+            elem.off_z = {0, -attribs.back};
+            elem.rot = {0, +attribs.angle};
+            active_views.push_back(elem);
 
-            active_views.push_back({
-                    .view = views[next],
-                    .off_x = {0, +attribs.offset},
-                    .off_y = {0, 0},
-                    .off_z = {0, -attribs.back},
-                    .rot = {0, -attribs.angle}});
+            elem.view = views[next];
+            elem.off_x = {0, +attribs.offset};
+            elem.off_y = {0, 0};
+            elem.off_z = {0, -attribs.back};
+            elem.rot = {0, -attribs.angle};
+            active_views.push_back(elem);
         }
     }
 
@@ -458,57 +462,52 @@ class view_switcher : public wayfire_plugin_t {
 
         active_views.clear();
         /* only two views */
-        if (next == prev) {
-            active_views.push_back({
-                    .view = views[index],
-                        .off_x = {-attribs.offset, attribs.offset},
-                        .off_z = {attribs.back, attribs.back},
-                        .rot   = {attribs.angle, -attribs.angle},
-                    });
 
-            active_views.push_back({
-                        .view = views[next],
-                        .off_x = {attribs.offset, -attribs.offset},
-                        .off_z = {attribs.back, attribs.back},
-                        .rot   = {-attribs.angle, attribs.angle},
-                    });
+        view_paint_attribs elem;
+        if (next == prev) {
+            elem.view = views[index],
+            elem.off_x = {-attribs.offset, attribs.offset};
+            elem.off_z = {attribs.back, attribs.back};
+            elem.rot   = {attribs.angle, -attribs.angle};
+            active_views.push_back(elem);
+
+            elem.view = views[next],
+            elem.off_x = {attribs.offset, -attribs.offset};
+            elem.off_z = {attribs.back, attribs.back};
+            elem.rot   = {-attribs.angle, attribs.angle};
+            active_views.push_back(elem);
         } else {
-            active_views.push_back({
-                        .view = views[index],
-                        .off_x = {attribs.offset * dir, 0},
-                        .off_z = {-attribs.back, 0},
-                        .rot   = {-attribs.angle * dir, 0},
-                    });
+            elem.view = views[index];
+            elem.off_x = {attribs.offset * dir, 0};
+            elem.off_z = {-attribs.back, 0};
+            elem.rot   = {-attribs.angle * dir, 0};
+            active_views.push_back(elem);
 
             if (dir == 1) {
-                active_views.push_back({
-                            .view = views[prev],
-                            .off_x = {0, -attribs.offset},
-                            .off_z = {0, -attribs.back},
-                            .rot   = {0, attribs.angle},
-                        });
+                elem.view = views[prev];
+                elem.off_x = {0, -attribs.offset};
+                elem.off_z = {0, -attribs.back};
+                elem.rot   = {0, attribs.angle};
+                active_views.push_back(elem);
 
-                active_views.push_back({
-                            .view = views[next],
-                            .off_x = {attribs.offset, attribs.offset},
-                            .off_z = {-attribs.back, -attribs.back},
-                            .rot   = {-attribs.angle, -attribs.angle}
-                        });
+                elem.view = views[next];
+                elem.off_x = {attribs.offset, attribs.offset};
+                elem.off_z = {-attribs.back, -attribs.back};
+                elem.rot   = {-attribs.angle, -attribs.angle};
+                active_views.push_back(elem);
 
             } else {
-                 active_views.push_back({
-                            .view = views[next],
-                            .off_x = {0, attribs.offset},
-                            .off_z = {0, attribs.back},
-                            .rot   = {0, -attribs.angle}
-                        });
+                elem.view = views[next];
+                elem.off_x = {0, attribs.offset};
+                elem.off_z = {0, attribs.back};
+                elem.rot   = {0, -attribs.angle};
+                active_views.push_back(elem);
 
-                active_views.push_back({
-                            .view = views[prev],
-                            .off_x = {-attribs.offset, -attribs.offset},
-                            .off_z = {-attribs.back, -attribs.back},
-                            .rot   = {attribs.angle, attribs.angle}
-                        });
+                elem.view = views[prev];
+                elem.off_x = {-attribs.offset, -attribs.offset};
+                elem.off_z = {-attribs.back, -attribs.back};
+                elem.rot   = {attribs.angle, attribs.angle};
+                active_views.push_back(elem);
             }
         }
 
@@ -541,6 +540,10 @@ class view_switcher : public wayfire_plugin_t {
              grab_interface->ungrab();
              output->deactivate_plugin(grab_interface);
 
+             auto bg = output->workspace->get_background_view();
+             if (bg)
+                 bg->transform.color = glm::vec4(1);
+
              state.in_terminate = false;
              state.active = false;
 
@@ -568,6 +571,7 @@ class view_switcher : public wayfire_plugin_t {
 
         active_views.clear();
 
+        view_paint_attribs elem;
         for (size_t i = 0; i < views.size(); i++) {
 
             const auto& v = views[i];
@@ -578,34 +582,34 @@ class view_switcher : public wayfire_plugin_t {
             float scale_factor = get_scale_factor(v->geometry.size.w, v->geometry.size.h, sw, sh, 0.28888);
 
             if (i != next && i != prev && prev != next) {
-                view_paint_attribs attr = { .view = v,
-                          .off_x = {0, cx},
-                          .off_y = {0, cy},
-                          .scale_x = {scale_factor, 1},
-                          .scale_y = {scale_factor, 1},
-                          .rot     = {0, 0}};
+                elem.view = v;
+                elem.off_x = {0, cx};
+                elem.off_y = {0, cy};
+                elem.scale_x = {scale_factor, 1};
+                elem.scale_y = {scale_factor, 1};
+                elem.rot     = {0, 0};
 
                 if (i == index) {
-                    active_views.insert(active_views.begin(), attr);
+                    active_views.insert(active_views.begin(), elem);
                 } else {
-                    active_views.push_back(attr);
+                    active_views.push_back(elem);
                 }
             } else if ((prev != next && prev == i) || (prev == next && i == prev)) {
-                active_views.push_back(
-                        { .view = v,
-                          .off_x = {-attribs.offset, cx},
-                          .off_y = {0, cy},
-                          .scale_x = {scale_factor, 1},
-                          .scale_y = {scale_factor, 1},
-                          .rot     = {attribs.angle, 0}});
+                elem.view = v;
+                elem.off_x = {-attribs.offset, cx};
+                elem.off_y = {0, cy};
+                elem.scale_x = {scale_factor, 1};
+                elem.scale_y = {scale_factor, 1};
+                elem.rot     = {attribs.angle, 0};
+                active_views.push_back(elem);
             } else if ((prev != next && next == i) || (prev == next && i == index)) {
-                active_views.insert(active_views.begin(),
-                        { .view = v,
-                          .off_x = {attribs.offset, cx},
-                          .off_y = {0, cy},
-                          .scale_x = {scale_factor, 1},
-                          .scale_y = {scale_factor, 1},
-                          .rot     = {-attribs.angle, 0}});
+                elem.view = v;
+                elem.off_x = {attribs.offset, cx};
+                elem.off_y = {0, cy};
+                elem.scale_x = {scale_factor, 1};
+                elem.scale_y = {scale_factor, 1};
+                elem.rot     = {-attribs.angle, 0};
+                active_views.insert(active_views.begin(), elem);
             }
         }
 

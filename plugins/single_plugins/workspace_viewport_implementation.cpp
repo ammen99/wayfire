@@ -7,6 +7,7 @@ class viewport_manager : public workspace_manager {
     private:
         int vwidth, vheight, vx, vy;
         wayfire_output *output;
+        wayfire_view background;
 
         weston_layer panel_layer, normal_layer, background_layer;
 
@@ -34,6 +35,8 @@ class viewport_manager : public workspace_manager {
 
         void texture_from_workspace(std::tuple<int, int> vp,
                 GLuint &fbuff, GLuint &tex);
+
+        wayfire_view get_background_view();
 
         void add_background(wayfire_view background, int x, int y);
         void add_panel(wayfire_view panel);
@@ -179,13 +182,11 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
     if (fbuff == (uint)-1 || tex == (uint)-1)
         OpenGL::prepare_framebuffer(fbuff, tex);
 
-    pixman_region32_t full_region;
-    auto g = output->get_full_geometry();
-    pixman_region32_init_rect(&full_region, g.origin.x, g.origin.y,
-            g.size.w, g.size.h);
-    output->render->blit_background(fbuff, &full_region);
-
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
+
+    auto g = output->get_full_geometry();
+    if (background)
+        background->render(0);
 
     GetTuple(x, y, vp);
     GetTuple(cx, cy, get_current_workspace());
@@ -211,12 +212,35 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
+wayfire_view viewport_manager::get_background_view()
+{
+    return background;
+}
+
+void bg_idle_cb(void *data)
+{
+    auto output = (weston_output*) data;
+    weston_output_damage(output);
+    weston_output_schedule_repaint(output);
+}
+
 void viewport_manager::add_background(wayfire_view background, int x, int y)
 {
+    background->is_special = true;
+
     background->move(x, y);
     output->detach_view(background);
+
     weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
-    background->is_special = true;
+
+    auto loop = wl_display_get_event_loop(core->ec->wl_display);
+    wl_event_loop_add_idle(loop, bg_idle_cb, output->handle);
+
+    this->background = background;
+
+    auto g = output->get_full_geometry();
+    background->ds_geometry.x += g.origin.x;
+    background->ds_geometry.y += g.origin.y;
 }
 
 void viewport_manager::add_panel(wayfire_view panel)
@@ -224,6 +248,7 @@ void viewport_manager::add_panel(wayfire_view panel)
     /* views have first been created as desktop views,
      * so they are currently in the normal layer, we must remove them first */
     output->detach_view(panel);
+
     weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
     panel->is_special = true;
 }

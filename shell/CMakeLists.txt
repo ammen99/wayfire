@@ -1,32 +1,15 @@
 cmake_minimum_required(VERSION 3.1.0)
 
-# TODO: when ready build type should not be Debug, but Release
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_STANDARD 11)
+file(GLOB SOURCES "common.cpp" "background.cpp" "panel.cpp" "main.cpp")
 
-add_compile_options(-Wall -Wextra -Wno-unused-parameter)
-project(wayfire CXX)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(REQLIBS freetype2 wayland-client wayland-egl cairo egl wayland-cursor)
 
-# TODO: check for all packages, otherwise target_link_libraries might not work
-# Find required package
-find_package(PkgConfig)
-pkg_check_modules(gl REQUIRED gl)
-
-# Main executable
-include_directories(src)
-include_directories(SYSTEM /usr/include/pixman-1)
-include_directories(SYSTEM /usr/include/libevdev-1.0)
-file(GLOB SOURCES "main.cpp" "surface.cpp")
-
-add_executable(wayfire_shell ${SOURCES})
+add_definitions(${REQLIBS_CFLAGS})
+add_executable(wayfire-shell-client ${SOURCES})
 
 # Libraries
-target_link_libraries(wayfire_shell  )
-target_link_libraries(wayfire_shell  )
+target_link_libraries(wayfire-shell-client wayfire-shell-proto)
+target_link_libraries(wayfire-shell-client ${REQLIBS_LIBRARIES})
 
-# Installation
-install(TARGETS wayfire DESTINATION bin)
-install(DIRECTORY shaders/ DESTINATION share/wayfire/shaders)
-
-# Plugins
-add_subdirectory(plugins)
+install(TARGETS wayfire-shell-client DESTINATION lib/wayfire/)

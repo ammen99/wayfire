@@ -118,9 +118,6 @@ render_manager::render_manager(wayfire_output *o)
 {
     output = o;
 
-    pixman_region32_init(&old_damage);
-    pixman_region32_copy(&old_damage, &output->handle->region);
-
     if (core->backend == WESTON_BACKEND_WAYLAND) {
         debug << "Yes, try it" << std::endl;
         output->output_dx = output->output_dy = 38;
@@ -129,30 +126,10 @@ render_manager::render_manager(wayfire_output *o)
     }
 }
 
-/* TODO: do not rely on glBlitFramebuffer, provide fallback
- * to texture rendering for older systems */
-void render_manager::load_background()
-{
-    background.tex = image_io::load_from_file(core->background, background.w, background.h);
-
-    GL_CALL(glGenFramebuffers(1, &background.fbuff));
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, background.fbuff));
-
-    GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-                                   background.tex, 0));
-
-    auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
-    if (status != GL_FRAMEBUFFER_COMPLETE)
-        errio << "Can't setup background framebuffer!" << std::endl;
-
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-}
-
 void render_manager::load_context()
 {
     ctx = OpenGL::create_gles_context(output, core->shadersrc.c_str());
     OpenGL::bind_context(ctx);
-    load_background();
 
     dirty_context = false;
 
@@ -161,46 +138,9 @@ void render_manager::load_context()
 
 void render_manager::release_context()
 {
-    GL_CALL(glDeleteFramebuffers(1, &background.fbuff));
-    GL_CALL(glDeleteTextures(1, &background.tex));
-
     OpenGL::release_context(ctx);
     dirty_context = true;
 }
-
-#ifdef USE_GLES3
-void render_manager::blit_background(GLuint dest, pixman_region32_t *damage)
-{
-    background.times_blitted++;
-    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dest));
-    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, background.fbuff));
-
-    int nrects;
-    auto rects = pixman_region32_rectangles(damage, &nrects);
-    for (int i = 0; i < nrects; i++) {
-        rects[i].x1 -= output->handle->x;
-        rects[i].x2 -= output->handle->x;
-        rects[i].y1 -= output->handle->y;
-        rects[i].y2 -= output->handle->y;
-
-        double topx = rects[i].x1 * 1.0 / output->handle->width;
-        double topy = rects[i].y1 * 1.0 / output->handle->height;
-        double botx = rects[i].x2 * 1.0 / output->handle->width;
-        double boty = rects[i].y2 * 1.0 / output->handle->height;
-
-        GL_CALL(glBlitFramebuffer(topx * background.w, topy * background.h,
-                                  botx * background.w, boty * background.h,
-                                  output->output_dx + rects[i].x1,
-                                  output->handle->height - rects[i].y1 + output->output_dy,
-                                  output->output_dx + rects[i].x2,
-                                  output->handle->height - rects[i].y2 + output->output_dy,
-                                  GL_COLOR_BUFFER_BIT, GL_LINEAR));
-    }
-
-    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0));
-    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, 0));
-}
-#endif
 
 void redraw_idle_cb(void *data)
 {
@@ -218,14 +158,6 @@ void render_manager::auto_redraw(bool redraw)
     constant_redraw = redraw;
     auto loop = wl_display_get_event_loop(core->ec->wl_display);
     wl_event_loop_add_idle(loop, redraw_idle_cb, output);
-
-    if (!constant_redraw) {
-        background.times_blitted = 0;
-
-        pixman_region32_fini(&old_damage);
-        pixman_region32_init(&old_damage);
-        pixman_region32_copy(&old_damage, &output->handle->region);
-    }
 }
 
 void render_manager::reset_renderer()
@@ -245,13 +177,6 @@ void render_manager::set_renderer(render_hook_t rh)
     }
 }
 
-void render_manager::update_damage(pixman_region32_t *cur_damage, pixman_region32_t *total)
-{
-    pixman_region32_init(total);
-    pixman_region32_union(total, cur_damage, &old_damage);
-    pixman_region32_copy(&old_damage, cur_damage);
-}
-
 struct weston_gl_renderer {
     weston_renderer base;
     int a, b;
@@ -262,11 +187,8 @@ struct weston_gl_renderer {
 
 void render_manager::paint(pixman_region32_t *damage)
 {
-    pixman_region32_t total_damage;
-
-    if (dirty_context) {
+    if (dirty_context)
         load_context();
-    }
 
     // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
     // In the future this might change so we need to track changes in weston
@@ -277,14 +199,6 @@ void render_manager::paint(pixman_region32_t *damage)
     GL_CALL(glViewport(output->handle->x, output->handle->y,
                 output->handle->width, output->handle->height));
 
-    /* if we are on the second frame, we haven't fully drawn the background
-     * to the second buffer(which is now back buffer), so just blit the whole */
-    if (background.times_blitted == 1) {
-        pixman_region32_fini(damage);
-        pixman_region32_init(damage);
-        pixman_region32_copy(damage, &output->handle->region);
-    }
-
     if (renderer) {
         OpenGL::bind_context(ctx);
         renderer();
@@ -292,8 +206,6 @@ void render_manager::paint(pixman_region32_t *damage)
         wl_signal_emit(&output->handle->frame_signal, output->handle);
         eglSwapBuffers(gr->display, surf);
     } else {
-        update_damage(damage, &total_damage);
-        blit_background(0, &total_damage);
         core->weston_repaint(output->handle, damage);
     }
 
@@ -316,14 +228,16 @@ void render_manager::pre_paint()
 
 void render_manager::transformation_renderer()
 {
-    blit_background(0, &output->handle->region);
+    auto bg = output->workspace->get_background_view();
+    if (bg)
+        bg->render(0);
+
     output->workspace->for_each_view_reverse([=](wayfire_view v) {
         if (!v->destroyed && !v->is_hidden)
             v->render();
     });
 }
 
-static int effect_hook_last_id = 0;
 void render_manager::add_output_effect(effect_hook_t* hook, wayfire_view v)
 {
     if (v)

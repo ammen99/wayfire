@@ -38,7 +38,6 @@ struct input_manager {
 class wayfire_core {
     friend struct plugin_manager;
 
-    uint32_t nextID = 0;
     wayfire_config *config;
 
     wayfire_output *active_output;
@@ -48,7 +47,9 @@ class wayfire_core {
     void configure(wayfire_config *config);
     void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
 
+    int times_wake = 0;
     void refocus_active_output_active_view();
+
     public:
     std::string wayland_display, xwayland_display;
 
@@ -61,6 +62,8 @@ class wayfire_core {
 
     weston_compositor *ec;
     void init(weston_compositor *ec, wayfire_config *config);
+    void wake();
+    void sleep();
 
     void hijack_renderer();
     void weston_repaint(weston_output *output, pixman_region32_t *damage);
@@ -98,6 +101,7 @@ class wayfire_core {
     int vwidth, vheight;
 
     std::string background, shadersrc, plugin_path, plugins;
+    bool run_panel;
 
     weston_compositor_backend backend;
 };

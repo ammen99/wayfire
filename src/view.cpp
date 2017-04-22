@@ -58,6 +58,7 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
     weston_desktop_surface_set_activated(ds, true);
 
     desktop_surface = ds;
+    ds_geometry = {0, 0, 0, 0};
     surface = weston_desktop_surface_get_surface(ds);
 
     geometry.size.w = surface->width;
@@ -115,8 +116,6 @@ void wayfire_view_t::set_geometry(int x, int y, int w, int h)
     };
 
     set_geometry(geometry);
-
-    //wlc_view_set_geometry(view, 0, &attrib);
 }
 
 void wayfire_view_t::set_maximized(bool maxim)
@@ -177,6 +176,8 @@ void wayfire_view_t::map(int sx, int sy)
 }
 
 void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4);
+
+/* TODO: use bits */
 void wayfire_view_t::render(uint32_t bits)
 {
     render_surface(surface, geometry.origin.x - ds_geometry.x, geometry.origin.y - ds_geometry.y,

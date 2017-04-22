@@ -15,25 +15,12 @@ void panel_redraw(void *data, wl_callback*, uint32_t)
     panel->render_frame();
 }
 
-void output_created_cb(void *data, wayfire_shell *wayfire_shell, uint32_t output,
-        uint32_t width, uint32_t height)
-{
-
-    wayfire_panel *panel = (wayfire_panel*) data;
-    panel->create_panel(output, width, height);
-}
-
 static const struct wl_callback_listener frame_listener = {
     panel_redraw
 };
 
-static const struct wayfire_shell_listener shell_listener = {
-    .output_created = output_created_cb
-};
-
 wayfire_panel::wayfire_panel()
 {
-    wayfire_shell_add_listener(display.wfshell, &shell_listener, this);
 }
 
 void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)

@@ -25,28 +25,15 @@ struct render_manager {
         bool constant_redraw = false;
 
         bool dirty_context = true;
-                void load_context();
+
+        void load_context();
         void release_context();
-
-        struct {
-            GLuint tex = -1;
-            GLuint fbuff;
-            unsigned long w, h;
-            long long times_blitted = 0;
-        } background;
-
-        pixman_region32_t old_damage;
 
         render_hook_t renderer;
 
-        void load_background();
-        void update_damage (pixman_region32_t* damage, pixman_region32_t *total);
     public:
         OpenGL::context_t *ctx;
         render_manager(wayfire_output *o);
-
-        void blit_background(GLuint destination_fbuff, pixman_region32_t *damage);
-        GLuint get_background() {return background.tex;}
 
         void set_renderer(render_hook_t rh = nullptr);
 
@@ -56,12 +43,6 @@ struct render_manager {
 
         void paint(pixman_region32_t *damage);
         void pre_paint();
-
-        /* this function renders a viewport and
-         * saves the image in texture which is returned */
-#ifdef USE_GLES3
-        void texture_from_viewport(std::tuple<int, int>, GLuint& fbuff, GLuint &tex);
-#endif
 
         std::vector<effect_hook_t*> output_effects;
         void add_output_effect(effect_hook_t*, wayfire_view v = nullptr);
@@ -90,6 +71,8 @@ class workspace_manager {
          * saves the image in texture which is returned */
         virtual void texture_from_workspace(std::tuple<int, int>, GLuint& fbuff,
                 GLuint &tex) = 0;
+
+        virtual wayfire_view get_background_view() = 0;
 
         /* wayfire_shell implementation */
         virtual void add_background(wayfire_view background, int x, int y) = 0;

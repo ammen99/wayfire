@@ -220,6 +220,8 @@ void wayfire_core::configure(wayfire_config *config)
     plugin_path = section->get_string("plugin_path_prefix", "/usr/lib/");
     plugins = section->get_string("plugins", "");
 
+    run_panel = section->get_int("run_panel", 1);
+
     /*
        options.insert(newStringOption("key_repeat_rate", "50"));
        options.insert(newStringOption("key_repeat_delay", "350"));
@@ -269,6 +271,20 @@ void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
     }
 
     input = new input_manager();
+}
+
+void wayfire_core::wake()
+{
+    debug << "compositor wake " << times_wake << " " << run_panel << std::endl;
+    if (times_wake == 0 && run_panel)
+        run(("/usr/lib/wayfire/wayfire-shell-client -b " + background).c_str());
+
+    ++times_wake;
+    refocus_active_output_active_view();
+}
+
+void wayfire_core::sleep()
+{
 }
 
 /* TODO: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
@@ -321,6 +337,9 @@ void wayfire_core::add_output(weston_output *output)
 
 void wayfire_core::refocus_active_output_active_view()
 {
+    if (!active_output)
+        return;
+
     auto view = active_output->get_top_view();
     if (view) {
         active_output->focus_view(nullptr, get_current_seat());

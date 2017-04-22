@@ -121,9 +121,11 @@ namespace OpenGL {
         context_t *ctx = new context_t;
 
         if (file_debug == &file_info) { /* we are in debug mode, so add debug output */
+            /*
             glEnable(GL_DEBUG_OUTPUT);
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             glDebugMessageCallback(errorHandler, 0);
+            */
         }
 
         ctx->width = output->handle->width;

@@ -20,6 +20,16 @@ void output_created_cb (wl_listener*, void *data)
     core->add_output(output);
 }
 
+void compositor_wake_cb (wl_listener*, void*)
+{
+    core->wake();
+}
+
+void compositor_sleep_cb (wl_listener*, void*)
+{
+    core->sleep();
+}
+
 weston_desktop_api desktop_api;
 int main(int argc, char *argv[]) {
     char *debugging_enabled = secure_getenv("WAYFIRE_DEBUG");
@@ -76,6 +86,13 @@ int main(int argc, char *argv[]) {
     output_created_listener.notify = output_created_cb;
     wl_signal_add(&ec->output_created_signal, &output_created_listener);
 
+    wl_listener ec_wake_listener, ec_sleep_listener;
+    ec_wake_listener.notify  = compositor_wake_cb;
+    ec_sleep_listener.notify = compositor_sleep_cb;
+
+    wl_signal_add(&ec->idle_signal, &ec_sleep_listener);
+    wl_signal_add(&ec->wake_signal, &ec_wake_listener);
+
     int ret;
     if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
         ret = load_wayland_backend(ec);
@@ -122,6 +139,7 @@ int main(int argc, char *argv[]) {
     }
     */
 
+    core->wake();
     weston_compositor_wake(ec);
 
     wl_display_run(display);

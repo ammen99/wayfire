@@ -128,6 +128,9 @@ class wayfire_animation : public wayfire_plugin_t {
         create_view_signal *data = static_cast<create_view_signal*> (ddata);
         assert(data);
 
+        if (data->created_view->is_special)
+            return;
+
         data->created_view->surface->ref_count++;
         if (open_animation == "fade")
             new animation_hook(new fade_animation(data->created_view, false), output);
@@ -137,6 +140,9 @@ class wayfire_animation : public wayfire_plugin_t {
     {
         destroy_view_signal *data = static_cast<destroy_view_signal*> (ddata);
         assert(data);
+
+        if (data->destroyed_view->is_special) /* this has been a panel, we don't animate it */
+            return;
 
         if (open_animation == "fade") {
             data->destroyed_view->keep_count++;
