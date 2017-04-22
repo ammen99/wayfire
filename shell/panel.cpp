@@ -131,6 +131,12 @@ const std::string months[] = {
     "December"
 };
 
+/* add 0 in front of single-digit numbers */
+std::string format(int x) {
+    if (x < 10) return "0" + std::to_string(x);
+    else return std::to_string(x);
+}
+
 void wayfire_panel::render_frame()
 {
     set_active_window(window);
@@ -141,8 +147,8 @@ void wayfire_panel::render_frame()
     auto time = std::localtime(&now);
 
     std::string time_string = std::to_string(time->tm_mday) + " " +
-        months[time->tm_mon] + " " + std::to_string(time->tm_hour) +
-        ":" + std::to_string(time->tm_min);
+        months[time->tm_mon] + " " + format(time->tm_hour) +
+        ":" + format(time->tm_min);
 
     if (animation.current_y != animation.target_y) {
         animation.current_y += animation.dy;

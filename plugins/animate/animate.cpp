@@ -71,7 +71,9 @@ class fade_animation : public animation_base {
         if (!rev) {
             weston_fade_run(view->handle, 0, 1, 200, NULL, NULL);
         } else {
+            debug << "Fade animation started" << std::endl;
             if (weston_surface_is_mapped(view->surface)) {
+                debug << "surface is mapped" << std::endl;
                 pixman_region32_fini(&view->surface->pending.input);
                 pixman_region32_init(&view->surface->pending.input);
                 pixman_region32_fini(&view->surface->input);
@@ -80,6 +82,7 @@ class fade_animation : public animation_base {
                 weston_fade_run(view->handle, 1.0, 0.0, 200.0, fade_out_animation_cb,
                         view->handle);
             } else {
+                debug << "surface ain't mapped" << std::endl;
                 weston_view_destroy(view->handle);
             }
         }
