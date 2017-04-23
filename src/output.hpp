@@ -134,7 +134,9 @@ class wayfire_output {
 
     void attach_view(wayfire_view v);
     void detach_view(wayfire_view v);
+
     void focus_view(wayfire_view v, weston_seat *seat);
+    void set_active_view(wayfire_view v);
     void bring_to_front(wayfire_view v);
 };
 extern const struct wayfire_shell_interface shell_interface_impl;

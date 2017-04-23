@@ -107,6 +107,7 @@ class vswitch : public wayfire_plugin_t {
             views_to_move.insert(view);
 
         for (auto view : views_to_move) {
+            if (view->is_mapped && !view->destroyed)
             weston_move_run(view->handle, -dx * output->handle->width, -dy * output->handle->height,
                     1, 1, false, slide_done_cb, new slide_data {this, index++});
         }

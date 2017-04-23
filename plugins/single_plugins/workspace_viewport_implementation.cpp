@@ -151,7 +151,8 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     auto views = get_views_on_workspace({vx, vy});
     auto it = views.rbegin();
     while(it != views.rend()) {
-        output->focus_view(*it, core->get_current_seat());
+        if ((*it)->is_mapped && !(*it)->destroyed)
+            output->focus_view(*it, core->get_current_seat());
         ++it;
     }
 }

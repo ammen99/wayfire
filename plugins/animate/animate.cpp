@@ -41,9 +41,11 @@ void animation_hook::step()
 
 void fade_out_done_idle_cb(void *data)
 {
-    weston_surface *surface = (weston_surface*) data;
-    if (surface)
-        weston_surface_destroy(surface);
+    weston_view *view = (weston_view*) data;;
+    if (view) {
+        weston_surface_destroy(view->surface);
+        weston_layer_entry_remove(&view->layer_link);
+    }
 }
 
 void fade_out_animation_cb(weston_view_animation*, void *data)
@@ -52,7 +54,7 @@ void fade_out_animation_cb(weston_view_animation*, void *data)
     auto view = (weston_view*) data;
     if (weston_view_is_mapped(view)) {
         view->is_mapped = false;
-        wl_event_loop_add_idle(loop, fade_out_done_idle_cb, view->surface);
+        wl_event_loop_add_idle(loop, fade_out_done_idle_cb, view);
     }
 }
 

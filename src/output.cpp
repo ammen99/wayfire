@@ -419,7 +419,12 @@ void wayfire_output::attach_view(wayfire_view v)
 
 void wayfire_output::detach_view(wayfire_view v)
 {
-    workspace->view_removed(v);
+
+    auto sig_data = destroy_view_signal{v};
+    signal->emit_signal("destroy-view", &sig_data);
+
+    if (v->keep_count <= 0)
+        workspace->view_removed(v);
 
     wayfire_view next = nullptr;
 
@@ -435,12 +440,13 @@ void wayfire_output::detach_view(wayfire_view v)
         if (next == nullptr) {
             active_view = nullptr;
         } else {
-            focus_view(next, core->get_current_seat());
+            if (v->keep_count) {
+                set_active_view(next);
+            } else { /* Some plugins wants to keep the view, let it manage the position */
+                focus_view(next, core->get_current_seat());
+            }
         }
     }
-
-    auto sig_data = destroy_view_signal{v};
-    signal->emit_signal("destroy-view", &sig_data);
 }
 
 void wayfire_output::bring_to_front(wayfire_view v) {
@@ -456,7 +462,7 @@ void wayfire_output::bring_to_front(wayfire_view v) {
     weston_desktop_surface_propagate_layer(v->desktop_surface);
 }
 
-void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
+void wayfire_output::set_active_view(wayfire_view v)
 {
     if (v == active_view)
         return;
@@ -465,11 +471,20 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
         weston_desktop_surface_set_activated(active_view->desktop_surface, false);
 
     active_view = v;
-    if (active_view) {
-        debug << "output: " << handle->id << " focus: " << v->desktop_surface << std::endl;
-        weston_view_activate(v->handle, seat,
-                             WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
+    if (v) {
+        weston_view_activate(v->handle, core->get_current_seat(),
+                WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
         weston_desktop_surface_set_activated(v->desktop_surface, true);
+    }
+}
+
+void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
+{
+
+    set_active_view(v);
+
+    if (v) {
+        debug << "output: " << handle->id << " focus: " << v->desktop_surface << std::endl;
         bring_to_front(v);
     } else {
         debug << "output: " << handle->id << " focus: 0" << std::endl;

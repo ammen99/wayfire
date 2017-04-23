@@ -19,9 +19,9 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data) {
     auto view = core->find_view(surface);
     core->erase_view(view);
 
+    weston_desktop_surface_unlink_view(view->handle);
     view->destroyed = true;
     view->output->detach_view(view);
-    weston_desktop_surface_unlink_view(view->handle);
 
     if (view->keep_count <= 0) /* plugins might want to keep this */
         weston_view_destroy(view->handle);
