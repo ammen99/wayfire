@@ -273,6 +273,11 @@ void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
     input = new input_manager();
 }
 
+void refocus_idle_cb(void *data)
+{
+    core->refocus_active_output_active_view();
+}
+
 void wayfire_core::wake()
 {
     debug << "compositor wake " << times_wake << " " << run_panel << std::endl;
@@ -280,7 +285,8 @@ void wayfire_core::wake()
         run(("/usr/lib/wayfire/wayfire-shell-client -b " + background).c_str());
 
     ++times_wake;
-    refocus_active_output_active_view();
+    auto loop = wl_display_get_event_loop(ec->wl_display);
+    wl_event_loop_add_idle(loop, refocus_idle_cb, 0);
 }
 
 void wayfire_core::sleep()

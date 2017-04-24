@@ -48,8 +48,6 @@ class wayfire_core {
     void (*weston_renderer_repaint) (weston_output *output, pixman_region32_t *damage);
 
     int times_wake = 0;
-    void refocus_active_output_active_view();
-
     public:
     std::string wayland_display, xwayland_display;
 
@@ -64,6 +62,7 @@ class wayfire_core {
     void init(weston_compositor *ec, wayfire_config *config);
     void wake();
     void sleep();
+    void refocus_active_output_active_view();
 
     void hijack_renderer();
     void weston_repaint(weston_output *output, pixman_region32_t *damage);
