@@ -349,7 +349,6 @@ void wayfire_core::refocus_active_output_active_view()
 
 void wayfire_core::focus_output(wayfire_output *wo)
 {
-
     assert(wo);
     if (active_output == wo)
         return;

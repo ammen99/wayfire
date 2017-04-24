@@ -134,7 +134,7 @@ void wayfire_view_t::set_maximized(bool maxim)
 
 void wayfire_view_t::map(int sx, int sy)
 {
-    if (!weston_surface_is_mapped(surface)) {
+    if (!weston_surface_is_mapped(surface) && !is_special) {
         sx += output->handle->x;
         sy += output->handle->y;
 

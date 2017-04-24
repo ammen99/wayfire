@@ -381,6 +381,7 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
     signal = new signal_manager();
 
     plugin = new plugin_manager(this, c);
+
     weston_output_damage(handle);
     weston_output_schedule_repaint(handle);
 }

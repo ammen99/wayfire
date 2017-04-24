@@ -229,7 +229,9 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
 {
     background->is_special = true;
 
-    background->move(x, y);
+    auto g = output->get_full_geometry();
+    background->move(x + g.origin.x, y + g.origin.y);
+
     output->detach_view(background);
 
     weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
@@ -239,7 +241,6 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
 
     this->background = background;
 
-    auto g = output->get_full_geometry();
     background->ds_geometry.x += g.origin.x;
     background->ds_geometry.y += g.origin.y;
 }
@@ -275,7 +276,8 @@ void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
 
 void viewport_manager::configure_panel(wayfire_view view, int x, int y)
 {
-    view->move(x, y);
+    auto g = output->get_full_geometry();
+    view->move(g.origin.x + x, g.origin.y + y);
 }
 
 wayfire_geometry viewport_manager::get_workarea()
