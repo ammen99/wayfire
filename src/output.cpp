@@ -414,8 +414,9 @@ void wayfire_output::attach_view(wayfire_view v)
     v->output = this;
 
     workspace->view_bring_to_front(v);
+
     auto sig_data = create_view_signal{v};
-    signal->emit_signal("create-view", &sig_data);
+    signal->emit_signal("attach-view", &sig_data);
 }
 
 void wayfire_output::detach_view(wayfire_view v)

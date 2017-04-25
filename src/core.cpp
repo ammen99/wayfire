@@ -375,14 +375,14 @@ void wayfire_core::focus_output(wayfire_output *wo)
         weston_pointer_move(ptr, &ev);
     }
 
-
-    debug << "focus_output old: " << (active_output ? active_output->handle->id : -1)
-        << " new output: " << wo->handle->id << std::endl;
     if (active_output)
         active_output->focus_view(nullptr, get_current_seat());
 
     active_output = wo;
     refocus_active_output_active_view();
+
+    if (active_output)
+        weston_output_schedule_repaint(active_output->handle);
 }
 
 wayfire_output* wayfire_core::get_output(weston_output *handle)
@@ -504,11 +504,20 @@ void wayfire_core::run(const char *command)
 
 void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output)
 {
+    int old_x = 0, old_y = 0;
     if (old && v->output && old == v->output)
+    {
+        old_x = old->handle->x;
+        old_y = old->handle->y;
         old->detach_view(v);
+    }
 
     if (new_output) {
         new_output->attach_view(v);
+
+        old_x = new_output->handle->x - old_x;
+        old_y = new_output->handle->y - old_y;
+        v->move(v->geometry.origin.x + old_x, v->geometry.origin.y + old_y);
     } else {
         close_view(v);
     }

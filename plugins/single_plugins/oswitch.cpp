@@ -2,6 +2,8 @@
 #include <core.hpp>
 #include <linux/input-event-codes.h>
 
+/* TODO: merge with workspace manager and introduce
+ * workspace_delta for distance between workspaces */
 #define MAX_OUTPUT_WIDTH 4096
 
 void next_output_idle_cb(void *data)
@@ -22,7 +24,8 @@ class wayfire_output_manager : public wayfire_plugin_t {
             auto section = config->get_section("oswitch");
 
             auto actkey  = section->get_key("next_output", {MODIFIER_SUPER, KEY_K});
-            auto withwin = section->get_key("next_output_with_key", {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_K});
+            auto withwin = section->get_key("next_output_with_key",
+                    {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_K});
 
             switch_output = [=] (weston_keyboard *kbd, uint32_t key) {
                 /* when we switch the output, the oswitch keybinding
@@ -39,8 +42,6 @@ class wayfire_output_manager : public wayfire_plugin_t {
                 auto view = output->get_top_view();
 
                 core->move_view_to_output(view, view->output, next);
-                debug << "move from " << view->output->handle->id <<
-                    " to " << next->handle->id << " current output is " << output->handle->id << std::endl;
 
                 auto loop = wl_display_get_event_loop(core->ec->wl_display);
                 wl_event_loop_add_idle(loop, next_output_idle_cb, next);
