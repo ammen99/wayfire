@@ -158,19 +158,23 @@ void wayfire_view_t::set_fullscreen(bool full)
 
 void wayfire_view_t::map(int sx, int sy)
 {
-    if (!weston_surface_is_mapped(surface) && !is_special) {
-        sx += output->handle->x;
-        sy += output->handle->y;
+    if (!weston_surface_is_mapped(surface)) {
+        /* special views are panels/backgrounds, workspace_manager handles their position */
+        if (!is_special) {
+            sx += output->handle->x;
+            sy += output->handle->y;
 
-        if (xwayland.is_xorg) {
-            auto g = weston_desktop_surface_get_geometry(desktop_surface);
-            weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
-        } else {
-            weston_view_set_position(handle, sx, sy);
+            if (xwayland.is_xorg) {
+                auto g = weston_desktop_surface_get_geometry(desktop_surface);
+                weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
+            } else {
+                weston_view_set_position(handle, sx, sy);
+            }
+
+            geometry.origin = {sx, sy};
         }
 
         geometry.size = {surface->width, surface->height};
-        geometry.origin = {sx, sy};
 
         weston_view_update_transform(handle);
         handle->is_mapped  = true;
