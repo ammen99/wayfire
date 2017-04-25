@@ -23,6 +23,13 @@ struct destroy_view_signal : public signal_data {
     }
 };
 
+struct view_maximized_signal : public signal_data {
+    wayfire_view view;
+    bool state;
+};
+
+using view_fullscreen_signal = view_maximized_signal;
+
 /* same as both change_viewport_request and change_viewport_notify */
 struct change_viewport_signal : public signal_data {
     int old_vx, old_vy;

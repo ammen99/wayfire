@@ -20,6 +20,17 @@ glm::mat4 wayfire_view_transform::calculate_total_transform()
            (global_rotation * rotation) * (global_scale * scale);
 }
 
+bool operator == (const wayfire_geometry& a, const wayfire_geometry& b)
+{
+    return a.origin.x == b.origin.x && a.origin.y == b.origin.y &&
+        a.size.w == b.size.w && a.size.h == b.size.h;
+}
+
+bool operator != (const wayfire_geometry& a, const wayfire_geometry& b)
+{
+    return !(a == b);
+}
+
 bool point_inside(wayfire_point point, wayfire_geometry rect)
 {
     if(point.x < rect.origin.x || point.y < rect.origin.y)
@@ -120,16 +131,29 @@ void wayfire_view_t::set_geometry(int x, int y, int w, int h)
 
 void wayfire_view_t::set_maximized(bool maxim)
 {
-    if (fullscreen)
+    if (fullscreen || maxim == maximized)
         return;
 
-    /* TODO: use the future grid's snap functionality */
-    if (maxim && !maximized) {
-        saved_geometry = geometry;
-        set_geometry(0, 0, output->handle->width, output->handle->height);
-    } else if (!maxim && maximized) {
-        set_geometry(saved_geometry);
-    }
+    view_maximized_signal data;
+    data.view = core->find_view(desktop_surface);
+    data.state = maxim;
+
+    output->signal->emit_signal("view-maximized-state", &data);
+
+    maximized = maxim;
+    weston_desktop_surface_set_maximized(desktop_surface, maximized);
+}
+
+void wayfire_view_t::set_fullscreen(bool full)
+{
+    view_fullscreen_signal data;
+    data.view = core->find_view(desktop_surface);
+    data.state = full;
+
+    output->signal->emit_signal("view-fullscreen-state", &data);
+
+    fullscreen = full;
+    weston_desktop_surface_set_fullscreen(desktop_surface, fullscreen);
 }
 
 void wayfire_view_t::map(int sx, int sy)
@@ -159,19 +183,11 @@ void wayfire_view_t::map(int sx, int sy)
         return;
     }
 
-    int oldx, oldy;
-    int newx, newy;
-
-    weston_view_to_global_fixed(handle, 0, 0, &oldx, &oldy);
-    weston_view_to_global_fixed(handle, sx, sy, &newx, &newy);
-
-    ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
-
-    sx = handle->geometry.x + (newx - oldx) + ds_geometry.x;
-    sy = handle->geometry.y + (newy - oldy) + ds_geometry.y;
-
-    if (sx != geometry.origin.x || sy != geometry.origin.y)
-        move(sx, sy);
+    auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
+    if (new_ds_g.x != ds_geometry.x || new_ds_g.y != ds_geometry.y) {
+        ds_geometry = new_ds_g;
+        move(geometry.origin.x, geometry.origin.y);
+    }
 
     /* TODO: see shell.c#activate() */
 }

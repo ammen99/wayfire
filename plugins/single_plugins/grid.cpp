@@ -2,6 +2,7 @@
 #include <core.hpp>
 #include <algorithm>
 #include <linux/input-event-codes.h>
+#include "signal_definitions.hpp"
 
 #include "snap_signal.hpp"
 
@@ -29,7 +30,7 @@ class wayfire_grid : public wayfire_plugin_t {
 
     effect_hook_t hook;
 
-    signal_callback_t snap_cb;
+    signal_callback_t snap_cb, maximized_cb, fullscreen_cb;
 
     struct {
         wayfire_geometry original, target;
@@ -65,6 +66,12 @@ class wayfire_grid : public wayfire_plugin_t {
         using namespace std::placeholders;
         snap_cb = std::bind(std::mem_fn(&wayfire_grid::snap_signal_cb), this, _1);
         output->signal->connect_signal("view-snap", &snap_cb);
+
+        maximized_cb = std::bind(std::mem_fn(&wayfire_grid::maximize_signal_cb), this, _1);
+        output->signal->connect_signal("view-maximized-state", &maximized_cb);
+
+        fullscreen_cb = std::bind(std::mem_fn(&wayfire_grid::fullscreen_signal_cb), this, _1);
+        output->signal->connect_signal("view-fullscreen-state", &fullscreen_cb);
     }
 
     void handle_key(wayfire_view view, int key)
@@ -81,6 +88,11 @@ class wayfire_grid : public wayfire_plugin_t {
             get_slot_dimensions(key, tx, ty, tw, th);
         }
 
+        start_animation(view, tx, ty, tw, th);
+    }
+
+    void start_animation(wayfire_view view, int tx, int ty, int tw, int th)
+    {
         current_step = 0;
         current_view.view = view;
         current_view.original = view->geometry;
@@ -121,12 +133,17 @@ class wayfire_grid : public wayfire_plugin_t {
         }
     }
 
-    void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h)
+    void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h,
+            bool force_maximize = false, bool force_unmaximize = false,
+            bool use_full_area = false)
     {
         auto it = saved_view_geometry.find(v);
         auto g = output->workspace->get_workarea();
+        if (use_full_area)
+            g = output->get_full_geometry();
 
-        if (it == saved_view_geometry.end()) {
+        if ((it == saved_view_geometry.end() || it->second != g || force_maximize)
+                && (!force_unmaximize)) {
             saved_view_geometry[v] = v->geometry;
             x = g.origin.x;
             y = g.origin.y;
@@ -176,6 +193,26 @@ class wayfire_grid : public wayfire_plugin_t {
         snap_signal *data = static_cast<snap_signal*>(ddata);
         assert(data);
         handle_key(data->view, data->tslot);
+    }
+
+    void maximize_signal_cb(signal_data *ddata)
+    {
+        auto data = static_cast<view_maximized_signal*> (ddata);
+        assert(data);
+
+        int x, y, w, h;
+        toggle_maximized(data->view, x, y, w, h, data->state, !data->state);
+        start_animation(data->view, x, y, w, h);
+    }
+
+    void fullscreen_signal_cb(signal_data *ddata)
+    {
+        auto data = static_cast<view_fullscreen_signal*> (ddata);
+        assert(data);
+
+        int x, y, w, h;
+        toggle_maximized(data->view, x, y, w, h, data->state, !data->state, true);
+        start_animation(data->view, x, y, w, h);
     }
 };
 

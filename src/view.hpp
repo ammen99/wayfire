@@ -44,6 +44,9 @@ struct wayfire_geometry {
     wayfire_size size;
 };
 
+bool operator == (const wayfire_geometry& a, const wayfire_geometry& b);
+bool operator != (const wayfire_geometry& a, const wayfire_geometry& b);
+
 bool point_inside(wayfire_point point, wayfire_geometry rect);
 bool rect_inside(wayfire_geometry screen, wayfire_geometry win);
 
@@ -73,9 +76,9 @@ class wayfire_view_t {
         void set_geometry(int x, int y, int w, int h);
 
         bool maximized = false, fullscreen = false;
-        /* TODO: implement set_fullscreen and add support for workarea in wayfire_output */
+
         void set_maximized(bool maxim);
-        //void set_fullscreen(bool fullscreen);
+        void set_fullscreen(bool fullscreen);
 
         wayfire_view_transform transform;
 

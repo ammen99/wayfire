@@ -39,6 +39,8 @@ class wayfire_output_manager : public wayfire_plugin_t {
                 auto view = output->get_top_view();
 
                 core->move_view_to_output(view, view->output, next);
+                debug << "move from " << view->output->handle->id <<
+                    " to " << next->handle->id << " current output is " << output->handle->id << std::endl;
 
                 auto loop = wl_display_get_event_loop(core->ec->wl_display);
                 wl_event_loop_add_idle(loop, next_output_idle_cb, next);

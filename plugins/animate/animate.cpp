@@ -146,7 +146,8 @@ class wayfire_animation : public wayfire_plugin_t {
         destroy_view_signal *data = static_cast<destroy_view_signal*> (ddata);
         assert(data);
 
-        if (data->destroyed_view->is_special) /* this has been a panel, we don't animate it */
+        if (data->destroyed_view->is_special || !data->destroyed_view->destroyed)
+            /* this has been a panel or it has been moved to another output, we don't animate it */
             return;
 
         if (open_animation == "fade") {

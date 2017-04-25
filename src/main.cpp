@@ -124,6 +124,8 @@ int main(int argc, char *argv[]) {
     desktop_api.committed = desktop_surface_commited;
     desktop_api.move = desktop_surface_move;
     desktop_api.resize = desktop_surface_resize;
+    desktop_api.maximized_requested = desktop_surface_maximized_requested;
+    desktop_api.fullscreen_requested = desktop_surface_fullscreen_requested;
     desktop_api.set_xwayland_position = desktop_surface_set_xwayland_position;
 
     auto desktop = weston_desktop_create(ec, &desktop_api, NULL);
