@@ -1,9 +1,6 @@
 #include "opengl.hpp"
 #include "output.hpp"
 
-/* TODO: do not use GLES 3.2, it is used for debugging, should be removed in production */
-#include <GLES3/gl32.h>
-
 namespace {
     OpenGL::context_t *bound;
 }
@@ -72,6 +69,7 @@ namespace OpenGL {
         return compile_shader(str.c_str(), type);
     }
 
+    /*
     const char *getStrSrc(GLenum src) {
         if(src == GL_DEBUG_SOURCE_API            )return "API";
         if(src == GL_DEBUG_SOURCE_WINDOW_SYSTEM  )return "WINDOW_SYSTEM";
@@ -115,18 +113,17 @@ namespace OpenGL {
         debug << "Severity: " << getStrSeverity(severity) << std::endl;
         debug << "Msg: " << msg << std::endl;;
         debug << "_______________________________________________\n";
-    }
+    } */
 
     context_t* create_gles_context(wayfire_output *output, const char *shaderSrcPath) {
         context_t *ctx = new context_t;
 
-        if (file_debug == &file_info) { /* we are in debug mode, so add debug output */
-            /*
+        /*
+        if (file_debug == &file_info) {
             glEnable(GL_DEBUG_OUTPUT);
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             glDebugMessageCallback(errorHandler, 0);
-            */
-        }
+        } */
 
         ctx->width = output->handle->width;
         ctx->height = output->handle->height;

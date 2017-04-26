@@ -6,8 +6,6 @@
 
 #include "snap_signal.hpp"
 
-/* TODO: implement "snap" signal */
-
 class wayfire_grid : public wayfire_plugin_t {
 
     std::unordered_map<wayfire_view, wayfire_geometry> saved_view_geometry;

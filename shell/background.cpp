@@ -61,5 +61,4 @@ void wayfire_background::on_enter(wl_pointer *ptr, uint32_t serial, int x, int y
     wl_surface_commit(cursor_surface);
 
     wl_pointer_set_cursor(ptr, serial, cursor_surface, image->hotspot_x, image->hotspot_y);
-    /* TODO: set pointer surface */
 }

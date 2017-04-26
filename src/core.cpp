@@ -5,8 +5,6 @@
 #include "../proto/wayfire-shell-server.h"
 #include "signal_definitions.hpp"
 /* Manages input grabs */
-/* TODO: make compatible with weston */
-
 /* Start input_manager */
 
 /* pointer grab callbacks */
@@ -293,9 +291,9 @@ void wayfire_core::sleep()
 {
 }
 
-/* TODO: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
+/* FIXME: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
  * However, this isn't always true. Also, hijacking isn't the best option
- * We should render to a surface which is made standalone */
+ * Maybe we should draw to a surface and display it? */
 void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
 {
     auto output = core->get_output(o);

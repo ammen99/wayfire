@@ -41,9 +41,6 @@ void desktop_surface_commited (weston_desktop_surface *desktop_surface,
     }
 
     view->map(sx, sy);
-
-    /* TODO: handle fullscreen and maximized state
-     * weston_desktop_surface_get_fullscreen() && weston_desktop_surface_get_maximized() */
 }
 
 void desktop_surface_set_xwayland_position(weston_desktop_surface *desktop_surface,
