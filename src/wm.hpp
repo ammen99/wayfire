@@ -23,8 +23,14 @@ class Refresh : public wayfire_plugin_t { // keybinding to restart window manage
 };
 
 */
+class wayfire_close : public wayfire_plugin_t {
+    key_callback callback;
+    public:
+        void init(wayfire_config*);
+};
+
 class wayfire_focus : public wayfire_plugin_t {
-    button_callback *callback;
+    button_callback callback;
     public:
         void init(wayfire_config *);
 };

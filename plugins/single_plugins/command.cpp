@@ -41,7 +41,7 @@ class wayfire_command : public wayfire_plugin_t {
             auto key = section->get_key(binding, {0, 0});
 
             debug << "got " << comvalue << std::endl;
-            if (key.mod == 0 || key.keyval == 0 || command == "")
+            if (key.keyval == 0 || command == "")
                 continue;
 
             debug << "register" << key.mod << " " << key.keyval << " " << XKB_KEY_d  << " " << KEY_D << std::endl;
