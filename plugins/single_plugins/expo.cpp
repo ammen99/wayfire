@@ -150,6 +150,10 @@ class wayfire_expo : public wayfire_plugin_t {
 
     wayfire_view find_view_at(int sx, int sy)
     {
+        auto og = output->get_full_geometry();
+        sx -= og.origin.x;
+        sy -= og.origin.y;
+
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         sx *= vw;
         sy *= vh;
@@ -159,8 +163,8 @@ class wayfire_expo : public wayfire_plugin_t {
         sy -= vy * output->handle->height;
 
         wayfire_view search = nullptr;
-        output->workspace->for_each_view([&search, sx, sy] (wayfire_view v) {
-            if (!search && point_inside({sx, sy}, v->geometry))
+        output->workspace->for_each_view([&search, og, sx, sy] (wayfire_view v) {
+            if (!search && point_inside({sx + og.origin.x, sy + og.origin.y}, v->geometry))
             search = v;
         });
 
@@ -169,6 +173,9 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void update_target_workspace(int x, int y) {
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+        auto og = output->get_full_geometry();
+        x -= og.origin.x;
+        y -= og.origin.y;
 
         /* TODO: these are approximate, maybe won't work between them */
         int ew = output->handle->width / vw;

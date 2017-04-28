@@ -85,13 +85,12 @@ class wayfire_move : public wayfire_plugin_t {
         }
 
         int calc_slot() {
-            int w = output->handle->width;
-            int h = output->handle->height;
+            auto g = output->get_full_geometry();
 
-            bool is_left = prev_x <= snap_pixels;
-            bool is_right = (w - prev_x) <= snap_pixels;
-            bool is_top = prev_y < snap_pixels;
-            bool is_bottom = (h - prev_y) < snap_pixels;
+            bool is_left = std::abs(prev_x - g.origin.x) <= snap_pixels;
+            bool is_right = std::abs(g.origin.x + g.size.w - prev_x) <= snap_pixels;
+            bool is_top = std::abs(prev_y - g.origin.y) < snap_pixels;
+            bool is_bottom = std::abs(g.origin.y + g.size.h - prev_y) < snap_pixels;
 
             if (is_left && is_top)
                 return SLOT_TL;
