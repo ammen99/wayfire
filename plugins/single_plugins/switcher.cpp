@@ -55,7 +55,6 @@ class view_switcher : public wayfire_plugin_t {
         bool first_key = false;
     } state;
 
-    bool active = false, block = false; // block is waiting to exit
     size_t index;
 
     int max_steps, current_step, initial_animation_steps;
@@ -96,7 +95,11 @@ class view_switcher : public wayfire_plugin_t {
             if (!state.active)
                 activate();
             else {
-                start_exit();
+                if (state.in_switch || state.in_place || state.in_center) {
+                    dirs.push(0);
+                } else {
+                    start_exit();
+                }
             }
         };
         core->input->add_key(activate_key.mod, activate_key.keyval, &init_binding, output);
@@ -223,6 +226,9 @@ class view_switcher : public wayfire_plugin_t {
 
         for(int i = active_views.size() - 1; i >= 0; i--)
             render_view(active_views[i].view);
+
+        if (!state.active)
+            finish_exit();
     }
 
     void stop_continuous_switch(weston_keyboard *kbd, uint32_t depressed, uint32_t locked,
@@ -529,26 +535,25 @@ class view_switcher : public wayfire_plugin_t {
         }
 
         if (current_step == max_steps) {
-             active = false;
-             output->render->auto_redraw(false);
-             output->render->reset_renderer();
-             grab_interface->ungrab();
-             output->deactivate_plugin(grab_interface);
-
-             auto bg = output->workspace->get_background_view();
-             if (bg)
-                 bg->transform.color = glm::vec4(1);
-
-             state.in_terminate = false;
-             state.active = false;
-
-             wayfire_view_transform::global_view_projection = glm::mat4();
-
-             //update_views();
-             for(auto v : views) {
-                v->transform.scale = v->transform.translation = v->transform.rotation = glm::mat4();
-             }
+            state.in_terminate = false;
+            state.active = false;
         }
+    }
+
+    void finish_exit() {
+        output->render->auto_redraw(false);
+        output->render->reset_renderer();
+        grab_interface->ungrab();
+        output->deactivate_plugin(grab_interface);
+
+        auto bg = output->workspace->get_background_view();
+        if (bg)
+            bg->transform.color = glm::vec4(1);
+        wayfire_view_transform::global_view_projection = glm::mat4();
+
+        //update_views();
+        for(auto v : views)
+            v->transform.scale = v->transform.translation = v->transform.rotation = glm::mat4();
     }
 
     void start_exit() {
