@@ -38,7 +38,7 @@ class wayfire_expo : public wayfire_plugin_t {
         }
 
         auto section = config->get_section("expo");
-        max_steps = section->get_int("duration", 20);
+        max_steps = section->get_duration("duration", 20);
         auto toggle_key = section->get_key("toggle", {MODIFIER_SUPER, KEY_E});
 
         if (!toggle_key.keyval || !toggle_key.mod)
@@ -278,9 +278,6 @@ class wayfire_expo : public wayfire_plugin_t {
         zoom_target.off_x   = {-mf_x, ((target_vx - center_w) * 2.f + 1.f) / vw};
         zoom_target.off_y   = { mf_y, ((center_h - target_vy) * 2.f - 1.f) / vh};
     }
-
-#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
-                                            *((steps)-(curstep)))/(steps))
 
     void update_zoom()
     {

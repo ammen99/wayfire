@@ -25,6 +25,9 @@ struct wayfire_config_section {
 
     std::string get_string(std::string name, std::string default_value);
     int get_int(std::string name, int default_value);
+    /* reads the specified option which is interpreted as duration in milliseconds
+     * returns the number of frames this duration is equivalent to */
+    int get_duration(std::string name, int default_value);
     double get_double(std::string name, double default_value);
 
     wayfire_key get_key(std::string name,

@@ -52,7 +52,7 @@ class vswitch : public wayfire_plugin_t {
         core->input->add_key(key_up.mod,    key_up.keyval,    &callback_up, output);
         core->input->add_key(key_down.mod,  key_down.keyval,  &callback_down, output);
 
-        max_step = section->get_int("duration", 15);
+        max_step = section->get_duration("duration", 15);
         hook = std::bind(std::mem_fn(&vswitch::slide_update), this);
     }
 
@@ -78,9 +78,6 @@ class vswitch : public wayfire_plugin_t {
         int ox, oy;
     };
     std::vector<animating_view> views;
-
-#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
-                                            *((steps)-(curstep)))/(steps))
 
     void slide_update()
     {

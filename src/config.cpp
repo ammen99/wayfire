@@ -1,5 +1,5 @@
 #include "config.hpp"
-#include "commonincludes.hpp"
+#include "core.hpp"
 #include <cstdlib>
 #include <sstream>
 #include <fstream>
@@ -11,22 +11,32 @@
 using std::string;
 /* TODO: add checks to see if values are correct */
 
-string wayfire_config_section::get_string(string name, string default_value) {
+string wayfire_config_section::get_string(string name, string default_value)
+{
     auto it = options.find(name);
     return (it == options.end() ? default_value : it->second);
 }
 
-int wayfire_config_section::get_int(string name, int df) {
+int wayfire_config_section::get_int(string name, int df)
+{
     auto it = options.find(name);
     return (it == options.end() ? df : std::atoi(it->second.c_str()));
 }
 
-double wayfire_config_section::get_double(string name, double df) {
+int wayfire_config_section::get_duration(string name, int df)
+{
+    int result = get_int(name, df * core->ec->repaint_msec);
+    return result / core->ec->repaint_msec;
+}
+
+double wayfire_config_section::get_double(string name, double df)
+{
     auto it = options.find(name);
     return (it == options.end() ? df : std::atof(it->second.c_str()));
 }
 
-wayfire_key wayfire_config_section::get_key(string name, wayfire_key df) {
+wayfire_key wayfire_config_section::get_key(string name, wayfire_key df)
+{
     auto it = options.find(name);
     if (it == options.end())
         return df;
@@ -55,7 +65,8 @@ wayfire_key wayfire_config_section::get_key(string name, wayfire_key df) {
     return ans;
 }
 
-wayfire_button wayfire_config_section::get_button(string name, wayfire_button df) {
+wayfire_button wayfire_config_section::get_button(string name, wayfire_button df)
+{
     auto it = options.find(name);
     if (it == options.end())
         return df;
@@ -91,7 +102,8 @@ wayfire_button wayfire_config_section::get_button(string name, wayfire_button df
     return ans;
 }
 
-wayfire_color wayfire_config_section::get_color(string name, wayfire_color df) {
+wayfire_color wayfire_config_section::get_color(string name, wayfire_color df)
+{
     auto it = options.find(name);
     if (it == options.end())
         return df;
@@ -103,7 +115,8 @@ wayfire_color wayfire_config_section::get_color(string name, wayfire_color df) {
 }
 
 namespace {
-    string trim(string x) {
+    string trim(string x)
+    {
         int i = 0, j = x.length() - 1;
         while(i < (int)x.length() && x[i] == ' ') ++i;
         while(j >= 0 && x[j] == ' ') --j;
@@ -115,7 +128,8 @@ namespace {
     }
 }
 
-wayfire_config::wayfire_config(string name) {
+wayfire_config::wayfire_config(string name)
+{
     std::ifstream file(name);
     string line;
 
@@ -146,7 +160,8 @@ wayfire_config::wayfire_config(string name) {
     }
 }
 
-wayfire_config_section* wayfire_config::get_section(string name) {
+wayfire_config_section* wayfire_config::get_section(string name)
+{
     for (auto section : sections)
         if (section->name == name)
             return section;

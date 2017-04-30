@@ -89,4 +89,6 @@ using render_hook_t = std::function<void()>;
 
 using view_callback_proc_t = std::function<void(wayfire_view)>;
 
+float GetProgress(float start, float end, float current_step, float max_steps);
+
 #endif

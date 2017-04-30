@@ -45,7 +45,7 @@ class wayfire_grid : public wayfire_plugin_t {
         grab_interface->compat.insert("move");
 
         auto section = config->get_section("grid");
-        total_steps = section->get_int("duration", 100);
+        total_steps = section->get_duration("duration", 15);
 
         for (int i = 1; i < 10; i++) {
             keys[i] = section->get_key("slot_" + slots[i], default_keys[i]);
@@ -101,9 +101,6 @@ class wayfire_grid : public wayfire_plugin_t {
 
         output->render->add_output_effect(&hook);
     }
-
-#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
-                                            *((steps)-(curstep)))/(steps))
 
     void update_pos_size()
     {

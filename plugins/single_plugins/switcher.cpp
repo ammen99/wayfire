@@ -87,9 +87,8 @@ class view_switcher : public wayfire_plugin_t {
 
         core->input->add_key(fast_switch_key.mod, fast_switch_key.keyval, &fast_switch_binding, output);
 
-        /* TODO: we should do this in seconds and convert it to steps using framerate */
-        max_steps = section->get_int("duration", 30);
-        initial_animation_steps = section->get_int("initial_animation", 30);;
+        max_steps = section->get_duration("duration", 30);
+        initial_animation_steps = section->get_duration("initial_animation", 5);;
 
         activate_key = section->get_key("activate", {MODIFIER_ALT, KEY_TAB});
 
@@ -311,23 +310,19 @@ class view_switcher : public wayfire_plugin_t {
         }
     }
 
-
-#define GetProgress(start,end,steps) ((float(end)*(current_step)+float(start) \
-                                            *((steps)-(current_step)))/(steps))
-
     void update_center()
     {
         ++current_step;
         for (auto v : active_views) {
             if (current_step < initial_animation_steps) {
                 v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                            GetProgress(v.off_x.start, v.off_x.end, initial_animation_steps),
-                            GetProgress(v.off_y.start, v.off_y.end, initial_animation_steps),
-                            GetProgress(v.off_z.start, v.off_z.end, initial_animation_steps)));
+                            GetProgress(v.off_x.start, v.off_x.end, current_step, initial_animation_steps),
+                            GetProgress(v.off_y.start, v.off_y.end, current_step, initial_animation_steps),
+                            GetProgress(v.off_z.start, v.off_z.end, current_step, initial_animation_steps)));
 
                 v.view->transform.scale = glm::scale(glm::mat4(), glm::vec3(
-                            GetProgress(v.scale_x.start, v.scale_x.end, initial_animation_steps),
-                            GetProgress(v.scale_y.start, v.scale_y.end, initial_animation_steps),
+                            GetProgress(v.scale_x.start, v.scale_x.end, current_step, initial_animation_steps),
+                            GetProgress(v.scale_y.start, v.scale_y.end, current_step, initial_animation_steps),
                             1));
             } else {
                 v.view->transform.translation = glm::mat4();
@@ -398,12 +393,12 @@ class view_switcher : public wayfire_plugin_t {
         ++current_step;
         for (auto v : active_views) {
             v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                        GetProgress(v.off_x.start, v.off_x.end, max_steps),
+                        GetProgress(v.off_x.start, v.off_x.end, current_step, max_steps),
                         0,
-                        GetProgress(v.off_z.start, v.off_z.end, max_steps)));
+                        GetProgress(v.off_z.start, v.off_z.end, current_step,  max_steps)));
 
             v.view->transform.rotation = glm::rotate(glm::mat4(),
-                    GetProgress(v.rot.start, v.rot.end, max_steps),
+                    GetProgress(v.rot.start, v.rot.end, current_step, max_steps),
                     glm::vec3(0, 1, 0));
         }
 
@@ -427,12 +422,12 @@ class view_switcher : public wayfire_plugin_t {
         ++current_step;
         for (auto v : active_views) {
             v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                        GetProgress(v.off_x.start, v.off_x.end, max_steps),
+                        GetProgress(v.off_x.start, v.off_x.end, current_step, max_steps),
                         0,
-                        GetProgress(v.off_z.start, v.off_z.end, max_steps)));
+                        GetProgress(v.off_z.start, v.off_z.end, current_step, max_steps)));
 
             v.view->transform.rotation = glm::rotate(glm::mat4(),
-                    GetProgress(v.rot.start, v.rot.end, max_steps),
+                    GetProgress(v.rot.start, v.rot.end, current_step, max_steps),
                     glm::vec3(0, 1, 0));
         }
 
@@ -520,17 +515,17 @@ class view_switcher : public wayfire_plugin_t {
 
         for(auto v : active_views) {
             v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
-                        GetProgress(v.off_x.start, v.off_x.end, max_steps),
-                        GetProgress(v.off_y.start, v.off_y.end, max_steps),
-                        GetProgress(v.off_z.start, v.off_z.end, max_steps)));
+                        GetProgress(v.off_x.start, v.off_x.end, current_step, max_steps),
+                        GetProgress(v.off_y.start, v.off_y.end, current_step, max_steps),
+                        GetProgress(v.off_z.start, v.off_z.end, current_step, max_steps)));
 
             v.view->transform.rotation = glm::rotate(glm::mat4(),
-                        GetProgress(v.rot.start, v.rot.end, max_steps),
+                        GetProgress(v.rot.start, v.rot.end, current_step, max_steps),
                         glm::vec3(0, 1, 0));
 
             v.view->transform.scale = glm::scale(glm::mat4(), glm::vec3(
-                        GetProgress(v.scale_x.start, v.scale_x.end, max_steps),
-                        GetProgress(v.scale_y.start, v.scale_y.end, max_steps), 1));
+                        GetProgress(v.scale_x.start, v.scale_x.end, current_step, max_steps),
+                        GetProgress(v.scale_y.start, v.scale_y.end, current_step, max_steps), 1));
         }
 
         if (current_step == max_steps) {
