@@ -12,17 +12,15 @@ struct slide_data {
     int index;
 };
 
-void slide_done_cb(weston_view_animation *animation, void *data);
-
 using pair = std::pair<int, int>;
 class vswitch : public wayfire_plugin_t {
     private:
         key_callback callback_left, callback_right, callback_up, callback_down;
-        int duration;
 
         std::queue<pair>dirs; // series of moves we have to do
-
+        int current_step = 0, max_step;
         bool running = false;
+        effect_hook_t hook;
     public:
 
     void init(wayfire_config *config) {
@@ -53,6 +51,9 @@ class vswitch : public wayfire_plugin_t {
         core->input->add_key(key_right.mod, key_right.keyval, &callback_right, output);
         core->input->add_key(key_up.mod,    key_up.keyval,    &callback_up, output);
         core->input->add_key(key_down.mod,  key_down.keyval,  &callback_down, output);
+
+        max_step = section->get_int("duration", 15);
+        hook = std::bind(std::mem_fn(&vswitch::slide_update), this);
     }
 
     void add_direction(int dx, int dy) {
@@ -65,9 +66,34 @@ class vswitch : public wayfire_plugin_t {
         /* this is the first direction, we have pushed {0, 0} so that slide_done()
          * will do nothing on the first time */
         if (!running) {
-            running = true;
+            start_switch();
             slide_done();
         }
+    }
+
+    float sx, sy, tx, ty;
+
+    struct animating_view {
+        wayfire_view v;
+        int ox, oy;
+    };
+    std::vector<animating_view> views;
+
+#define GetProgress(start,end,curstep,steps) ((float(end)*(curstep)+float(start) \
+                                            *((steps)-(curstep)))/(steps))
+
+    void slide_update()
+    {
+        ++current_step;
+        float dx = GetProgress(sx, tx, current_step, max_step);
+        float dy = GetProgress(sy, ty, current_step, max_step);
+
+        /* XXX: Possibly apply transform in custom rendering? */
+        for (auto v : views)
+            v.v->move(v.ox + dx, v.oy + dy);
+
+        if (current_step == max_step)
+            slide_done();
     }
 
     void slide_done() {
@@ -79,26 +105,34 @@ class vswitch : public wayfire_plugin_t {
 
         vx += dx;
         vy += dy;
+
+        for (auto v : views)
+            v.v->move(v.ox, v.oy);
+
         output->workspace->set_workspace({vx, vy});
+        views.clear();
 
         if (dirs.size() == 0) {
-            running = false;
+            stop_switch();
             return;
         }
 
+        current_step = 0;
         dx = dirs.front().first, dy = dirs.front().second;
+
+        sx = sy = 0;
+        tx = -dx * output->handle->width;
+        ty = -dy * output->handle->height;
+
         GetTuple(vwidth, vheight, output->workspace->get_workspace_grid_size());
         if (vx + dx < 0 || vx + dx >= vwidth || vy + dy < 0 || vy + dy >= vheight) {
-            dirs = std::queue<pair> ();
-            running = false;
+            stop_switch();
             return;
         }
 
         auto current_views = output->workspace->get_views_on_workspace(
                 output->workspace->get_current_workspace());
         auto next_views = output->workspace->get_views_on_workspace({vx + dx, vy + dy});
-
-        int index = 0;
 
         std::unordered_set<wayfire_view> views_to_move;
         for (auto view : current_views)
@@ -108,32 +142,35 @@ class vswitch : public wayfire_plugin_t {
 
         for (auto view : views_to_move) {
             if (view->is_mapped && !view->destroyed)
-            weston_move_run(view->handle, -dx * output->handle->width, -dy * output->handle->height,
-                    1, 1, false, slide_done_cb, new slide_data {this, index++});
+                views.push_back({view, view->geometry.origin.x, view->geometry.origin.y});
         }
 
         /* both workspaces are empty, so no animation, just switch */
-        if (index == 0)
+        if (views_to_move.empty())
             slide_done();
     }
+
+    void start_switch()
+    {
+        if (!output->activate_plugin(grab_interface)) {
+            dirs = std::queue<pair> ();
+            return;
+        }
+
+        running = true;
+        output->render->add_output_effect(&hook, nullptr);
+        output->render->auto_redraw(true);
+    }
+
+    void stop_switch()
+    {
+        output->deactivate_plugin(grab_interface);
+        dirs = std::queue<pair> ();
+        running = false;
+        output->render->rem_effect(&hook, nullptr);
+        output->render->auto_redraw(false);
+    }
 };
-
-
-void timer_cb(void *data)
-{
-    vswitch *plugin = (vswitch*) data;
-    plugin->slide_done();
-}
-
-void slide_done_cb(weston_view_animation*, void *data)
-{
-    auto converted = (slide_data*) data;
-
-    if (converted->index == 0)
-        converted->plugin->slide_done();
-
-    delete converted;
-}
 
 extern "C" {
     wayfire_plugin_t* newInstance() {
