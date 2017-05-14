@@ -121,7 +121,7 @@ class wayfire_expo : public wayfire_plugin_t {
     wayfire_view moving_view;
     void handle_pointer_move(weston_pointer *ptr)
     {
-        if (state.button_pressed) {
+        if (state.button_pressed && !state.in_zoom) {
             state.button_pressed = false;
             start_move();
         }
