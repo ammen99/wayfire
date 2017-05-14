@@ -63,19 +63,8 @@ int main(int argc, char *argv[]) {
     crash_compositor = ec;
     ec->idle_time = 300;
     ec->repaint_msec = 16;
-    ec->kb_repeat_rate = 40;
-    ec->kb_repeat_delay = 400;
     ec->default_pointer_grab = NULL;
     ec->vt_switching = true;
-
-    xkb_rule_names names;
-    names.rules = NULL;
-    names.model = NULL;
-    names.variant = NULL;
-    names.layout = NULL;
-    names.options = NULL;
-
-    weston_compositor_set_xkb_rule_names(ec, &names);
 
     /* TODO: load non-hardcoded config file, useful for debug */
     wayfire_config *config = new wayfire_config("/home/ilex/firerc");

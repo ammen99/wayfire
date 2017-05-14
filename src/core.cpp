@@ -2,6 +2,7 @@
 #include "output.hpp"
 #include "img.hpp"
 #include <unistd.h>
+#include <cstring>
 #include "../proto/wayfire-shell-server.h"
 #include "signal_definitions.hpp"
 /* Manages input grabs */
@@ -220,15 +221,23 @@ void wayfire_core::configure(wayfire_config *config)
 
     run_panel = section->get_int("run_panel", 1);
 
-    /*
-       options.insert(newStringOption("key_repeat_rate", "50"));
-       options.insert(newStringOption("key_repeat_delay", "350"));
+    string model = section->get_string("xkb_model", "pc100");
+    string variant = section->get_string("xkb_variant", "");
+    string layout = section->get_string("xkb_layout", "us");
+    string options = section->get_string("xkb_option", "");
+    string rules = section->get_string("xkb_rule", "evdev");
 
-       options.insert(newStringOption("kbd_model", "pc100"));
-       options.insert(newStringOption("kbd_layouts", "us"));
-       options.insert(newStringOption("kbd_variants", ""));
-       options.insert(newStringOption("kbd_options", "grp:win_space_toggle"));
-       */
+    xkb_rule_names names;
+    names.rules = strdup(rules.c_str());
+    names.model = strdup(model.c_str());
+    names.layout = strdup(layout.c_str());
+    names.variant = strdup(variant.c_str());
+    names.options = strdup(options.c_str());
+
+    weston_compositor_set_xkb_rule_names(ec, &names);
+
+    ec->kb_repeat_rate = section->get_int("kb_repeat_rate", 40);
+    ec->kb_repeat_delay = section->get_int("kb_repeat_delay", 400);
 }
 
 void notify_output_created_idle_cb(void *data)
