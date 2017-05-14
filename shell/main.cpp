@@ -34,7 +34,7 @@ int main()
     wayfire_shell_add_listener(display.wfshell, &bg_shell_listener, 0);
 
     while(true) {
-        if (!wl_display_dispatch(display.wl_disp))
+        if (wl_display_dispatch(display.wl_disp) < 0)
             break;
     }
 
@@ -42,4 +42,6 @@ int main()
         delete x;
     for (auto x : panels)
         delete x;
+
+    wl_display_disconnect(display.wl_disp);
 }
