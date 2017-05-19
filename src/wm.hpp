@@ -6,11 +6,7 @@
 // The following plugins
 // are very, very simple(they just register a keybinding)
 /*
-class Exit : public wayfire_plugin_t {
-    key_callback key;
-    public:
-        void init(weston_config *);
-};
+
 
 class Close : public wayfire_plugin_t {
     public:
@@ -32,6 +28,12 @@ class wayfire_close : public wayfire_plugin_t {
 class wayfire_focus : public wayfire_plugin_t {
     button_callback callback;
     public:
-        void init(wayfire_config *);
+        void init(wayfire_config*);
+};
+
+class wayfire_exit : public wayfire_plugin_t {
+    key_callback key;
+    public:
+        void init(wayfire_config*);
 };
 #endif

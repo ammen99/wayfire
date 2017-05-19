@@ -32,6 +32,7 @@ float GetProgress(float start, float end, float current_step, float max_steps)
 {
     assert(max_steps > 0);
 
-    float prog = std::sin(current_step / max_steps * MPI);
+    float c = current_step / max_steps;
+    float prog = std::sin(c * MPI);
     return prog * end + (1 - prog) * start;
 }
