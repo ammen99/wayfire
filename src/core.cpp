@@ -2,6 +2,7 @@
 #include "output.hpp"
 #include "img.hpp"
 #include <unistd.h>
+#include <sys/wait.h>
 #include <cstring>
 #include "../proto/wayfire-shell-server.h"
 #include "signal_definitions.hpp"
@@ -287,7 +288,6 @@ void refocus_idle_cb(void *data)
 
 void wayfire_core::wake()
 {
-    debug << "compositor wake " << times_wake << " " << run_panel << std::endl;
     if (times_wake == 0 && run_panel)
         run(("/usr/lib/wayfire/wayfire-shell-client -b " + background).c_str());
 
@@ -497,15 +497,21 @@ void wayfire_core::erase_view(wayfire_view v)
 
 void wayfire_core::run(const char *command)
 {
-    debug << "run " << command << std::endl;
-
     std::string cmd = command;
     cmd = "WAYLAND_DISPLAY=" + wayland_display + " " + cmd;
-    debug << "full cmd: " << cmd << std::endl;
-    auto pid = fork();
+    pid_t pid = fork();
 
+    /* The following is a "hack" for disowning the child processes,
+     * otherwise they will simply stay as zombie processes */
     if (!pid) {
-        std::exit(execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL));
+        if (!fork()) {
+            exit(execl("/bin/sh", "/bin/sh", "-c", cmd.c_str(), NULL));
+        } else {
+            exit(0);
+        }
+    } else {
+        int status;
+        waitpid(pid, &status, 0);
     }
 }
 
