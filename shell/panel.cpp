@@ -83,10 +83,17 @@ void wayfire_panel::init_widgets()
     clock->panel_h = height;
 
     /* FIXME: this won't work with all possible fonts and sizes */
-    clock->max_w = 100;
+    clock->max_w = 0.2 * width;
     clock->center_x = width / 2;
 
     widgets.push_back(clock);
+
+    battery_widget *bat = new battery_widget();
+    bat->cr = cairo_create(window->cairo_surface);
+    bat->panel_h = height;
+    bat->max_w = 60;
+    bat->center_x = width - bat->max_w / 2;
+    widgets.push_back(bat);
 
     for (auto w : widgets)
         w->create();

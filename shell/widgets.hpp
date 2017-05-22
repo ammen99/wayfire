@@ -28,8 +28,7 @@ struct widget
 
 struct clock_widget : public widget
 {
-    cairo_font_face_t *font;
-    double font_size = 20;
+
     std::string current_text;
 
     void create();
@@ -38,6 +37,11 @@ struct clock_widget : public widget
 
 struct battery_widget : public widget
 {
+    std::string battery;
+    bool active = false;
+    int percent_current = -1, percent_max;
+    std::string icon_current;
+
     void create();
     bool update();
 };
