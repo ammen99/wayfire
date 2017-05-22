@@ -40,6 +40,23 @@ void load_default_font()
     font_face = cairo_ft_font_face_create_for_ft_face (face, 0);
 }
 
+void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
+        double r, double g, double b, double a)
+{
+    double degrees = M_PI / 180.0;
+
+    cairo_new_sub_path (cr);
+    cairo_arc (cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+    cairo_arc (cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
+    cairo_arc (cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
+    cairo_arc (cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+    cairo_close_path (cr);
+
+    cairo_set_source_rgba(cr, r, g, b, a);
+    cairo_fill_preserve(cr);
+}
+
+/* -------------------- Clock widget ----------------- */
 void clock_widget::create()
 {
     load_default_font();
@@ -72,22 +89,6 @@ std::string format(int x)
     }
 }
 
-void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
-        double r, double g, double b, double a)
-{
-    double degrees = M_PI / 180.0;
-
-    cairo_new_sub_path (cr);
-    cairo_arc (cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-    cairo_arc (cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-    cairo_arc (cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-    cairo_arc (cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
-    cairo_close_path (cr);
-
-    cairo_set_source_rgba(cr, r, g, b, a);
-    cairo_fill_preserve(cr);
-}
-
 bool clock_widget::update()
 {
     using std::chrono::system_clock;
@@ -99,30 +100,31 @@ bool clock_widget::update()
         months[time->tm_mon] + " " + format(time->tm_hour) +
         ":" + format(time->tm_min);
 
-    if (time_string != this->current_text)
-    {
-        render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
-                7, widget_background.r, widget_background.g, widget_background.b, widget_background.a);
-
-        cairo_text_extents_t te;
-        cairo_text_extents(cr, time_string.c_str(), &te);
-
-        double x = 5, y = 20;
-        cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
-
-        x = center_x - te.width / 2;
-
-        cairo_move_to(cr, x, y);
-        cairo_show_text(cr, time_string.c_str());
-
+    if (time_string != this->current_text) {
         current_text = time_string;
-
         return true;
+    } else {
+        return false;
     }
-
-    return false;
 }
 
+void clock_widget::repaint() {
+    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
+            7, widget_background.r, widget_background.g, widget_background.b, widget_background.a);
+
+    cairo_text_extents_t te;
+    cairo_text_extents(cr, current_text.c_str(), &te);
+
+    double x = 5, y = 20;
+    cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
+
+    x = center_x - te.width / 2;
+
+    cairo_move_to(cr, x, y);
+    cairo_show_text(cr, current_text.c_str());
+}
+
+/* --------------- Battery widget ---------------------- */
 char buf[256];
 std::string find_battery()
 {
@@ -171,29 +173,30 @@ bool battery_widget::update()
 {
     int percent = get_battery_energy(battery, "energy_now");
 
-    if (percent_current != percent)
-    {
-        int per = percent * 100 / percent_max;
-        std::string battery_string = std::to_string(per) + "%";
-
-        render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
-                7, widget_background.r, widget_background.g, widget_background.b, widget_background.a);
-
-        cairo_text_extents_t te;
-        cairo_text_extents(cr, battery_string.c_str(), &te);
-
-        double x = 5, y = 20;
-        cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
-
-        x = center_x - te.width / 2;
-
-        cairo_move_to(cr, x, y);
-        cairo_show_text(cr, battery_string.c_str());
-
+    if (percent_current != percent) {
         percent_current = percent;
-
         return true;
+    } else {
+        return false;
     }
+}
 
-    return false;
+void battery_widget::repaint()
+{
+    int per = percent_current * 100 / percent_max;
+    std::string battery_string = std::to_string(per) + "%";
+
+    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
+            7, widget_background.r, widget_background.g, widget_background.b, widget_background.a);
+
+    cairo_text_extents_t te;
+    cairo_text_extents(cr, battery_string.c_str(), &te);
+
+    double x = 5, y = 20;
+    cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
+
+    x = center_x - te.width / 2;
+
+    cairo_move_to(cr, x, y);
+    cairo_show_text(cr, battery_string.c_str());
 }

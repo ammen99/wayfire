@@ -22,8 +22,10 @@ struct widget
 
     virtual void create() = 0;
 
-    /* return true if widget has painted on this iter */
+    /* return true if widget has to be painted on this iter */
     virtual bool update() = 0;
+
+    virtual void repaint() = 0;
 };
 
 struct clock_widget : public widget
@@ -33,6 +35,7 @@ struct clock_widget : public widget
 
     void create();
     bool update();
+    void repaint();
 };
 
 struct battery_widget : public widget
@@ -44,7 +47,7 @@ struct battery_widget : public widget
 
     void create();
     bool update();
+    void repaint();
 };
-
 
 #endif /* end of include guard: WIDGETS_HPP */

@@ -8,6 +8,7 @@ struct widget;
 
 class wayfire_panel {
     wl_callback *repaint_callback;
+    cairo_t *cr;
 
     uint32_t output;
     uint32_t width, height;

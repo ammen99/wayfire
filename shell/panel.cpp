@@ -73,10 +73,7 @@ void wayfire_panel::add_callback(bool swapped)
 
 void wayfire_panel::init_widgets()
 {
-    cairo_t *cr = cairo_create(window->cairo_surface);
-    render_rounded_rectangle(cr, 0, 0, width, height,
-            4, widget_background.r, widget_background.g,
-            widget_background.b, widget_background.a);
+    cr = cairo_create(window->cairo_surface);
 
     clock_widget *clock = new clock_widget();
     clock->cr = cairo_create(window->cairo_surface);
@@ -118,6 +115,19 @@ void wayfire_panel::render_frame(bool first_call)
             if (w->update())
                 should_swap = true;
         }
+    }
+
+    static int frame_count = 0;
+    if (should_swap) {
+        frame_count++;
+        if (frame_count <= 3) {
+            render_rounded_rectangle(cr, 0, 0, width, height,
+                    4, widget_background.r, widget_background.g,
+                    widget_background.b, widget_background.a);
+        }
+
+        for (auto w : widgets)
+            w->repaint();
     }
 
     if (animation.current_y != hidden_height - (int)height)
