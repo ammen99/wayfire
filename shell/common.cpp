@@ -4,9 +4,6 @@
 
 #include <GL/gl.h>
 
-#define WIDTH 256
-#define HEIGHT 256
-
 wayfire_window *current_window = nullptr;
 
 void pointer_enter(void *data, struct wl_pointer *wl_pointer,
