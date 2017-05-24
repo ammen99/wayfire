@@ -183,7 +183,7 @@ bool battery_widget::update()
 
 void battery_widget::repaint()
 {
-    int per = percent_current * 100 / percent_max;
+    int per = percent_current * 100LL / percent_max;
     std::string battery_string = std::to_string(per) + "%";
 
     render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
