@@ -9,7 +9,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <map>
-#include "view.hpp"
+#include "output.hpp"
 
 void gl_call(const char*, uint32_t, const char*);
 

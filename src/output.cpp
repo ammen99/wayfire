@@ -14,6 +14,8 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+#include <libweston-3/libweston-desktop.h>
+
 /* Start plugin manager */
 plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config)
 {
@@ -417,6 +419,13 @@ wayfire_geometry wayfire_output::get_full_geometry()
     return {.origin = {handle->x, handle->y},
             .size = {handle->width, handle->height}};
 }
+
+std::tuple<int, int> wayfire_output::get_screen_size()
+{
+    return std::make_tuple(handle->width, handle->height);
+}
+
+
 
 void wayfire_output::activate()
 {

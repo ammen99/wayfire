@@ -3,7 +3,7 @@
 
 #include "output.hpp"
 #include "debug.hpp"
-#include "config.hpp"
+#include "../shared/config.hpp"
 
 #include "weston_backend.hpp"
 #include "desktop_api.hpp"

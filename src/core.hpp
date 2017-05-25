@@ -1,13 +1,14 @@
 #ifndef FIRE_H
 #define FIRE_H
 
+#include <libweston-3/compositor.h>
+#include "view.hpp"
 #include "plugin.hpp"
 #include <vector>
 #include <map>
 
 using output_callback_proc = std::function<void(wayfire_output*)>;
-/* Manages input grabs */
-/* TODO: make compatible with weston */
+
 struct input_manager {
     private:
         std::unordered_set<wayfire_grab_interface> active_grabs;

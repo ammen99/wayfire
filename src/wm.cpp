@@ -1,5 +1,6 @@
 #include "wm.hpp"
 #include "output.hpp"
+#include "../shared/config.hpp"
 #include <linux/input.h>
 
 void wayfire_exit::init(wayfire_config*)

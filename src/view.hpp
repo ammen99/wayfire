@@ -1,12 +1,14 @@
 #ifndef VIEW_HPP
 #define VIEW_HPP
 #include "commonincludes.hpp"
-#include <libweston-3/libweston-desktop.h>
 #include <vector>
 #include <memory>
 #include <glm/glm.hpp>
 #include <functional>
 
+struct weston_view;
+struct weston_desktop_surface;
+struct weston_surface;
 
 class wayfire_view_transform {
     public: // applied to all views
@@ -62,7 +64,7 @@ class wayfire_view_t {
         wayfire_output *output;
 
         wayfire_geometry geometry, saved_geometry;
-        weston_geometry ds_geometry;
+        wayfire_geometry ds_geometry;
 
         struct {
             bool is_xorg = false;
@@ -105,4 +107,6 @@ class wayfire_view_t {
 };
 
 typedef std::shared_ptr<wayfire_view_t> wayfire_view;
+using view_callback_proc_t = std::function<void(wayfire_view)>;
+
 #endif

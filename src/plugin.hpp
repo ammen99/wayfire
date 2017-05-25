@@ -1,17 +1,23 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-// TODO: remove dependency on view.hpp
-#include "view.hpp"
 #include "config.hpp"
 #include <unordered_set>
+#include <functional>
+#include <memory>
 
 using std::string;
+
+struct weston_pointer;
+struct weston_keyboard;
+struct weston_pointer_axis_event;
+struct weston_pointer_motion_event;
 
 using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
 using button_callback = std::function<void(weston_pointer*, uint32_t)>;
 
 class wayfire_output;
+class wayfire_config;
 using owner_t = string;
 
 /* owners are used to acquire screen grab and to activate */
@@ -87,8 +93,5 @@ using render_hook_t = std::function<void()>;
 #define GetTuple(x,y,t) auto x = std::get<0>(t); \
                         auto y = std::get<1>(t)
 
-using view_callback_proc_t = std::function<void(wayfire_view)>;
-
 float GetProgress(float start, float end, float current_step, float max_steps);
-
 #endif

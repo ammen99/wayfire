@@ -1,15 +1,17 @@
-#include "core.hpp"
-#include "output.hpp"
-#include "img.hpp"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <cstring>
-#include "../proto/wayfire-shell-server.h"
-#include "signal_definitions.hpp"
-/* Manages input grabs */
-/* Start input_manager */
 
-/* pointer grab callbacks */
+#include <libweston-3/libweston-desktop.h>
+
+#include "core.hpp"
+#include "output.hpp"
+#include "img.hpp"
+#include "signal_definitions.hpp"
+#include "../shared/config.hpp"
+#include "../proto/wayfire-shell-server.h"
+
+/* Start input_manager */
 void pointer_grab_focus(weston_pointer_grab*) { }
 void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev)
 {

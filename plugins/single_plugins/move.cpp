@@ -3,6 +3,7 @@
 #include <linux/input.h>
 #include <signal_definitions.hpp>
 #include "snap_signal.hpp"
+#include <libweston-3/libweston-desktop.h>
 
 class wayfire_move : public wayfire_plugin_t {
     signal_callback_t move_request;

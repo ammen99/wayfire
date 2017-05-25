@@ -10,5 +10,7 @@ add_executable(wayfire ${SOURCES})
 target_link_libraries(wayfire jpeg GLESv2)
 target_link_libraries(wayfire dl wayland-server weston-3 weston-desktop-3 png xkbcommon input pixman-1 evdev EGL)
 target_link_libraries(wayfire wayfire-shell-proto)
+target_link_libraries(wayfire wayfire-config)
 
 install(TARGETS wayfire DESTINATION bin)
+

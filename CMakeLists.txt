@@ -11,8 +11,10 @@ find_package(PkgConfig)
 
 include_directories(SYSTEM /usr/include/pixman-1)
 include_directories(src)
+include_directories(shared)
 
 add_subdirectory(proto)
+add_subdirectory(shared)
 add_subdirectory(src)
 
 # Installation

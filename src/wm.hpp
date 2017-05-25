@@ -3,22 +3,6 @@
 #include "plugin.hpp"
 #include "core.hpp"
 
-// The following plugins
-// are very, very simple(they just register a keybinding)
-/*
-
-
-class Close : public wayfire_plugin_t {
-    public:
-        void init(weston_config *);
-};
-
-class Refresh : public wayfire_plugin_t { // keybinding to restart window manager
-    public:
-        void init(weston_config *);
-};
-
-*/
 class wayfire_close : public wayfire_plugin_t {
     key_callback callback;
     public:
@@ -36,4 +20,5 @@ class wayfire_exit : public wayfire_plugin_t {
     public:
         void init(wayfire_config*);
 };
+
 #endif

@@ -5,6 +5,7 @@
 #include "signal_definitions.hpp"
 
 #include "snap_signal.hpp"
+#include <libweston-3/libweston-desktop.h>
 
 class wayfire_grid : public wayfire_plugin_t {
 

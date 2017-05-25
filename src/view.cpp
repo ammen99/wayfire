@@ -6,6 +6,8 @@
 #include "signal_definitions.hpp"
 
 #include <libweston-3/xwayland-api.h>
+#include <libweston-3/libweston-desktop.h>
+
 
 /* misc definitions */
 
@@ -69,7 +71,7 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
     weston_desktop_surface_set_activated(ds, true);
 
     desktop_surface = ds;
-    ds_geometry = {0, 0, 0, 0};
+    ds_geometry = {{0, 0}, {0, 0}};
     surface = weston_desktop_surface_get_surface(ds);
 
     geometry.size.w = surface->width;
@@ -99,12 +101,14 @@ bool wayfire_view_t::is_visible()
 void wayfire_view_t::move(int x, int y)
 {
     geometry.origin = {x, y};
-    weston_view_set_position(handle, x - ds_geometry.x, y - ds_geometry.y);
+    weston_view_set_position(handle, x - ds_geometry.origin.x,
+            y - ds_geometry.origin.y);
 
     /* TODO: we should check if surface is wayland/xwayland in the beginning, since
      * this won't change, it doesn't make sense to check this every time */
     if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
-        xwayland_surface_api->send_position(surface, x - ds_geometry.x, y - ds_geometry.y);
+        xwayland_surface_api->send_position(surface, x - ds_geometry.origin.x,
+                y - ds_geometry.origin.y);
 }
 
 void wayfire_view_t::resize(int w, int h)
@@ -188,8 +192,9 @@ void wayfire_view_t::map(int sx, int sy)
     }
 
     auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
-    if (new_ds_g.x != ds_geometry.x || new_ds_g.y != ds_geometry.y) {
-        ds_geometry = new_ds_g;
+    if (new_ds_g.x != ds_geometry.origin.x || new_ds_g.y != ds_geometry.origin.y) {
+        ds_geometry = {{new_ds_g.x, new_ds_g.y},
+            {new_ds_g.width, new_ds_g.height}};
         move(geometry.origin.x, geometry.origin.y);
     }
 
@@ -201,7 +206,8 @@ void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4)
 /* TODO: use bits */
 void wayfire_view_t::render(uint32_t bits)
 {
-    render_surface(surface, geometry.origin.x - ds_geometry.x, geometry.origin.y - ds_geometry.y,
+    render_surface(surface, geometry.origin.x - ds_geometry.origin.x,
+            geometry.origin.y - ds_geometry.origin.y,
                    transform.calculate_total_transform(), transform.color);
 
     std::vector<effect_hook_t*> hooks_to_run;

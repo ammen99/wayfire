@@ -1,11 +1,18 @@
 #ifndef OUTPUT_HPP
 #define OUTPUT_HPP
 
+#include "view.hpp"
 #include "plugin.hpp"
-#include "opengl.hpp"
 #include <vector>
 #include <unordered_map>
+#include <pixman-1/pixman.h>
 #include "../proto/wayfire-shell-server.h"
+
+namespace OpenGL {
+    struct context_t;
+}
+struct weston_seat;
+struct weston_output;
 
 /* Controls loading of plugins */
 struct plugin_manager {
@@ -69,8 +76,8 @@ class workspace_manager {
 
         /* this function renders a viewport and
          * saves the image in texture which is returned */
-        virtual void texture_from_workspace(std::tuple<int, int>, GLuint& fbuff,
-                GLuint &tex) = 0;
+        virtual void texture_from_workspace(std::tuple<int, int>, uint& fbuff,
+                uint &tex) = 0;
 
         virtual wayfire_view get_background_view() = 0;
 
@@ -112,7 +119,7 @@ class wayfire_output {
 
     /* used for differences between backends */
     int output_dx, output_dy;
-    std::tuple<int, int> get_screen_size() {return std::make_tuple(handle->width, handle->height);}
+    std::tuple<int, int> get_screen_size();
 
     render_manager *render;
     signal_manager *signal;

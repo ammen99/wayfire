@@ -1,5 +1,4 @@
 #include "opengl.hpp"
-#include "output.hpp"
 
 namespace {
     OpenGL::context_t *bound;
@@ -125,8 +124,9 @@ namespace OpenGL {
             glDebugMessageCallback(errorHandler, 0);
         } */
 
-        ctx->width = output->handle->width;
-        ctx->height = output->handle->height;
+        GetTuple(sw, sh, output->get_screen_size());
+        ctx->width = sw;
+        ctx->height = sh;
 
         GLuint vss = load_shader(std::string(shaderSrcPath)
                     .append("/vertex.glsl").c_str(),

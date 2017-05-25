@@ -2,6 +2,7 @@
 #include <core.hpp>
 #include <signal_definitions.hpp>
 #include <pixman-1/pixman.h>
+#include <opengl.hpp>
 
 class viewport_manager : public workspace_manager {
     private:
@@ -34,7 +35,7 @@ class viewport_manager : public workspace_manager {
         std::tuple<int, int> get_workspace_grid_size();
 
         void texture_from_workspace(std::tuple<int, int> vp,
-                GLuint &fbuff, GLuint &tex);
+                uint &fbuff, uint &tex);
 
         wayfire_view get_background_view();
 
@@ -241,8 +242,8 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
 
     this->background = background;
 
-    background->ds_geometry.x += g.origin.x;
-    background->ds_geometry.y += g.origin.y;
+    background->ds_geometry.origin.x += g.origin.x;
+    background->ds_geometry.origin.y += g.origin.y;
 }
 
 void viewport_manager::add_panel(wayfire_view panel)
