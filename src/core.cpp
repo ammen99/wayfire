@@ -244,10 +244,14 @@ void wayfire_core::configure(wayfire_config *config)
 void notify_output_created_idle_cb(void *data)
 {
     core->for_each_output([] (wayfire_output *out) {
-            wayfire_shell_send_output_created(core->wf_shell.resource,
-                    out->handle->id,
-                    out->handle->width, out->handle->height);
-            });
+        wayfire_shell_send_output_created(core->wf_shell.resource,
+                out->handle->id,
+                out->handle->width, out->handle->height);
+        if (out->handle->set_gamma) {
+            wayfire_shell_send_gamma_size(core->wf_shell.resource,
+                    out->handle->gamma_size);
+        }
+    });
 }
 
 void unbind_desktop_shell(wl_resource *resource)

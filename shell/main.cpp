@@ -21,8 +21,13 @@ void output_created_cb(void *data, wayfire_shell *wayfire_shell,
     panels.push_back(panel);
 }
 
+void output_gamma_size_cb(void *data, wayfire_shell *shell, uint32_t size)
+{
+}
+
 static const struct wayfire_shell_listener bg_shell_listener = {
-    .output_created = output_created_cb
+    .output_created = output_created_cb,
+    .gamma_size = output_gamma_size_cb
 };
 
 int main()

@@ -362,11 +362,34 @@ void shell_reserve(struct wl_client *client, struct wl_resource *resource,
     wo->workspace->reserve_workarea((wayfire_shell_panel_position)side, width, height);
 }
 
+void shell_set_color_gamma(wl_client *client, wl_resource *res,
+        uint32_t output, wl_array *r, wl_array *b, wl_array *g)
+{
+    auto wo = wl_output_to_wayfire_output(output);
+    if (!wo || !wo->handle->set_gamma) {
+        errio << "shell_set_gamma called with invalid/unsupported output" << std::endl;
+        return;
+    }
+
+    size_t size = wo->handle->gamma_size;
+    if (r->size != size || b->size != size || g->size != size) {
+        errio << "gamma size is not equal to output's gamma size" << std::endl;
+        return;
+    }
+
+#ifndef ushort
+#define ushort unsigned short
+    wo->handle->set_gamma(wo->handle, size, (ushort*)r->data, (ushort*)g->data, (ushort*)b->data);
+#undef ushort
+#endif
+}
+
 const struct wayfire_shell_interface shell_interface_impl {
     .add_background = shell_add_background,
     .add_panel = shell_add_panel,
     .configure_panel = shell_configure_panel,
-    .reserve = shell_reserve
+    .reserve = shell_reserve,
+    .set_color_gamma = shell_set_color_gamma
 };
 
 wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)

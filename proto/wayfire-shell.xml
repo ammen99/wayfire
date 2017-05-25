@@ -39,5 +39,16 @@
             <arg name="width" type="uint"/>
             <arg name="height" type="uint"/>
         </event>
+
+        <event name="gamma_size">
+            <arg name="size" type="uint"/>
+        </event>
+
+        <request name="set_color_gamma">
+            <arg name="output" type="uint"/>
+            <arg name="gamma_r" type="array"/>
+            <arg name="gamma_b" type="array"/>
+            <arg name="gamma_g" type="array"/>
+        </request>
     </interface>
 </protocol>
