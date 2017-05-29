@@ -365,7 +365,7 @@ void shell_reserve(struct wl_client *client, struct wl_resource *resource,
 }
 
 void shell_set_color_gamma(wl_client *client, wl_resource *res,
-        uint32_t output, wl_array *r, wl_array *b, wl_array *g)
+        uint32_t output, wl_array *r, wl_array *g, wl_array *b)
 {
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo || !wo->handle->set_gamma) {
@@ -373,12 +373,13 @@ void shell_set_color_gamma(wl_client *client, wl_resource *res,
         return;
     }
 
-    size_t size = wo->handle->gamma_size;
+    size_t size = wo->handle->gamma_size * sizeof(uint16_t);
     if (r->size != size || b->size != size || g->size != size) {
-        errio << "gamma size is not equal to output's gamma size" << std::endl;
+        errio << "gamma size is not equal to output's gamma size " << r->size << " " << size << std::endl;
         return;
     }
 
+    size /= sizeof(uint16_t);
 #ifndef ushort
 #define ushort unsigned short
     wo->handle->set_gamma(wo->handle, size, (ushort*)r->data, (ushort*)g->data, (ushort*)b->data);

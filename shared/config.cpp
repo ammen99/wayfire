@@ -1,5 +1,4 @@
 #include "config.hpp"
-#include "core.hpp"
 #include <cstdlib>
 #include <sstream>
 #include <fstream>
@@ -25,8 +24,8 @@ int wayfire_config_section::get_int(string name, int df)
 
 int wayfire_config_section::get_duration(string name, int df)
 {
-    int result = get_int(name, df * core->ec->repaint_msec);
-    return result / core->ec->repaint_msec;
+    int result = get_int(name, df * (1000 / refresh_rate));
+    return result / (1000 / refresh_rate);
 }
 
 double wayfire_config_section::get_double(string name, double df)
@@ -128,11 +127,12 @@ namespace {
     }
 }
 
-wayfire_config::wayfire_config(string name)
+wayfire_config::wayfire_config(string name, int rr)
 {
     std::ifstream file(name);
     string line;
 
+    refresh_rate = rr;
     wayfire_config_section *current_section;
     int line_id = -1;
 
@@ -142,8 +142,8 @@ wayfire_config::wayfire_config(string name)
             continue;
 
         if (line[0] == '[') {
-            debug << "config: new section header " << line << std::endl;
             current_section = new wayfire_config_section();
+            current_section->refresh_rate = rr;
             current_section->name = line.substr(1, line.size() - 2);
             sections.push_back(current_section);
             continue;
@@ -156,7 +156,6 @@ wayfire_config::wayfire_config(string name)
         value = trim(line.substr(i + 1, line.size() - i - 1));
 
         current_section->options[name] = value;
-        debug << "new value " << name + " " + value << std::endl;
     }
 }
 
@@ -168,6 +167,7 @@ wayfire_config_section* wayfire_config::get_section(string name)
 
     auto nsect = new wayfire_config_section();
     nsect->name = name;
+    nsect->refresh_rate = refresh_rate;
     sections.push_back(nsect);
     return nsect;
 }

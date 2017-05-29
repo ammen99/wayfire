@@ -100,7 +100,7 @@ class wayfire_core {
 
     int vwidth, vheight;
 
-    std::string background, shadersrc, plugin_path, plugins;
+    std::string shadersrc, plugin_path, plugins;
     bool run_panel;
 
     weston_compositor_backend backend;

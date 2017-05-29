@@ -216,7 +216,6 @@ void wayfire_core::configure(wayfire_config *config)
 
     vwidth  = section->get_int("vwidth", 3);
     vheight = section->get_int("vheight", 3);
-    background = section->get_string("background", "");
 
     shadersrc = section->get_string("shadersrc", "/usr/share/wayfire/shaders");
     plugin_path = section->get_string("plugin_path_prefix", "/usr/lib/");
@@ -251,7 +250,7 @@ void notify_output_created_idle_cb(void *data)
                 out->handle->width, out->handle->height);
         if (out->handle->set_gamma) {
             wayfire_shell_send_gamma_size(core->wf_shell.resource,
-                    out->handle->gamma_size);
+                    out->handle->id, out->handle->gamma_size);
         }
     });
 }
@@ -295,7 +294,7 @@ void refocus_idle_cb(void *data)
 void wayfire_core::wake()
 {
     if (times_wake == 0 && run_panel)
-        run(("/usr/lib/wayfire/wayfire-shell-client -b " + background).c_str());
+        run("/usr/lib/wayfire/wayfire-shell-client");
 
     ++times_wake;
     auto loop = wl_display_get_event_loop(ec->wl_display);

@@ -21,6 +21,7 @@ struct wayfire_color {
 
 struct wayfire_config_section {
     std::string name;
+    int refresh_rate;
     std::unordered_map<std::string, std::string> options;
 
     std::string get_string(std::string name, std::string default_value);
@@ -40,9 +41,10 @@ struct wayfire_config_section {
 
 class wayfire_config {
     std::vector<wayfire_config_section*> sections;
+    int refresh_rate;
 
     public:
-    wayfire_config(std::string file);
+    wayfire_config(std::string file, int refresh_rate = -1);
     wayfire_config_section* get_section(std::string name);
 };
 

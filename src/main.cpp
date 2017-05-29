@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     ec->vt_switching = true;
 
     /* TODO: load non-hardcoded config file, useful for debug */
-    wayfire_config *config = new wayfire_config("/home/ilex/firerc");
+    wayfire_config *config = new wayfire_config("/home/ilex/firerc", 1000 / ec->repaint_msec);
     core = new wayfire_core();
     core->init(ec, config);
 

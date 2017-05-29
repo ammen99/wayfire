@@ -44,13 +44,24 @@ void pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,
     uint32_t axis, wl_fixed_t value)
 {
 }
+void pointer_frame(void *data, struct wl_pointer *wl_pointer) {}
+void pointer_axis_source(void *data, struct wl_pointer *wl_pointer,
+        uint32_t axis_source) {}
+void pointer_axis_stop(void *data, struct wl_pointer *wl_pointer, uint32_t time,
+        uint32_t axis) {}
+void pointer_axis_discrete(void *data, struct wl_pointer *wl_pointer, uint32_t axis,
+        int32_t discrete) {}
 
 static const struct wl_pointer_listener pointer_listener = {
     .enter = pointer_enter,
     .leave = pointer_leave,
     .motion = pointer_motion,
     .button = pointer_button,
-    .axis = pointer_axis
+    .axis = pointer_axis,
+    .frame = pointer_frame,
+    .axis_source = pointer_axis_source,
+    .axis_stop = pointer_axis_stop,
+    .axis_discrete = pointer_axis_discrete
 };
 
 // listeners
@@ -96,8 +107,6 @@ static void shell_surface_configure(void *data, struct wl_shell_surface *shell_s
         int32_t width, int32_t height)
 {
     ((wayfire_window*) data)->configured = true;
-//	struct window *window = (struct window*) data;
-//	wl_egl_window_resize (window->egl_window, width, height, 0, 0);
 }
 
 static void shell_surface_popup_done(void *data, struct wl_shell_surface *shell_surface)
