@@ -397,6 +397,7 @@ const struct wayfire_shell_interface shell_interface_impl {
 wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
 {
     this->handle = handle;
+    this->transform = (wl_output_transform)handle->transform;
 
     render = new render_manager(this);
     signal = new signal_manager();
@@ -420,12 +421,25 @@ wayfire_geometry wayfire_output::get_full_geometry()
             .size = {handle->width, handle->height}};
 }
 
+void wayfire_output::set_output_transform(wl_output_transform new_tr)
+{
+    /* TODO: this doesn't work, figure out some way to "restart" output */
+    transform = new_tr;
+    //weston_output_disable(handle);
+    //handle->transform = WL_OUTPUT_TRANSFORM_180;
+    //weston_output_set_transform(handle, transform);
+    //weston_output_enable(handle);
+}
+
+wl_output_transform wayfire_output::get_output_transform()
+{
+    return transform;
+}
+
 std::tuple<int, int> wayfire_output::get_screen_size()
 {
     return std::make_tuple(handle->width, handle->height);
 }
-
-
 
 void wayfire_output::activate()
 {
@@ -434,7 +448,6 @@ void wayfire_output::activate()
 void wayfire_output::deactivate()
 {
     // TODO: what do we do?
-    //render->dirty_context = true;
 }
 
 void wayfire_output::attach_view(wayfire_view v)
@@ -449,7 +462,6 @@ void wayfire_output::attach_view(wayfire_view v)
 
 void wayfire_output::detach_view(wayfire_view v)
 {
-
     auto sig_data = destroy_view_signal{v};
     signal->emit_signal("destroy-view", &sig_data);
 
@@ -510,7 +522,6 @@ void wayfire_output::set_active_view(wayfire_view v)
 
 void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
 {
-
     set_active_view(v);
 
     if (v) {

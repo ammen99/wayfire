@@ -114,8 +114,12 @@ class wayfire_output {
        plugin_manager *plugin;
 
        wayfire_view active_view;
+
+       /* currently only normal, 90, 180, 270 are supported */
+       wl_output_transform transform;
     public:
     weston_output* handle;
+
 
     /* used for differences between backends */
     int output_dx, output_dy;
@@ -128,6 +132,9 @@ class wayfire_output {
     wayfire_output(weston_output*, wayfire_config *config);
     ~wayfire_output();
     wayfire_geometry get_full_geometry();
+
+    void set_output_transform(wl_output_transform new_transform);
+    wl_output_transform get_output_transform();
 
     bool activate_plugin  (wayfire_grab_interface owner);
     bool deactivate_plugin(wayfire_grab_interface owner);

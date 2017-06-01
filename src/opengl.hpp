@@ -21,9 +21,11 @@ void gl_call(const char*, uint32_t, const char*);
 /* This macro is taken from WLC source code */
 #define GL_CALL(x) x; gl_call(__PRETTY_FUNCTION__, __LINE__, __STRING(x))
 
-#define TEXTURE_TRANSFORM_INVERT_Y  (1 << 0)
-#define TEXTURE_TRANSFORM_USE_COLOR (1 << 1)
-#define DONT_RELOAD_PROGRAM         (1 << 2)
+#define TEXTURE_TRANSFORM_INVERT_X     (1 << 0)
+#define TEXTURE_TRANSFORM_INVERT_Y     (1 << 1)
+#define TEXTURE_TRANSFORM_USE_COLOR    (1 << 2)
+#define TEXTURE_TRANSFORM_USE_DEVCOORD (1 << 3)
+#define DONT_RELOAD_PROGRAM            (1 << 4)
 
 namespace OpenGL {
 
@@ -37,7 +39,9 @@ namespace OpenGL {
 
         GLuint w2ID, h2ID;
 
+        wayfire_output *output;
         int32_t width, height;
+        int32_t device_width, device_height;
     };
 
     context_t* create_gles_context(wayfire_output *output, const char *shader_src_path);

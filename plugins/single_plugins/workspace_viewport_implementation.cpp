@@ -185,6 +185,7 @@ void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
         OpenGL::prepare_framebuffer(fbuff, tex);
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
+    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
 
     auto g = output->get_full_geometry();
     if (background)

@@ -1,6 +1,7 @@
 #include <output.hpp>
 #include <opengl.hpp>
 #include <core.hpp>
+#include "../../shared/config.hpp"
 /* TODO: this file should be included in some header maybe(plugin.hpp) */
 #include <linux/input-event-codes.h>
 
@@ -214,18 +215,38 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void render()
     {
-        debug << "rendering expo " << output->handle->x << " " << output->handle->y << std::endl;
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         GetTuple(vx, vy, output->workspace->get_current_workspace());
         GetTuple(w,  h,  output->get_screen_size());
 
-        auto matrix = glm::translate(glm::mat4(), glm::vec3(render_params.off_x, render_params.off_y, 0));
+        OpenGL::use_default_program();
+
+        float angle;
+        switch(output->get_output_transform()) {
+            case WL_OUTPUT_TRANSFORM_NORMAL:
+                angle = 0;
+                break;
+            case WL_OUTPUT_TRANSFORM_90:
+                angle = 3 * M_PI / 2;
+                break;
+            case WL_OUTPUT_TRANSFORM_180:
+                angle = M_PI;
+                break;
+            case WL_OUTPUT_TRANSFORM_270:
+                angle = M_PI / 2;
+            default:
+                break;
+        }
+
+        glm::mat4 matrix;
+        matrix = glm::rotate(matrix, angle, glm::vec3(0, 0, 1));
+        matrix = glm::translate(matrix, glm::vec3(render_params.off_x, render_params.off_y, 0));
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
-        OpenGL::use_default_program();
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         for(int i = 0; i < vw; i++) {
             for(int j = 0; j < vh; j++) {
+
                 output->workspace->texture_from_workspace(std::make_tuple(i, j),
                         fbuffs[i][j], textures[i][j]);
 
@@ -234,11 +255,12 @@ class wayfire_expo : public wayfire_plugin_t {
 
                 int mosaic_factor = EDGE_OFFSET - (1 - ((i + j) & 1)) * MOSAIC;
                 wayfire_geometry g = {
-                    .origin = {(i - vx) * w + mosaic_factor, (j - vy) * h + mosaic_factor},
+                    .origin = {(i - vx) * w + mosaic_factor,
+                               (j - vy) * h + mosaic_factor},
                     .size = {w - 2 * mosaic_factor, h - 2 * mosaic_factor}};
 
                 OpenGL::render_transformed_texture(textures[i][j], g, matrix,
-                        glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y);
+                        glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y | TEXTURE_TRANSFORM_USE_DEVCOORD);
             }
         }
 

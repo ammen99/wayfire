@@ -350,8 +350,9 @@ void wayfire_core::add_output(weston_output *output)
     if (outputs.find(output->id) != outputs.end())
         return;
 
-    outputs[output->id] = new wayfire_output(output, config);
-    focus_output(outputs[output->id]);
+    wayfire_output *wo = (outputs[output->id] = new wayfire_output(output, config));
+
+    focus_output(wo);
 
     if (wf_shell.client)
         wayfire_shell_send_output_created(wf_shell.resource, output->id,

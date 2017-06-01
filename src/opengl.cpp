@@ -1,4 +1,5 @@
 #include "opengl.hpp"
+#include <libweston-3/compositor.h>
 
 namespace {
     OpenGL::context_t *bound;
@@ -116,6 +117,7 @@ namespace OpenGL {
 
     context_t* create_gles_context(wayfire_output *output, const char *shaderSrcPath) {
         context_t *ctx = new context_t;
+        ctx->output = output;
 
         /*
         if (file_debug == &file_info) {
@@ -123,10 +125,6 @@ namespace OpenGL {
             glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
             glDebugMessageCallback(errorHandler, 0);
         } */
-
-        GetTuple(sw, sh, output->get_screen_size());
-        ctx->width = sw;
-        ctx->height = sh;
 
         GLuint vss = load_shader(std::string(shaderSrcPath)
                     .append("/vertex.glsl").c_str(),
@@ -152,9 +150,6 @@ namespace OpenGL {
         ctx->w2ID = GL_CALL(glGetUniformLocation(ctx->program, "w2"));
         ctx->h2ID = GL_CALL(glGetUniformLocation(ctx->program, "h2"));
 
-        glUniform1f(ctx->w2ID, ctx->width / 2.);
-        glUniform1f(ctx->h2ID, ctx->height / 2.);
-
         ctx->position   = GL_CALL(glGetAttribLocation(ctx->program, "position"));
         ctx->uvPosition = GL_CALL(glGetAttribLocation(ctx->program, "uvPosition"));
         return ctx;
@@ -166,7 +161,30 @@ namespace OpenGL {
 
     void bind_context(context_t *ctx) {
         bound = ctx;
-    }
+
+        int w = ctx->output->handle->width;
+        int h = ctx->output->handle->height;
+
+        int real_w = w, real_h = h;
+
+        switch(ctx->output->get_output_transform()) {
+            case WL_OUTPUT_TRANSFORM_270:
+            case WL_OUTPUT_TRANSFORM_90:
+                /* OpenGL doesn't know about rotation, so we must give it
+                 * with context size(not rotated) */
+                std::swap(real_w, real_h);
+                break;
+
+            default: break;
+        }
+
+        bound->width = w;
+        bound->height = h;
+
+        bound->device_width = real_w;
+        bound->device_height = real_h;
+
+        }
 
     void release_context(context_t *ctx) {
         glDeleteProgram(ctx->program);
@@ -176,6 +194,14 @@ namespace OpenGL {
     void render_texture(GLuint tex, const wayfire_geometry& g, uint32_t bits) {
         if ((bits & DONT_RELOAD_PROGRAM) == 0) {
             GL_CALL(glUseProgram(bound->program));
+        }
+        GL_CALL(glUniform1f(bound->w2ID, bound->width / 2));
+        GL_CALL(glUniform1f(bound->h2ID, bound->height / 2));
+
+        if ((bits & TEXTURE_TRANSFORM_USE_DEVCOORD)) {
+            GL_CALL(glViewport(0, 0, bound->device_width, bound->device_height));
+        } else {
+            GL_CALL(glViewport(0, 0, bound->width, bound->height));
         }
 
         float w2 = float(bound->width) / 2.;
@@ -211,13 +237,11 @@ namespace OpenGL {
             0.0f, 1.0f,
         };
 
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
-        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_NEAREST));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_NEAREST));
 
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL_CALL(glViewport(0, 0, bound->width, bound->height));
-
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
         GL_CALL(glActiveTexture(GL_TEXTURE0));
 
