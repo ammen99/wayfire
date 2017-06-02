@@ -1,6 +1,8 @@
 #include <output.hpp>
 #include <core.hpp>
 #include <linux/input-event-codes.h>
+#include "../../shared/config.hpp"
+
 
 /* TODO: merge with workspace manager and introduce
  * workspace_delta for distance between workspaces */

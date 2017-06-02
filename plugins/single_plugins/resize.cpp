@@ -4,6 +4,8 @@
 #include <linux/input.h>
 #include <libweston-desktop.h>
 #include <signal_definitions.hpp>
+#include "../../shared/config.hpp"
+
 
 class wayfire_resize : public wayfire_plugin_t {
     signal_callback_t resize_request;

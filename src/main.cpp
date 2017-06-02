@@ -126,6 +126,7 @@ int main(int argc, char *argv[]) {
     }
     */
 
+    core->input = new input_manager();
     core->wake();
     weston_compositor_wake(ec);
 

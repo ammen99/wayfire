@@ -4,6 +4,7 @@
 #include <signal_definitions.hpp>
 #include "snap_signal.hpp"
 #include <libweston-desktop.h>
+#include "../../shared/config.hpp"
 
 class wayfire_move : public wayfire_plugin_t {
     signal_callback_t move_request;

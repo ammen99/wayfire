@@ -3,6 +3,8 @@
 #include <queue>
 #include <linux/input.h>
 #include <utility>
+#include "../../shared/config.hpp"
+
 
 #define MAX_DIRS_IN_QUEUE 4
 

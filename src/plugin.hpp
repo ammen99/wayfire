@@ -1,20 +1,16 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-#include "config.hpp"
+#include <libweston-3/compositor.h>
 #include <unordered_set>
 #include <functional>
 #include <memory>
 
 using std::string;
 
-struct weston_pointer;
-struct weston_keyboard;
-struct weston_pointer_axis_event;
-struct weston_pointer_motion_event;
-
 using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
 using button_callback = std::function<void(weston_pointer*, uint32_t)>;
+using touch_callback = std::function<void(weston_touch*)>;
 
 class wayfire_output;
 class wayfire_config;
@@ -49,8 +45,10 @@ struct wayfire_grab_interface_t {
             std::function<void(weston_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t)> mod; // depressed, locks, latched, group
         } keyboard;
 
-        /* TODO: touch grabs */
         struct {
+            std::function<void(weston_touch*, int32_t, wl_fixed_t, wl_fixed_t)> down;
+            std::function<void(weston_touch*, int32_t)> up;
+            std::function<void(weston_touch*, int32_t, wl_fixed_t, wl_fixed_t)> motion;
         } touch;
 
         std::function<void()> cancel; // called when we must stop current grab

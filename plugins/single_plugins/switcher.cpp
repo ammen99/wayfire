@@ -4,6 +4,7 @@
 #include <core.hpp>
 #include <linux/input-event-codes.h>
 #include <algorithm>
+#include "../../shared/config.hpp"
 
 /* A general TODO: make the code much more organized */
 

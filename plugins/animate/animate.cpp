@@ -3,6 +3,8 @@
 #include "animate.hpp"
 #include <output.hpp>
 #include <signal_definitions.hpp>
+#include "../../shared/config.hpp"
+
 
 /* TODO: kein compute shader
 #define HAS_COMPUTE_SHADER (OpenGL::VersionMajor > 4 ||  \

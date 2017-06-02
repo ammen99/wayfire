@@ -15,11 +15,267 @@
 #include "../shared/config.hpp"
 #include "../proto/wayfire-shell-server.h"
 
+
 /* Start input_manager */
 
 namespace {
 bool grab_start_finalized;
 };
+
+/* TODO: probably should be made better, this is just basic gesture recognition */
+struct wf_gesture_recognizer {
+
+    constexpr static int MIN_FINGERS = 3;
+    constexpr static int MIN_SWIPE_DISTANCE = 100;
+    constexpr static float MIN_PINCH_DISTANCE = 70;
+
+    struct finger {
+        int id;
+        int sx, sy;
+        int ix, iy;
+        bool sent;
+    };
+
+    std::map<int, finger> current;
+
+    uint32_t last_time;
+    weston_touch *touch;
+
+    bool in_gesture = false, gesture_emitted = false;
+
+    int start_sum_dist;
+
+    std::function<void(wayfire_touch_gesture)> handler;
+
+    wf_gesture_recognizer(weston_touch *_touch,
+            std::function<void(wayfire_touch_gesture)> hnd)
+    {
+        touch = _touch;
+        last_time = 0;
+        handler = hnd;
+    }
+
+    void reset_gesture()
+    {
+        gesture_emitted = false;
+
+        int cx = 0, cy = 0;
+        for (auto f : current) {
+            cx += f.second.sx;
+            cy += f.second.sy;
+        }
+
+        cx /= current.size();
+        cy /= current.size();
+
+        start_sum_dist = 0;
+        for (auto &f : current) {
+            start_sum_dist += std::sqrt((cx - f.second.sx) * (cx - f.second.sx)
+                    + (cy - f.second.sy) * (cy - f.second.sy));
+
+            f.second.ix = f.second.sx;
+            f.second.iy = f.second.sy;
+        }
+    }
+
+    void start_new_gesture(int reason_id)
+    {
+        in_gesture = true;
+        reset_gesture();
+
+        for (auto f : current) {
+            if (f.first != reason_id && f.second.sent) {
+                weston_touch_send_up(touch, last_time, f.first);
+                f.second.sent = false;
+            }
+        }
+    }
+
+    void stop_gesture()
+    {
+        in_gesture = gesture_emitted = false;
+
+        for (auto f : current) {
+            f.second.sent = true;
+            weston_touch_send_down(touch, last_time, f.first,
+                    wl_fixed_from_int(f.second.sx),
+                    wl_fixed_from_int(f.second.sy));
+        }
+    }
+
+    void continue_gesture(int id, int sx, int sy)
+    {
+        if (gesture_emitted)
+            return;
+
+        /* first case - consider swipe, we go through each
+         * of the directions and check whether such swipe has occured */
+
+        bool is_left_swipe = true, is_right_swipe = true,
+             is_up_swipe = true, is_down_swipe = true;
+
+        for (auto f : current) {
+            int dx = f.second.sx - f.second.ix;
+            int dy = f.second.sy - f.second.iy;
+
+            if (-MIN_SWIPE_DISTANCE < dx)
+                is_left_swipe = false;
+            if (dx < MIN_SWIPE_DISTANCE)
+                is_right_swipe = false;
+
+            if (-MIN_SWIPE_DISTANCE < dy)
+                is_up_swipe = false;
+            if (dy < MIN_SWIPE_DISTANCE)
+                is_down_swipe = false;
+        }
+
+        uint32_t swipe_dir = 0;
+        if (is_left_swipe)
+            swipe_dir |= GESTURE_DIRECTION_LEFT;
+        if (is_right_swipe)
+            swipe_dir |= GESTURE_DIRECTION_RIGHT;
+        if (is_up_swipe)
+            swipe_dir |= GESTURE_DIRECTION_UP;
+        if (is_down_swipe)
+            swipe_dir |= GESTURE_DIRECTION_DOWN;
+
+        if (swipe_dir) {
+            wayfire_touch_gesture gesture;
+            gesture.type = GESTURE_SWIPE;
+            gesture.finger_count = current.size();
+            gesture.direction = swipe_dir;
+
+
+            handler(gesture);
+            gesture_emitted = true;
+            return;
+        }
+
+        /* second case - this has been a pinch */
+
+        int cx = 0, cy = 0;
+        for (auto f : current) {
+            cx += f.second.sx;
+            cy += f.second.sy;
+        }
+
+        cx /= current.size();
+        cy /= current.size();
+
+        int sum_dist = 0;
+        for (auto f : current) {
+            sum_dist += std::sqrt((cx - f.second.sx) * (cx - f.second.sx)
+                    + (cy - f.second.sy) * (cy - f.second.sy));
+        }
+
+        bool inward_pinch  = (start_sum_dist - sum_dist >= MIN_PINCH_DISTANCE);
+        bool outward_pinch = (start_sum_dist - sum_dist <= -MIN_PINCH_DISTANCE);
+
+        if (inward_pinch || outward_pinch) {
+            wayfire_touch_gesture gesture;
+            gesture.type = GESTURE_PINCH;
+            gesture.finger_count = current.size();
+            gesture.direction =
+                (inward_pinch ? GESTURE_DIRECTION_IN : GESTURE_DIRECTION_OUT);
+
+            handler(gesture);
+            gesture_emitted = true;
+        }
+    }
+
+    void register_touch(int id, int sx, int sy)
+    {
+        if (current.count(id)) {
+            current[id].sx = sx;
+            current[id].sy = sy;
+        } else {
+            current[id] = {id, sx, sy, sx, sy, !in_gesture};
+            if (in_gesture)
+                reset_gesture();
+
+            if (current.size() >= MIN_FINGERS && !in_gesture)
+                start_new_gesture(id);
+        }
+
+        if (in_gesture) {
+            continue_gesture(id, sx, sy);
+        } else {
+            weston_touch_send_down(touch, last_time, id, sx, sy);
+        }
+    }
+
+    void unregister_touch(int id)
+    {
+        /* shouldn't happen, but just in case */
+        if (!current.count(id))
+            return;
+
+        finger f = current[id];
+        current.erase(id);
+        if (in_gesture) {
+            if (current.size() < MIN_FINGERS) {
+                stop_gesture();
+            } else {
+                reset_gesture();
+            }
+        } else if (f.sent) {
+            weston_touch_send_up(touch, last_time, id);
+        }
+
+    }
+};
+
+void touch_grab_down(weston_touch_grab *grab, uint32_t time, int id,
+        wl_fixed_t sx, wl_fixed_t sy)
+{
+    core->input->propagate_touch_down(grab->touch, time, id, sx, sy);
+}
+
+void touch_grab_up(weston_touch_grab *grab, uint32_t time, int id)
+{
+    core->input->propagate_touch_up(grab->touch, time, id);
+}
+
+void touch_grab_motion(weston_touch_grab *grab, uint32_t time, int id,
+        wl_fixed_t sx, wl_fixed_t sy)
+{
+    core->input->propagate_touch_motion(grab->touch, time, id, sx, sy);
+}
+
+void touch_grab_frame(weston_touch_grab*) {}
+void touch_grab_cancel(weston_touch_grab*) {}
+
+static const weston_touch_grab_interface touch_grab_interface = {
+    touch_grab_down,  touch_grab_up, touch_grab_motion,
+    touch_grab_frame, touch_grab_cancel
+};
+
+void input_manager::propagate_touch_down(weston_touch* touch, uint32_t time,
+        int32_t id, wl_fixed_t sx, wl_fixed_t sy)
+{
+    gr->last_time = time;
+    gr->touch = touch;
+    gr->register_touch(id, wl_fixed_to_int(sx), wl_fixed_to_int(sy));
+}
+
+void input_manager::propagate_touch_up(weston_touch* touch, uint32_t time,
+        int32_t id)
+{
+    gr->last_time = time;
+    gr->touch = touch;
+    gr->unregister_touch(id);
+}
+
+void input_manager::propagate_touch_motion(weston_touch* touch, uint32_t time,
+        int32_t id, wl_fixed_t sx, wl_fixed_t sy)
+{
+    gr->last_time = time;
+    gr->touch = touch;
+    gr->register_touch(id, wl_fixed_to_int(sx), wl_fixed_to_int(sy));
+
+    if (!gr->in_gesture)
+        weston_touch_send_motion(touch, time, id, sx, sy);
+}
 
 void pointer_grab_focus(weston_pointer_grab*) { }
 void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev)
@@ -48,14 +304,11 @@ void pointer_grab_cancel(weston_pointer_grab *grab)
     core->input->end_grabs();
 }
 
-namespace
-{
-const weston_pointer_grab_interface pointer_grab_interface = {
+static const weston_pointer_grab_interface pointer_grab_interface = {
     pointer_grab_focus, pointer_grab_motion,      pointer_grab_button,
     pointer_grab_axis,  pointer_grab_axis_source, pointer_grab_frame,
     pointer_grab_cancel
 };
-}
 
 /* keyboard grab callbacks */
 void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key,
@@ -77,18 +330,33 @@ void keyboard_grab_cancel(weston_keyboard_grab *)
 {
     core->input->end_grabs();
 }
-namespace
-{
-const weston_keyboard_grab_interface keyboard_grab_interface = {
+static const weston_keyboard_grab_interface keyboard_grab_interface = {
     keyboard_grab_key, keyboard_grab_mod, keyboard_grab_cancel
 };
-
-}
 
 input_manager::input_manager()
 {
     pgrab.interface = &pointer_grab_interface;
     kgrab.interface = &keyboard_grab_interface;
+
+    tgrab.interface = &touch_grab_interface;
+
+    auto touch = weston_seat_get_touch(core->get_current_seat());
+    touch->default_grab = tgrab;
+    tgrab.touch = touch;
+    touch->grab = &tgrab;
+
+    touch_grabbed = false;
+
+    using namespace std::placeholders;
+    gr = new wf_gesture_recognizer(touch,
+            std::bind(std::mem_fn(&input_manager::handle_gesture), this, _1));
+}
+
+void input_manager::handle_gesture(wayfire_touch_gesture g)
+{
+    debug << "$$$$$$$$$$$handle gesture type:" << g.type << " direction:" << g.direction <<
+        " finger count:" << g.finger_count << std::endl;
 }
 
 static void
@@ -320,8 +588,6 @@ void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
                 1, NULL, bind_desktop_shell) == NULL) {
         errio << "Failed to create wayfire_shell interface" << std::endl;
     }
-
-    input = new input_manager();
 }
 
 void refocus_idle_cb(void *data)

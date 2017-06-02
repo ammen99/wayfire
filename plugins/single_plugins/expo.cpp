@@ -4,6 +4,8 @@
 #include "../../shared/config.hpp"
 /* TODO: this file should be included in some header maybe(plugin.hpp) */
 #include <linux/input-event-codes.h>
+#include "../../shared/config.hpp"
+
 
 class wayfire_expo : public wayfire_plugin_t {
     private:
