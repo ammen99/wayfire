@@ -1,0 +1,10 @@
+* rotation
+* lock surface
+* touch gestures - core and plugins
+* panel - wifi indicator, battery icon, possibly others
+* panel - better theme(colors, fonts, sizes)
+* cube plugin
+* more animations
+* update gamma at resume, don't wait for a minute
+* black surfaces for xwayland views
+* expo/switcher/etc - don't auto_redraw when idle
