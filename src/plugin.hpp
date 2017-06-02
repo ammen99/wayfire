@@ -8,9 +8,10 @@
 
 using std::string;
 
+struct wayfire_touch_gesture;
 using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
 using button_callback = std::function<void(weston_pointer*, uint32_t)>;
-using touch_callback = std::function<void(weston_touch*)>;
+using touch_callback = std::function<void(wayfire_touch_gesture*)>;
 
 class wayfire_output;
 class wayfire_config;

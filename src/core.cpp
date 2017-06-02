@@ -353,10 +353,27 @@ input_manager::input_manager()
             std::bind(std::mem_fn(&input_manager::handle_gesture), this, _1));
 }
 
+int input_manager::add_gesture(const wayfire_touch_gesture& gesture,
+        touch_callback *callback)
+{
+    gesture_listeners[gesture_id] = {gesture, callback};
+    gesture_id++;
+    return gesture_id - 1;
+}
+
+void input_manager::rem_gesture(int id)
+{
+    gesture_listeners.erase(id);
+}
+
 void input_manager::handle_gesture(wayfire_touch_gesture g)
 {
-    debug << "$$$$$$$$$$$handle gesture type:" << g.type << " direction:" << g.direction <<
-        " finger count:" << g.finger_count << std::endl;
+    for (const auto& listener : gesture_listeners) {
+        if (listener.second.gesture.type == g.type &&
+                listener.second.gesture.finger_count == g.finger_count)
+            (*listener.second.call)(&g);
+
+    }
 }
 
 static void
