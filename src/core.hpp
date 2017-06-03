@@ -52,6 +52,7 @@ struct input_manager {
         input_manager();
         void grab_input(wayfire_grab_interface);
         void ungrab_input(wayfire_grab_interface);
+        bool input_grabbed();
 
         void propagate_pointer_grab_axis  (weston_pointer *ptr, weston_pointer_axis_event *ev);
         void propagate_pointer_grab_motion(weston_pointer *ptr, weston_pointer_motion_event *ev);
@@ -84,6 +85,8 @@ class wayfire_core {
         friend struct plugin_manager;
 
         wayfire_config *config;
+
+        std::vector<weston_output*> pending_outputs;
 
         wayfire_output *active_output;
         std::map<uint32_t, wayfire_output *> outputs;

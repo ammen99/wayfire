@@ -381,7 +381,6 @@ input_manager::input_manager()
 {
     pgrab.interface = &pointer_grab_interface;
     kgrab.interface = &keyboard_grab_interface;
-
     tgrab.interface = &touch_grab_interface;
 
     auto touch = weston_seat_get_touch(core->get_current_seat());
@@ -455,6 +454,11 @@ void input_manager::ungrab_input(wayfire_grab_interface iface)
         weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
         gr->in_grab = false;
     }
+}
+
+bool input_manager::input_grabbed()
+{
+    return !active_grabs.empty();
 }
 
 void input_manager::propagate_pointer_grab_axis(weston_pointer *ptr,
@@ -540,7 +544,7 @@ struct key_callback_data {
 static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data)
 {
     auto ddata = (key_callback_data*) data;
-    if (core->get_active_output() == ddata->output)
+    if (core->get_active_output() == ddata->output && !core->input->input_grabbed())
         (*ddata->call) (kbd, key);
 }
 
@@ -553,7 +557,7 @@ static void buttonbinding_handler(weston_pointer *ptr, uint32_t time,
         uint32_t button, void *data)
 {
     auto ddata = (button_callback_data*) data;
-    if (core->get_active_output() == ddata->output)
+    if (core->get_active_output() == ddata->output && !core->input->input_grabbed())
         (*ddata->call) (ptr, button);
 }
 
@@ -660,6 +664,10 @@ void wayfire_core::wake()
     if (times_wake == 0 && run_panel)
         run(INSTALL_PREFIX "/lib/wayfire/wayfire-shell-client");
 
+    for (auto out : pending_outputs)
+        add_output(out);
+    pending_outputs.clear();
+
     ++times_wake;
     auto loop = wl_display_get_event_loop(ec->wl_display);
     wl_event_loop_add_idle(loop, refocus_idle_cb, 0);
@@ -707,9 +715,13 @@ void wayfire_core::add_output(weston_output *output)
     if (outputs.find(output->id) != outputs.end())
         return;
 
-    wayfire_output *wo = (outputs[output->id] = new wayfire_output(output, config));
+    if (!input) {
+        pending_outputs.push_back(output);
+        return;
+    }
 
-    focus_output(wo);
+    outputs[output->id] = new wayfire_output(output, config);
+    focus_output(outputs[output->id]);
 
     if (wf_shell.client)
         wayfire_shell_send_output_created(wf_shell.resource, output->id,

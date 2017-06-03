@@ -10,6 +10,7 @@
 class wayfire_expo : public wayfire_plugin_t {
     private:
         key_callback toggle_cb, press_cb, move_cb;
+        touch_callback touch_toggle_cb;
         wayfire_button action_button;
 
         int max_steps;
@@ -65,19 +66,62 @@ class wayfire_expo : public wayfire_plugin_t {
             }
         };
 
+        touch_toggle_cb = [=] (wayfire_touch_gesture*) {
+            if (state.active)
+                deactivate();
+            else
+                activate();
+        };
+
         core->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb, output);
+
+
+        wayfire_touch_gesture activate_gesture;
+        activate_gesture.type = GESTURE_PINCH;
+        activate_gesture.finger_count = 3;
+        core->input->add_gesture(activate_gesture, &touch_toggle_cb);
 
         action_button = section->get_button("action", {0, BTN_LEFT});
 
+        grab_interface->callbacks.pointer.button = [=] (weston_pointer *ptr,
+                uint32_t button, uint32_t state)
+        {
+            auto kbd = weston_seat_get_keyboard(ptr->seat);
+            if (kbd->modifiers.mods_depressed != action_button.mod)
+                return;
+            if (button != action_button.button)
+                return;
+
+            handle_input_press(ptr->x, ptr->y, state);
+
+        };
         grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
                 weston_pointer_motion_event *ev)
         {
-            handle_pointer_move(ptr);
+            handle_input_move(ptr->x, ptr->y);
         };
 
-        using namespace std::placeholders;
-        grab_interface->callbacks.pointer.button = std::bind(
-                std::mem_fn(&wayfire_expo::handle_pointer_button), this, _1, _2, _3);
+        grab_interface->callbacks.touch.down = [=] (weston_touch *touch,
+                int32_t id, wl_fixed_t sx, wl_fixed_t sy)
+        {
+            if (id > 0) return;
+            handle_input_press(sx, sy, WL_POINTER_BUTTON_STATE_PRESSED);
+        };
+
+        grab_interface->callbacks.touch.up = [=] (weston_touch *touch, int32_t id)
+        {
+            if (id > 0) return;
+            handle_input_press(0, 0, WL_POINTER_BUTTON_STATE_RELEASED);
+        };
+
+        grab_interface->callbacks.touch.motion = [=] (weston_touch *touch,
+                int32_t id, wl_fixed_t sx, wl_fixed_t sy)
+        {
+            if (id > 0) /* we handle just the first finger */
+                return;
+
+            handle_input_move(sx, sy);
+        };
 
         renderer = std::bind(std::mem_fn(&wayfire_expo::render), this);
 
@@ -112,7 +156,6 @@ class wayfire_expo : public wayfire_plugin_t {
 
         target_vx = vx;
         target_vy = vy;
-
         calculate_zoom(true);
 
         output->render->set_renderer(renderer);
@@ -135,7 +178,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
     int sx, sy;
     wayfire_view moving_view;
-    void handle_pointer_move(weston_pointer *ptr)
+    void handle_input_move(wl_fixed_t x, wl_fixed_t y)
     {
         if (state.button_pressed && !state.in_zoom) {
             state.button_pressed = false;
@@ -145,8 +188,8 @@ class wayfire_expo : public wayfire_plugin_t {
         if (!state.moving || !moving_view)
             return;
 
-        int cx = wl_fixed_to_int(ptr->x);
-        int cy = wl_fixed_to_int(ptr->y);
+        int cx = wl_fixed_to_int(x);
+        int cy = wl_fixed_to_int(y);
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
@@ -203,22 +246,16 @@ class wayfire_expo : public wayfire_plugin_t {
         target_vy = y / eh;
     }
 
-    void handle_pointer_button(weston_pointer *ptr, uint32_t button, uint32_t state)
+    void handle_input_press(wl_fixed_t x, wl_fixed_t y, uint32_t state)
     {
-        auto kbd = weston_seat_get_keyboard(ptr->seat);
-        if (kbd->modifiers.mods_depressed != action_button.mod)
-            return;
-        if (button != action_button.button)
-            return;
-
         if (state == WL_POINTER_BUTTON_STATE_RELEASED && !this->state.moving) {
             deactivate();
         } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
             this->state.moving = false;
         } else {
             this->state.button_pressed = true;
-            sx = wl_fixed_to_int(ptr->x);
-            sy = wl_fixed_to_int(ptr->y);
+            sx = wl_fixed_to_int(x);
+            sy = wl_fixed_to_int(y);
 
             moving_view = find_view_at(sx, sy);
             update_target_workspace(sx, sy);
