@@ -18,6 +18,7 @@ using pair = std::pair<int, int>;
 class vswitch : public wayfire_plugin_t {
     private:
         key_callback callback_left, callback_right, callback_up, callback_down;
+        touch_callback gesture_cb;
 
         std::queue<pair>dirs; // series of moves we have to do
         int current_step = 0, max_step;
@@ -53,6 +54,23 @@ class vswitch : public wayfire_plugin_t {
         core->input->add_key(key_right.mod, key_right.keyval, &callback_right, output);
         core->input->add_key(key_up.mod,    key_up.keyval,    &callback_up, output);
         core->input->add_key(key_down.mod,  key_down.keyval,  &callback_down, output);
+
+        wayfire_touch_gesture activation_gesture;
+        activation_gesture.finger_count = 4;
+        activation_gesture.type = GESTURE_SWIPE;
+
+        gesture_cb = [=] (wayfire_touch_gesture *gesture) {
+            debug << "gesture received" << std::endl;
+            if (gesture->direction & GESTURE_DIRECTION_UP)
+                add_direction(0, 1);
+            if (gesture->direction & GESTURE_DIRECTION_DOWN)
+                add_direction(0, -1);
+            if (gesture->direction & GESTURE_DIRECTION_LEFT)
+                add_direction(1, 0);
+            if (gesture->direction & GESTURE_DIRECTION_RIGHT)
+                add_direction(-1, 0);
+        };
+        core->input->add_gesture(activation_gesture, &gesture_cb);
 
         max_step = section->get_duration("duration", 15);
         hook = std::bind(std::mem_fn(&vswitch::slide_update), this);
