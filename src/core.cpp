@@ -42,6 +42,7 @@ struct wf_gesture_recognizer {
     weston_touch *touch;
 
     bool in_gesture = false, gesture_emitted = false;
+    bool in_grab = false;
 
     int start_sum_dist;
 
@@ -85,7 +86,12 @@ struct wf_gesture_recognizer {
 
         for (auto f : current) {
             if (f.first != reason_id && f.second.sent) {
-                weston_touch_send_up(touch, last_time, f.first);
+                if (!in_grab) {
+                    weston_touch_send_up(touch, last_time, f.first);
+                } else {
+                    core->input->grab_send_touch_up(touch, f.first);
+                }
+
                 f.second.sent = false;
             }
         }
@@ -94,13 +100,6 @@ struct wf_gesture_recognizer {
     void stop_gesture()
     {
         in_gesture = gesture_emitted = false;
-
-        for (auto f : current) {
-            f.second.sent = true;
-            weston_touch_send_down(touch, last_time, f.first,
-                    wl_fixed_from_int(f.second.sx),
-                    wl_fixed_from_int(f.second.sy));
-        }
     }
 
     void continue_gesture(int id, int sx, int sy)
@@ -183,24 +182,27 @@ struct wf_gesture_recognizer {
         }
     }
 
+    void update_touch(int id, int sx, int sy)
+    {
+        current[id].sx = sx;
+        current[id].sy = sy;
+
+        if (in_gesture)
+            continue_gesture(id, sx, sy);
+    }
+
     void register_touch(int id, int sx, int sy)
     {
-        if (current.count(id)) {
-            current[id].sx = sx;
-            current[id].sy = sy;
-        } else {
-            current[id] = {id, sx, sy, sx, sy, !in_gesture};
-            if (in_gesture)
-                reset_gesture();
+        current[id] = {id, sx, sy, sx, sy, !in_gesture};
+        if (in_gesture)
+            reset_gesture();
 
-            if (current.size() >= MIN_FINGERS && !in_gesture)
-                start_new_gesture(id);
-        }
+        if (current.size() >= MIN_FINGERS && !in_gesture)
+            start_new_gesture(id);
 
-        if (in_gesture) {
-            continue_gesture(id, sx, sy);
-        } else {
-            weston_touch_send_down(touch, last_time, id, sx, sy);
+        if (!in_grab && !in_gesture) {
+            weston_touch_send_down(touch, last_time, id, wl_fixed_from_int(sx),
+                    wl_fixed_from_int(sy));
         }
     }
 
@@ -271,9 +273,9 @@ void input_manager::propagate_touch_motion(weston_touch* touch, uint32_t time,
 {
     gr->last_time = time;
     gr->touch = touch;
-    gr->register_touch(id, wl_fixed_to_int(sx), wl_fixed_to_int(sy));
+    gr->update_touch(id, wl_fixed_to_int(sx), wl_fixed_to_int(sy));
 
-    if (!gr->in_gesture)
+    if (!gr->in_gesture && !gr->in_grab)
         weston_touch_send_motion(touch, time, id, sx, sy);
 }
 
@@ -346,8 +348,6 @@ input_manager::input_manager()
     tgrab.touch = touch;
     touch->grab = &tgrab;
 
-    touch_grabbed = false;
-
     using namespace std::placeholders;
     gr = new wf_gesture_recognizer(touch,
             std::bind(std::mem_fn(&input_manager::handle_gesture), this, _1));
@@ -372,7 +372,6 @@ void input_manager::handle_gesture(wayfire_touch_gesture g)
         if (listener.second.gesture.type == g.type &&
                 listener.second.gesture.finger_count == g.finger_count)
             (*listener.second.call)(&g);
-
     }
 }
 
@@ -402,6 +401,8 @@ void input_manager::grab_input(wayfire_grab_interface iface)
         auto background = core->get_active_output()->workspace->get_background_view();
         if (background)
             weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
+
+        gr->in_grab = true;
     }
 }
 
@@ -411,6 +412,7 @@ void input_manager::ungrab_input(wayfire_grab_interface iface)
     if (active_grabs.empty()) {
         weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
         weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
+        gr->in_grab = false;
     }
 }
 

@@ -39,7 +39,6 @@ struct input_manager {
         weston_touch_grab tgrab;
 
         wf_gesture_recognizer *gr;
-        bool touch_grabbed;
 
         void handle_gesture(wayfire_touch_gesture g);
 
