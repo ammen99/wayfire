@@ -133,8 +133,8 @@ class wayfire_output {
     ~wayfire_output();
     wayfire_geometry get_full_geometry();
 
-    void set_output_transform(wl_output_transform new_transform);
-    wl_output_transform get_output_transform();
+    void set_transform(wl_output_transform new_transform);
+    wl_output_transform get_transform();
 
     bool activate_plugin  (wayfire_grab_interface owner);
     bool deactivate_plugin(wayfire_grab_interface owner);

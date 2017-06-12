@@ -421,17 +421,51 @@ wayfire_geometry wayfire_output::get_full_geometry()
             .size = {handle->width, handle->height}};
 }
 
-void wayfire_output::set_output_transform(wl_output_transform new_tr)
+void wayfire_output::set_transform(wl_output_transform new_tr)
 {
     /* TODO: this doesn't work, figure out some way to "restart" output */
     transform = new_tr;
-    //weston_output_disable(handle);
-    //handle->transform = WL_OUTPUT_TRANSFORM_180;
-    //weston_output_set_transform(handle, transform);
-    //weston_output_enable(handle);
+
+    int w = render->ctx->device_width;
+    int h = render->ctx->device_height;
+
+    switch(new_tr) {
+        case WL_OUTPUT_TRANSFORM_90:
+        case WL_OUTPUT_TRANSFORM_270:
+            std::swap(w, h);
+            break;
+        default:
+            break;
+    }
+
+    handle->width = w;
+    handle->height = h;
+
+    render->ctx->width = w;
+    render->ctx->height = h;
+
+    pixman_region32_fini(&handle->previous_damage);
+    pixman_region32_init(&handle->previous_damage);
+
+    pixman_region32_fini(&handle->region);
+    pixman_region32_init_rect(&handle->region, handle->x, handle->y, w, h);
+
+    handle->dirty = 1;
+    handle->transform = new_tr;
+
+    wl_resource *resource;
+    wl_resource_for_each(resource, &handle->resource_list) {
+        wl_output_send_geometry(resource, handle->x, handle->y,
+                handle->mm_width, handle->mm_height,
+                handle->subpixel, handle->make, handle->model,
+                new_tr);
+
+        if (wl_resource_get_version(resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
+            wl_output_send_done(resource);
+    }
 }
 
-wl_output_transform wayfire_output::get_output_transform()
+wl_output_transform wayfire_output::get_transform()
 {
     return transform;
 }

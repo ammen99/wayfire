@@ -77,7 +77,6 @@ class wayfire_expo : public wayfire_plugin_t {
 
 
         renderer = std::bind(std::mem_fn(&wayfire_expo::render), this);
-
     }
 
     void activate()
@@ -222,7 +221,7 @@ class wayfire_expo : public wayfire_plugin_t {
         OpenGL::use_default_program();
 
         float angle;
-        switch(output->get_output_transform()) {
+        switch(output->get_transform()) {
             case WL_OUTPUT_TRANSFORM_NORMAL:
                 angle = 0;
                 break;

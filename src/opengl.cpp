@@ -167,7 +167,7 @@ namespace OpenGL {
 
         int real_w = w, real_h = h;
 
-        switch(ctx->output->get_output_transform()) {
+        switch(ctx->output->get_transform()) {
             case WL_OUTPUT_TRANSFORM_270:
             case WL_OUTPUT_TRANSFORM_90:
                 /* OpenGL doesn't know about rotation, so we must give it
@@ -184,7 +184,7 @@ namespace OpenGL {
         bound->device_width = real_w;
         bound->device_height = real_h;
 
-        }
+    }
 
     void release_context(context_t *ctx) {
         glDeleteProgram(ctx->program);

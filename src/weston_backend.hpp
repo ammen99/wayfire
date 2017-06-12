@@ -35,7 +35,7 @@ void configure_drm_backend_output (wl_listener *listener, void *data) {
 
     auto api = weston_drm_output_get_api(output->compositor);
 
-    weston_output_set_transform(output, WL_OUTPUT_TRANSFORM_270);
+    weston_output_set_transform(output, WL_OUTPUT_TRANSFORM_NORMAL);
     weston_output_set_scale(output, 1);
 
     api->set_gbm_format(output, NULL);
