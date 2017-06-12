@@ -3,13 +3,16 @@
 #include <algorithm>
 #include <linux/input-event-codes.h>
 #include "signal_definitions.hpp"
+#include "../../shared/config.hpp"
 
 #include "snap_signal.hpp"
+#include <libweston-3/compositor.h>
 #include <libweston-3/libweston-desktop.h>
 
 class wayfire_grid : public wayfire_plugin_t {
 
     std::unordered_map<wayfire_view, wayfire_geometry> saved_view_geometry;
+    signal_callback_t output_resized_cb;
 
     std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
     std::vector<wayfire_key> default_keys = {
@@ -71,6 +74,11 @@ class wayfire_grid : public wayfire_plugin_t {
 
         fullscreen_cb = std::bind(std::mem_fn(&wayfire_grid::fullscreen_signal_cb), this, _1);
         output->signal->connect_signal("view-fullscreen-state", &fullscreen_cb);
+
+        output_resized_cb = [=] (signal_data*) {
+            saved_view_geometry.clear();
+        };
+        output->signal->connect_signal("output-resized", &output_resized_cb);
     }
 
     void handle_key(wayfire_view view, int key)
@@ -130,23 +138,22 @@ class wayfire_grid : public wayfire_plugin_t {
     }
 
     void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h,
-            bool force_maximize = false, bool force_unmaximize = false,
-            bool use_full_area = false)
+            bool force_maximize = false, bool use_full_area = false)
     {
         auto it = saved_view_geometry.find(v);
         auto g = output->workspace->get_workarea();
         if (use_full_area)
             g = output->get_full_geometry();
 
-        if ((it == saved_view_geometry.end() || it->second != g || force_maximize)
-                && (!force_unmaximize)) {
+        if (it == saved_view_geometry.end() || force_maximize) {
             saved_view_geometry[v] = v->geometry;
             x = g.origin.x;
             y = g.origin.y;
             w = g.size.w;
             h = g.size.h;
 
-            weston_desktop_surface_set_maximized(v->desktop_surface, true);
+            if (!use_full_area)
+                weston_desktop_surface_set_maximized(v->desktop_surface, true);
         } else {
             x = it->second.origin.x;
             y = it->second.origin.y;
@@ -154,7 +161,9 @@ class wayfire_grid : public wayfire_plugin_t {
             h = it->second.size.h;
 
             saved_view_geometry.erase(it);
-            weston_desktop_surface_set_maximized(v->desktop_surface, false);
+
+            if (!use_full_area)
+                weston_desktop_surface_set_maximized(v->desktop_surface, false);
         }
     }
 
@@ -197,8 +206,10 @@ class wayfire_grid : public wayfire_plugin_t {
         assert(data);
 
         int x, y, w, h;
-        toggle_maximized(data->view, x, y, w, h, data->state, !data->state);
+        toggle_maximized(data->view, x, y, w, h, data->state);
         start_animation(data->view, x, y, w, h);
+
+        weston_desktop_surface_set_maximized(data->view->desktop_surface, data->state);
     }
 
     void fullscreen_signal_cb(signal_data *ddata)
@@ -207,8 +218,9 @@ class wayfire_grid : public wayfire_plugin_t {
         assert(data);
 
         int x, y, w, h;
-        toggle_maximized(data->view, x, y, w, h, data->state, !data->state, true);
+        toggle_maximized(data->view, x, y, w, h, data->state, true);
         start_animation(data->view, x, y, w, h);
+        weston_desktop_surface_set_fullscreen(data->view->desktop_surface, data->state);
     }
 };
 

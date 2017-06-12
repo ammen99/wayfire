@@ -429,6 +429,9 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
     int w = render->ctx->device_width;
     int h = render->ctx->device_height;
 
+    int old_w = handle->width;
+    int old_h = handle->height;
+
     switch(new_tr) {
         case WL_OUTPUT_TRANSFORM_90:
         case WL_OUTPUT_TRANSFORM_270:
@@ -468,6 +471,23 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
 
     wayfire_shell_send_output_resized(core->wf_shell.resource, handle->id, w, h);
     signal->emit_signal("output-resized", nullptr);
+
+    ensure_pointer();
+
+    workspace->for_each_view([=] (wayfire_view view) {
+        if (view->fullscreen) {
+            view->set_geometry(get_full_geometry());
+        } else if (view->maximized) {
+            view->set_geometry(workspace->get_workarea());
+        } else {
+            float px = 1. * view->geometry.origin.x / old_w;
+            float py = 1. * view->geometry.origin.y / old_h;
+            float pw = 1. * view->geometry.size.w / old_w;
+            float ph = 1. * view->geometry.size.h / old_h;
+
+            view->set_geometry(px * w, py * h, pw * w, ph * h);
+        }
+    });
 }
 
 wl_output_transform wayfire_output::get_transform()
@@ -478,6 +498,25 @@ wl_output_transform wayfire_output::get_transform()
 std::tuple<int, int> wayfire_output::get_screen_size()
 {
     return std::make_tuple(handle->width, handle->height);
+}
+
+void wayfire_output::ensure_pointer()
+{
+    auto ptr = weston_seat_get_pointer(core->get_current_seat());
+    int px = wl_fixed_to_int(ptr->x), py = wl_fixed_to_int(ptr->y);
+
+    auto g = get_full_geometry();
+    if (!point_inside({px, py}, g)) {
+        wl_fixed_t cx = wl_fixed_from_int(g.origin.x + g.size.w / 2);
+        wl_fixed_t cy = wl_fixed_from_int(g.origin.y + g.size.h / 2);
+
+        weston_pointer_motion_event ev;
+        ev.mask |= WESTON_POINTER_MOTION_ABS;
+        ev.x = wl_fixed_to_double(cx);
+        ev.y = wl_fixed_to_double(cy);
+
+        weston_pointer_move(ptr, &ev);
+    }
 }
 
 void wayfire_output::activate()

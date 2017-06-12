@@ -379,21 +379,7 @@ void wayfire_core::focus_output(wayfire_output *wo)
     if (active_output == wo)
         return;
 
-    auto ptr = weston_seat_get_pointer(get_current_seat());
-    int px = wl_fixed_to_int(ptr->x), py = wl_fixed_to_int(ptr->y);
-
-    auto g = wo->get_full_geometry();
-    if (!point_inside({px, py}, g)) {
-        wl_fixed_t cx = wl_fixed_from_int(g.origin.x + g.size.w / 2);
-        wl_fixed_t cy = wl_fixed_from_int(g.origin.y + g.size.h / 2);
-
-        weston_pointer_motion_event ev;
-        ev.mask |= WESTON_POINTER_MOTION_ABS;
-        ev.x = wl_fixed_to_double(cx);
-        ev.y = wl_fixed_to_double(cy);
-
-        weston_pointer_move(ptr, &ev);
-    }
+    wo->ensure_pointer();
 
     if (active_output)
         active_output->focus_view(nullptr, get_current_seat());

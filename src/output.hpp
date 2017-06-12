@@ -135,6 +135,8 @@ class wayfire_output {
 
     void set_transform(wl_output_transform new_transform);
     wl_output_transform get_transform();
+    /* makes sure that the pointer is inside the output's geometry */
+    void ensure_pointer();
 
     bool activate_plugin  (wayfire_grab_interface owner);
     bool deactivate_plugin(wayfire_grab_interface owner);
