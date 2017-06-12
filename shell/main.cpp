@@ -3,26 +3,29 @@
 #include "gamma.hpp"
 #include "../shared/config.hpp"
 #include <vector>
+#include <map>
 
 wayfire_display display;
 
-std::vector<wayfire_panel*> panels;
-std::vector<wayfire_background*> bgs;
-std::vector<gamma_adjust*> gammas;
+struct wayfire_shell_output {
+    wayfire_panel* panel;
+    wayfire_background *background;
+    gamma_adjust *gamma;
+};
+
+std::map<uint32_t, wayfire_shell_output> outputs;
 
 std::string bg_path;
 void output_created_cb(void *data, wayfire_shell *wayfire_shell,
         uint32_t output, uint32_t width, uint32_t height)
 {
     if (bg_path != "none") {
-        auto bg = new wayfire_background(bg_path);
+        auto bg = (outputs[output].background = new wayfire_background(bg_path));
         bg->create_background(output, width, height);
-        bgs.push_back(bg);
     }
 
-    auto panel = new wayfire_panel();
+    auto panel = (outputs[output].panel = new wayfire_panel());
     panel->create_panel(output, width, height);
-    panels.push_back(panel);
 }
 
 struct {
@@ -35,9 +38,8 @@ void output_gamma_size_cb(void *data, wayfire_shell *shell, uint32_t output,
         uint32_t size)
 {
     if (size > 0 && gamma_ops.enabled) {
-        auto gamma = new gamma_adjust(output, size, gamma_ops.day_t,
+        outputs[output].gamma = new gamma_adjust(output, size, gamma_ops.day_t,
                 gamma_ops.night_t, gamma_ops.day_start, gamma_ops.day_end);
-        gammas.push_back(gamma);
     }
 }
 
@@ -81,12 +83,14 @@ int main()
             break;
     }
 
-    for (auto x : bgs)
-        delete x;
-    for (auto x : panels)
-        delete x;
-    for (auto x : gammas)
-        delete x;
+    for (auto x : outputs) {
+        if (x.second.panel)
+            delete x.second.panel;
+        if (x.second.background)
+            delete x.second.background;
+        if (x.second.gamma)
+            delete x.second.gamma;
+    }
 
     wl_display_disconnect(display.wl_disp);
 }
