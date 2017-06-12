@@ -24,7 +24,9 @@ class wayfire_expo : public wayfire_plugin_t {
             int zoom_delta = 1;
         } state;
         int target_vx, target_vy;
+
         std::vector<std::vector<GLuint>> fbuffs, textures;
+        signal_callback_t resized_cb;
 
     public:
     void init(wayfire_config *config) {
@@ -75,8 +77,20 @@ class wayfire_expo : public wayfire_plugin_t {
         grab_interface->callbacks.pointer.button = std::bind(
                 std::mem_fn(&wayfire_expo::handle_pointer_button), this, _1, _2, _3);
 
-
         renderer = std::bind(std::mem_fn(&wayfire_expo::render), this);
+
+        resized_cb = [=] (signal_data*) {
+            for (int i = 0; i < vw; i++) {
+                for (int j = 0; j < vh; j++) {
+                    GL_CALL(glDeleteTextures(1, &textures[i][j]));
+                    GL_CALL(glDeleteFramebuffers(1, &fbuffs[i][j]));
+
+                    textures[i][j] = fbuffs[i][j] = -1;
+                }
+            }
+        };
+
+        output->signal->connect_signal("output-resized", &resized_cb);
     }
 
     void activate()
