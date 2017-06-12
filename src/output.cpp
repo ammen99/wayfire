@@ -463,6 +463,8 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
         if (wl_resource_get_version(resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
             wl_output_send_done(resource);
     }
+
+    weston_output_damage(handle);
 }
 
 wl_output_transform wayfire_output::get_transform()
