@@ -12,7 +12,7 @@ class wayfire_rotator : public wayfire_plugin_t {
         grab_interface->name = "rotator";
         grab_interface->compatAll = true;
 
-        auto section = config->get_section("command");
+        auto section = config->get_section("rotator");
 
         wayfire_key up_key    = section->get_key("rotate_up",
                 {MODIFIER_ALT|MODIFIER_CTRL, KEY_UP});
