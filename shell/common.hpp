@@ -45,6 +45,8 @@ struct wayfire_window {
     cairo_surface_t *cairo_surface;
 
     bool configured = false;
+
+    void resize(uint32_t new_w, uint32_t new_h);
 };
 
 wayfire_window* create_window(int32_t width, int32_t height);

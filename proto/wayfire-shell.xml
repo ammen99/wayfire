@@ -40,6 +40,12 @@
             <arg name="height" type="uint"/>
         </event>
 
+        <event name="output_resized">
+            <arg name="output" type="uint"/>
+            <arg name="width" type="uint"/>
+            <arg name="height" type="uint"/>
+        </event>
+
         <event name="gamma_size">
             <arg name="output" type="uint"/>
             <arg name="size" type="uint"/>

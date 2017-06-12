@@ -168,6 +168,11 @@ void finish_egl()
     eglDestroyContext (display.egl_display, display.egl_context);
 }
 
+void wayfire_window::resize(uint32_t width, uint32_t height)
+{
+    wl_egl_window_resize(egl_window, width, height, 0, 0);
+    cairo_gl_surface_set_size(cairo_surface, width, height);
+}
 
 wayfire_window *create_window(int32_t width, int32_t height)
 {
@@ -188,9 +193,7 @@ wayfire_window *create_window(int32_t width, int32_t height)
     window->cairo_surface = cairo_gl_surface_create_for_egl(display.rgb_device,
             window->egl_surface, width, height);
 
-    wl_egl_window_resize(window->egl_window, width, height, 0, 0);
-    cairo_gl_surface_set_size(window->cairo_surface, width, height);
-
+    window->resize(width, height);
     window->cairo_surface = cairo_surface_reference(window->cairo_surface);
     return window;
 }

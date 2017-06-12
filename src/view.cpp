@@ -112,7 +112,6 @@ void wayfire_view_t::move(int x, int y)
 
 void wayfire_view_t::resize(int w, int h)
 {
-    geometry.size = {w, h};
     weston_desktop_surface_set_size(desktop_surface, w, h);
 }
 
@@ -176,9 +175,6 @@ void wayfire_view_t::map(int sx, int sy)
 
             geometry.origin = {sx, sy};
         }
-
-        geometry.size = {surface->width, surface->height};
-
         weston_view_update_transform(handle);
         handle->is_mapped  = true;
         surface->is_mapped = true;
@@ -190,7 +186,9 @@ void wayfire_view_t::map(int sx, int sy)
         return;
     }
 
+    geometry.size = {surface->width, surface->height};
     auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
+
     if (new_ds_g.x != ds_geometry.origin.x || new_ds_g.y != ds_geometry.origin.y) {
         ds_geometry = {{new_ds_g.x, new_ds_g.y},
             {new_ds_g.width, new_ds_g.height}};

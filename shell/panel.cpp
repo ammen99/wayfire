@@ -42,6 +42,17 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
     window->pointer_leave = std::bind(std::mem_fn(&wayfire_panel::on_leave), this);
 }
 
+void wayfire_panel::resize(uint32_t w, uint32_t h)
+{
+    width = w;
+    window->resize(width, height);
+
+    widgets[0]->center_x = width / 2; // first widget is the clock
+    widgets[1]->center_x = width - widgets[1]->max_w / 2; // second is the battery
+
+    need_fullredraw = true;
+}
+
 void wayfire_panel::toggle_animation()
 {
     std::swap(animation.target_y, animation.start_y);
@@ -118,12 +129,16 @@ void wayfire_panel::render_frame(bool first_call)
     }
 
     static int frame_count = 0;
+
+    should_swap = should_swap || need_fullredraw;
+
     if (should_swap) {
         frame_count++;
-        if (frame_count <= 3) {
+        if (frame_count <= 3 || need_fullredraw) {
             render_rounded_rectangle(cr, 0, 0, width, height,
                     4, widget_background.r, widget_background.g,
                     widget_background.b, widget_background.a);
+            need_fullredraw = false;
         }
 
         for (auto w : widgets)

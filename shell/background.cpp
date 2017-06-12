@@ -9,12 +9,17 @@ wayfire_background::wayfire_background(std::string image)
 void wayfire_background::create_background(uint32_t output, uint32_t w, uint32_t h)
 {
     auto cursor_theme = wl_cursor_theme_load(NULL, 16, display.shm);
+    if (!cursor_theme) {
+        std::cout << "failed to load cursor theme" << std::endl;
+        return;
+    }
 
     const char* alternatives[] = {
         "left_ptr", "default",
         "top_left_arrow", "left-arrow"
     };
 
+    cursor = NULL;
     for (int i = 0; i < 4 && !cursor; i++)
         cursor = wl_cursor_theme_get_cursor(cursor_theme, alternatives[i]);
 
@@ -27,21 +32,28 @@ void wayfire_background::create_background(uint32_t output, uint32_t w, uint32_t
     window = create_window(w, h);
     wayfire_shell_add_background(display.wfshell, output, window->surface, 0, 0);
 
-    auto cr = cairo_create(window->cairo_surface);
-
     using namespace std::placeholders;
     window->pointer_enter = std::bind(std::mem_fn(&wayfire_background::on_enter),
             this, _1, _2, _3, _4);
 
+    cr = cairo_create(window->cairo_surface);
+    img_surface = cairo_image_surface_create_from_png(image.c_str());
+    resize(w, h);
+}
+
+void wayfire_background::resize(uint32_t w, uint32_t h)
+{
+    cairo_identity_matrix(cr);
+
+    window->resize(w, h);
     set_active_window(window);
 
-    cairo_surface_t *img_surf = cairo_image_surface_create_from_png(image.c_str());
-    double img_w = cairo_image_surface_get_width(img_surf);
-    double img_h = cairo_image_surface_get_height(img_surf);
+    double img_w = cairo_image_surface_get_width(img_surface);
+    double img_h = cairo_image_surface_get_height(img_surface);
 
     cairo_rectangle(cr, 0, 0, w, h);
     cairo_scale(cr, 1.0 * w / img_w, 1.0 * h / img_h);
-    cairo_set_source_surface(cr, img_surf, 0, 0);
+    cairo_set_source_surface(cr, img_surface, 0, 0);
 
     cairo_fill(cr);
 

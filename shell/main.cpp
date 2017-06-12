@@ -28,6 +28,19 @@ void output_created_cb(void *data, wayfire_shell *wayfire_shell,
     panel->create_panel(output, width, height);
 }
 
+void output_resized_cb(void *data, wayfire_shell *wayfire_shell,
+        uint32_t output, uint32_t width, uint32_t height)
+{
+    auto it = outputs.find(output);
+    if (it == outputs.end())
+        return;
+
+    if (it->second.background)
+        it->second.background->resize(width, height);
+    if (it->second.panel)
+        it->second.panel->resize(width, height);
+}
+
 struct {
     bool enabled;
     int day_start, day_end;
@@ -45,6 +58,7 @@ void output_gamma_size_cb(void *data, wayfire_shell *shell, uint32_t output,
 
 static const struct wayfire_shell_listener bg_shell_listener = {
     .output_created = output_created_cb,
+    .output_resized = output_resized_cb,
     .gamma_size = output_gamma_size_cb
 };
 

@@ -465,6 +465,8 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
     }
 
     weston_output_damage(handle);
+
+    wayfire_shell_send_output_resized(core->wf_shell.resource, handle->id, w, h);
 }
 
 wl_output_transform wayfire_output::get_transform()

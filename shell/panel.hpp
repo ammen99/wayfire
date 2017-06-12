@@ -14,6 +14,7 @@ class wayfire_panel {
     uint32_t width, height;
 
     int hidden_height = 1;
+    bool need_fullredraw = false;
 
     struct {
         int dy;
@@ -34,6 +35,8 @@ class wayfire_panel {
         wayfire_panel();
         void create_panel(uint32_t output, uint32_t width, uint32_t height);
         void render_frame(bool first_call = false);
+
+        void resize(uint32_t width, uint32_t height);
 };
 
 #endif /* end of include guard: PANEL_HPP */
