@@ -48,7 +48,8 @@ static const struct wayfire_shell_listener bg_shell_listener = {
 
 int main()
 {
-    auto config = new wayfire_config("/home/ilex/firerc");
+    std::string home_dir = secure_getenv("HOME");
+    auto config = new wayfire_config(home_dir + "/.config/wayfire.ini");
     auto section = config->get_section("shell");
 
     bg_path = section->get_string("background", "none");

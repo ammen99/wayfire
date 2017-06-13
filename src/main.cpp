@@ -67,7 +67,9 @@ int main(int argc, char *argv[]) {
     ec->vt_switching = true;
 
     /* TODO: load non-hardcoded config file, useful for debug */
-    wayfire_config *config = new wayfire_config("/home/ilex/firerc", 1000 / ec->repaint_msec);
+    std::string home_dir = secure_getenv("HOME");
+    debug << "Using home directory: " << home_dir << std::endl;
+    wayfire_config *config = new wayfire_config(home_dir + "/.config/wayfire.ini", 1000 / ec->repaint_msec);
     core = new wayfire_core();
     core->init(ec, config);
 

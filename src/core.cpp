@@ -301,7 +301,7 @@ void refocus_idle_cb(void *data)
 void wayfire_core::wake()
 {
     if (times_wake == 0 && run_panel)
-        run(INSTALL_PREFIX "/wayfire/wayfire-shell-client");
+        run(INSTALL_PREFIX "/lib/wayfire/wayfire-shell-client");
 
     ++times_wake;
     auto loop = wl_display_get_event_loop(ec->wl_display);
