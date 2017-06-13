@@ -221,8 +221,8 @@ void wayfire_core::configure(wayfire_config *config)
     vwidth  = section->get_int("vwidth", 3);
     vheight = section->get_int("vheight", 3);
 
-    shadersrc = section->get_string("shadersrc", "/usr/share/wayfire/shaders");
-    plugin_path = section->get_string("plugin_path_prefix", "/usr/lib/");
+    shadersrc = section->get_string("shadersrc", INSTALL_PREFIX "/share/wayfire/shaders");
+    plugin_path = section->get_string("plugin_path_prefix", INSTALL_PREFIX "/lib/");
     plugins = section->get_string("plugins", "");
 
     run_panel = section->get_int("run_panel", 1);
@@ -301,7 +301,7 @@ void refocus_idle_cb(void *data)
 void wayfire_core::wake()
 {
     if (times_wake == 0 && run_panel)
-        run("/usr/lib/wayfire/wayfire-shell-client");
+        run(INSTALL_PREFIX "/wayfire/wayfire-shell-client");
 
     ++times_wake;
     auto loop = wl_display_get_event_loop(ec->wl_display);
