@@ -6,7 +6,11 @@
 
 #include "core.hpp"
 #include "output.hpp"
+
+#if USE_IMAGEIO
 #include "img.hpp"
+#endif
+
 #include "signal_definitions.hpp"
 #include "../shared/config.hpp"
 #include "../proto/wayfire-shell-server.h"
@@ -276,7 +280,10 @@ void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
 {
     ec = comp;
     configure(conf);
+
+#if USE_IMAGEIO
     image_io::init();
+#endif
 
     if (wl_global_create(ec->wl_display, &wayfire_shell_interface,
                 1, NULL, bind_desktop_shell) == NULL) {

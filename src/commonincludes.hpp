@@ -13,6 +13,7 @@ extern std::ofstream* file_debug;
 #define info  file_info  << "[II] "
 #define errio file_info  << "[EE] "
 
+#include "config.h"
 #define USE_GLES3 1
 
 #endif

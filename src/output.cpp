@@ -4,7 +4,6 @@
 #include <linux/input.h>
 
 #include "wm.hpp"
-#include "img.hpp"
 
 #include <sstream>
 #include <memory>

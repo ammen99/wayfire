@@ -1,0 +1,7 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#define INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}
+#cmakedefine01 USE_IMAGEIO
+
+#endif /* end of include guard: CONFIG_H */

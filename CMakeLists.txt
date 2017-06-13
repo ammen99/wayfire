@@ -13,6 +13,11 @@ include_directories(SYSTEM /usr/include/pixman-1)
 include_directories(src)
 include_directories(shared)
 
+set(BUILD_WITH_IMAGEIO FALSE)
+
+configure_file(config.h.in config.h)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 add_subdirectory(proto)
 add_subdirectory(shared)
 add_subdirectory(src)

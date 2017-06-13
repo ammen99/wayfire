@@ -2,7 +2,6 @@
 #include "opengl.hpp"
 #include "output.hpp"
 #include <glm/glm.hpp>
-#include "img.hpp"
 #include "signal_definitions.hpp"
 
 #include <libweston-3/xwayland-api.h>
