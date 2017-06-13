@@ -147,12 +147,31 @@ class view_switcher : public wayfire_plugin_t {
         output->render->set_renderer(renderer);
         weston_output_schedule_repaint(output->handle);
 
-        auto view = glm::lookAt(glm::vec3(0., 0., 1. * output->handle->width / output->handle->height),
+        auto view = glm::lookAt(glm::vec3(0., 0.,
+                    1. * output->render->ctx->device_width / output->render->ctx->device_height),
                 glm::vec3(0., 0., 0.),
                 glm::vec3(0., 1., 0.));
         auto proj = glm::perspective(45.f, 1.f, .1f, 100.f);
 
-        wayfire_view_transform::global_view_projection = proj * view;
+        float angle;
+        switch(output->get_transform()) {
+            case WL_OUTPUT_TRANSFORM_NORMAL:
+                angle = 0;
+                break;
+            case WL_OUTPUT_TRANSFORM_90:
+                angle = 3 * M_PI / 2;
+                break;
+            case WL_OUTPUT_TRANSFORM_180:
+                angle = M_PI;
+                break;
+            case WL_OUTPUT_TRANSFORM_270:
+                angle = M_PI / 2;
+            default:
+                break;
+        }
+        auto rot = glm::rotate(glm::mat4(), angle, glm::vec3(0.0, 0.0, 1.0));
+
+        wayfire_view_transform::global_view_projection = proj * view * rot;
 
         GetTuple(sw, sh, output->get_screen_size());
 
@@ -198,9 +217,7 @@ class view_switcher : public wayfire_plugin_t {
         wayfire_geometry compositor_geometry = v->geometry;
         v->geometry.origin.x = cx - compositor_geometry.size.w / 2;
         v->geometry.origin.y = cy - compositor_geometry.size.h / 2;
-
-        v->render(0);
-
+        v->render(TEXTURE_TRANSFORM_USE_DEVCOORD);
         v->geometry = compositor_geometry;
     }
 
@@ -209,10 +226,11 @@ class view_switcher : public wayfire_plugin_t {
         OpenGL::use_default_program();
         GL_CALL(glEnable(GL_DEPTH_TEST));
 
+
         auto bg = output->workspace->get_background_view();
         if (bg) {
             bg->transform.color = glm::vec4(0.7, 0.7, 0.7, 1.0);
-            bg->render(0);
+            bg->render(TEXTURE_TRANSFORM_USE_COLOR | TEXTURE_TRANSFORM_USE_DEVCOORD);
         }
 
         if (state.in_center)
@@ -547,8 +565,8 @@ class view_switcher : public wayfire_plugin_t {
         output->deactivate_plugin(grab_interface);
 
         auto bg = output->workspace->get_background_view();
-        if (bg)
-            bg->transform.color = glm::vec4(1);
+        if (bg) bg->transform.color = glm::vec4(1);
+
         wayfire_view_transform::global_view_projection = glm::mat4();
 
         //update_views();

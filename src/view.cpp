@@ -198,14 +198,15 @@ void wayfire_view_t::map(int sx, int sy)
     /* TODO: see shell.c#activate() */
 }
 
-void render_surface(weston_surface *surface, int x, int y, glm::mat4, glm::vec4);
+void render_surface(weston_surface *surface, int x, int y,
+        glm::mat4, glm::vec4, uint32_t bits);
 
 /* TODO: use bits */
 void wayfire_view_t::render(uint32_t bits)
 {
     render_surface(surface, geometry.origin.x - ds_geometry.origin.x,
             geometry.origin.y - ds_geometry.origin.y,
-                   transform.calculate_total_transform(), transform.color);
+                   transform.calculate_total_transform(), transform.color, bits);
 
     std::vector<effect_hook_t*> hooks_to_run;
     for (auto hook : effects) {
@@ -228,7 +229,8 @@ struct weston_gl_surface_state {
 };
 
 
-void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, glm::vec4 color)
+void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, glm::vec4 color,
+        uint32_t bits)
 {
     if (!surface->is_mapped || !surface->renderer_state)
         return;
@@ -241,14 +243,17 @@ void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, 
 
     for (int i = 0; i < 3 && gs->textures[i]; i++) {
         OpenGL::render_transformed_texture(gs->textures[i], geometry, transform,
-                                           color, TEXTURE_TRANSFORM_USE_COLOR);
+                                           color, bits);
     }
 
     weston_subsurface *sub;
     if (!wl_list_empty(&surface->subsurface_list)) {
         wl_list_for_each(sub, &surface->subsurface_list, parent_link) {
-            if (sub && sub->surface != surface)
-                render_surface(sub->surface, sub->position.x + x, sub->position.y + y, transform, color);
+            if (sub && sub->surface != surface) {
+                render_surface(sub->surface,
+                        sub->position.x + x, sub->position.y + y,
+                        transform, color, bits);
+            }
         }
     }
 }
