@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.1.0)
 
 set(CMAKE_CXX_STANDARD 11)
 
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(WAYFIRE_DEBUG_ENABLED 1)
+else(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(WAYFIRE_DEBUG_ENABLED 0)
+endif (CMAKE_BUILD_TYPE MATCHES Debug)
+
 add_compile_options(-Wall -Wextra -Wno-unused-parameter)
 project(wayfire)
 

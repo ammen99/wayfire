@@ -5,15 +5,23 @@
 #define private public
 #endif
 
-#include <fstream>
-extern std::ofstream file_info, file_null;
-extern std::ofstream* file_debug;
-
-#define debug (*file_debug) << "[DD] "
-#define info  file_info  << "[II] "
-#define errio file_info  << "[EE] "
-
 #include "config.h"
-#define USE_GLES3 1
+
+#include <fstream>
+
+namespace wf_debug {
+    extern std::ofstream logfile;
+}
+
+#if WAYFIRE_DEBUG_ENABLED
+#define debug_output_if if(1)
+#else
+#define debug_output_if if(0)
+#endif
+
+#define debug debug_output_if wf_debug::logfile << "[DD] "
+
+#define info  wf_debug::logfile  << "[II] "
+#define errio wf_debug::logfile  << "[EE] "
 
 #endif

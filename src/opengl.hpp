@@ -54,9 +54,7 @@ namespace OpenGL {
     GLuint load_shader(const char *path, GLuint type);
     GLuint compile_shader(const char *src, GLuint type);
 
-#ifdef USE_GLES3
     void prepare_framebuffer(GLuint& fbuff, GLuint& texture);
-#endif
 
     /* set program to current program */
     void use_default_program();

@@ -11,7 +11,7 @@
 
 #include <wayland-server.h>
 
-std::ofstream file_info, file_null, *file_debug;
+std::ofstream wf_debug::logfile;
 weston_compositor *crash_compositor;
 
 void output_created_cb (wl_listener*, void *data)
@@ -32,19 +32,10 @@ void compositor_sleep_cb (wl_listener*, void*)
 
 weston_desktop_api desktop_api;
 int main(int argc, char *argv[]) {
-    char *debugging_enabled = secure_getenv("WAYFIRE_DEBUG");
-
     if (argc > 1) {
-        file_info.open(argv[1]);
+        wf_debug::logfile.open(argv[1]);
     } else {
-        file_info.open("/dev/null");
-    }
-
-    if (debugging_enabled) {
-        file_debug = &file_info;
-    } else {
-        file_null.open("/dev/null");
-        file_debug = &file_null;
+        wf_debug::logfile.open("/dev/null");
     }
 
     weston_log_set_handler(vlog, vlog_continue);

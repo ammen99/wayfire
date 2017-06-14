@@ -78,8 +78,8 @@ vlog(const char *fmt, va_list ap)
 {
     char buf[4096];
 	vsnprintf(buf, 4095, fmt, ap);
-    file_info << "[weston] " << buf;
-    file_info.flush();
+    wf_debug::logfile << "[weston] " << buf;
+    wf_debug::logfile.flush();
 	return 0;
 }
 static int
@@ -87,8 +87,8 @@ vlog_continue(const char *fmt, va_list argp)
 {
     char buf[4096];
 	vsnprintf(buf, 4095, fmt, argp);
-    file_info << buf;
-    file_info.flush();
+    wf_debug::logfile << buf;
+    wf_debug::logfile.flush();
     return 0;
 }
 static void
@@ -96,8 +96,8 @@ wayland_log_handler(const char *fmt, va_list arg)
 {
     char buf[4096];
 	vsnprintf(buf, 4095, fmt, arg);
-    file_info << "[wayland] " << buf;
-    file_info.flush();
+    wf_debug::logfile << "[wayland] " << buf;
+    wf_debug::logfile.flush();
 }
 
 #endif /* end of include guard: DEBUG_HPP */

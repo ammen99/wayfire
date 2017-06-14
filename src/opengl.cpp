@@ -274,62 +274,24 @@ namespace OpenGL {
             errio << "Error in framebuffer!\n";
     }
 
-
-    const char *simple_vs =
-R"(
-#version 100
-attribute mediump vec2 position;
-attribute highp vec2 uvPosition;
-
-varying highp vec2 uvpos;
-uniform int time;
-
-void main() {
-    gl_Position = vec4(position, 0.0, 0.0);
-    uvpos = uvPosition;
-}
-)";
-
-const char *simple_fs =
-R"(
-#version 100
-varying highp vec2 uvpos;
-uniform sampler2D smp;
-void main() {
-    gl_FragColor = texture2D(smp, uvpos);
-}
-)";
-
     GLuint duplicate_texture(GLuint tex, int w, int h) {
         GLuint dst_tex = -1;
 
-#ifdef USE_GLES3
         GLuint dst_fbuff = -1, src_fbuff = -1;
+
         prepare_framebuffer(dst_fbuff, dst_tex);
         GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h,
-                0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
+                    0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
 
         prepare_framebuffer(src_fbuff, tex);
 
         GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst_fbuff));
-        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, src_fbuff));
+        GL_CALL(glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
 
-//        if (bound->framebuffer_support) {
-#ifdef USE_GLES3
-
-            GL_CALL(glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR));
-#endif
- //       }
-
-        render_transformed_texture(tex, {{0, 0}, {int32_t(w), int32_t(h)}});
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
         GL_CALL(glDeleteFramebuffers(1, &dst_fbuff));
         GL_CALL(glDeleteFramebuffers(1, &src_fbuff));
-#else
-//        GL_CALL(glUseProgram(bound->min_program))
-    //TODO: implement support for non gles3 systems
-#endif
         return dst_tex;
     }
-
 }
