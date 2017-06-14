@@ -24,6 +24,7 @@ add_subdirectory(src)
 
 # Installation
 install(DIRECTORY shaders/ DESTINATION share/wayfire/shaders)
+install(FILES wayfire.desktop DESTINATION share/wayland-sessions)
 
 # Plugins
 add_subdirectory(plugins)
