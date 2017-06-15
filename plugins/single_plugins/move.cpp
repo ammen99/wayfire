@@ -65,6 +65,8 @@ class wayfire_move : public wayfire_plugin_t {
 
             prev_x = wl_fixed_to_int(ptr->x);
             prev_y = wl_fixed_to_int(ptr->y);
+
+            view->output->focus_view(nullptr, core->get_current_seat());
             if (enable_snap)
                 slot = 0;
         }
@@ -83,6 +85,7 @@ class wayfire_move : public wayfire_plugin_t {
 
             grab_interface->ungrab();
             output->deactivate_plugin(grab_interface);
+            view->output->focus_view(view, core->get_current_seat());
         }
 
         int calc_slot() {
