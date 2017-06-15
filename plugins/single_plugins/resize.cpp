@@ -10,136 +10,139 @@ class wayfire_resize : public wayfire_plugin_t {
 
     button_callback activate_binding;
     wayfire_view view;
-    wl_fixed_t initial_x, initial_y;
+
+    int initial_x, initial_y;
+    wayfire_geometry initial_geometry;
 
     uint32_t edges;
     public:
-        void init(wayfire_config *config) {
-            grab_interface->name = "resize";
-            grab_interface->compatAll = true;
+    void init(wayfire_config *config)
+    {
+        grab_interface->name = "resize";
+        grab_interface->compatAll = true;
 
-            activate_binding = [=] (weston_pointer* ptr, uint32_t) {
-                this->initiate(ptr);
-            };
+        activate_binding = [=] (weston_pointer* ptr, uint32_t) {
+            this->initiate(ptr);
+        };
 
-            using namespace std::placeholders;
-            core->input->add_button(MODIFIER_SUPER, BTN_LEFT, &activate_binding, output);
-            grab_interface->callbacks.pointer.button =
-                std::bind(std::mem_fn(&wayfire_resize::button_pressed), this, _1, _2, _3);
-            grab_interface->callbacks.pointer.motion =
-                std::bind(std::mem_fn(&wayfire_resize::pointer_motion), this, _1, _2);
+        using namespace std::placeholders;
+        core->input->add_button(MODIFIER_SUPER, BTN_LEFT, &activate_binding, output);
+        grab_interface->callbacks.pointer.button =
+            std::bind(std::mem_fn(&wayfire_resize::button_pressed), this, _1, _2, _3);
+        grab_interface->callbacks.pointer.motion =
+            std::bind(std::mem_fn(&wayfire_resize::pointer_motion), this, _1, _2);
 
-            resize_request = std::bind(std::mem_fn(&wayfire_resize::resize_requested), this, _1);
-            output->signal->connect_signal("resize-request", &resize_request);
-            /* TODO: resize_request, read binding from config */
-        }
+        resize_request = std::bind(std::mem_fn(&wayfire_resize::resize_requested), this, _1);
+        output->signal->connect_signal("resize-request", &resize_request);
+        /* TODO: read binding from config */
+    }
 
-        void resize_requested(signal_data *data) {
-            auto converted = static_cast<resize_request_signal*> (data);
-            if (converted) {
-                initiate(converted->ptr);
-                edges = converted->edges; // the first function may not return,
-                                          //but in this case this is a no-op
-            }
-        }
+    void resize_requested(signal_data *data)
+    {
+        auto converted = static_cast<resize_request_signal*> (data);
+        if (converted)
+            initiate(converted->ptr, converted->edges);
+    }
 
-        void initiate(weston_pointer *ptr) {
-            if (!ptr->focus)
-                return;
+    void initiate(weston_pointer *ptr, uint32_t forced_edges = 0)
+    {
+        if (!ptr->focus)
+            return;
 
-            view = core->find_view(ptr->focus);
-            if (!view || view->is_special)
-                return;
+        view = core->find_view(weston_surface_get_main_surface(ptr->focus->surface));
+        if (!view || view->is_special)
+            return;
 
-            if (!output->activate_plugin(grab_interface))
-                return;
-            if (!grab_interface->grab())
-                return;
+        if (!output->activate_plugin(grab_interface))
+            return;
+        if (!grab_interface->grab())
+            return;
 
-            weston_view_from_global_fixed(view->handle, ptr->x, ptr->y, &initial_x, &initial_y);
+        initial_x = wl_fixed_to_int(ptr->x);
+        initial_y = wl_fixed_to_int(ptr->y);
+        initial_geometry = view->geometry;
 
-            int pointer_x = wl_fixed_to_int(initial_x);
-            int pointer_y = wl_fixed_to_int(initial_y);
+        if (forced_edges == 0) {
+            int view_x = initial_x - view->geometry.origin.x;
+            int view_y = initial_y - view->geometry.origin.y;
 
-            initial_x = ptr->x;
-            initial_y = ptr->y;
-
-            //const int32_t halfw = view->geometry.origin.x + view->geometry.size.w / 2;
-            //const int32_t halfh = view->geometry.origin.y + view->geometry.size.h / 2;
-            const int32_t halfw = view->geometry.size.w / 2;
-            const int32_t halfh = view->geometry.size.h / 2;
-
-            if (pointer_x < halfw) {
-                edges = WL_SHELL_SURFACE_RESIZE_LEFT;
+            edges = 0;
+            if (view_x < view->geometry.size.w / 2) {
+                edges |= WL_SHELL_SURFACE_RESIZE_LEFT;
             } else {
-                edges = WL_SHELL_SURFACE_RESIZE_RIGHT;
+                edges |= WL_SHELL_SURFACE_RESIZE_RIGHT;
             }
 
-            if (pointer_y < halfh) {
+            if (view_y < view->geometry.size.h / 2) {
                 edges |= WL_SHELL_SURFACE_RESIZE_TOP;
             } else {
                 edges |= WL_SHELL_SURFACE_RESIZE_BOTTOM;
             }
-
-            weston_desktop_surface_set_resizing(view->desktop_surface, true);
+        } else {
+            edges = forced_edges;
         }
 
-        void button_pressed(weston_pointer *ptr, uint32_t button, uint32_t state) {
-            if (button != BTN_LEFT || state != WL_POINTER_BUTTON_STATE_RELEASED)
-                return;
+        weston_desktop_surface_set_resizing(view->desktop_surface, true);
 
-            grab_interface->ungrab();
-            output->deactivate_plugin(grab_interface);
-            weston_desktop_surface_set_resizing(view->desktop_surface, false);
+        if (edges == 0) /* simply deactivate */
+            button_pressed(ptr, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
+    }
+
+    void button_pressed(weston_pointer *ptr, uint32_t button, uint32_t state)
+    {
+        if (button != BTN_LEFT || state != WL_POINTER_BUTTON_STATE_RELEASED)
+            return;
+
+        grab_interface->ungrab();
+        output->deactivate_plugin(grab_interface);
+        weston_desktop_surface_set_resizing(view->desktop_surface, false);
+    }
+
+    void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev)
+    {
+        auto newg = initial_geometry;
+
+        int current_x = wl_fixed_to_int(ptr->x);
+        int current_y = wl_fixed_to_int(ptr->y);
+
+        int dx = current_x - initial_x;
+        int dy = current_y - initial_y;
+
+        if (edges & WL_SHELL_SURFACE_RESIZE_LEFT) {
+            newg.origin.x += dx;
+            newg.size.w -= dx;
+        } else {
+            newg.size.w += dx;
         }
 
-        void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
-            auto newg = view->geometry;
-
-            wl_fixed_t current_x, current_y, old_x, old_y;
-            weston_view_from_global_fixed(view->handle, ptr->x, ptr->y, &current_x, &current_y);
-            weston_view_from_global_fixed(view->handle, initial_x, initial_y, &old_x, &old_y);
-
-            int dx = wl_fixed_to_int(current_x - old_x);
-            int dy = wl_fixed_to_int(current_y - old_y);
-
-            initial_x = ptr->x;
-            initial_y = ptr->y;
-
-            if (edges & WL_SHELL_SURFACE_RESIZE_LEFT) {
-                newg.origin.x += dx;
-                newg.size.w -= dx;
-            } else {
-                newg.size.w += dx;
-            }
-
-            if (edges & WL_SHELL_SURFACE_RESIZE_TOP) {
-                newg.origin.y += dy;
-                newg.size.h -= dy;
-            } else {
-                newg.size.h += dy;
-            }
-
-            auto max_size = weston_desktop_surface_get_max_size(view->desktop_surface);
-            auto min_size = weston_desktop_surface_get_min_size(view->desktop_surface);
-
-            min_size.width = std::max(min_size.width, 10);
-            min_size.height = std::max(min_size.height, 10);
-
-            if (max_size.width > 0)
-                newg.size.w = std::min(max_size.width, newg.size.w);
-            newg.size.w = std::max(min_size.width, newg.size.w);
-
-            if (max_size.height > 0)
-                newg.size.h = std::min(max_size.height, newg.size.h);
-            newg.size.h = std::max(min_size.height, newg.size.h);
-
-            view->set_geometry(newg);
+        if (edges & WL_SHELL_SURFACE_RESIZE_TOP) {
+            newg.origin.y += dy;
+            newg.size.h -= dy;
+        } else {
+            newg.size.h += dy;
         }
+
+        auto max_size = weston_desktop_surface_get_max_size(view->desktop_surface);
+        auto min_size = weston_desktop_surface_get_min_size(view->desktop_surface);
+
+        min_size.width = std::max(min_size.width, 10);
+        min_size.height = std::max(min_size.height, 10);
+
+        if (max_size.width > 0)
+            newg.size.w = std::min(max_size.width, newg.size.w);
+        newg.size.w = std::max(min_size.width, newg.size.w);
+
+        if (max_size.height > 0)
+            newg.size.h = std::min(max_size.height, newg.size.h);
+        newg.size.h = std::max(min_size.height, newg.size.h);
+
+        view->set_geometry(newg);
+    }
 };
 
 extern "C" {
-    wayfire_plugin_t *newInstance() {
+    wayfire_plugin_t *newInstance()
+    {
         return new wayfire_resize();
     }
 }
