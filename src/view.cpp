@@ -152,17 +152,24 @@ void wayfire_view_t::map(int sx, int sy)
             sy += output->handle->y;
 
             auto g = weston_desktop_surface_get_geometry(desktop_surface);
-            ds_geometry.origin = {g.x, g.y};
+
+            if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface)) {
+                ds_geometry.origin = {0, 0};
+            } else {
+                ds_geometry.origin = {g.x, g.y};
+            }
+
             ds_geometry.size = {g.width, g.height};
 
             if (xwayland.is_xorg) {
-                weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
-            } else {
-                weston_view_set_position(handle, sx - g.x, sy - g.y);
+                sx = xwayland.x;
+                sy = xwayland.y;
             }
 
+            move(sx, sy);
             geometry.origin = {sx, sy};
         }
+
         weston_view_update_transform(handle);
         handle->is_mapped  = true;
         surface->is_mapped = true;
@@ -175,11 +182,13 @@ void wayfire_view_t::map(int sx, int sy)
     }
 
     geometry.size = {surface->width, surface->height};
-    auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
 
+    if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
+        return;
+
+    auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
     if (new_ds_g.x != ds_geometry.origin.x || new_ds_g.y != ds_geometry.origin.y) {
-        ds_geometry = {{new_ds_g.x, new_ds_g.y},
-            {new_ds_g.width, new_ds_g.height}};
+        ds_geometry.origin = {new_ds_g.x, new_ds_g.y};
         move(geometry.origin.x, geometry.origin.y);
     }
 
