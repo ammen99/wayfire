@@ -84,6 +84,11 @@ class wayfire_resize : public wayfire_plugin_t {
 
         weston_desktop_surface_set_resizing(view->desktop_surface, true);
 
+        if (view->maximized)
+            view->set_maximized(false);
+        if (view->fullscreen)
+            view->set_fullscreen(false);
+
         if (edges == 0) /* simply deactivate */
             button_pressed(ptr, BTN_LEFT, WL_POINTER_BUTTON_STATE_RELEASED);
     }

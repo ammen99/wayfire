@@ -66,6 +66,11 @@ class wayfire_move : public wayfire_plugin_t {
             prev_x = wl_fixed_to_int(ptr->x);
             prev_y = wl_fixed_to_int(ptr->y);
 
+            if (view->maximized)
+                view->set_maximized(false);
+            if (view->fullscreen)
+                view->set_fullscreen(false);
+
             view->output->focus_view(nullptr, core->get_current_seat());
             if (enable_snap)
                 slot = 0;

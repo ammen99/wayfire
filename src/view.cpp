@@ -133,27 +133,12 @@ void wayfire_view_t::set_geometry(int x, int y, int w, int h)
 
 void wayfire_view_t::set_maximized(bool maxim)
 {
-    if (fullscreen || maxim == maximized)
-        return;
-
-    view_maximized_signal data;
-    data.view = core->find_view(desktop_surface);
-    data.state = maxim;
-
-    output->signal->emit_signal("view-maximized-state", &data);
-
     maximized = maxim;
     weston_desktop_surface_set_maximized(desktop_surface, maximized);
 }
 
 void wayfire_view_t::set_fullscreen(bool full)
 {
-    view_fullscreen_signal data;
-    data.view = core->find_view(desktop_surface);
-    data.state = full;
-
-    output->signal->emit_signal("view-fullscreen-state", &data);
-
     fullscreen = full;
     weston_desktop_surface_set_fullscreen(desktop_surface, fullscreen);
 }
@@ -166,11 +151,14 @@ void wayfire_view_t::map(int sx, int sy)
             sx += output->handle->x;
             sy += output->handle->y;
 
+            auto g = weston_desktop_surface_get_geometry(desktop_surface);
+            ds_geometry.origin = {g.x, g.y};
+            ds_geometry.size = {g.width, g.height};
+
             if (xwayland.is_xorg) {
-                auto g = weston_desktop_surface_get_geometry(desktop_surface);
                 weston_view_set_position(handle, xwayland.x - g.x, xwayland.y - g.y);
             } else {
-                weston_view_set_position(handle, sx, sy);
+                weston_view_set_position(handle, sx - g.x, sy - g.y);
             }
 
             geometry.origin = {sx, sy};

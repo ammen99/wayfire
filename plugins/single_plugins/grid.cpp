@@ -70,10 +70,10 @@ class wayfire_grid : public wayfire_plugin_t {
         output->signal->connect_signal("view-snap", &snap_cb);
 
         maximized_cb = std::bind(std::mem_fn(&wayfire_grid::maximize_signal_cb), this, _1);
-        output->signal->connect_signal("view-maximized-state", &maximized_cb);
+        output->signal->connect_signal("view-maximized-request", &maximized_cb);
 
         fullscreen_cb = std::bind(std::mem_fn(&wayfire_grid::fullscreen_signal_cb), this, _1);
-        output->signal->connect_signal("view-fullscreen-state", &fullscreen_cb);
+        output->signal->connect_signal("view-fullscreen-request", &fullscreen_cb);
 
         output_resized_cb = [=] (signal_data*) {
             saved_view_geometry.clear();
@@ -145,7 +145,9 @@ class wayfire_grid : public wayfire_plugin_t {
         if (use_full_area)
             g = output->get_full_geometry();
 
-        if (it == saved_view_geometry.end() || force_maximize) {
+        if (it == saved_view_geometry.end() || v->geometry != g ||
+                force_maximize)
+        {
             saved_view_geometry[v] = v->geometry;
             x = g.origin.x;
             y = g.origin.y;
@@ -153,7 +155,7 @@ class wayfire_grid : public wayfire_plugin_t {
             h = g.size.h;
 
             if (!use_full_area)
-                weston_desktop_surface_set_maximized(v->desktop_surface, true);
+                v->set_maximized(true);
         } else {
             x = it->second.origin.x;
             y = it->second.origin.y;
@@ -163,7 +165,7 @@ class wayfire_grid : public wayfire_plugin_t {
             saved_view_geometry.erase(it);
 
             if (!use_full_area)
-                weston_desktop_surface_set_maximized(v->desktop_surface, false);
+                v->set_maximized(false);
         }
     }
 

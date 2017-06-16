@@ -423,7 +423,6 @@ wayfire_geometry wayfire_output::get_full_geometry()
 
 void wayfire_output::set_transform(wl_output_transform new_tr)
 {
-    /* TODO: this doesn't work, figure out some way to "restart" output */
     transform = new_tr;
 
     int w = render->ctx->device_width;

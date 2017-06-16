@@ -92,21 +92,36 @@ void desktop_surface_maximized_requested(weston_desktop_surface *ds,
         bool maximized, void *shell)
 {
     auto view = core->find_view(ds);
-    if (view)
+    if (view) {
         view->set_maximized(maximized);
+
+        view_maximized_signal data;
+        data.view = view;
+        data.state = maximized;
+
+        view->output->signal->emit_signal("view-maximized-request", &data);
+    }
 }
 
 void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
         bool full, weston_output *output, void *shell)
 {
     auto view = core->find_view(ds);
-    auto wo = (output ? core->get_output(output) : nullptr);
-    if (view) {
-        if (wo && view->output != wo)
-            core->move_view_to_output(view, view->output, wo);
+    if (!view)
+        return;
 
-        view->set_fullscreen(full);
-    }
+    auto wo = (output ? core->get_output(output) : view->output);
+    assert(wo);
+
+    if (view->output != wo)
+        core->move_view_to_output(view, view->output, wo);
+
+    view->set_fullscreen(full);
+    view_fullscreen_signal data;
+    data.view = view;
+    data.state = full;
+
+    wo->signal->emit_signal("view-fullscreen-request", &data);
 }
 
 #endif /* end of include guard: DESKTOP_API_HPP */
