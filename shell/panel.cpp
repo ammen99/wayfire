@@ -2,6 +2,7 @@
 #include "panel.hpp"
 #include "widgets.hpp"
 #include "../proto/wayfire-shell-client.h"
+#include "../shared/config.hpp"
 
 void panel_redraw(void *data, wl_callback*, uint32_t)
 {
@@ -13,14 +14,20 @@ static const struct wl_callback_listener frame_listener = {
     panel_redraw
 };
 
-wayfire_panel::wayfire_panel()
+wayfire_panel::wayfire_panel(wayfire_config *config)
 {
+    auto section = config->get_section("shell_panel");
+    widget::background_color = section->get_color("background_color",
+            {0.033, 0.041, 0.047, 0.9});
+    widget::font_size = section->get_int("font_size", 25);
+    widget::font_face = section->get_string("font_face",
+            "/usr/share/fonts/dejavu/DejaVuSerif.ttf");
 }
 
 void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)
 {
     width = _width;
-    height = 1.3 * 20;
+    height = 1.3 * widget::font_size;
 
     this->output = output;
 
@@ -85,6 +92,7 @@ void wayfire_panel::add_callback(bool swapped)
 void wayfire_panel::init_widgets()
 {
     cr = cairo_create(window->cairo_surface);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 
     clock_widget *clock = new clock_widget();
     clock->cr = cairo_create(window->cairo_surface);
@@ -136,8 +144,8 @@ void wayfire_panel::render_frame(bool first_call)
         frame_count++;
         if (frame_count <= 3 || need_fullredraw) {
             render_rounded_rectangle(cr, 0, 0, width, height,
-                    4, widget_background.r, widget_background.g,
-                    widget_background.b, widget_background.a);
+                    4, widget::background_color.r, widget::background_color.g,
+                    widget::background_color.b, widget::background_color.a);
             need_fullredraw = false;
         }
 

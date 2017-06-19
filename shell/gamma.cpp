@@ -1,6 +1,7 @@
 #include "gamma.hpp"
 #include "common.hpp"
 #include "../proto/wayfire-shell-client.h"
+#include "../shared/config.hpp"
 #include <assert.h>
 #include <functional>
 #include <thread>
@@ -108,11 +109,22 @@ void gamma_adjust::adjustment_loop()
 }
 #undef clock
 
-gamma_adjust::gamma_adjust(uint32_t out, uint32_t sz, int dayt, int nightt, int ds, int de)
+gamma_adjust::gamma_adjust(uint32_t out, uint32_t sz, wayfire_config *config)
+    : output(out), gamma_size(sz)
 {
-    output = out; gamma_size = sz;
-    daytime_temp = dayt; nighttime_temp = nightt;
-    day_start = ds; day_end = de;
+    auto section = config->get_section("shell");
+    int h, m;
+
+    std::string s = section->get_string("day_start", "08:00");
+    sscanf(s.c_str(), "%d:%d", &h, &m);
+    day_start = h * 60 + m;
+
+    s = section->get_string("day_end", "20:00");
+    sscanf(s.c_str(), "%d:%d", &h, &m);
+    day_end = h * 60 + m;
+
+    daytime_temp = section->get_int("day_temperature", 6500);
+    nighttime_temp = section->get_int("night_temperature", 4500);
 
     for (int i = 0; i < 3; i++) {
         wl_array_init(&gamma_value[i]);

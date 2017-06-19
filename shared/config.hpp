@@ -16,7 +16,7 @@ struct wayfire_button {
 };
 
 struct wayfire_color {
-    short r, g, b;
+    float r, g, b, a;
 };
 
 struct wayfire_config_section {

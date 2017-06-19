@@ -109,7 +109,7 @@ wayfire_color wayfire_config_section::get_color(string name, wayfire_color df)
 
     wayfire_color ans;
     std::stringstream ss(it->second);
-    ss >> ans.r >> ans.g >> ans.b;
+    ss >> ans.r >> ans.g >> ans.b >> ans.a;
     return ans;
 }
 

@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <wayland-client.h>
 
+class wayfire_config;
+
 class gamma_adjust {
     int daytime_temp;
     int nighttime_temp;
@@ -21,7 +23,7 @@ class gamma_adjust {
     void adjustment_loop();
 
     public:
-    gamma_adjust(uint32_t _output, uint32_t _gamma_size, int day_temp, int night_temp, int ds, int de);
+    gamma_adjust(uint32_t _output, uint32_t _gamma_size, wayfire_config *config);
 };
 
 

@@ -5,6 +5,7 @@
 #include <vector>
 
 struct widget;
+class wayfire_config;
 
 class wayfire_panel {
     wl_callback *repaint_callback;
@@ -32,7 +33,7 @@ class wayfire_panel {
 
     public:
         wayfire_window *window;
-        wayfire_panel();
+        wayfire_panel(wayfire_config *config);
         void create_panel(uint32_t output, uint32_t width, uint32_t height);
         void render_frame(bool first_call = false);
 

@@ -3,17 +3,17 @@
 
 #include <string>
 #include <cairo/cairo-ft.h>
+#include "../shared/config.hpp"
 
 void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
         double r, double g, double b, double a);
 
-struct widget_bg_color {
-    float r, g, b, a;
-};
-extern struct widget_bg_color widget_background;
-
 struct widget
 {
+    static wayfire_color background_color;
+    static int32_t font_size;
+    static std::string font_face;
+
     /* those are initialized before calling create() */
     cairo_t *cr;
     /* position in panel, panel height, maximum width */

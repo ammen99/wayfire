@@ -8,20 +8,16 @@
 
 #include <freetype2/ft2build.h>
 
-widget_bg_color widget_background =  {
-    .r = 0.117, .g = 0.137, .b = 0.152, .a = 1
-};
+wayfire_color widget::background_color;
+int32_t widget::font_size;
+std::string widget::font_face;
 
-cairo_font_face_t *font_face = nullptr;
-double font_size = 20;
+cairo_font_face_t *cairo_font_face = nullptr;
 
 void load_default_font()
 {
-    if (font_face)
+    if (cairo_font_face)
         return;
-
-    const char * filename =
-	    "/usr/share/fonts/dejavu/DejaVuSerif.ttf";
 
     FT_Library value;
     auto status = FT_Init_FreeType(&value);
@@ -31,25 +27,25 @@ void load_default_font()
     }
 
     FT_Face face;
-    status = FT_New_Face (value, filename, 0, &face);
+    status = FT_New_Face (value, widget::font_face.c_str(), 0, &face);
     if (status != 0) {
-        std::cerr << "Error opening font file " << filename << std::endl;
+        std::cerr << "Error opening font file " << widget::font_face << std::endl;
 	    exit (EXIT_FAILURE);
     }
 
-    font_face = cairo_ft_font_face_create_for_ft_face (face, 0);
+    cairo_font_face = cairo_ft_font_face_create_for_ft_face (face, 0);
 }
 
-void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
-        double r, double g, double b, double a)
+void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height,
+        double radius, double r, double g, double b, double a)
 {
     double degrees = M_PI / 180.0;
 
     cairo_new_sub_path (cr);
-    cairo_arc (cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
-    cairo_arc (cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
-    cairo_arc (cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
-    cairo_arc (cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
+    cairo_arc(cr, x + width - radius, y + radius, radius, -90 * degrees, 0 * degrees);
+    cairo_arc(cr, x + width - radius, y + height - radius, radius, 0 * degrees, 90 * degrees);
+    cairo_arc(cr, x + radius, y + height - radius, radius, 90 * degrees, 180 * degrees);
+    cairo_arc(cr, x + radius, y + radius, radius, 180 * degrees, 270 * degrees);
     cairo_close_path (cr);
 
     cairo_set_source_rgba(cr, r, g, b, a);
@@ -62,7 +58,7 @@ void clock_widget::create()
     load_default_font();
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
     cairo_set_font_size(cr, font_size);
-    cairo_set_font_face(cr, font_face);
+    cairo_set_font_face(cr, cairo_font_face);
 }
 
 const std::string months[] = {
@@ -109,13 +105,15 @@ bool clock_widget::update()
 }
 
 void clock_widget::repaint() {
-    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
-            7, widget_background.r, widget_background.g, widget_background.b, widget_background.a);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
+            widget::background_color.r, widget::background_color.g,
+            widget::background_color.b, widget::background_color.a);
 
     cairo_text_extents_t te;
     cairo_text_extents(cr, current_text.c_str(), &te);
 
-    double x = 5, y = 20;
+    double x, y = font_size;
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
     x = center_x - te.width / 2;
@@ -128,7 +126,8 @@ void clock_widget::repaint() {
 char buf[256];
 std::string find_battery()
 {
-    FILE *fin = popen("/bin/sh -c \"ls /sys/class/power_supply | grep BAT\"", "r");
+    FILE *fin = popen("/bin/sh -c \"ls /sys/class/power_supply | grep BAT\"",
+            "r");
 
     while(std::fscanf(fin, "%s", buf)) {
         int len = strlen(buf);
@@ -164,7 +163,7 @@ void battery_widget::create()
 
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
     cairo_set_font_size(cr, font_size);
-    cairo_set_font_face(cr, font_face);
+    cairo_set_font_face(cr, cairo_font_face);
 
     active = true;
 }
@@ -186,13 +185,15 @@ void battery_widget::repaint()
     int per = percent_current * 100LL / percent_max;
     std::string battery_string = std::to_string(per) + "%";
 
-    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h,
-            7, widget_background.r, widget_background.g, widget_background.b, widget_background.a);
+    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
+            widget::background_color.r, widget::background_color.g,
+            widget::background_color.b, widget::background_color.a);
 
     cairo_text_extents_t te;
     cairo_text_extents(cr, battery_string.c_str(), &te);
 
-    double x = 5, y = 20;
+    double x = 0, y = font_size;
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
     x = center_x - te.width / 2;

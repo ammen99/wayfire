@@ -13,6 +13,8 @@ struct wayfire_shell_output {
     gamma_adjust *gamma;
 };
 
+wayfire_config *config;
+
 std::map<uint32_t, wayfire_shell_output> outputs;
 
 std::string bg_path;
@@ -24,7 +26,7 @@ void output_created_cb(void *data, wayfire_shell *wayfire_shell,
         bg->create_background(output, width, height);
     }
 
-    auto panel = (outputs[output].panel = new wayfire_panel());
+    auto panel = (outputs[output].panel = new wayfire_panel(config));
     panel->create_panel(output, width, height);
 }
 
@@ -41,19 +43,13 @@ void output_resized_cb(void *data, wayfire_shell *wayfire_shell,
         it->second.panel->resize(width, height);
 }
 
-struct {
-    bool enabled;
-    int day_start, day_end;
-    int day_t, night_t;
-} gamma_ops;
+bool gamma_adjust_enabled;
 
 void output_gamma_size_cb(void *data, wayfire_shell *shell, uint32_t output,
         uint32_t size)
 {
-    if (size > 0 && gamma_ops.enabled) {
-        outputs[output].gamma = new gamma_adjust(output, size, gamma_ops.day_t,
-                gamma_ops.night_t, gamma_ops.day_start, gamma_ops.day_end);
-    }
+    if (size > 0 && gamma_adjust_enabled)
+        outputs[output].gamma = new gamma_adjust(output, size, config);
 }
 
 static const struct wayfire_shell_listener bg_shell_listener = {
@@ -65,27 +61,12 @@ static const struct wayfire_shell_listener bg_shell_listener = {
 int main()
 {
     std::string home_dir = secure_getenv("HOME");
-    auto config = new wayfire_config(home_dir + "/.config/wayfire.ini");
+    config = new wayfire_config(home_dir + "/.config/wayfire.ini");
     auto section = config->get_section("shell");
 
     bg_path = section->get_string("background", "none");
 
-    gamma_ops.enabled = section->get_int("color_temp_enabled", 0);
-    if (gamma_ops.enabled) {
-        std::string s = section->get_string("day_start", "08:00");
-        int h, m;
-        sscanf(s.c_str(), "%d:%d", &h, &m);
-
-        gamma_ops.day_start = h * 60 + m;
-
-        s = section->get_string("day_end", "20:00");
-        sscanf(s.c_str(), "%d:%d", &h, &m);
-        gamma_ops.day_end = h * 60 + m;
-
-        gamma_ops.day_t = section->get_int("day_temperature", 6500);
-        gamma_ops.night_t = section->get_int("night_temperature", 4500);
-    }
-
+    gamma_adjust_enabled = section->get_int("color_temp_enabled", 0);
     if (!setup_wayland_connection())
         return -1;
 
