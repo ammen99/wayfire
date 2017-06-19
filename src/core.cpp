@@ -84,7 +84,7 @@ struct wf_gesture_recognizer {
         in_gesture = true;
         reset_gesture();
 
-        for (auto f : current) {
+        for (auto &f : current) {
             if (f.first != reason_id && f.second.sent) {
                 if (!in_grab) {
                     weston_touch_send_up(touch, last_time, f.first);
@@ -92,8 +92,8 @@ struct wf_gesture_recognizer {
                     core->input->grab_send_touch_up(touch, f.first);
                 }
 
-                f.second.sent = false;
             }
+            f.second.sent = false;
         }
     }
 
@@ -203,6 +203,9 @@ struct wf_gesture_recognizer {
         if (!in_grab && !in_gesture) {
             weston_touch_send_down(touch, last_time, id, wl_fixed_from_int(sx),
                     wl_fixed_from_int(sy));
+        } else if (!in_gesture) {
+            core->input->grab_send_touch_down(touch, id, wl_fixed_from_int(sx),
+                    wl_fixed_from_int(sy));
         }
     }
 
@@ -220,10 +223,19 @@ struct wf_gesture_recognizer {
             } else {
                 reset_gesture();
             }
-        } else if (f.sent) {
+        } else if (f.sent && !in_grab) {
             weston_touch_send_up(touch, last_time, id);
+        } else if (f.sent) {
+            core->input->grab_send_touch_up(touch, id);
         }
+    }
 
+    bool is_finger_sent(int id)
+    {
+        auto it = current.find(id);
+        if (it == current.end() || !it->second.sent)
+            return false;
+        return true;
     }
 };
 
@@ -275,8 +287,37 @@ void input_manager::propagate_touch_motion(weston_touch* touch, uint32_t time,
     gr->touch = touch;
     gr->update_touch(id, wl_fixed_to_int(sx), wl_fixed_to_int(sy));
 
-    if (!gr->in_gesture && !gr->in_grab)
+    if (!gr->in_gesture && !gr->in_grab && gr->is_finger_sent(id)) {
         weston_touch_send_motion(touch, time, id, sx, sy);
+    } else if(!gr->in_gesture && gr->is_finger_sent(id)) {
+        grab_send_touch_motion(touch, id, sx, sy);
+    }
+}
+
+void input_manager::grab_send_touch_down(weston_touch* touch, int32_t id,
+        wl_fixed_t sx, wl_fixed_t sy)
+{
+    for (auto grab : active_grabs) {
+        if (grab->callbacks.touch.down)
+            grab->callbacks.touch.down(touch, id, sx, sy);
+    }
+}
+
+void input_manager::grab_send_touch_up(weston_touch* touch, int32_t id)
+{
+    for (auto grab : active_grabs) {
+        if (grab->callbacks.touch.up)
+            grab->callbacks.touch.up(touch, id);
+    }
+}
+
+void input_manager::grab_send_touch_motion(weston_touch* touch, int32_t id,
+        wl_fixed_t sx, wl_fixed_t sy)
+{
+    for (auto grab : active_grabs) {
+        if (grab->callbacks.touch.motion)
+            grab->callbacks.touch.motion(touch, id, sx, sy);
+    }
 }
 
 void pointer_grab_focus(weston_pointer_grab*) { }
