@@ -25,9 +25,16 @@ void gl_call(const char*, uint32_t, const char*);
 #define TEXTURE_TRANSFORM_INVERT_Y     (1 << 1)
 #define TEXTURE_TRANSFORM_USE_COLOR    (1 << 2)
 #define TEXTURE_TRANSFORM_USE_DEVCOORD (1 << 3)
-#define DONT_RELOAD_PROGRAM            (1 << 4)
+#define TEXTURE_USE_TEX_GEOMETRY       (1 << 4)
+#define DONT_RELOAD_PROGRAM            (1 << 5)
 
 namespace OpenGL {
+
+    /* all are relative coordinates scaled to [0, 1] */
+    struct texture_geometry {
+        float tlx, tly;
+        float w, h;
+    };
 
     /* Different Context is kept for each output */
     /* Each of the following functions uses the currently bound context */
@@ -48,10 +55,12 @@ namespace OpenGL {
     void bind_context(context_t* ctx);
     void release_context(context_t *ctx);
 
+    /* texg arguments are used only when bits has USE_TEX_GEOMETRY */
     void render_transformed_texture(GLuint text, const wayfire_geometry& g,
-            glm::mat4 transform = glm::mat4(), glm::vec4 color = glm::vec4(1.f),
-            uint32_t bits = 0);
-    void render_texture(GLuint tex, const wayfire_geometry& g, uint32_t bits);
+            const texture_geometry& texg, glm::mat4 transform = glm::mat4(),
+            glm::vec4 color = glm::vec4(1.f), uint32_t bits = 0);
+    void render_texture(GLuint tex, const wayfire_geometry& g,
+            const texture_geometry& texg, uint32_t bits);
 
     GLuint duplicate_texture(GLuint source_tex, int w, int h);
 

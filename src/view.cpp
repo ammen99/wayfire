@@ -236,7 +236,7 @@ void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, 
     geometry.size = {surface->width, surface->height};
 
     for (int i = 0; i < 3 && gs->textures[i]; i++) {
-        OpenGL::render_transformed_texture(gs->textures[i], geometry, transform,
+        OpenGL::render_transformed_texture(gs->textures[i], geometry, {}, transform,
                                            color, bits);
     }
 

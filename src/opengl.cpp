@@ -191,7 +191,9 @@ namespace OpenGL {
         delete ctx;
     }
 
-    void render_texture(GLuint tex, const wayfire_geometry& g, uint32_t bits) {
+    void render_texture(GLuint tex, const wayfire_geometry& g,
+            const texture_geometry& texg, uint32_t bits)
+    {
         if ((bits & DONT_RELOAD_PROGRAM) == 0) {
             GL_CALL(glUseProgram(bound->program));
         }
@@ -225,12 +227,20 @@ namespace OpenGL {
             tlx    , tly    , 0.f, // 4
         };
 
+
         GLfloat coordData[] = {
             0.0f, 1.0f,
             1.0f, 1.0f,
             1.0f, 0.0f,
             0.0f, 0.0f,
         };
+
+        if (bits & TEXTURE_USE_TEX_GEOMETRY) {
+            coordData[0] = texg.tlx;          coordData[1] = texg.tly + texg.h;
+            coordData[2] = texg.tlx + texg.w; coordData[3] = texg.tly + texg.h;
+            coordData[4] = texg.tlx + texg.w; coordData[5] = texg.tly;
+            coordData[6] = texg.tlx;          coordData[6] = texg.tly;
+        }
 
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
@@ -252,7 +262,10 @@ namespace OpenGL {
         GL_CALL(glDisableVertexAttribArray(bound->uvPosition));
     }
 
-    void render_transformed_texture(GLuint tex, const wayfire_geometry& g, glm::mat4 model, glm::vec4 color, uint32_t bits) {
+    void render_transformed_texture(GLuint tex, const wayfire_geometry& g,
+            const texture_geometry& texg, glm::mat4 model,
+            glm::vec4 color, uint32_t bits)
+    {
         GL_CALL(glUseProgram(bound->program));
 
         GL_CALL(glUniformMatrix4fv(bound->mvpID, 1, GL_FALSE, &model[0][0]));
@@ -260,11 +273,12 @@ namespace OpenGL {
 
         GL_CALL(glEnable(GL_BLEND));
         GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-        render_texture(tex, g, bits | DONT_RELOAD_PROGRAM);
+        render_texture(tex, g, texg, bits | DONT_RELOAD_PROGRAM);
         GL_CALL(glDisable(GL_BLEND));
     }
 
-    void prepare_framebuffer(GLuint &fbuff, GLuint &texture) {
+    void prepare_framebuffer(GLuint &fbuff, GLuint &texture)
+    {
         if (fbuff != (uint)-1)
             GL_CALL(glGenFramebuffers(1, &fbuff));
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
