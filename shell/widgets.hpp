@@ -30,7 +30,6 @@ struct widget
 
 struct clock_widget : public widget
 {
-
     std::string current_text;
 
     void create();
@@ -48,6 +47,10 @@ struct battery_widget : public widget
     void create();
     bool update();
     void repaint();
+};
+
+struct net_widget : public widget
+{
 };
 
 #endif /* end of include guard: WIDGETS_HPP */

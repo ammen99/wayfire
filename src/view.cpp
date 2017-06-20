@@ -183,9 +183,6 @@ void wayfire_view_t::map(int sx, int sy)
 
     geometry.size = {surface->width, surface->height};
 
-    if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
-        return;
-
     auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
     if (new_ds_g.x != ds_geometry.origin.x || new_ds_g.y != ds_geometry.origin.y) {
         ds_geometry.origin = {new_ds_g.x, new_ds_g.y};
