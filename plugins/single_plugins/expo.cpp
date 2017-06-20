@@ -260,7 +260,7 @@ class wayfire_expo : public wayfire_plugin_t {
         for(int i = 0; i < vw; i++) {
             for(int j = 0; j < vh; j++) {
 
-                output->workspace->texture_from_workspace(std::make_tuple(i, j),
+                output->render->texture_from_workspace(std::make_tuple(i, j),
                         fbuffs[i][j], textures[i][j]);
 
 #define EDGE_OFFSET 13

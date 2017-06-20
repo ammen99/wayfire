@@ -29,13 +29,13 @@ class viewport_manager : public workspace_manager {
         void for_each_view_reverse(view_callback_proc_t call);
 
         std::vector<wayfire_view> get_views_on_workspace(std::tuple<int, int>);
+        std::vector<wayfire_view>
+            get_renderable_views_on_workspace(std::tuple<int, int> ws);
+
         void set_workspace(std::tuple<int, int>);
 
         std::tuple<int, int> get_current_workspace();
         std::tuple<int, int> get_workspace_grid_size();
-
-        void texture_from_workspace(std::tuple<int, int> vp,
-                uint &fbuff, uint &tex);
 
         wayfire_view get_background_view();
 
@@ -176,43 +176,14 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
     return ret;
 }
 
-void viewport_manager::texture_from_workspace(std::tuple<int, int> vp,
-        GLuint &fbuff, GLuint &tex)
+std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
+        std::tuple<int, int> ws)
 {
-    OpenGL::bind_context(output->render->ctx);
+    std::vector<wayfire_view> ret = get_views_on_workspace(ws);
+    auto bg = get_background_view();
+    if (bg) ret.push_back(bg);
 
-    if (fbuff == (uint)-1 || tex == (uint)-1)
-        OpenGL::prepare_framebuffer(fbuff, tex);
-
-    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
-    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
-
-    auto g = output->get_full_geometry();
-    if (background)
-        background->render(0);
-
-    GetTuple(x, y, vp);
-    GetTuple(cx, cy, get_current_workspace());
-
-    int dx = -g.origin.x + (cx - x)  * output->handle->width,
-        dy = -g.origin.y + (cy - y)  * output->handle->height;
-
-    wayfire_geometry output_rect = {
-        .origin = {-dx, -dy},
-        .size = {output->handle->width, output->handle->height}
-    };
-
-    for_each_view_reverse([=] (wayfire_view v) {
-        if (v->is_visible() && rect_inside(output_rect, v->geometry)) {
-            v->geometry.origin.x += dx;
-            v->geometry.origin.y += dy;
-            v->render(0);
-            v->geometry.origin.x -= dx;
-            v->geometry.origin.y -= dy;
-        }
-    });
-
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    return ret;
 }
 
 wayfire_view viewport_manager::get_background_view()

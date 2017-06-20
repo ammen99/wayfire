@@ -110,7 +110,7 @@ void plugin_manager::init_default_plugins()
 
 /* End plugin_manager */
 
-/* Start render_manager */
+/* Start jender_manager */
 render_manager::render_manager(wayfire_output *o)
 {
     output = o;
@@ -225,14 +225,16 @@ void render_manager::pre_paint()
 
 void render_manager::transformation_renderer()
 {
-    auto bg = output->workspace->get_background_view();
-    if (bg)
-        bg->render(0);
+    auto views = output->workspace->get_renderable_views_on_workspace(
+            output->workspace->get_current_workspace());
 
-    output->workspace->for_each_view_reverse([=](wayfire_view v) {
-        if (!v->destroyed && !v->is_hidden)
-            v->render();
-    });
+    auto it = views.rbegin();
+    while (it != views.rend()) {
+        auto view = *it;
+        if (!view->destroyed && !view->is_hidden) /* use is_visible() when implemented */
+            view->render();
+        ++it;
+    }
 }
 
 void render_manager::add_output_effect(effect_hook_t* hook, wayfire_view v)
@@ -256,6 +258,48 @@ void render_manager::rem_effect(const effect_hook_t *hook, wayfire_view v)
 
     container.erase(it, container.end());
 }
+
+void render_manager::texture_from_workspace(std::tuple<int, int> vp,
+        GLuint &fbuff, GLuint &tex)
+{
+    OpenGL::bind_context(output->render->ctx);
+
+    if (fbuff == (uint)-1 || tex == (uint)-1)
+        OpenGL::prepare_framebuffer(fbuff, tex);
+
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
+    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
+
+    auto g = output->get_full_geometry();
+
+    GetTuple(x, y, vp);
+    GetTuple(cx, cy, output->workspace->get_current_workspace());
+
+    int dx = -g.origin.x + (cx - x)  * output->handle->width,
+        dy = -g.origin.y + (cy - y)  * output->handle->height;
+
+    auto views = output->workspace->get_renderable_views_on_workspace(vp);
+    auto it = views.rbegin();
+
+    while (it != views.rend()) {
+        auto v = *it;
+        if (v->is_visible()) {
+            if (!v->is_special) {
+                v->geometry.origin.x += dx;
+                v->geometry.origin.y += dy;
+            }
+            v->render(0);
+            if (!v->is_special) {
+                v->geometry.origin.x -= dx;
+                v->geometry.origin.y -= dy;
+            }
+        }
+        ++it;
+    };
+
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
 /* End render_manager */
 
 /* Start SignalManager */

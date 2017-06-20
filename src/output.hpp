@@ -54,6 +54,10 @@ struct render_manager {
         std::vector<effect_hook_t*> output_effects;
         void add_output_effect(effect_hook_t*, wayfire_view v = nullptr);
         void rem_effect(const effect_hook_t*, wayfire_view v = nullptr);
+
+        /* this function renders a viewport and
+         * saves the image in texture which is returned */
+        void texture_from_workspace(std::tuple<int, int>, uint& fbuff, uint &tex);
 };
 
 class workspace_manager {
@@ -67,6 +71,7 @@ class workspace_manager {
         virtual void for_each_view(view_callback_proc_t call) = 0;
         virtual void for_each_view_reverse(view_callback_proc_t call) = 0;
 
+        /* toplevel views (i.e windows) on the given workspace */
         virtual std::vector<wayfire_view>
             get_views_on_workspace(std::tuple<int, int>) = 0;
 
@@ -74,12 +79,13 @@ class workspace_manager {
         virtual std::tuple<int, int> get_current_workspace() = 0;
         virtual std::tuple<int, int> get_workspace_grid_size() = 0;
 
-        /* this function renders a viewport and
-         * saves the image in texture which is returned */
-        virtual void texture_from_workspace(std::tuple<int, int>, uint& fbuff,
-                uint &tex) = 0;
-
         virtual wayfire_view get_background_view() = 0;
+
+        /* returns a list of all views on workspace that are visible on the current
+         * workspace except panels(but should include background)
+         * The list must be returned from top to bottom(i.e the last is background) */
+        virtual std::vector<wayfire_view>
+            get_renderable_views_on_workspace(std::tuple<int, int> ws) = 0;
 
         /* wayfire_shell implementation */
         virtual void add_background(wayfire_view background, int x, int y) = 0;
