@@ -218,23 +218,18 @@ namespace OpenGL {
             tly += h;
         }
 
-        /* TODO: use TRIANGLE_FAN to make less data uploaded */
         GLfloat vertexData[] = {
             tlx    , tly - h, 0.f, // 1
             tlx + w, tly - h, 0.f, // 2
             tlx + w, tly    , 0.f, // 3
-            tlx + w, tly    , 0.f, // 3
             tlx    , tly    , 0.f, // 4
-            tlx    , tly - h, 0.f, // 1
         };
 
         GLfloat coordData[] = {
             0.0f, 1.0f,
             1.0f, 1.0f,
             1.0f, 0.0f,
-            1.0f, 0.0f,
             0.0f, 0.0f,
-            0.0f, 1.0f,
         };
 
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
@@ -251,7 +246,7 @@ namespace OpenGL {
         GL_CALL(glVertexAttribPointer(bound->uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
         GL_CALL(glEnableVertexAttribArray(bound->uvPosition));
 
-        GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 6));
+        GL_CALL(glDrawArrays (GL_TRIANGLE_FAN, 0, 4));
 
         GL_CALL(glDisableVertexAttribArray(bound->position));
         GL_CALL(glDisableVertexAttribArray(bound->uvPosition));
