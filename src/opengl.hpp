@@ -32,8 +32,7 @@ namespace OpenGL {
 
     /* all are relative coordinates scaled to [0, 1] */
     struct texture_geometry {
-        float tlx, tly;
-        float w, h;
+        float x1, y1, x2, y2;
     };
 
     /* Different Context is kept for each output */
@@ -55,7 +54,8 @@ namespace OpenGL {
     void bind_context(context_t* ctx);
     void release_context(context_t *ctx);
 
-    /* texg arguments are used only when bits has USE_TEX_GEOMETRY */
+    /* texg arguments are used only when bits has USE_TEX_GEOMETRY
+     * if you don't wish to use them, simply pass {} as argument */
     void render_transformed_texture(GLuint text, const wayfire_geometry& g,
             const texture_geometry& texg, glm::mat4 transform = glm::mat4(),
             glm::vec4 color = glm::vec4(1.f), uint32_t bits = 0);

@@ -236,10 +236,10 @@ namespace OpenGL {
         };
 
         if (bits & TEXTURE_USE_TEX_GEOMETRY) {
-            coordData[0] = texg.tlx;          coordData[1] = texg.tly + texg.h;
-            coordData[2] = texg.tlx + texg.w; coordData[3] = texg.tly + texg.h;
-            coordData[4] = texg.tlx + texg.w; coordData[5] = texg.tly;
-            coordData[6] = texg.tlx;          coordData[6] = texg.tly;
+            coordData[0] = texg.x1; coordData[1] = texg.y2;
+            coordData[2] = texg.x2; coordData[3] = texg.y2;
+            coordData[4] = texg.x2; coordData[5] = texg.y1;
+            coordData[6] = texg.x1; coordData[7] = texg.y1;
         }
 
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));

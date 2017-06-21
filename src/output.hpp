@@ -26,6 +26,13 @@ struct plugin_manager {
     ~plugin_manager();
 };
 
+/* Workspace streams are used if you need to continuously render a workspace
+ * to a texture, for example if you call texture_from_viewport at every frame */
+struct wf_workspace_stream {
+    std::tuple<int, int> ws;
+    uint fbuff, tex;
+};
+
 struct render_manager {
     private:
         wayfire_output *output;
@@ -37,6 +44,9 @@ struct render_manager {
         void release_context();
 
         render_hook_t renderer;
+
+        pixman_region32_t frame_damage;
+        int streams_running = 0;
 
     public:
         OpenGL::context_t *ctx;
@@ -58,6 +68,10 @@ struct render_manager {
         /* this function renders a viewport and
          * saves the image in texture which is returned */
         void texture_from_workspace(std::tuple<int, int>, uint& fbuff, uint &tex);
+
+        void workspace_stream_start(wf_workspace_stream *stream);
+        void workspace_stream_update(wf_workspace_stream *stream);
+        void workspace_stream_stop(wf_workspace_stream *stream);
 };
 
 class workspace_manager {

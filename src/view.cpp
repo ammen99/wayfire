@@ -192,24 +192,63 @@ void wayfire_view_t::map(int sx, int sy)
     /* TODO: see shell.c#activate() */
 }
 
-void render_surface(weston_surface *surface, int x, int y,
-        glm::mat4, glm::vec4, uint32_t bits);
+void render_surface(weston_surface *surface, pixman_region32_t *damage,
+        int x, int y, glm::mat4, glm::vec4, uint32_t bits);
 
 /* TODO: use bits */
-void wayfire_view_t::render(uint32_t bits)
+void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
 {
-    render_surface(surface, geometry.origin.x - ds_geometry.origin.x,
-            geometry.origin.y - ds_geometry.origin.y,
-                   transform.calculate_total_transform(), transform.color, bits);
+    pixman_region32_t our_damage;
+    bool free_damage = false;
+
+    if (damage == nullptr) {
+        debug << "use stupid damage" << std::endl;
+        pixman_region32_init(&our_damage);
+        pixman_region32_copy(&our_damage, &output->handle->region);
+        damage = &our_damage;
+        free_damage = true;
+    }
+
+    render_surface(surface, damage,
+            geometry.origin.x - ds_geometry.origin.x, geometry.origin.y - ds_geometry.origin.y,
+            transform.calculate_total_transform(), transform.color, bits);
+
+    if (free_damage)
+        pixman_region32_fini(&our_damage);
 
     std::vector<effect_hook_t*> hooks_to_run;
-    for (auto hook : effects) {
+    for (auto hook : effects)
         hooks_to_run.push_back(hook);
-    }
 
     for (auto hook : hooks_to_run)
         (*hook)();
 }
+
+inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surface_box,
+        const pixman_box32_t& subbox, glm::mat4 transform,
+        glm::vec4 color, uint32_t bits)
+{
+    OpenGL::texture_geometry texg = {
+        1.0f * (subbox.x1 - surface_box.x1) / (surface_box.x2 - surface_box.x1),
+        1.0f * (subbox.y1 - surface_box.y1) / (surface_box.y2 - surface_box.y1),
+        1.0f * (subbox.x2 - surface_box.x1) / (surface_box.x2 - surface_box.x1),
+        1.0f * (subbox.y2 - surface_box.y1) / (surface_box.y2 - surface_box.y1),
+    };
+
+    debug << "tex g is " << texg.x1 << " " << texg.y1 << " " << texg.x2 << " " << texg.y2 << std::endl;
+
+    wayfire_geometry geometry =
+    {.origin = {subbox.x1, subbox.y1},
+     .size = {subbox.x2 - subbox.x1, subbox.y2 - subbox.y1}
+    };
+
+    for (int i = 0; i < 3 && tex[i]; i++) {
+        debug << "render tex auch" << std::endl;
+        OpenGL::render_transformed_texture(tex[i], geometry, texg, transform,
+                                           color, bits);
+    }
+}
+
 
 /* This is a hack, we use it so that we can reach the memory used by
  * the texture pointer in the surface
@@ -222,29 +261,41 @@ struct weston_gl_surface_state {
     GLuint textures[3];
 };
 
-
-void render_surface(weston_surface *surface, int x, int y, glm::mat4 transform, glm::vec4 color,
-        uint32_t bits)
+void render_surface(weston_surface *surface, pixman_region32_t *damage,
+        int x, int y, glm::mat4 transform, glm::vec4 color, uint32_t bits)
 {
     if (!surface->is_mapped || !surface->renderer_state)
         return;
 
+    debug << "render a surface" << std::endl;
     auto gs = (weston_gl_surface_state *) surface->renderer_state;
 
-    wayfire_geometry geometry;
-    geometry.origin = {x, y};
-    geometry.size = {surface->width, surface->height};
+    pixman_region32_t surface_region, damaged_region;
+    pixman_region32_init(&damaged_region);
+    pixman_region32_init_rect(&surface_region, x, y,
+            surface->width, surface->height);
+    pixman_region32_intersect(&damaged_region, &surface_region, damage);
 
-    for (int i = 0; i < 3 && gs->textures[i]; i++) {
-        OpenGL::render_transformed_texture(gs->textures[i], geometry, {}, transform,
-                                           color, bits);
+    pixman_box32_t surface_box;
+    surface_box.x1 = x; surface_box.y1 = y;
+    surface_box.x2 = x + surface->width; surface_box.y2 = y + surface->height;
+
+    int n = 0;
+    pixman_box32_t *boxes = pixman_region32_rectangles(&damaged_region, &n);
+    debug << "box count: " << n << std::endl;
+    for (int i = 0; i < n; i++) {
+        debug << "render a box " << boxes[i].x1 << " "
+            << boxes[i].y1 << " " << boxes[i].x2 << " " << boxes[i].y2 << std::endl;
+        debug << surface_box.x1 << " " << surface_box.y1 << " " << surface_box.x2 << " "<< surface_box.y2 << std::endl;
+        render_surface_box(gs->textures, surface_box, boxes[i],
+                transform, color, bits | TEXTURE_USE_TEX_GEOMETRY);
     }
 
     weston_subsurface *sub;
     if (!wl_list_empty(&surface->subsurface_list)) {
         wl_list_for_each(sub, &surface->subsurface_list, parent_link) {
             if (sub && sub->surface != surface) {
-                render_surface(sub->surface,
+                render_surface(sub->surface, damage,
                         sub->position.x + x, sub->position.y + y,
                         transform, color, bits);
             }

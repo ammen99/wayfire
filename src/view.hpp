@@ -5,6 +5,7 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include <functional>
+#include <pixman.h>
 
 struct weston_view;
 struct weston_desktop_surface;
@@ -103,7 +104,7 @@ class wayfire_view_t {
 
         std::vector<effect_hook_t*> effects;
 
-        void render(uint32_t bits = 0);
+        void render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
 };
 
 typedef std::shared_ptr<wayfire_view_t> wayfire_view;

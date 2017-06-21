@@ -187,16 +187,19 @@ void render_manager::paint(pixman_region32_t *damage)
     if (dirty_context)
         load_context();
 
-    // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
-    // In the future this might change so we need to track changes in weston
-    EGLSurface surf = *(EGLSurface*)output->handle->renderer_state;
-    weston_gl_renderer *gr = (weston_gl_renderer*) core->ec->renderer;
-    eglMakeCurrent(gr->display, surf, surf, gr->context);
-
-    GL_CALL(glViewport(output->handle->x, output->handle->y,
-                output->handle->width, output->handle->height));
+    if (streams_running)
+        pixman_region32_copy(&frame_damage, damage);
 
     if (renderer) {
+        // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
+        // In the future this might change so we need to track changes in weston
+        EGLSurface surf = *(EGLSurface*)output->handle->renderer_state;
+        weston_gl_renderer *gr = (weston_gl_renderer*) core->ec->renderer;
+        eglMakeCurrent(gr->display, surf, surf, gr->context);
+
+        GL_CALL(glViewport(output->handle->x, output->handle->y,
+                    output->handle->width, output->handle->height));
+
         OpenGL::bind_context(ctx);
         renderer();
 
@@ -279,6 +282,48 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
         dy = -g.origin.y + (cy - y)  * output->handle->height;
 
     auto views = output->workspace->get_renderable_views_on_workspace(vp);
+    auto it = views.rbegin();
+
+    while (it != views.rend()) {
+        auto v = *it;
+        if (v->is_visible()) {
+            if (!v->is_special) {
+                v->geometry.origin.x += dx;
+                v->geometry.origin.y += dy;
+            }
+            v->render(0);
+            if (!v->is_special) {
+                v->geometry.origin.x -= dx;
+                v->geometry.origin.y -= dy;
+            }
+        }
+        ++it;
+    };
+
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+void render_manager::workspace_stream_start(wf_workspace_stream *stream)
+{
+    streams_running++;
+
+    OpenGL::bind_context(output->render->ctx);
+
+    if (stream->fbuff == (uint)-1 || stream->tex == (uint)-1)
+        OpenGL::prepare_framebuffer(stream->fbuff, stream->tex);
+
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
+    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
+
+    auto g = output->get_full_geometry();
+
+    GetTuple(x, y, stream->ws);
+    GetTuple(cx, cy, output->workspace->get_current_workspace());
+
+    int dx = -g.origin.x + (cx - x)  * output->handle->width,
+        dy = -g.origin.y + (cy - y)  * output->handle->height;
+
+    auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
     auto it = views.rbegin();
 
     while (it != views.rend()) {
