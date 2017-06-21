@@ -123,6 +123,7 @@ render_manager::render_manager(wayfire_output *o)
     }
 
     pixman_region32_init(&frame_damage);
+    pixman_region32_init(&prev_damage);
 }
 
 void render_manager::load_context()
@@ -189,8 +190,11 @@ void render_manager::paint(pixman_region32_t *damage)
     if (dirty_context)
         load_context();
 
-    if (streams_running)
-        pixman_region32_copy(&frame_damage, &core->ec->primary_plane.damage);
+    if (streams_running) {
+        pixman_region32_union(&frame_damage,
+                &core->ec->primary_plane.damage, &prev_damage);
+        pixman_region32_copy(&prev_damage, &core->ec->primary_plane.damage);
+    }
 
     if (renderer) {
         // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
@@ -358,6 +362,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
 
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
+    debug << "stream update " << x << " " << y << std::endl;
 
     int dx = -g.origin.x + (cx - x) * output->handle->width,
         dy = -g.origin.y + (cy - y) * output->handle->height;
@@ -394,14 +399,24 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
 
         if (dv.view->is_visible()) {
             dv.damage = new pixman_region32_t;
+            if (dv.view->is_special)
+                pixman_region32_translate(&ws_damage, dx, dy);
+
             pixman_region32_init_rect(dv.damage,
                     dv.view->geometry.origin.x - dv.view->ds_geometry.origin.x,
                     dv.view->geometry.origin.y - dv.view->ds_geometry.origin.y,
                     dv.view->surface->width, dv.view->surface->height);
             pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
 
+            if (dv.view->is_special) {
+                pixman_region32_translate(&ws_damage, -dx, -dy);
+                pixman_region32_translate(dv.damage, -dx, -dy);
+            }
+
             if (pixman_region32_not_empty(dv.damage)) {
                 update_views.push_back(dv);
+                /* If we are processing background, then this is not correct. But as
+                 * background is the last in the list, we don' care */
                 pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->surface->opaque);
             } else {
                 pixman_region32_fini(dv.damage);
@@ -417,7 +432,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
     auto rev_it = update_views.rbegin();
     while(rev_it != update_views.rend()) {
         auto dv = *rev_it;
-        debug << "in here, we try to update it" << std::endl;
+        debug << "in here, we try to update it " << dv.view->is_special << std::endl;
         if (!dv.view->is_special) {
             dv.view->geometry.origin.x += dx;
             dv.view->geometry.origin.y += dy;

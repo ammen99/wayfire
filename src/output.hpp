@@ -46,7 +46,7 @@ struct render_manager {
 
         render_hook_t renderer;
 
-        pixman_region32_t frame_damage;
+        pixman_region32_t frame_damage, prev_damage;
         int streams_running = 0;
 
     public:
