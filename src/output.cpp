@@ -121,6 +121,8 @@ render_manager::render_manager(wayfire_output *o)
     } else {
         output->output_dx = output->output_dy = 0;
     }
+
+    pixman_region32_init(&frame_damage);
 }
 
 void render_manager::load_context()
@@ -188,7 +190,7 @@ void render_manager::paint(pixman_region32_t *damage)
         load_context();
 
     if (streams_running)
-        pixman_region32_copy(&frame_damage, damage);
+        pixman_region32_copy(&frame_damage, &core->ec->primary_plane.damage);
 
     if (renderer) {
         // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
@@ -305,12 +307,16 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
 
 void render_manager::workspace_stream_start(wf_workspace_stream *stream)
 {
+    debug << "start a stream" << streams_running << std::endl;
     streams_running++;
+    stream->running = true;
 
     OpenGL::bind_context(output->render->ctx);
 
-    if (stream->fbuff == (uint)-1 || stream->tex == (uint)-1)
+    if (stream->fbuff == (uint)-1 || stream->tex == (uint)-1) {
+        debug << "preparing buffer" << std::endl;
         OpenGL::prepare_framebuffer(stream->fbuff, stream->tex);
+    }
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
     GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
@@ -343,6 +349,99 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
     };
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+void render_manager::workspace_stream_update(wf_workspace_stream *stream)
+{
+    OpenGL::bind_context(output->render->ctx);
+    auto g = output->get_full_geometry();
+
+    GetTuple(x, y, stream->ws);
+    GetTuple(cx, cy, output->workspace->get_current_workspace());
+
+    int dx = -g.origin.x + (cx - x) * output->handle->width,
+        dy = -g.origin.y + (cy - y) * output->handle->height;
+
+    pixman_region32_t ws_damage;
+    pixman_region32_init_rect(&ws_damage, -dx, -dy,
+            output->handle->width, output->handle->height);
+    pixman_region32_intersect(&ws_damage, &frame_damage, &ws_damage);
+
+    debug << "print rects " << frame_damage.extents.x1 << " " <<
+        frame_damage.extents.y1 << " " << frame_damage.extents.x2 << " " <<
+        frame_damage.extents.y2 << std::endl;
+
+    /* we don't have to update anything */
+    if (!pixman_region32_not_empty(&ws_damage)) {
+        debug << "no damage " << dx << " "<<dy << std::endl;
+        return;
+    }
+
+    auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
+
+    struct damaged_view {
+        wayfire_view view;
+        pixman_region32_t *damage;
+    };
+
+    std::vector<damaged_view> update_views;
+
+    auto it = views.begin();
+
+    while (it != views.end() && pixman_region32_not_empty(&ws_damage)) {
+        damaged_view dv;
+        dv.view = *it;
+
+        if (dv.view->is_visible()) {
+            dv.damage = new pixman_region32_t;
+            pixman_region32_init_rect(dv.damage,
+                    dv.view->geometry.origin.x - dv.view->ds_geometry.origin.x,
+                    dv.view->geometry.origin.y - dv.view->ds_geometry.origin.y,
+                    dv.view->surface->width, dv.view->surface->height);
+            pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
+
+            if (pixman_region32_not_empty(dv.damage)) {
+                update_views.push_back(dv);
+                pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->surface->opaque);
+            } else {
+                pixman_region32_fini(dv.damage);
+                delete dv.damage;
+            }
+        }
+        ++it;
+    };
+
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
+    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
+
+    auto rev_it = update_views.rbegin();
+    while(rev_it != update_views.rend()) {
+        auto dv = *rev_it;
+        debug << "in here, we try to update it" << std::endl;
+        if (!dv.view->is_special) {
+            dv.view->geometry.origin.x += dx;
+            dv.view->geometry.origin.y += dy;
+        }
+        pixman_region32_translate(dv.damage, dx, dy);
+        dv.view->render(0, dv.damage);
+        if (!dv.view->is_special) {
+            dv.view->geometry.origin.x -= dx;
+            dv.view->geometry.origin.y -= dy;
+        }
+
+        pixman_region32_fini(dv.damage);
+        delete dv.damage;
+        ++rev_it;
+    }
+
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    pixman_region32_fini(&ws_damage);
+}
+
+void render_manager::workspace_stream_stop(wf_workspace_stream *stream)
+{
+    streams_running--;
+    stream->running = false;
 }
 
 /* End render_manager */

@@ -25,7 +25,7 @@ class wayfire_expo : public wayfire_plugin_t {
         } state;
         int target_vx, target_vy;
 
-        std::vector<std::vector<GLuint>> fbuffs, textures;
+        std::vector<std::vector<wf_workspace_stream*>> streams;
         signal_callback_t resized_cb;
 
     public:
@@ -35,9 +35,14 @@ class wayfire_expo : public wayfire_plugin_t {
         grab_interface->compat.insert("screenshot");
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+        streams.resize(vw);
+
         for (int i = 0; i < vw; i++) {
-            fbuffs.push_back(std::vector<GLuint> (vh, -1));
-            textures.push_back(std::vector<GLuint> (vh, -1));
+            for (int j = 0;j < vh; j++) {
+                streams[i].push_back(new wf_workspace_stream);
+                streams[i][j]->tex = streams[i][j]->fbuff = -1;
+                streams[i][j]->ws = {i, j};
+            }
         }
 
         auto section = config->get_section("expo");
@@ -82,10 +87,9 @@ class wayfire_expo : public wayfire_plugin_t {
         resized_cb = [=] (signal_data*) {
             for (int i = 0; i < vw; i++) {
                 for (int j = 0; j < vh; j++) {
-                    GL_CALL(glDeleteTextures(1, &textures[i][j]));
-                    GL_CALL(glDeleteFramebuffers(1, &fbuffs[i][j]));
-
-                    textures[i][j] = fbuffs[i][j] = -1;
+                    GL_CALL(glDeleteTextures(1, &streams[i][j]->tex));
+                    GL_CALL(glDeleteFramebuffers(1, &streams[i][j]->fbuff));
+                    streams[i][j]->tex = streams[i][j]->fbuff = -1;
                 }
             }
         };
@@ -258,11 +262,13 @@ class wayfire_expo : public wayfire_plugin_t {
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        for(int i = 0; i < vw; i++) {
-            for(int j = 0; j < vh; j++) {
-
-                output->render->texture_from_workspace(std::make_tuple(i, j),
-                        fbuffs[i][j], textures[i][j]);
+        for(int j = 0; j < vw; j++) {
+            for(int i = 0; i < vh; i++) {
+                if (!streams[i][j]->running) {
+                    output->render->workspace_stream_start(streams[i][j]);
+                } else {
+                    output->render->workspace_stream_update(streams[i][j]);
+                }
 
 #define EDGE_OFFSET 13
 #define MOSAIC 0
@@ -273,7 +279,7 @@ class wayfire_expo : public wayfire_plugin_t {
                                (j - vy) * h + mosaic_factor},
                     .size = {w - 2 * mosaic_factor, h - 2 * mosaic_factor}};
 
-                OpenGL::render_transformed_texture(textures[i][j], g, {}, matrix,
+                OpenGL::render_transformed_texture(streams[i][j]->tex, g, {}, matrix,
                         glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y | TEXTURE_TRANSFORM_USE_DEVCOORD);
             }
         }
@@ -341,6 +347,14 @@ class wayfire_expo : public wayfire_plugin_t {
         state.active = false;
         output->deactivate_plugin(grab_interface);
         grab_interface->ungrab();
+
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+
+        for (int i = 0; i < vw; i++) {
+            for (int j = 0; j < vh; j++) {
+                output->render->workspace_stream_stop(streams[i][j]);
+            }
+        }
 
         output->render->reset_renderer();
         output->render->auto_redraw(false);

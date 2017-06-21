@@ -31,6 +31,7 @@ struct plugin_manager {
 struct wf_workspace_stream {
     std::tuple<int, int> ws;
     uint fbuff, tex;
+    bool running = false;
 };
 
 struct render_manager {

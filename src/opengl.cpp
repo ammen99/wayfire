@@ -279,7 +279,7 @@ namespace OpenGL {
 
     void prepare_framebuffer(GLuint &fbuff, GLuint &texture)
     {
-        if (fbuff != (uint)-1)
+        if (fbuff == (uint)-1)
             GL_CALL(glGenFramebuffers(1, &fbuff));
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
 

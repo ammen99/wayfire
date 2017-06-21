@@ -192,7 +192,7 @@ void wayfire_view_t::map(int sx, int sy)
     /* TODO: see shell.c#activate() */
 }
 
-void render_surface(weston_surface *surface, pixman_region32_t *damage,
+static void render_surface(weston_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4, glm::vec4, uint32_t bits);
 
 /* TODO: use bits */
@@ -224,7 +224,7 @@ void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
         (*hook)();
 }
 
-inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surface_box,
+static inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surface_box,
         const pixman_box32_t& subbox, glm::mat4 transform,
         glm::vec4 color, uint32_t bits)
 {
@@ -261,7 +261,7 @@ struct weston_gl_surface_state {
     GLuint textures[3];
 };
 
-void render_surface(weston_surface *surface, pixman_region32_t *damage,
+static void render_surface(weston_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4 transform, glm::vec4 color, uint32_t bits)
 {
     if (!surface->is_mapped || !surface->renderer_state)
@@ -270,11 +270,10 @@ void render_surface(weston_surface *surface, pixman_region32_t *damage,
     debug << "render a surface" << std::endl;
     auto gs = (weston_gl_surface_state *) surface->renderer_state;
 
-    pixman_region32_t surface_region, damaged_region;
-    pixman_region32_init(&damaged_region);
-    pixman_region32_init_rect(&surface_region, x, y,
+    pixman_region32_t damaged_region;
+    pixman_region32_init_rect(&damaged_region, x, y,
             surface->width, surface->height);
-    pixman_region32_intersect(&damaged_region, &surface_region, damage);
+    pixman_region32_intersect(&damaged_region, &damaged_region, damage);
 
     pixman_box32_t surface_box;
     surface_box.x1 = x; surface_box.y1 = y;
@@ -290,6 +289,7 @@ void render_surface(weston_surface *surface, pixman_region32_t *damage,
         render_surface_box(gs->textures, surface_box, boxes[i],
                 transform, color, bits | TEXTURE_USE_TEX_GEOMETRY);
     }
+    pixman_region32_fini(&damaged_region);
 
     weston_subsurface *sub;
     if (!wl_list_empty(&surface->subsurface_list)) {
