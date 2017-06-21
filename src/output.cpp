@@ -417,7 +417,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
                 update_views.push_back(dv);
                 /* If we are processing background, then this is not correct. But as
                  * background is the last in the list, we don' care */
-                pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->surface->opaque);
+                pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->handle->transform.opaque);
             } else {
                 pixman_region32_fini(dv.damage);
                 delete dv.damage;
