@@ -202,7 +202,6 @@ void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
     bool free_damage = false;
 
     if (damage == nullptr) {
-        debug << "use stupid damage" << std::endl;
         pixman_region32_init(&our_damage);
         pixman_region32_copy(&our_damage, &output->handle->region);
         damage = &our_damage;
@@ -235,15 +234,12 @@ static inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surfa
         1.0f * (subbox.y2 - surface_box.y1) / (surface_box.y2 - surface_box.y1),
     };
 
-    debug << "tex g is " << texg.x1 << " " << texg.y1 << " " << texg.x2 << " " << texg.y2 << std::endl;
-
     wayfire_geometry geometry =
     {.origin = {subbox.x1, subbox.y1},
      .size = {subbox.x2 - subbox.x1, subbox.y2 - subbox.y1}
     };
 
     for (int i = 0; i < 3 && tex[i]; i++) {
-        debug << "render tex auch" << std::endl;
         OpenGL::render_transformed_texture(tex[i], geometry, texg, transform,
                                            color, bits);
     }
@@ -267,7 +263,6 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
     if (!surface->is_mapped || !surface->renderer_state)
         return;
 
-    debug << "render a surface" << std::endl;
     auto gs = (weston_gl_surface_state *) surface->renderer_state;
 
     pixman_region32_t damaged_region;
@@ -281,11 +276,8 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
 
     int n = 0;
     pixman_box32_t *boxes = pixman_region32_rectangles(&damaged_region, &n);
-    debug << "box count: " << n << std::endl;
+
     for (int i = 0; i < n; i++) {
-        debug << "render a box " << boxes[i].x1 << " "
-            << boxes[i].y1 << " " << boxes[i].x2 << " " << boxes[i].y2 << std::endl;
-        debug << surface_box.x1 << " " << surface_box.y1 << " " << surface_box.x2 << " "<< surface_box.y2 << std::endl;
         render_surface_box(gs->textures, surface_box, boxes[i],
                 transform, color, bits | TEXTURE_USE_TEX_GEOMETRY);
     }

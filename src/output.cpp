@@ -311,16 +311,13 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
 
 void render_manager::workspace_stream_start(wf_workspace_stream *stream)
 {
-    debug << "start a stream" << streams_running << std::endl;
     streams_running++;
     stream->running = true;
 
     OpenGL::bind_context(output->render->ctx);
 
-    if (stream->fbuff == (uint)-1 || stream->tex == (uint)-1) {
-        debug << "preparing buffer" << std::endl;
+    if (stream->fbuff == (uint)-1 || stream->tex == (uint)-1)
         OpenGL::prepare_framebuffer(stream->fbuff, stream->tex);
-    }
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
     GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
@@ -362,7 +359,6 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
 
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
-    debug << "stream update " << x << " " << y << std::endl;
 
     int dx = -g.origin.x + (cx - x) * output->handle->width,
         dy = -g.origin.y + (cy - y) * output->handle->height;
@@ -372,15 +368,9 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
             output->handle->width, output->handle->height);
     pixman_region32_intersect(&ws_damage, &frame_damage, &ws_damage);
 
-    debug << "print rects " << frame_damage.extents.x1 << " " <<
-        frame_damage.extents.y1 << " " << frame_damage.extents.x2 << " " <<
-        frame_damage.extents.y2 << std::endl;
-
     /* we don't have to update anything */
-    if (!pixman_region32_not_empty(&ws_damage)) {
-        debug << "no damage " << dx << " "<<dy << std::endl;
+    if (!pixman_region32_not_empty(&ws_damage))
         return;
-    }
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
 
@@ -432,7 +422,6 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
     auto rev_it = update_views.rbegin();
     while(rev_it != update_views.rend()) {
         auto dv = *rev_it;
-        debug << "in here, we try to update it " << dv.view->is_special << std::endl;
         if (!dv.view->is_special) {
             dv.view->geometry.origin.x += dx;
             dv.view->geometry.origin.y += dy;
