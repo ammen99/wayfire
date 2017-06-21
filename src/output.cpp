@@ -474,10 +474,21 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
     ensure_pointer();
 
     workspace->for_each_view([=] (wayfire_view view) {
-        if (view->fullscreen) {
-            view->set_geometry(get_full_geometry());
-        } else if (view->maximized) {
-            view->set_geometry(workspace->get_workarea());
+        if (view->fullscreen || view->maximized) {
+            auto g = get_full_geometry();
+            if (view->maximized)
+                g = workspace->get_workarea();
+
+            /* TODO: this code assumes that we have viewports arranged in a grid
+             * this should be fixed by introducing view->workspace field
+             * and workspace->get_position_for_view_in_workspace() or similar */
+            int vx = view->geometry.origin.x / old_w;
+            int vy = view->geometry.origin.y / old_h;
+
+            g.origin.x += vx * w;
+            g.origin.y += vy * h;
+
+            view->set_geometry(g);
         } else {
             float px = 1. * view->geometry.origin.x / old_w;
             float py = 1. * view->geometry.origin.y / old_h;
