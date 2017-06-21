@@ -108,7 +108,6 @@ void wayfire_view_t::move(int x, int y)
     if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
         xwayland_surface_api->send_position(surface, x - ds_geometry.origin.x,
                 y - ds_geometry.origin.y);
-    weston_view_update_transform(handle);
 }
 
 void wayfire_view_t::resize(int w, int h)
