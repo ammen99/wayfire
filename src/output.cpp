@@ -110,7 +110,7 @@ void plugin_manager::init_default_plugins()
 
 /* End plugin_manager */
 
-/* Start jender_manager */
+/* Start render_manager */
 render_manager::render_manager(wayfire_output *o)
 {
     output = o;
@@ -327,6 +327,9 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
 
+    /* TODO: this assumes we use viewports arranged in a grid
+     * It would be much better to actually ask the workspace_manager
+     * for view's position on the given workspace*/
     int dx = -g.origin.x + (cx - x)  * output->handle->width,
         dy = -g.origin.y + (cy - y)  * output->handle->height;
 
@@ -369,8 +372,10 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
     pixman_region32_intersect(&ws_damage, &frame_damage, &ws_damage);
 
     /* we don't have to update anything */
-    if (!pixman_region32_not_empty(&ws_damage))
+    if (!pixman_region32_not_empty(&ws_damage)) {
+        pixman_region32_fini(&ws_damage);
         return;
+    }
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
 

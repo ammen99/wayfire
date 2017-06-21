@@ -152,15 +152,8 @@ class wayfire_expo : public wayfire_plugin_t {
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
-        /*
-        pixman_region32_union(&core->ec->primary_plane.damage,
-                &core->ec->primary_plane.damage,
-                &moving_view->handle->transform.boundingbox);
-                */
-
         moving_view->move(moving_view->geometry.origin.x + (cx - sx) * vw,
                 moving_view->geometry.origin.y + (cy - sy) * vh);
-
 
         sx = cx;
         sy = cy;
@@ -239,7 +232,6 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void render()
     {
-        debug <<"expo is render" << std::endl;
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         GetTuple(vx, vy, output->workspace->get_current_workspace());
         GetTuple(w,  h,  output->get_screen_size());

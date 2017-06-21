@@ -260,7 +260,8 @@ struct weston_gl_surface_state {
 static void render_surface(weston_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4 transform, glm::vec4 color, uint32_t bits)
 {
-    if (!surface->is_mapped || !surface->renderer_state)
+    if (!surface->is_mapped || !surface->renderer_state ||
+            surface->width * surface->height == 0)
         return;
 
     auto gs = (weston_gl_surface_state *) surface->renderer_state;
