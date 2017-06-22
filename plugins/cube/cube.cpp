@@ -87,6 +87,12 @@ class wayfire_cube : public wayfire_plugin_t {
             pointer_moved(wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y));
         };
 
+        grab_interface->callbacks.pointer.axis = [=] (weston_pointer*,
+                weston_pointer_axis_event *ev) {
+            if (ev->axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
+                pointer_scrolled(ev->value);
+        };
+
 
 #if USE_GLES32
         use_light = section->get_int("light", 1);
@@ -167,7 +173,6 @@ class wayfire_cube : public wayfire_plugin_t {
                 sides[i] = sideFBuffs[i] = -1;
 
             project = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
-
     }
 
     void initiate(int x, int y)
@@ -299,26 +304,17 @@ class wayfire_cube : public wayfire_plugin_t {
         offsetVert += ydiff * YVelocity;
         px = x, py = y;
     }
-        /*
 
-        void onScrollEvent(EventContext ctx) {
-            zoomFactor += ZVelocity * ctx.amount[0];
+    void pointer_scrolled(double amount)
+    {
+        zoomFactor += ZVelocity * amount;
 
-            if (zoomFactor > MaxFactor)
-                zoomFactor = MaxFactor;
+        if (zoomFactor > MaxFactor)
+            zoomFactor = MaxFactor;
 
-            if (zoomFactor <= 0.1)
-                zoomFactor = 0.1;
-        }
-
-    void on_reload_gl(SignalListenerData data) {
-        GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-        vh = 0;
-
-        for (int i = 0; i < vw; i++)
-            sides[i] = sideFBuffs[i] = -1;
-    } */
-
+        if (zoomFactor <= 0.1)
+            zoomFactor = 0.1;
+    }
 };
 
 extern "C" {
