@@ -1,4 +1,4 @@
-#version 400
+#version 320 es
 
 layout(vertices = 3) out;
 
@@ -23,11 +23,11 @@ void main() {
            and lighting even higher degree to
            make lighting smoother */
 
-        int tessLevel = 1;
+        float tessLevel = 1.0f;
         if(deform > 0)
-            tessLevel = 30;
+            tessLevel = 30.0f;
         if(light > 0)
-            tessLevel = 50;
+            tessLevel = 50.0f;
 
         gl_TessLevelInner[0] = tessLevel;
         gl_TessLevelOuter[0] = tessLevel;

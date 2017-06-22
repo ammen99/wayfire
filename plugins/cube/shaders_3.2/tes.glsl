@@ -1,4 +1,4 @@
-#version 400
+#version 320 es
 layout(triangles) in;
 
 in vec3 tcPosition[];
@@ -29,12 +29,12 @@ void main() {
     tesuv = interpolate2D(uv[0], uv[1], uv[2]);
 
     tp = interpolate3D(tcPosition[0], tcPosition[1], tcPosition[2]);
-    tp = (initialModel * vec4(tp, 1.0)).xyz;
+    tp = (model * vec4(tp, 1.0)).xyz;
 
     if(deform > 0) {
         float r = 0.5;
         float d = distance(tp.xz, vec2(0, 0));
-        float scale = 1;
+        float scale = 1.0;
         if(deform == 1)
             scale = r / d;
         else

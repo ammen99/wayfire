@@ -1,4 +1,4 @@
-#version 400
+#version 320 es
 
 layout(triangles) in;
 layout(triangle_strip, max_vertices = 3) out;
@@ -13,7 +13,7 @@ out vec2 guv;
 out vec3 colorFactor;
 
 #define AL 0.2    // ambient lighting
-#define DL (1-AL) // diffuse lighting
+#define DL (1.0-AL) // diffuse lighting
 
 void main() {
 
@@ -23,11 +23,11 @@ void main() {
         vec3 N = normalize(NM * normalize(cross(A, B)));
         vec3 L = vec3(0, 0, 1.5);
 
-        float df = clamp(abs(dot(N, L)), 0, 1);
-        colorFactor = vec3(AL, AL, AL) + df * vec3(DL, DL, DL);
+        float df = AL + DL * clamp(abs(dot(N, L)), 0.0, 1.0);
+        colorFactor = vec3(df, df, df);
     }
     else
-        colorFactor = vec3(1, 1, 1);
+        colorFactor = vec3(1.0, 1.0, 1.0);
 
     gl_Position = gl_in[0].gl_Position;
     guv = tesuv[0];
