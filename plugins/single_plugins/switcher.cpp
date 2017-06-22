@@ -204,6 +204,14 @@ class view_switcher : public wayfire_plugin_t {
 
         index = 0;
         current_step = 0;
+
+        auto bg = output->workspace->get_background_view();
+        if (bg) {
+            bg->transform.translation = glm::translate(glm::mat4(),
+                    glm::vec3(0, 0, -9));
+            bg->transform.scale = glm::scale(glm::mat4(),
+                    glm::vec3(6, 6, 1));
+        }
     }
 
     void render_view(wayfire_view v)
@@ -224,8 +232,11 @@ class view_switcher : public wayfire_plugin_t {
     void render()
     {
         OpenGL::use_default_program();
-        GL_CALL(glEnable(GL_DEPTH_TEST));
 
+        GL_CALL(glEnable(GL_DEPTH_TEST));
+        GL_CALL(glDepthFunc(GL_LESS));
+
+        GL_CALL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT));
 
         auto bg = output->workspace->get_background_view();
         if (bg) {
@@ -244,6 +255,8 @@ class view_switcher : public wayfire_plugin_t {
 
         for(int i = active_views.size() - 1; i >= 0; i--)
             render_view(active_views[i].view);
+
+        GL_CALL(glDisable(GL_DEPTH_TEST));
 
         if (!state.active)
             finish_exit();
@@ -565,7 +578,11 @@ class view_switcher : public wayfire_plugin_t {
         output->deactivate_plugin(grab_interface);
 
         auto bg = output->workspace->get_background_view();
-        if (bg) bg->transform.color = glm::vec4(1);
+        if (bg) {
+            bg->transform.color = glm::vec4(1);
+            bg->transform.translation = glm::mat4();
+            bg->transform.scale = glm::mat4();
+        }
 
         wayfire_view_transform::global_view_projection = glm::mat4();
 
