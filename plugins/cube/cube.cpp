@@ -32,11 +32,11 @@ class wayfire_cube : public wayfire_plugin_t {
 
     struct {
         GLuint id = -1;
-        GLuint modelID;
+        GLuint modelID, vpID;
         GLuint posID, uvID;
     } program;
 
-    glm::mat4 vp, model, view;
+    glm::mat4 vp, model, view, project;
     float coeff;
 
 #if USE_GLES32
@@ -138,14 +138,9 @@ class wayfire_cube : public wayfire_plugin_t {
             GL_CALL(glLinkProgram(program.id));
             GL_CALL(glUseProgram(program.id));
 
-            auto proj = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
-            view = glm::lookAt(glm::vec3(0., 2., 2),
-                    glm::vec3(0., 0., 0.),
-                    glm::vec3(0., 1., 0.));
-            vp = proj * view;
 
-            GLuint vpID = GL_CALL(glGetUniformLocation(program.id, "VP"));
-            GL_CALL(glUniformMatrix4fv(vpID, 1, GL_FALSE, &vp[0][0]));
+            program.vpID = GL_CALL(glGetUniformLocation(program.id, "VP"));
+            GL_CALL(glUniformMatrix4fv(program.vpID, 1, GL_FALSE, &vp[0][0]));
 
             program.uvID = GL_CALL(glGetAttribLocation(program.id, "uvPosition"));
             program.posID = GL_CALL(glGetAttribLocation(program.id, "position"));
@@ -170,6 +165,9 @@ class wayfire_cube : public wayfire_plugin_t {
 
             for(int i = 0; i < vw; i++)
                 sides[i] = sideFBuffs[i] = -1;
+
+            project = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
+
     }
 
     void initiate(int x, int y)
@@ -210,9 +208,14 @@ class wayfire_cube : public wayfire_plugin_t {
         GL_CALL(glEnable(GL_DEPTH_TEST));
         GL_CALL(glDepthFunc(GL_LESS));
 
-        glm::mat4 vertical_rotation = glm::rotate(glm::mat4(),
-                offsetVert, glm::vec3(1, 0, 0));
-        glm::mat4 base_model = glm::scale(vertical_rotation,
+        view = glm::lookAt(glm::vec3(0., 2. + offsetVert, 2),
+                glm::vec3(0., 0., 0.),
+                glm::vec3(0., 1., 0.));
+        vp = project * view;
+
+        GL_CALL(glUniformMatrix4fv(program.vpID, 1, GL_FALSE, &vp[0][0]));
+
+        glm::mat4 base_model = glm::scale(glm::mat4(),
                 glm::vec3(1. / zoomFactor, 1. / zoomFactor,
                     1. / zoomFactor));
 
@@ -256,27 +259,14 @@ class wayfire_cube : public wayfire_plugin_t {
             model = glm::rotate(base_model,
                     float(i) * angle + offset, glm::vec3(0, 1, 0));
             model = glm::translate(model, glm::vec3(0, 0, coeff));
+           GL_CALL(glUniformMatrix4fv(program.modelID, 1, GL_FALSE, &model[0][0]));
 
-            //                auto nm =
-            //                    glm::inverse(glm::transpose(glm::mat3(view *  addedS)));
-
-            GL_CALL(glUniformMatrix4fv(program.modelID, 1, GL_FALSE, &model[0][0]));
-
-            GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
-
-
-            //                if(OpenGL::VersionMajor >= 4) {
-            //                    glUniformMatrix3fv(nmID, 1, GL_FALSE, &nm[0][0]);
-            //
-            //                    glPatchParameteri(GL_PATCH_VERTICES, 3);
-            //                    glDrawArrays (GL_PATCHES, 0, 6);
-            //                }
-            //                else
-            //   glDrawArrays(GL_TRIANGLES, 0, 6);
-
-
+#if USE_GLES32
+           GL_CALL(glDrawArrays(GL_PATCHES, 0, 6));
+#else
+           GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
+#endif
         }
-        //            glXSwapBuffers(core->d, core->outputwin);
         glDisable(GL_DEPTH_TEST);
 
         GL_CALL(glDisableVertexAttribArray(program.posID));
