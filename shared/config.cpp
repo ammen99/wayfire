@@ -97,6 +97,8 @@ wayfire_button wayfire_config_section::get_button(string name, wayfire_button df
         ans.button = BTN_RIGHT;
     else if (button == "middle")
         ans.button = BTN_MIDDLE;
+    else
+        ans.button = 0;
 
     return ans;
 }

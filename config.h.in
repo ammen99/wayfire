@@ -4,5 +4,6 @@
 #define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
 #cmakedefine01 USE_IMAGEIO
 #cmakedefine01 WAYFIRE_DEBUG_ENABLED
+#cmakedefine01 USE_GLES32
 
 #endif /* end of include guard: CONFIG_H */

@@ -1,23 +1,23 @@
 #include <opengl.hpp>
 #include <output.hpp>
-//#include <GLES3/gl31.h>
+#include <core.hpp>
+#include <libweston-3/compositor.h>
+#include <linux/input-event-codes.h>
 
-/* TODO: create a tessellation engine and use it in cube deformation
- * currently deformation and lighting is disabled */
-class Cube : public Plugin {
-    ButtonBinding activate;
-    ButtonBinding deactiv;
-    ButtonBinding zoom;
+#if USE_GLES32
+#include <GLES3/gl32.h>
+#endif
 
-    SignalListener reload_gl;
+class wayfire_cube : public wayfire_plugin_t {
+    button_callback activate;
+    wayfire_button act_button;
 
-    Hook mouse;
     std::vector<GLuint> sides;
     std::vector<GLuint> sideFBuffs;
     int vx, vy;
 
-    float Velocity = 0.01;
-    float VVelocity = 0.01;
+    float XVelocity = 0.01;
+    float YVelocity = 0.01;
     float ZVelocity = 0.05;
     float MaxFactor = 10;
 
@@ -28,133 +28,115 @@ class Cube : public Plugin {
 
     int px, py;
 
-    RenderHook renderer;
+    render_hook_t renderer;
 
-    GLuint program;
-
-    GLuint vpID;
-    GLuint initialModel;
-    GLuint nmID;
+    struct {
+        GLuint id = -1;
+        GLuint modelID;
+        GLuint posID, uvID;
+    } program;
 
     glm::mat4 vp, model, view;
     float coeff;
 
-    Button actButton;
-    Color bg;
+#if USE_GLES32
+    bool use_light;
+    int use_deform;
+#endif
+
+    wayfire_color backgroud_color;
 
     public:
-        void initOwnership() {
-            owner->name = "cube";
-            owner->compatAll = false;
-            owner->compat.insert("screenshot");
-        }
+    void init(wayfire_config *config)
+    {
+        grab_interface->name = "cube";
+        grab_interface->compatAll = false;
+        grab_interface->compat.insert("screenshot");
 
-        void updateConfiguration() {
-            Velocity  = options["velocity" ]->data.fval;
-            VVelocity = options["vvelocity"]->data.fval;
-            ZVelocity = options["zvelocity"]->data.fval;
+        auto section = config->get_section("cube");
 
-#define TESSELATION_SUPPORTED false
-            if(TESSELATION_SUPPORTED) {
-                int val = options["deform"]->data.ival;
-                glUseProgram(program);
-                GLuint defID = glGetUniformLocation(program, "deform");
-                glUniform1i(defID, val);
+        XVelocity  = section->get_double("speed_spin_horiz", 0.01);
+        YVelocity  = section->get_double("speed_spin_vert",  0.01);
+        ZVelocity  = section->get_double("speed_zoom",       0.05);
 
-                val = options["light"]->data.ival ? 1 : 0;
-                GLuint lightID = glGetUniformLocation(program, "light");
-                glUniform1i(lightID, val);
+        backgroud_color = section->get_color("background", {0, 0, 0, 1});
 
-                OpenGL::useDefaultProgram();
-            }
+        act_button = section->get_button("activate",
+                {MODIFIER_ALT | MODIFIER_CTRL, BTN_LEFT});
 
-            actButton = *options["activate"]->data.but;
-            bg = *options["bg"]->data.color;
+        if (act_button.button == 0)
+            return;
 
-            if(actButton.button == 0)
-                return;
+        activate = [=] (weston_pointer *ptr, uint32_t) {
+            initiate(wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y));
+        };
 
-            using namespace std::placeholders;
-            zoom.button = BTN_SCROLL;
-            zoom.type   = BindingTypePress;
-            zoom.mod = 0;
-            zoom.action = std::bind(std::mem_fn(&Cube::onScrollEvent), this, _1);
+        core->input->add_button(act_button.mod, act_button.button,
+                &activate, output);
 
-            output->hook->add_but(&zoom, false);
+        grab_interface->callbacks.pointer.button = [=] (weston_pointer*,
+                uint32_t b, uint32_t s)
+        {
+            if (s == WL_POINTER_BUTTON_STATE_RELEASED)
+                terminate();
+        };
 
-            activate.button = actButton.button;
-            activate.type = BindingTypePress;
-            activate.mod = actButton.mod;
-            activate.action =
-                std::bind(std::mem_fn(&Cube::Initiate), this, _1);
-            output->hook->add_but(&activate, true);
+        grab_interface->callbacks.pointer.motion = [=] (weston_pointer* ptr,
+                weston_pointer_motion_event*)
+        {
+            pointer_moved(wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y));
+        };
 
-            deactiv.button = actButton.button;
-            deactiv.mod    = 0;
-            deactiv.type   = BindingTypeRelease;
-            deactiv.action =
-                std::bind(std::mem_fn(&Cube::Terminate), this, _1);
-            output->hook->add_but(&deactiv, false);
 
-            reload_gl.action = std::bind(std::mem_fn(&Cube::on_reload_gl), this, _1);
-            output->signal->connect_signal("reload-gl", &reload_gl);
+#if USE_GLES32
+        use_light = section->get_int("light", 1);
+        use_deform = section->get_int("deform", 1);
+#endif
 
-        }
+        renderer = [=] () {render();};
+    }
 
-        void init() {
-            options.insert(newFloatOption("velocity",  0.01));
-            options.insert(newFloatOption("vvelocity", 0.01));
-            options.insert(newFloatOption("zvelocity", 0.05));
+    void load_program()
+    {
+#if USE_GLES32
+            std::string shaderSrcPath =
+                INSTALL_PREFIX "/share/wayfire/cube/shaders_3.2";
+#else
+            std::string shaderSrcPath =
+                INSTALL_PREFIX "/share/wayfire/cube/shaders_2.0";
+#endif
 
-            options.insert(newColorOption("bg", Color{0, 0, 0}));
-            options.insert(newButtonOption("activate", Button{0, 0}));
+            program.id = GL_CALL(glCreateProgram());
+            GLuint vss, fss, tcs = -1, tes = -1, gss = -1;
 
-            /* these features require tesselation,
-             * so if OpenGL version < 4 do not expose
-             * such capabilities */
-            if(TESSELATION_SUPPORTED) {
-                options.insert(newIntOption  ("deform",    0));
-                options.insert(newIntOption  ("light",     false));
-            }
+            vss = OpenGL::load_shader(std::string(shaderSrcPath)
+                        .append("/vertex.glsl").c_str(), GL_VERTEX_SHADER);
 
-            /* TODO: make a better way to determine shader path */
-//            std::string shaderSrcPath =
-//                "/usr/share/wayfire/cube/s4.0";
-//            if(!TESSELATION_SUPPORTED)
-//                shaderSrcPath = "/usr/share/wayfire/cube/s3.3";
-//
+            fss = OpenGL::load_shader(std::string(shaderSrcPath)
+                        .append("/frag.glsl").c_str(), GL_FRAGMENT_SHADER);
 
-//            program = glCreateProgram();
-//            GLuint vss, fss, tcs = -1, tes = -1, gss = -1;
-//
-//            vss = OpenGL::loadShader(std::string(shaderSrcPath)
-//                        .append("/vertex.glsl").c_str(), GL_VERTEX_SHADER);
-//
-//            fss = OpenGL::loadShader(std::string(shaderSrcPath)
-//                        .append("/frag.glsl").c_str(), GL_FRAGMENT_SHADER);
-//
-//            glAttachShader (program, vss);
-//            glAttachShader (program, fss);
-//
-//            if(TESSELATION_SUPPORTED) {
-//                tcs = OpenGL::loadShader(std::string(shaderSrcPath)
-//                            .append("/tcs.glsl").c_str(),
-//                            GL_TESS_CONTROL_SHADER);
-//
-//                tes = GLXUtils::loadShader(std::string(shaderSrcPath)
-//                            .append("/tes.glsl").c_str(),
-//                            GL_TESS_EVALUATION_SHADER);
-//
-//                gss = GLXUtils::loadShader(std::string(shaderSrcPath)
-//                            .append("/geom.glsl").c_str(),
-//                            GL_GEOMETRY_SHADER);
-//                glAttachShader (program, tcs);
-//                glAttachShader (program, tes);
-//                glAttachShader (program, gss);
-//            }
+            GL_CALL(glAttachShader(program.id, vss));
+            GL_CALL(glAttachShader(program.id, fss));
 
-//            glLinkProgram (program);
-//            glUseProgram(program);
+#if USE_GLES32
+            tcs = OpenGL::load_shader(std::string(shaderSrcPath)
+                    .append("/tcs.glsl").c_str(),
+                    GL_TESS_CONTROL_SHADER);
+
+            tes = OpenGL::load_shader(std::string(shaderSrcPath)
+                    .append("/tes.glsl").c_str(),
+                    GL_TESS_EVALUATION_SHADER);
+
+            gss = OpenGL::load_shader(std::string(shaderSrcPath)
+                    .append("/geom.glsl").c_str(),
+                    GL_GEOMETRY_SHADER);
+            GL_CALL(glAttachShader(program.id, tcs));
+            GL_CALL(glAttachShader(program.id, tes));
+            GL_CALL(glAttachShader(program.id, gss));
+#endif
+
+            GL_CALL(glLinkProgram(program.id));
+            GL_CALL(glUseProgram(program.id));
 
             auto proj = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
             view = glm::lookAt(glm::vec3(0., 2., 2),
@@ -162,8 +144,23 @@ class Cube : public Plugin {
                     glm::vec3(0., 1., 0.));
             vp = proj * view;
 
-            GetTuple(vw, vh, output->viewport->get_viewport_grid_size());
-            vh = 0;
+            GLuint vpID = GL_CALL(glGetUniformLocation(program.id, "VP"));
+            GL_CALL(glUniformMatrix4fv(vpID, 1, GL_FALSE, &vp[0][0]));
+
+            program.uvID = GL_CALL(glGetAttribLocation(program.id, "uvPosition"));
+            program.posID = GL_CALL(glGetAttribLocation(program.id, "position"));
+            program.modelID = GL_CALL(glGetUniformLocation(program.id, "model"));
+
+#if USE_GLES32
+            GLuint defID = GL_CALL(glGetUniformLocation(program.id, "deform"));
+            glUniform1i(defID, use_deform);
+
+            GLuint lightID = GL_CALL(glGetUniformLocation(program.id, "light"));
+            glUniform1i(lightID, use_light);
+#endif
+
+            GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+            vh = 0; /* silence compiler warning */
 
             sides.resize(vw);
             sideFBuffs.resize(vw);
@@ -173,127 +170,146 @@ class Cube : public Plugin {
 
             for(int i = 0; i < vw; i++)
                 sides[i] = sideFBuffs[i] = -1;
+    }
 
-            mouse.action = std::bind(std::mem_fn(&Cube::mouseMoved), this);
-            output->hook->add_hook(&mouse);
+    void initiate(int x, int y)
+    {
+        if (!output->activate_plugin(grab_interface))
+            return;
+        grab_interface->grab();
 
-            renderer = std::bind(std::mem_fn(&Cube::Render), this);
+        output->render->set_renderer(renderer);
+
+        offset = 0;
+        offsetVert = 0;
+        zoomFactor = 1;
+
+        GetTuple(vx, vy, output->workspace->get_current_workspace());
+        /* important: core uses vx = col vy = row */
+        this->vx = vx, this->vy = vy;
+
+        px = x;
+        py = y;
+    }
+
+    void render()
+    {
+        if (program.id == (uint)-1)
+            load_program();
+
+        GL_CALL(glClearColor(backgroud_color.r, backgroud_color.g,
+                backgroud_color.b + 0.5, backgroud_color.a + 1));
+        GL_CALL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT));
+
+        for(size_t i = 0; i < sides.size(); i++) {
+            output->workspace->texture_from_workspace(std::make_tuple(i, vy),
+                    sideFBuffs[i], sides[i]);
         }
 
-        void Initiate(EventContext ctx) {
-            if(!output->input->activate_owner(owner))
-                return;
-            owner->grab();
+        GL_CALL(glUseProgram(program.id));
+        GL_CALL(glEnable(GL_DEPTH_TEST));
+        GL_CALL(glDepthFunc(GL_LESS));
 
-            output->render->set_renderer(0, renderer);
-            GetTuple(vx, vy, output->viewport->get_current_viewport());
+        glm::mat4 vertical_rotation = glm::rotate(glm::mat4(),
+                offsetVert, glm::vec3(1, 0, 0));
+        glm::mat4 base_model = glm::scale(vertical_rotation,
+                glm::vec3(1. / zoomFactor, 1. / zoomFactor,
+                    1. / zoomFactor));
 
-            /* important: core uses vx = col vy = row */
-            this->vx = vx, this->vy = vy;
 
-            GetTuple(mx, my, output->input->get_pointer_position());
-            px = mx, py = my;
+        GLfloat vertexData[] = {
+            -0.5,  0.5,
+             0.5,  0.5,
+             0.5, -0.5,
+            -0.5,  0.5,
+             0.5, -0.5,
+            -0.5, -0.5
+        };
 
-            mouse.enable();
-            deactiv.enable();
-            zoom.enable();
+        GLfloat coordData[] = {
+            0.0f, 1.0f,
+            1.0f, 1.0f,
+            1.0f, 0.0f,
+            0.0f, 1.0f,
+            1.0f, 0.0f,
+            0.0f, 0.0f,
+        };
 
-            offset = 0;
-            offsetVert = 0;
-            zoomFactor = 1;
+        GL_CALL(glVertexAttribPointer(program.posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
+        GL_CALL(glEnableVertexAttribArray(program.posID));
+
+        GL_CALL(glVertexAttribPointer(program.uvID, 2, GL_FLOAT, GL_FALSE, 0, coordData));
+        GL_CALL(glEnableVertexAttribArray(program.uvID));
+
+        for(size_t i = 0; i < sides.size(); i++) {
+            int index = (vx + i) % sides.size();
+
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+            GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, sides[index]));
+            GL_CALL(glActiveTexture(GL_TEXTURE0));
+
+            model = glm::rotate(base_model,
+                    float(i) * angle + offset, glm::vec3(0, 1, 0));
+            model = glm::translate(model, glm::vec3(0, 0, coeff));
+
+            //                auto nm =
+            //                    glm::inverse(glm::transpose(glm::mat3(view *  addedS)));
+
+            GL_CALL(glUniformMatrix4fv(program.modelID, 1, GL_FALSE, &model[0][0]));
+
+            GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
+
+
+            //                if(OpenGL::VersionMajor >= 4) {
+            //                    glUniformMatrix3fv(nmID, 1, GL_FALSE, &nm[0][0]);
+            //
+            //                    glPatchParameteri(GL_PATCH_VERTICES, 3);
+            //                    glDrawArrays (GL_PATCHES, 0, 6);
+            //                }
+            //                else
+            //   glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
         }
+        //            glXSwapBuffers(core->d, core->outputwin);
+        glDisable(GL_DEPTH_TEST);
 
-        void Render() {
-            glClearColor(bg.r, bg.g, bg.b, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+        GL_CALL(glDisableVertexAttribArray(program.posID));
+        GL_CALL(glDisableVertexAttribArray(program.uvID));
+    }
 
-            for(size_t i = 0; i < sides.size(); i++) {
-                output->render->texture_from_viewport(std::make_tuple(i, vy),
-                        sideFBuffs[i], sides[i]);
-            }
+    void terminate()
+    {
+        output->render->reset_renderer();
+        output->deactivate_plugin(grab_interface);
 
-   //         glUseProgram(program);
-            glEnable(GL_DEPTH_TEST);
-            glDepthFunc(GL_LESS);
+        auto size = sides.size();
 
-    //        glBindVertexArray(vao);
-     //       glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        float dx = -(offset) / angle;
+        int dvx = 0;
+        if(dx > -1e-4)
+            dvx = std::floor(dx + 0.5);
+        else
+            dvx = std::floor(dx - 0.5);
 
-            glm::mat4 verticalRotation = glm::rotate(glm::mat4(),
-                    offsetVert, glm::vec3(1, 0, 0));
-            glm::mat4 scale = glm::scale(glm::mat4(),
-                    glm::vec3(1. / zoomFactor, 1. / zoomFactor,
-                        1. / zoomFactor));
+        int nvx = (vx + (dvx % size) + size) % size;
+        output->workspace->set_workspace(std::make_tuple(nvx, vy));
+    }
 
-            glm::mat4 addedS = scale * verticalRotation;
-            glm::mat4 vpUpload = vp * addedS;
-      //      glUniformMatrix4fv(vpID, 1, GL_FALSE, &vpUpload[0][0]);
-
-            GetTuple(sw, sh, output->get_screen_size());
-            wlc_geometry g;
-            g.origin = {sw / 4, sh / 4};
-            g.size.w = sw / 2;
-            g.size.h = sh / 2;
-
-            for(size_t i = 0; i < sides.size(); i++) {
-                int index = (vx + i) % sides.size();
-
-       //         glBindTexture(GL_TEXTURE_2D, sides[index]);
-
-                model = glm::rotate(glm::mat4(),
-                        float(i) * angle + offset, glm::vec3(0, 1, 0));
-                model = glm::translate(model, glm::vec3(0, 0, coeff));
-
-//                auto nm =
-//                    glm::inverse(glm::transpose(glm::mat3(view *  addedS)));
-
-                OpenGL::renderTransformedTexture(sides[index], g,
-                        vpUpload * model, TEXTURE_TRANSFORM_INVERT_Y);
-                //glUniformMatrix4fv(initialModel, 1, GL_FALSE, &model[0][0]);
-
-//                if(OpenGL::VersionMajor >= 4) {
-//                    glUniformMatrix3fv(nmID, 1, GL_FALSE, &nm[0][0]);
-//
-//                    glPatchParameteri(GL_PATCH_VERTICES, 3);
-//                    glDrawArrays (GL_PATCHES, 0, 6);
-//                }
-//                else
-                 //   glDrawArrays(GL_TRIANGLES, 0, 6);
-            }
-//            glXSwapBuffers(core->d, core->outputwin);
-            glDisable(GL_DEPTH_TEST);
-        }
-
-        void Terminate(EventContext ctx) {
-            output->render->reset_renderer();
-
-            mouse.disable();
-            deactiv.disable();
-            zoom.disable();
-
-            output->input->deactivate_owner(owner);
-
-            auto size = sides.size();
-
-            float dx = -(offset) / angle;
-            int dvx = 0;
-            if(dx > -1e-4)
-                dvx = std::floor(dx + 0.5);
-            else
-                dvx = std::floor(dx - 0.5);
-
-            int nvx = (vx + (dvx % size) + size) % size;
-            output->viewport->switch_workspace(std::make_tuple(nvx, vy));
-        }
-
-        void mouseMoved() {
-            GetTuple(mx, my, output->input->get_pointer_position());
-            int xdiff = mx - px;
-            int ydiff = my - py;
-            offset += xdiff * Velocity;
-            offsetVert += ydiff * VVelocity;
-            px = mx, py = my;
-        }
+    void pointer_moved(int x, int y)
+    {
+        int xdiff = x - px;
+        int ydiff = y - py;
+        offset += xdiff * XVelocity;
+        offsetVert += ydiff * YVelocity;
+        px = x, py = y;
+    }
+        /*
 
         void onScrollEvent(EventContext ctx) {
             zoomFactor += ZVelocity * ctx.amount[0];
@@ -311,13 +327,13 @@ class Cube : public Plugin {
 
         for (int i = 0; i < vw; i++)
             sides[i] = sideFBuffs[i] = -1;
-    }
+    } */
 
 };
 
 extern "C" {
-    Plugin *newInstance() {
-        return new Cube();
+    wayfire_plugin_t *newInstance() {
+        return new wayfire_cube();
     }
 
 }

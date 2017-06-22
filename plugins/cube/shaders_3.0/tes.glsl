@@ -7,7 +7,7 @@ in vec2 uv[];
 out vec2 tesuv;
 out vec3 tePosition;
 
-uniform mat4 initialModel;
+uniform mat4 model;
 uniform mat4 VP;
 uniform int  deform;
 

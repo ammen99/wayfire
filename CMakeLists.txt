@@ -20,6 +20,7 @@ include_directories(src)
 include_directories(shared)
 
 set(BUILD_WITH_IMAGEIO FALSE)
+set(USE_GLES32 TRUE)
 
 configure_file(config.h.in config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
