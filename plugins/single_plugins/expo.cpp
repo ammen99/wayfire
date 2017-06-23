@@ -28,11 +28,19 @@ class wayfire_expo : public wayfire_plugin_t {
         std::vector<std::vector<wf_workspace_stream*>> streams;
         signal_callback_t resized_cb;
 
+        int delimiter_offset;
+
     public:
     void init(wayfire_config *config) {
         grab_interface->name = "expo";
         grab_interface->compatAll = false;
         grab_interface->compat.insert("screenshot");
+
+        auto section = config->get_section("expo");
+        auto toggle_key = section->get_key("toggle", {MODIFIER_SUPER, KEY_E});
+
+        if (!toggle_key.keyval || !toggle_key.mod)
+            return;
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         streams.resize(vw);
@@ -45,12 +53,8 @@ class wayfire_expo : public wayfire_plugin_t {
             }
         }
 
-        auto section = config->get_section("expo");
         max_steps = section->get_duration("duration", 20);
-        auto toggle_key = section->get_key("toggle", {MODIFIER_SUPER, KEY_E});
-
-        if (!toggle_key.keyval || !toggle_key.mod)
-            return;
+        delimiter_offset = section->get_int("offset", 10);
 
         toggle_cb = [=] (weston_keyboard *kbd, uint32_t key) {
             activate();
@@ -260,23 +264,19 @@ class wayfire_expo : public wayfire_plugin_t {
         matrix = glm::translate(matrix, glm::vec3(render_params.off_x, render_params.off_y, 0));
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        for(int j = 0; j < vw; j++) {
-            for(int i = 0; i < vh; i++) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        for(int j = 0; j < vh; j++) {
+            for(int i = 0; i < vw; i++) {
                 if (!streams[i][j]->running) {
                     output->render->workspace_stream_start(streams[i][j]);
                 } else {
                     output->render->workspace_stream_update(streams[i][j]);
                 }
 
-#define EDGE_OFFSET 13
-#define MOSAIC 0
-
-                int mosaic_factor = EDGE_OFFSET - (1 - ((i + j) & 1)) * MOSAIC;
                 wayfire_geometry g = {
-                    .origin = {(i - vx) * w + mosaic_factor,
-                               (j - vy) * h + mosaic_factor},
-                    .size = {w - 2 * mosaic_factor, h - 2 * mosaic_factor}};
+                    .origin = {(i - vx) * w + delimiter_offset,
+                               (j - vy) * h + delimiter_offset},
+                    .size = {w - 2 * delimiter_offset, h - 2 * delimiter_offset}};
 
                 OpenGL::render_transformed_texture(streams[i][j]->tex, g, {}, matrix,
                         glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y | TEXTURE_TRANSFORM_USE_DEVCOORD);
@@ -310,9 +310,8 @@ class wayfire_expo : public wayfire_plugin_t {
             zoom_target.steps = max_steps;
         }
 
-        int mosaic_factor = (EDGE_OFFSET - (1 - ((target_vx + target_vy) & 1)) * MOSAIC);
-        float mf_x = 2. * mosaic_factor / output->handle->width;
-        float mf_y = 2. * mosaic_factor / output->handle->height;
+        float mf_x = 2. * delimiter_offset / output->handle->width;
+        float mf_y = 2. * delimiter_offset / output->handle->height;
 
         zoom_target.scale_x = {1, 1.f / vw};
         zoom_target.scale_y = {1, 1.f / vh};
