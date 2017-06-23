@@ -12,8 +12,7 @@ class wayfire_cube : public wayfire_plugin_t {
     button_callback activate;
     wayfire_button act_button;
 
-    std::vector<GLuint> sides;
-    std::vector<GLuint> sideFBuffs;
+    std::vector<wf_workspace_stream*> streams;
     int vx, vy;
 
     float XVelocity = 0.01;
@@ -163,14 +162,15 @@ class wayfire_cube : public wayfire_plugin_t {
             GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
             vh = 0; /* silence compiler warning */
 
-            sides.resize(vw);
-            sideFBuffs.resize(vw);
+            streams.resize(vw);
 
             angle = 2 * M_PI / float(vw);
             coeff = 0.5 / std::tan(angle / 2);
 
-            for(int i = 0; i < vw; i++)
-                sides[i] = sideFBuffs[i] = -1;
+            for(int i = 0; i < vw; i++) {
+                streams[i] = new wf_workspace_stream;
+                streams[i]->fbuff = streams[i]->tex = -1;
+            }
 
             project = glm::perspective(45.0f, 1.f, 0.1f, 100.f);
     }
@@ -204,9 +204,13 @@ class wayfire_cube : public wayfire_plugin_t {
                 backgroud_color.b + 0.5, backgroud_color.a + 1));
         GL_CALL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT));
 
-        for(size_t i = 0; i < sides.size(); i++) {
-            output->workspace->texture_from_workspace(std::make_tuple(i, vy),
-                    sideFBuffs[i], sides[i]);
+        for(size_t i = 0; i < streams.size(); i++) {
+            if (!streams[i]->running) {
+                streams[i]->ws = {i, vy};
+                output->render->workspace_stream_start(streams[i]);
+            } else {
+                output->render->workspace_stream_update(streams[i]);
+            }
         }
 
         GL_CALL(glUseProgram(program.id));
@@ -249,8 +253,8 @@ class wayfire_cube : public wayfire_plugin_t {
         GL_CALL(glVertexAttribPointer(program.uvID, 2, GL_FLOAT, GL_FALSE, 0, coordData));
         GL_CALL(glEnableVertexAttribArray(program.uvID));
 
-        for(size_t i = 0; i < sides.size(); i++) {
-            int index = (vx + i) % sides.size();
+        for(size_t i = 0; i < streams.size(); i++) {
+            int index = (vx + i) % streams.size();
 
             GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
             GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
@@ -258,7 +262,7 @@ class wayfire_cube : public wayfire_plugin_t {
             GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
             GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-            GL_CALL(glBindTexture(GL_TEXTURE_2D, sides[index]));
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, streams[index]->tex));
             GL_CALL(glActiveTexture(GL_TEXTURE0));
 
             model = glm::rotate(base_model,
@@ -283,7 +287,7 @@ class wayfire_cube : public wayfire_plugin_t {
         output->render->reset_renderer();
         output->deactivate_plugin(grab_interface);
 
-        auto size = sides.size();
+        auto size = streams.size();
 
         float dx = -(offset) / angle;
         int dvx = 0;
@@ -294,6 +298,9 @@ class wayfire_cube : public wayfire_plugin_t {
 
         int nvx = (vx + (dvx % size) + size) % size;
         output->workspace->set_workspace(std::make_tuple(nvx, vy));
+
+        for (uint i = 0; i < size; i++)
+            output->render->workspace_stream_stop(streams[i]);
     }
 
     void pointer_moved(int x, int y)
