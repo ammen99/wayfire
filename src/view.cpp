@@ -181,15 +181,13 @@ void wayfire_view_t::map(int sx, int sy)
         return;
     }
 
-    geometry.size = {surface->width, surface->height};
-
     auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
     if (new_ds_g.x != ds_geometry.origin.x || new_ds_g.y != ds_geometry.origin.y) {
         ds_geometry.origin = {new_ds_g.x, new_ds_g.y};
         move(geometry.origin.x, geometry.origin.y);
     }
 
-    /* TODO: see shell.c#activate() */
+    geometry.size = {new_ds_g.width, new_ds_g.height};
 }
 
 static void render_surface(weston_surface *surface, pixman_region32_t *damage,
