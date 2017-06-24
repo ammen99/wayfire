@@ -3,6 +3,7 @@
 #include <core.hpp>
 #include <compositor.h>
 #include <linux/input-event-codes.h>
+#include <config.hpp>
 
 #if USE_GLES32
 #include <GLES3/gl32.h>

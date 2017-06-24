@@ -16,7 +16,7 @@
 #include <libweston-desktop.h>
 #include <gl-renderer-api.h>
 
-const weston_gl_renderer_api *render_manager::renderer_api = nullptr;
+#include <config.hpp>
 
 /* Start plugin manager */
 plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config)

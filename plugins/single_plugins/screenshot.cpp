@@ -10,6 +10,7 @@
 #include <img.hpp>
 #include <core.hpp>
 #include <opengl.hpp>
+#include <config.hpp>
 
 class wayfire_screenshot : public wayfire_plugin_t {
     key_callback binding;
