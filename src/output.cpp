@@ -594,7 +594,6 @@ const struct wayfire_shell_interface shell_interface_impl {
 wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
 {
     this->handle = handle;
-    this->transform = (wl_output_transform)handle->transform;
 
     render = new render_manager(this);
     signal = new signal_manager();
@@ -620,55 +619,18 @@ wayfire_geometry wayfire_output::get_full_geometry()
 
 void wayfire_output::set_transform(wl_output_transform new_tr)
 {
-    transform = new_tr;
-
-    int w = render->ctx->device_width;
-    int h = render->ctx->device_height;
-
     int old_w = handle->width;
     int old_h = handle->height;
+    weston_output_set_transform(handle, new_tr);
 
-    switch(new_tr) {
-        case WL_OUTPUT_TRANSFORM_90:
-        case WL_OUTPUT_TRANSFORM_270:
-            std::swap(w, h);
-            break;
-        default:
-            break;
-    }
+    render->ctx->width = handle->width;
+    render->ctx->height = handle->height;
 
-    handle->width = w;
-    handle->height = h;
-
-    render->ctx->width = w;
-    render->ctx->height = h;
-
-    pixman_region32_fini(&handle->previous_damage);
-    pixman_region32_init(&handle->previous_damage);
-
-    pixman_region32_fini(&handle->region);
-    pixman_region32_init_rect(&handle->region, handle->x, handle->y, w, h);
-
-    handle->dirty = 1;
-    handle->transform = new_tr;
-
-    wl_resource *resource;
-    wl_resource_for_each(resource, &handle->resource_list) {
-        wl_output_send_geometry(resource, handle->x, handle->y,
-                handle->mm_width, handle->mm_height,
-                handle->subpixel, handle->make, handle->model,
-                new_tr);
-
-        if (wl_resource_get_version(resource) >= WL_OUTPUT_DONE_SINCE_VERSION)
-            wl_output_send_done(resource);
-    }
-
-    weston_output_damage(handle);
-
-    wayfire_shell_send_output_resized(core->wf_shell.resource, handle->id, w, h);
+    wayfire_shell_send_output_resized(core->wf_shell.resource, handle->id,
+		    handle->width, handle->height);
     signal->emit_signal("output-resized", nullptr);
 
-    ensure_pointer();
+    //ensure_pointer();
 
     workspace->for_each_view([=] (wayfire_view view) {
         if (view->fullscreen || view->maximized) {
@@ -682,8 +644,8 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
             int vx = view->geometry.origin.x / old_w;
             int vy = view->geometry.origin.y / old_h;
 
-            g.origin.x += vx * w;
-            g.origin.y += vy * h;
+            g.origin.x += vx * handle->width;
+            g.origin.y += vy * handle->height;
 
             view->set_geometry(g);
         } else {
@@ -692,14 +654,15 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
             float pw = 1. * view->geometry.size.w / old_w;
             float ph = 1. * view->geometry.size.h / old_h;
 
-            view->set_geometry(px * w, py * h, pw * w, ph * h);
+            view->set_geometry(px * handle->width, py * handle->height,
+			    pw * handle->width, ph * handle->height);
         }
     });
 }
 
 wl_output_transform wayfire_output::get_transform()
 {
-    return transform;
+    return (wl_output_transform)handle->transform;
 }
 
 std::tuple<int, int> wayfire_output::get_screen_size()

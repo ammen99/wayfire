@@ -171,7 +171,6 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void get_slot_dimensions(int n, int &x, int &y, int &w, int &h)
     {
-
         auto g = output->workspace->get_workarea();
 
         int w2 = g.size.w / 2;

@@ -136,8 +136,6 @@ class wayfire_output {
 
        wayfire_view active_view;
 
-       /* currently only normal, 90, 180, 270 are supported */
-       wl_output_transform transform;
     public:
     weston_output* handle;
 
