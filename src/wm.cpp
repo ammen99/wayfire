@@ -9,7 +9,7 @@ void wayfire_exit::init(wayfire_config*)
         weston_compositor_shutdown(core->ec);
     };
 
-    core->input->add_key(MODIFIER_SUPER, KEY_ESC, &key, output);
+    core->input->add_key(MODIFIER_SUPER | MODIFIER_SHIFT, KEY_ESC, &key, output);
 }
 
 void wayfire_close::init(wayfire_config *config)
