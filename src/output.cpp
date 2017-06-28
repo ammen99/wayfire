@@ -602,6 +602,9 @@ wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
 
     weston_output_damage(handle);
     weston_output_schedule_repaint(handle);
+
+    if (handle->set_dpms && c->get_section("core")->get_int("dpms_enabled", 1))
+    	handle->set_dpms(handle, WESTON_DPMS_ON);
 }
 
 wayfire_output::~wayfire_output()
