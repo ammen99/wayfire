@@ -1,29 +1,34 @@
 cmake_minimum_required(VERSION 3.1.0)
 
 set(CMAKE_CXX_STANDARD 11)
-
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    set(WAYFIRE_DEBUG_ENABLED 1)
-else(CMAKE_BUILD_TYPE MATCHES Debug)
-    set(WAYFIRE_DEBUG_ENABLED 0)
-endif (CMAKE_BUILD_TYPE MATCHES Debug)
-
 add_compile_options(-Wall -Wextra -Wno-unused-parameter)
 project(wayfire)
 
-# TODO: check for all packages, otherwise target_link_libraries might not work
-# Find required package
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(WAYFIRE_DEBUG_ENABLED TRUE)
+else(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(WAYFIRE_DEBUG_ENABLED FALSE)
+endif (CMAKE_BUILD_TYPE MATCHES Debug)
+
 find_package(PkgConfig)
 
-include_directories(SYSTEM /usr/include/pixman-1)
-include_directories(src)
-include_directories(shared)
+pkg_check_modules(IMAGEIO_LIBS libpng libjpeg)
 
-set(BUILD_WITH_IMAGEIO FALSE)
+set(BUILD_WITH_IMAGEIO ${PKG_CONFIG_FOUND})
 set(USE_GLES32 TRUE)
 
 configure_file(config.h.in config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+message("\n\nConfiguration options:\n")
+message("    ImageIO: " ${BUILD_WITH_IMAGEIO})
+message("    OpenGL ES 3.2: " ${USE_GLES32})
+message("    Debugging output: " ${WAYFIRE_DEBUG_ENABLED})
+message("\n")
+
+include_directories(SYSTEM /usr/include/pixman-1)
+include_directories(src)
+include_directories(shared)
 
 add_subdirectory(proto)
 add_subdirectory(shared)
