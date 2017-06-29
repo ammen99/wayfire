@@ -40,6 +40,9 @@ wayfire_key wayfire_config_section::get_key(string name, wayfire_key df)
     if (it == options.end())
         return df;
 
+    if (it->second == "none")
+        return {0, 0};
+
     std::stringstream ss(it->second);
     std::vector<std::string> items;
     std::string t;
@@ -69,6 +72,9 @@ wayfire_button wayfire_config_section::get_button(string name, wayfire_button df
     auto it = options.find(name);
     if (it == options.end())
         return df;
+
+    if (it->second == "none")
+        return {0, 0};
 
     std::stringstream ss(it->second);
     std::vector<std::string> items;
@@ -109,7 +115,7 @@ wayfire_color wayfire_config_section::get_color(string name, wayfire_color df)
     if (it == options.end())
         return df;
 
-    wayfire_color ans;
+    wayfire_color ans = {0, 0, 0, 0};
     std::stringstream ss(it->second);
     ss >> ans.r >> ans.g >> ans.b >> ans.a;
     return ans;
