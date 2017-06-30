@@ -7,7 +7,7 @@
 #include "core.hpp"
 #include "output.hpp"
 
-#if USE_IMAGEIO
+#if BUILD_WITH_IMAGEIO
 #include "img.hpp"
 #endif
 
@@ -23,14 +23,18 @@ void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_
 }
 void pointer_grab_axis_source(weston_pointer_grab*, uint32_t) {}
 void pointer_grab_frame(weston_pointer_grab*) {}
-void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *ev)
+void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time,
+        weston_pointer_motion_event *ev)
 {
     weston_pointer_move(grab->pointer, ev);
     core->input->propagate_pointer_grab_motion(grab->pointer, ev);
 }
-void pointer_grab_button(weston_pointer_grab *grab, uint32_t, uint32_t b, uint32_t s)
+void pointer_grab_button(weston_pointer_grab *grab, uint32_t time,
+        uint32_t button, uint32_t state)
 {
-    core->input->propagate_pointer_grab_button(grab->pointer, b, s);
+    weston_compositor_run_button_binding(core->ec, grab->pointer,
+            time, button, (wl_pointer_button_state) state);
+    core->input->propagate_pointer_grab_button(grab->pointer, button, state);
 }
 void pointer_grab_cancel(weston_pointer_grab *grab)
 {
@@ -50,6 +54,8 @@ const weston_pointer_grab_interface pointer_grab_interface = {
 void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key,
                        uint32_t state)
 {
+    weston_compositor_run_key_binding(core->ec, grab->keyboard, time, key,
+            (wl_keyboard_key_state)state);
     core->input->propagate_keyboard_grab_key(grab->keyboard, key, state);
 }
 void keyboard_grab_mod(weston_keyboard_grab *grab, uint32_t time,
@@ -281,7 +287,7 @@ void wayfire_core::init(weston_compositor *comp, wayfire_config *conf)
     ec = comp;
     configure(conf);
 
-#if USE_IMAGEIO
+#if BUILD_WITH_IMAGEIO
     image_io::init();
 #endif
 

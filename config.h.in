@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 #define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
-#cmakedefine01 USE_IMAGEIO
+#cmakedefine01 BUILD_WITH_IMAGEIO
 #cmakedefine01 WAYFIRE_DEBUG_ENABLED
 #cmakedefine01 USE_GLES32
 

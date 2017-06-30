@@ -1,66 +1,76 @@
+#include <chrono>
+#include <ctime>
+#include <sstream>
+#include <iomanip>
+
+#include <linux/input-event-codes.h>
+#include <libweston-3/compositor.h>
+
 #include <output.hpp>
 #include <img.hpp>
+#include <core.hpp>
+#include <opengl.hpp>
 
-struct File {
-    std::string name;
-};
+class wayfire_screenshot : public wayfire_plugin_t {
+    key_callback binding;
+    effect_hook_t hook;
 
-class Screenshot : public Plugin {
-    KeyBinding binding;
-    EffectHook hook;
     std::string path;
+
     public:
-        void initOwnership() {
+        void init(wayfire_config *config)
+        {
             grab_interface->name = "screenshot";
             grab_interface->compatAll = true;
+
+            auto section = config->get_section("screenshot");
+
+            auto key = section->get_key("take", {MODIFIER_SUPER, KEY_S});
+            if (key.keyval == 0)
+                return;
+
+            auto default_path = std::string(secure_getenv("HOME")) + "/Pictures/";
+            path = section->get_string("save_path", default_path);
+
+            hook = std::bind(std::mem_fn(&wayfire_screenshot::save_screenshot), this);
+            binding = [=] (weston_keyboard*, uint32_t)
+            {
+                /* we just see if we will be blocked by already plugin */
+                if (!output->activate_plugin(grab_interface))
+                    return;
+                output->deactivate_plugin(grab_interface);
+
+                output->render->add_output_effect(&hook);
+                weston_output_schedule_repaint(output->handle);
+            };
+            core->input->add_key(key.mod, key.keyval, &binding, output);
         }
 
-        void updateConfiguration() {
-            auto key = *options["activate"]->data.key;
-            binding.key = key.key;
-            binding.mod = key.mod;
-            binding.type = BindingTypePress;
-            binding.action = std::bind(std::mem_fn(&Screenshot::initiate),
-                    this, std::placeholders::_1);
-            output->hook->add_key(&binding, true);
+        void save_screenshot()
+        {
+            output->render->rem_effect(&hook);
 
-            hook.type = EFFECT_OVERLAY;
-            hook.action = std::bind(std::mem_fn(&Screenshot::save_screenshot), this);
-            output->render->add_effect(&hook);
-            hook.disable();
-
-            path = *options["path"]->data.sval;
-        }
-
-        void init() {
-            options.insert(newKeyOption("activate", Key{0, 0}));
-            options.insert(newStringOption("path", "none"));
-        }
-
-        void initiate(EventContext ctx) {
-            hook.enable();
-        }
-
-        void save_screenshot() {
-            hook.disable();
-            wlc_geometry in = {
-                {0, 0},
-                {(uint32_t)output->screen_width,
-                 (uint32_t)output->screen_height}
-            }, out;
+            auto geometry = output->get_full_geometry();
+            uint8_t *pixels = new uint8_t[geometry.size.w * geometry.size.h * 4];
 
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-            uint8_t pixels[output->screen_width * output->screen_height * 4];
-            wlc_pixels_read(WLC_RGBA8888, &in, &out, pixels);
+            GL_CALL(glReadPixels(0, 0, 1920, 1080, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
 
-            /* TODO: write to home */
-            image_io::write_to_file("/home/ilex/Scr.png", pixels,
-                    output->screen_width, output->screen_height, "png");
+            std::ostringstream out;
+
+            using namespace std::chrono;
+            auto time = system_clock::to_time_t(system_clock::now());
+            out << std::put_time(std::localtime(&time), "%Y-%m-%d-%X");
+            auto fname = path + "screenshot-" + out.str() + ".png";
+
+            image_io::write_to_file(fname, pixels,
+                    geometry.size.w, geometry.size.h, "png");
         }
 };
 
 extern "C" {
-    Plugin* newInstance() {
-        return new Screenshot;
+    wayfire_plugin_t* newInstance()
+    {
+        return new wayfire_screenshot;
     }
 }

@@ -241,6 +241,7 @@ namespace image_io {
 
     void init()
     {
+        debug << "ImageIO init" << std::endl;
         loaders["png"] = Loader(texture_from_png);
         loaders["jpg"] = Loader(texture_from_jpeg);
         writers["png"] = Writer(texture_to_png);
