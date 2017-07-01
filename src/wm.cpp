@@ -26,15 +26,21 @@ void wayfire_close::init(wayfire_config *config)
 
 void wayfire_focus::init(wayfire_config *)
 {
-    callback = [ = ] (weston_pointer * ptr, uint32_t button) {
+    grab_interface->name = "_wf_focus";
+    grab_interface->compatAll = false;
+
+    callback = [=] (weston_pointer * ptr, uint32_t button) {
         if (!ptr->focus)
             return;
 
-        auto surf = weston_surface_get_main_surface(ptr->focus->surface);
-        weston_desktop_surface *ds;
-        wayfire_view view;
-        if ((ds = weston_surface_get_desktop_surface(surf)) && (view = core->find_view(ds)) && !view->destroyed) {
+        if (!output->activate_plugin(grab_interface))
+            return;
+        output->deactivate_plugin(grab_interface);
+
+        auto view = output->get_view_at_point(wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y));
+        if (view)
             view->output->focus_view(view, ptr->seat);
     };
+
     core->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, &callback, output);
 }

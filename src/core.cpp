@@ -16,6 +16,11 @@
 #include "../proto/wayfire-shell-server.h"
 
 /* Start input_manager */
+
+namespace {
+bool grab_start_finalized;
+};
+
 void pointer_grab_focus(weston_pointer_grab*) { }
 void pointer_grab_axis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *ev)
 {
@@ -32,8 +37,10 @@ void pointer_grab_motion(weston_pointer_grab *grab, uint32_t time,
 void pointer_grab_button(weston_pointer_grab *grab, uint32_t time,
         uint32_t button, uint32_t state)
 {
-    weston_compositor_run_button_binding(core->ec, grab->pointer,
-            time, button, (wl_pointer_button_state) state);
+    if (grab_start_finalized) {
+        weston_compositor_run_button_binding(core->ec, grab->pointer,
+                time, button, (wl_pointer_button_state) state);
+    }
     core->input->propagate_pointer_grab_button(grab->pointer, button, state);
 }
 void pointer_grab_cancel(weston_pointer_grab *grab)
@@ -54,8 +61,10 @@ const weston_pointer_grab_interface pointer_grab_interface = {
 void keyboard_grab_key(weston_keyboard_grab *grab, uint32_t time, uint32_t key,
                        uint32_t state)
 {
-    weston_compositor_run_key_binding(core->ec, grab->keyboard, time, key,
-            (wl_keyboard_key_state)state);
+    if (grab_start_finalized) {
+        weston_compositor_run_key_binding(core->ec, grab->keyboard, time, key,
+                (wl_keyboard_key_state)state);
+    }
     core->input->propagate_keyboard_grab_key(grab->keyboard, key, state);
 }
 void keyboard_grab_mod(weston_keyboard_grab *grab, uint32_t time,
@@ -73,12 +82,19 @@ namespace
 const weston_keyboard_grab_interface keyboard_grab_interface = {
     keyboard_grab_key, keyboard_grab_mod, keyboard_grab_cancel
 };
+
 }
 
 input_manager::input_manager()
 {
     pgrab.interface = &pointer_grab_interface;
     kgrab.interface = &keyboard_grab_interface;
+}
+
+static void
+idle_finalize_grab(void *data)
+{
+    grab_start_finalized = true;
 }
 
 void input_manager::grab_input(wayfire_grab_interface iface)
@@ -92,6 +108,11 @@ void input_manager::grab_input(wayfire_grab_interface iface)
                                   &pgrab);
         weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
                                    &kgrab);
+
+        grab_start_finalized = false;
+
+        wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
+                idle_finalize_grab, nullptr);
     }
 }
 

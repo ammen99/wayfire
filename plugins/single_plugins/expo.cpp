@@ -19,7 +19,6 @@ class wayfire_expo : public wayfire_plugin_t {
             bool moving = false;
             bool in_zoom = false;
             bool button_pressed = false;
-            bool first_press_skipped = false;
 
             int zoom_delta = 1;
         } state;
@@ -57,24 +56,16 @@ class wayfire_expo : public wayfire_plugin_t {
         delimiter_offset = section->get_int("offset", 10);
 
         toggle_cb = [=] (weston_keyboard *kbd, uint32_t key) {
-            activate();
+            if (!state.active) {
+                activate();
+            } else {
+                deactivate();
+            }
         };
 
         core->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb, output);
 
         action_button = section->get_button("action", {0, BTN_LEFT});
-        grab_interface->callbacks.keyboard.key =
-            [=] (weston_keyboard *kbd, uint32_t key, uint32_t st) {
-                /* TODO: check if we use the same mod */
-                if (st != WL_KEYBOARD_KEY_STATE_RELEASED || key != toggle_key.keyval)
-                    return;
-
-                if (!state.first_press_skipped) {
-                    state.first_press_skipped = true;
-                    return;
-                }
-                deactivate();
-        };
 
         grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
                 weston_pointer_motion_event *ev)
@@ -112,7 +103,6 @@ class wayfire_expo : public wayfire_plugin_t {
         state.in_zoom = true;
         state.button_pressed = false;
         state.moving = false;
-        state.first_press_skipped = false;
 
         state.zoom_delta = 1;
 
@@ -135,6 +125,8 @@ class wayfire_expo : public wayfire_plugin_t {
         state.moving = false;
 
         output->workspace->set_workspace(std::make_tuple(target_vx, target_vy));
+        output->focus_view(nullptr, core->get_current_seat());
+
         calculate_zoom(false);
         update_zoom();
     }
@@ -356,6 +348,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
         output->render->reset_renderer();
         output->render->auto_redraw(false);
+        output->focus_view(output->get_top_view(), core->get_current_seat());
     }
 };
 
