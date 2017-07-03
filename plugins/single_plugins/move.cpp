@@ -9,6 +9,7 @@
 class wayfire_move : public wayfire_plugin_t {
     signal_callback_t move_request;
     button_callback activate_binding;
+    touch_callback activate_touch_binding;
     wayfire_view view;
 
     bool enable_snap;
@@ -23,49 +24,84 @@ class wayfire_move : public wayfire_plugin_t {
             grab_interface->compatAll = true;
 
             activate_binding = [=] (weston_pointer* ptr, uint32_t) {
-                this->initiate(ptr);
+                this->initiate(core->find_view(ptr->focus), ptr->x, ptr->y);
             };
 
             auto section = config->get_section("move");
             wayfire_button button = section->get_button("activate", {MODIFIER_ALT, BTN_LEFT});
+            if (button.button == 0)
+                return;
+
             core->input->add_button(button.mod, button.button, &activate_binding, output);
 
             enable_snap = section->get_int("enable_snap", 1);
             snap_pixels = section->get_int("snap_threshold", 2);
 
             using namespace std::placeholders;
-            grab_interface->callbacks.pointer.button =
-                std::bind(std::mem_fn(&wayfire_move::button_pressed), this, _1, _2, _3);
-            grab_interface->callbacks.pointer.motion =
-                std::bind(std::mem_fn(&wayfire_move::pointer_motion), this, _1, _2);
+            grab_interface->callbacks.pointer.button =  [=] (weston_pointer *ptr,
+                    uint32_t b, uint32_t state)
+            {
+                if (b != button.button)
+                    return;
+
+                input_pressed(state);
+            };
+            grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
+                    weston_pointer_motion_event*)
+            {
+                input_motion(ptr->x, ptr->y);
+            };
+
+            grab_interface->callbacks.touch.motion = [=] (weston_touch*,
+                    int32_t id, wl_fixed_t sx, wl_fixed_t sy)
+            {
+                if (id > 0) return;
+                input_motion(sx, sy);
+            };
+
+            grab_interface->callbacks.touch.up = [=] (weston_touch*, int32_t id)
+            {
+                if (id == 0)
+                    input_pressed(WL_POINTER_BUTTON_STATE_RELEASED);
+            };
 
             move_request = std::bind(std::mem_fn(&wayfire_move::move_requested), this, _1);
             output->signal->connect_signal("move-request", &move_request);
         }
 
-        void move_requested(signal_data *data) {
+        void move_requested(signal_data *data)
+        {
             auto converted = static_cast<move_request_signal*> (data);
-            if(converted)
-                initiate(converted->ptr);
+            if(converted && converted->view) {
+                auto seat = core->get_current_seat();
+
+                auto ptr = weston_seat_get_pointer(seat);
+                auto touch = weston_seat_get_touch(seat);
+
+                if (ptr && ptr->grab_serial == converted->serial) {
+                    initiate(converted->view, ptr->x, ptr->y);
+                } else if (touch && touch->grab_serial == converted->serial) {
+                    initiate(converted->view, touch->grab_x, touch->grab_y);
+                }
+            }
         }
 
-        void initiate(weston_pointer *ptr) {
-            if (!ptr->focus)
-                return;
-
-            view = core->find_view(ptr->focus);
+        void initiate(wayfire_view view, wl_fixed_t sx, wl_fixed_t sy)
+        {
             if (!view || view->is_special)
                 return;
 
             if (!output->activate_plugin(grab_interface))
                 return;
 
-            weston_seat_break_desktop_grabs(ptr->seat);
-            if (!grab_interface->grab())
+            weston_seat_break_desktop_grabs(core->get_current_seat());
+            if (!grab_interface->grab()) {
+                output->deactivate_plugin(grab_interface);
                 return;
+            }
 
-            prev_x = wl_fixed_to_int(ptr->x);
-            prev_y = wl_fixed_to_int(ptr->y);
+            prev_x = wl_fixed_to_int(sx);
+            prev_y = wl_fixed_to_int(sy);
 
             if (view->maximized)
                 view->set_maximized(false);
@@ -75,10 +111,15 @@ class wayfire_move : public wayfire_plugin_t {
             view->output->focus_view(nullptr, core->get_current_seat());
             if (enable_snap)
                 slot = 0;
+
+            this->view = view;
+
+            view->output->render->auto_redraw(true);
         }
 
-        void button_pressed(weston_pointer *ptr, uint32_t button, uint32_t state) {
-            if (button != BTN_LEFT || state != WL_POINTER_BUTTON_STATE_RELEASED)
+        void input_pressed(uint32_t state)
+        {
+            if (state != WL_POINTER_BUTTON_STATE_RELEASED)
                 return;
 
             if (enable_snap && slot != 0) {
@@ -92,9 +133,11 @@ class wayfire_move : public wayfire_plugin_t {
             grab_interface->ungrab();
             output->deactivate_plugin(grab_interface);
             view->output->focus_view(view, core->get_current_seat());
+            view->output->render->auto_redraw(false);
         }
 
-        int calc_slot() {
+        int calc_slot()
+        {
             auto g = output->get_full_geometry();
 
             bool is_left = std::abs(prev_x - g.origin.x) <= snap_pixels;
@@ -122,9 +165,10 @@ class wayfire_move : public wayfire_plugin_t {
                 return 0;
         }
 
-        void pointer_motion(weston_pointer *ptr, weston_pointer_motion_event *ev) {
-            int nx = wl_fixed_to_int(ptr->x);
-            int ny = wl_fixed_to_int(ptr->y);
+        void input_motion(wl_fixed_t sx, wl_fixed_t sy)
+        {
+            int nx = wl_fixed_to_int(sx);
+            int ny = wl_fixed_to_int(sy);
 
             view->move(view->geometry.origin.x + nx - prev_x,
                     view->geometry.origin.y + ny - prev_y);

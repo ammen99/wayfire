@@ -58,33 +58,28 @@ void desktop_surface_move(weston_desktop_surface *ds, weston_seat *seat,
         uint32_t serial, void *shell)
 {
     auto view = core->find_view(ds);
-    auto ptr = weston_seat_get_pointer(seat);
 
-    if (ptr && ptr->focus && ptr->button_count > 0 && ptr->grab_serial == serial) {
-        auto main_surface = weston_surface_get_main_surface(view->surface);
-        if (main_surface == view->surface) {
-            auto req = new move_request_signal;
-            req->ptr = ptr;
-            view->output->signal->emit_signal("move-request", req);
-            delete req;
-        }
+    auto main_surface = weston_surface_get_main_surface(view->surface);
+    if (main_surface == view->surface) {
+        move_request_signal req;
+        req.view = core->find_view(main_surface);
+        req.serial = serial;
+        view->output->signal->emit_signal("move-request", &req);
     }
 }
+
 void desktop_surface_resize(weston_desktop_surface *ds, weston_seat *seat,
         uint32_t serial, weston_desktop_surface_edge edges, void *shell)
 {
     auto view = core->find_view(ds);
-    auto ptr = weston_seat_get_pointer(seat);
 
-    if (ptr && ptr->focus && ptr->button_count > 0 && ptr->grab_serial == serial) {
-        auto main_surface = weston_surface_get_main_surface(view->surface);
-        if (main_surface == view->surface) {
-            auto req = new resize_request_signal;
-            req->ptr = ptr;
-            req->edges = edges;
-            view->output->signal->emit_signal("resize-request", req);
-            delete req;
-        }
+    auto main_surface = weston_surface_get_main_surface(view->surface);
+    if (main_surface == view->surface) {
+        resize_request_signal req;
+        req.view = core->find_view(main_surface);
+        req.edges = edges;
+        req.serial = serial;
+        view->output->signal->emit_signal("resize-request", &req);
     }
 }
 

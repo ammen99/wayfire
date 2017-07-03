@@ -10,7 +10,7 @@
 class wayfire_expo : public wayfire_plugin_t {
     private:
         key_callback toggle_cb, press_cb, move_cb;
-        touch_callback touch_toggle_cb;
+        touch_gesture_callback touch_toggle_cb;
         wayfire_button action_button;
 
         int max_steps;

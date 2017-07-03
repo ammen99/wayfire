@@ -34,12 +34,14 @@ struct change_viewport_signal : public signal_data {
 using change_viewport_notify = change_viewport_signal;
 
 struct move_request_signal : public signal_data {
-    weston_pointer *ptr;
+    wayfire_view view;
+    uint32_t serial;
 };
 
 struct resize_request_signal : public signal_data {
-    weston_pointer *ptr;
+    wayfire_view view;
     uint32_t edges;
+    uint32_t serial;
 };
 #endif
 

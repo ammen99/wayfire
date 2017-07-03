@@ -18,7 +18,7 @@ using pair = std::pair<int, int>;
 class vswitch : public wayfire_plugin_t {
     private:
         key_callback callback_left, callback_right, callback_up, callback_down;
-        touch_callback gesture_cb;
+        touch_gesture_callback gesture_cb;
 
         std::queue<pair>dirs; // series of moves we have to do
         int current_step = 0, max_step;
@@ -60,7 +60,6 @@ class vswitch : public wayfire_plugin_t {
         activation_gesture.type = GESTURE_SWIPE;
 
         gesture_cb = [=] (wayfire_touch_gesture *gesture) {
-            debug << "gesture received" << std::endl;
             if (gesture->direction & GESTURE_DIRECTION_UP)
                 add_direction(0, 1);
             if (gesture->direction & GESTURE_DIRECTION_DOWN)
