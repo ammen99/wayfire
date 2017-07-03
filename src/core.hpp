@@ -45,9 +45,15 @@ struct input_manager {
         int gesture_id;
         struct wf_gesture_listener {
             wayfire_touch_gesture gesture;
-            touch_callback* call;
+            touch_gesture_callback* call;
         };
         std::map<int, wf_gesture_listener> gesture_listeners;
+        struct touch_listener {
+            uint32_t mod;
+            touch_callback* call;
+            wayfire_output *output;
+        };
+        std::map<int, touch_listener> touch_listeners;
     public:
         input_manager();
         void grab_input(wayfire_grab_interface);
@@ -69,15 +75,19 @@ struct input_manager {
         void propagate_touch_motion(weston_touch*, uint32_t, int32_t, wl_fixed_t, wl_fixed_t);
         void grab_send_touch_motion(weston_touch*, int32_t, wl_fixed_t, wl_fixed_t);
 
+        void check_touch_grabs(weston_touch*, wl_fixed_t sx, wl_fixed_t sy);
 
         void end_grabs();
 
         weston_binding *add_key(uint32_t mod, uint32_t key, key_callback *, wayfire_output *output);
         weston_binding *add_button(uint32_t mod, uint32_t button, button_callback *, wayfire_output *output);
 
+        int add_touch(uint32_t mod, touch_callback*, wayfire_output *output);
+        void rem_touch(int32_t id);
+
         /* we take only gesture type and finger count into account,
          * we send for all possible directions */
-        int add_gesture(const wayfire_touch_gesture& gesture, touch_callback* callback);
+        int add_gesture(const wayfire_touch_gesture& gesture, touch_gesture_callback* callback);
         void rem_gesture(int id);
 };
 

@@ -201,6 +201,11 @@ struct wf_gesture_recognizer {
             start_new_gesture(id);
 
         if (!in_grab && !in_gesture) {
+            if (id < 1) {
+                core->input->check_touch_grabs(touch,
+                        wl_fixed_from_int(sx), wl_fixed_from_int(sy));
+            }
+
             weston_touch_send_down(touch, last_time, id, wl_fixed_from_int(sx),
                     wl_fixed_from_int(sy));
         } else if (!in_gesture) {
@@ -239,6 +244,8 @@ struct wf_gesture_recognizer {
     }
 };
 
+/* these simply call the corresponding input_manager functions,
+ * you can think of them as wrappers for use of libweston */
 void touch_grab_down(weston_touch_grab *grab, uint32_t time, int id,
         wl_fixed_t sx, wl_fixed_t sy)
 {
@@ -264,6 +271,9 @@ static const weston_touch_grab_interface touch_grab_interface = {
     touch_grab_frame, touch_grab_cancel
 };
 
+/* called upon the corresponding event, we actually just call the gesture
+ * recognizer functions, they will actually send the touch event to the client
+ * or to plugin callbacks, or emit a gesture */
 void input_manager::propagate_touch_down(weston_touch* touch, uint32_t time,
         int32_t id, wl_fixed_t sx, wl_fixed_t sy)
 {
@@ -294,30 +304,66 @@ void input_manager::propagate_touch_motion(weston_touch* touch, uint32_t time,
     }
 }
 
+
+/* grab_send_touch_down/up/motion() are called from the gesture recognizer
+ * in case they should be processed by plugin grabs */
 void input_manager::grab_send_touch_down(weston_touch* touch, int32_t id,
         wl_fixed_t sx, wl_fixed_t sy)
 {
+    /* Important note to all such functions: we must copy grabs that receive
+     * the callback in a separate vector, as grabs might be "removed" upon call
+     * and thus our iterator might become invalid and crash the compositor */
+    std::vector<wayfire_grab_interface> grabs;
+
     for (auto grab : active_grabs) {
         if (grab->callbacks.touch.down)
-            grab->callbacks.touch.down(touch, id, sx, sy);
+            grabs.push_back(grab);
     }
+
+    for (auto grab : grabs)
+        grab->callbacks.touch.down(touch, id, sx, sy);
 }
 
 void input_manager::grab_send_touch_up(weston_touch* touch, int32_t id)
 {
+    std::vector<wayfire_grab_interface> grabs;
+
     for (auto grab : active_grabs) {
         if (grab->callbacks.touch.up)
-            grab->callbacks.touch.up(touch, id);
+            grabs.push_back(grab);
     }
+
+    for (auto grab : grabs)
+        grab->callbacks.touch.up(touch, id);
 }
 
 void input_manager::grab_send_touch_motion(weston_touch* touch, int32_t id,
         wl_fixed_t sx, wl_fixed_t sy)
 {
+    std::vector<wayfire_grab_interface> grabs;
+
     for (auto grab : active_grabs) {
         if (grab->callbacks.touch.motion)
-            grab->callbacks.touch.motion(touch, id, sx, sy);
+            grabs.push_back(grab);
     }
+
+    for (auto grab : grabs)
+        grab->callbacks.touch.motion(touch, id, sx, sy);
+}
+
+void input_manager::check_touch_grabs(weston_touch* touch, wl_fixed_t sx, wl_fixed_t sy)
+{
+    uint32_t mods = tgrab.touch->seat->modifier_state;
+    std::vector<touch_callback*> calls;
+    for (auto listener : touch_listeners) {
+        if (listener.second.mod == mods &&
+                listener.second.output == core->get_active_output()) {
+            calls.push_back(listener.second.call);
+        }
+    }
+
+    for (auto call : calls)
+        (*call)(touch, sx, sy);
 }
 
 void pointer_grab_focus(weston_pointer_grab*) { }
@@ -394,7 +440,7 @@ input_manager::input_manager()
 }
 
 int input_manager::add_gesture(const wayfire_touch_gesture& gesture,
-        touch_callback *callback)
+        touch_gesture_callback *callback)
 {
     gesture_listeners[gesture_id] = {gesture, callback};
     gesture_id++;
@@ -573,6 +619,21 @@ weston_binding* input_manager::add_button(uint32_t mod,
 {
     return weston_compositor_add_button_binding(core->ec, button,
             (weston_keyboard_modifier)mod, buttonbinding_handler, new button_callback_data {call, output});
+}
+
+int input_manager::add_touch(uint32_t mods, touch_callback* call, wayfire_output *output)
+{
+    int sz = 0;
+    if (!touch_listeners.empty())
+        sz = (--touch_listeners.end())->first + 1;
+
+    touch_listeners[sz] = {mods, call, output};
+    return sz;
+}
+
+void input_manager::rem_touch(int id)
+{
+    touch_listeners.erase(id);
 }
 /* End input_manager */
 
