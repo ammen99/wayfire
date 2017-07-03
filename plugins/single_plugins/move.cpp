@@ -9,7 +9,7 @@
 class wayfire_move : public wayfire_plugin_t {
     signal_callback_t move_request;
     button_callback activate_binding;
-    touch_callback activate_touch_binding;
+    touch_callback touch_activate_binding;
     wayfire_view view;
 
     bool enable_snap;
@@ -19,20 +19,29 @@ class wayfire_move : public wayfire_plugin_t {
     int prev_x, prev_y;
 
     public:
-        void init(wayfire_config *config) {
+        void init(wayfire_config *config)
+        {
             grab_interface->name = "move";
             grab_interface->compatAll = true;
-
-            activate_binding = [=] (weston_pointer* ptr, uint32_t) {
-                this->initiate(core->find_view(ptr->focus), ptr->x, ptr->y);
-            };
 
             auto section = config->get_section("move");
             wayfire_button button = section->get_button("activate", {MODIFIER_ALT, BTN_LEFT});
             if (button.button == 0)
                 return;
 
+            activate_binding = [=] (weston_pointer* ptr, uint32_t)
+            {
+                this->initiate(core->find_view(ptr->focus), ptr->x, ptr->y);
+            };
+
+            touch_activate_binding = [=] (weston_touch* touch,
+                    wl_fixed_t sx, wl_fixed_t sy)
+            {
+                initiate(core->find_view(touch->focus), sx, sy);
+            };
+
             core->input->add_button(button.mod, button.button, &activate_binding, output);
+            core->input->add_touch(button.mod, &touch_activate_binding, output);
 
             enable_snap = section->get_int("enable_snap", 1);
             snap_pixels = section->get_int("snap_threshold", 2);
@@ -182,7 +191,8 @@ class wayfire_move : public wayfire_plugin_t {
 };
 
 extern "C" {
-    wayfire_plugin_t* newInstance() {
+    wayfire_plugin_t* newInstance()
+    {
         return new wayfire_move();
     }
 }

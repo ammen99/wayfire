@@ -29,11 +29,20 @@ class wayfire_resize : public wayfire_plugin_t {
         if (button.button == 0)
             return;
 
-        activate_binding = [=] (weston_pointer* ptr, uint32_t) {
+        activate_binding = [=] (weston_pointer* ptr, uint32_t)
+        {
             initiate(core->find_view(ptr->focus), ptr->x, ptr->y);
         };
 
+        touch_activate_binding = [=] (weston_touch* touch,
+                wl_fixed_t sx, wl_fixed_t sy)
+        {
+            initiate(core->find_view(touch->focus), sx, sy);
+        };
+
+
         core->input->add_button(button.mod, button.button, &activate_binding, output);
+        core->input->add_touch(button.mod, &touch_activate_binding, output);
 
         grab_interface->callbacks.pointer.button = [=] (weston_pointer*,
                 uint32_t b, uint32_t s)
