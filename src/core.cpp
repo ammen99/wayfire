@@ -590,7 +590,7 @@ struct key_callback_data {
 static void keybinding_handler(weston_keyboard *kbd, uint32_t time, uint32_t key, void *data)
 {
     auto ddata = (key_callback_data*) data;
-    if (core->get_active_output() == ddata->output && !core->input->input_grabbed())
+    if (core->get_active_output() == ddata->output)
         (*ddata->call) (kbd, key);
 }
 
@@ -603,7 +603,7 @@ static void buttonbinding_handler(weston_pointer *ptr, uint32_t time,
         uint32_t button, void *data)
 {
     auto ddata = (button_callback_data*) data;
-    if (core->get_active_output() == ddata->output && !core->input->input_grabbed())
+    if (core->get_active_output() == ddata->output)
         (*ddata->call) (ptr, button);
 }
 

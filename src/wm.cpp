@@ -29,18 +29,31 @@ void wayfire_focus::init(wayfire_config *)
     grab_interface->name = "_wf_focus";
     grab_interface->compatAll = false;
 
-    callback = [=] (weston_pointer * ptr, uint32_t button) {
-        if (!ptr->focus)
+    callback = [=] (weston_pointer * ptr, uint32_t button)
+    {
+        wayfire_view view;
+        if (!ptr->focus ||
+            !(view = core->find_view(weston_surface_get_main_surface(ptr->focus->surface))))
             return;
 
         if (!output->activate_plugin(grab_interface))
             return;
         output->deactivate_plugin(grab_interface);
-
-        auto view = output->get_view_at_point(wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y));
-        if (view)
-            view->output->focus_view(view, ptr->seat);
+        view->output->focus_view(view, ptr->seat);
     };
 
     core->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, &callback, output);
+
+    touch = [=] (weston_touch *touch, wl_fixed_t sx, wl_fixed_t sy)
+    {
+        wayfire_view view;
+        if (!touch->focus || !(view = core->find_view(weston_surface_get_main_surface(touch->focus->surface))))
+            return;
+        if (!output->activate_plugin(grab_interface))
+            return;
+        output->deactivate_plugin(grab_interface);
+        view->output->focus_view(view, touch->seat);
+    };
+
+    core->input->add_touch(0, &touch, output);
 }

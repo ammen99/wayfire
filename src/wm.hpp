@@ -11,6 +11,7 @@ class wayfire_close : public wayfire_plugin_t {
 
 class wayfire_focus : public wayfire_plugin_t {
     button_callback callback;
+    touch_callback touch;
     public:
         void init(wayfire_config*);
 };
