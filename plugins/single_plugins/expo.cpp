@@ -160,6 +160,8 @@ class wayfire_expo : public wayfire_plugin_t {
     void start_move()
     {
         state.moving = true;
+        if (moving_view)
+            output->bring_to_front(moving_view);
     }
 
     wayfire_view find_view_at(int sx, int sy)

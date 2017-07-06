@@ -764,7 +764,7 @@ void wayfire_output::set_active_view(wayfire_view v)
         weston_desktop_surface_set_activated(active_view->desktop_surface, false);
 
     active_view = v;
-    if (v) {
+    if (active_view) {
         weston_view_activate(v->handle, core->get_current_seat(),
                 WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
         weston_desktop_surface_set_activated(v->desktop_surface, true);
