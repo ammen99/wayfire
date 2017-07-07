@@ -45,7 +45,6 @@ class view_switcher : public wayfire_plugin_t {
         bool in_switch = false;
         bool in_terminate = false;
 
-        bool first_press_skipped = false;
         /* the following are needed for fast switching, for ex.
          * if the user presses alt-tab(assuming this is our binding)
          * and then presses tab several times, holding alt, we assume
@@ -137,7 +136,6 @@ class view_switcher : public wayfire_plugin_t {
 
         state.active = true;
         state.in_center = true;
-        state.first_press_skipped = false;
         state.first_key = true;
 
         grab_interface->grab();
@@ -306,12 +304,6 @@ class view_switcher : public wayfire_plugin_t {
     }
 
     void handle_key(weston_keyboard *kbd, uint32_t key, uint32_t kstate) {
-        /* when we setup keyboard grab, we receive a signal for it
-         * it is not necessary so we skip it, as there is no way to circumvent */
-        if ((key == activate_key.keyval || key == fast_switch_key.keyval) && !state.first_press_skipped) {
-            state.first_press_skipped = true;
-            return;
-        }
 
         if (kstate != WL_KEYBOARD_KEY_STATE_PRESSED)
             return;
@@ -662,17 +654,36 @@ class view_switcher : public wayfire_plugin_t {
             state.in_continuous_switch = true;
             state.active = true;
             state.first_key = false;
-            state.first_press_skipped = false;
+
+            for (auto view : views) {
+                if (view && view->handle) {
+                    view->handle->alpha = 0.5;
+                    weston_surface_damage(view->surface);
+                    weston_view_geometry_dirty(view->handle);
+                    weston_view_update_transform(view->handle);
+                }
+            }
 
             grab_interface->grab();
             output->focus_view(nullptr, core->get_current_seat());
 
-            fast_switch_next();
+            if (views[0])
+                views[0]->handle->alpha = 1.0;
         }
     }
 
     void fast_switch_terminate()
     {
+        for (auto view : views)
+        {
+            if (view)
+            {
+                view->handle->alpha = 1.0;
+                weston_surface_damage(view->surface);
+                weston_view_geometry_dirty(view->handle);
+                weston_view_update_transform(view->handle);
+            }
+        }
         output->focus_view(views[index], core->get_current_seat());
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
@@ -682,7 +693,22 @@ class view_switcher : public wayfire_plugin_t {
 
     void fast_switch_next()
     {
+        if (views[index]) {
+            views[index]->handle->alpha = 0.5;
+            weston_surface_damage(views[index]->surface);
+            weston_view_geometry_dirty(views[index]->handle);
+            weston_view_update_transform(views[index]->handle);
+        }
+
         index = (index + 1) % views.size();
+
+        if (views[index]) {
+            views[index]->handle->alpha = 1.0;
+            weston_surface_damage(views[index]->surface);
+            weston_view_geometry_dirty(views[index]->handle);
+            weston_view_update_transform(views[index]->handle);
+        }
+
         output->bring_to_front(views[index]);
     }
 };
