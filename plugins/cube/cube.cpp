@@ -206,7 +206,7 @@ class wayfire_cube : public wayfire_plugin_t {
 
         for(size_t i = 0; i < streams.size(); i++) {
             if (!streams[i]->running) {
-                streams[i]->ws = {i, vy};
+                streams[i]->ws = std::make_tuple(i, vy);
                 output->render->workspace_stream_start(streams[i]);
             } else {
                 output->render->workspace_stream_update(streams[i]);

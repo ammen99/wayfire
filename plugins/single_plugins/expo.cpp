@@ -48,7 +48,7 @@ class wayfire_expo : public wayfire_plugin_t {
             for (int j = 0;j < vh; j++) {
                 streams[i].push_back(new wf_workspace_stream);
                 streams[i][j]->tex = streams[i][j]->fbuff = -1;
-                streams[i][j]->ws = {i, j};
+                streams[i][j]->ws = std::make_tuple(i, j);
             }
         }
 

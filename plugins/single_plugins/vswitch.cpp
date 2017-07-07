@@ -106,7 +106,7 @@ class vswitch : public wayfire_plugin_t {
         for (auto v : views)
             v.v->move(v.ox, v.oy);
 
-        output->workspace->set_workspace({vx, vy});
+        output->workspace->set_workspace(std::make_tuple(vx, vy));
         views.clear();
 
         if (dirs.size() == 0) {
@@ -129,7 +129,7 @@ class vswitch : public wayfire_plugin_t {
 
         auto current_views = output->workspace->get_views_on_workspace(
                 output->workspace->get_current_workspace());
-        auto next_views = output->workspace->get_views_on_workspace({vx + dx, vy + dy});
+        auto next_views = output->workspace->get_views_on_workspace(std::make_tuple(vx + dx, vy + dy));
 
         std::unordered_set<wayfire_view> views_to_move;
         for (auto view : current_views)
