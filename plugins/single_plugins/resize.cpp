@@ -2,7 +2,7 @@
 #include <output.hpp>
 #include <core.hpp>
 #include <linux/input.h>
-#include <libweston-3/libweston-desktop.h>
+#include <libweston-desktop.h>
 #include <signal_definitions.hpp>
 
 class wayfire_resize : public wayfire_plugin_t {

@@ -1,7 +1,7 @@
 #include <opengl.hpp>
 #include <output.hpp>
 #include <core.hpp>
-#include <libweston-3/compositor.h>
+#include <compositor.h>
 #include <linux/input-event-codes.h>
 
 #if USE_GLES32

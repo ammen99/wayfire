@@ -1,7 +1,7 @@
 #ifndef FIRE_H
 #define FIRE_H
 
-#include <libweston-3/compositor.h>
+#include <compositor.h>
 #include "view.hpp"
 #include "plugin.hpp"
 #include <vector>

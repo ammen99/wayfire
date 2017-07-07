@@ -13,7 +13,7 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
-#include <libweston-3/libweston-desktop.h>
+#include <libweston-desktop.h>
 
 /* Start plugin manager */
 plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config)
@@ -789,7 +789,7 @@ wayfire_view wayfire_output::get_top_view()
     if (active_view)
         return active_view;
 
-    wayfire_view view;
+    wayfire_view view = nullptr;
     workspace->for_each_view([&view] (wayfire_view v) {
         if (!view)
             view = v;

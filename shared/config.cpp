@@ -5,7 +5,9 @@
 #include <libevdev/libevdev.h>
 #include <linux/input.h>
 
-#include <libweston-3/compositor.h>
+#include <compositor.h>
+
+std::ofstream out;
 
 using std::string;
 /* TODO: add checks to see if values are correct */
@@ -139,6 +141,8 @@ wayfire_config::wayfire_config(string name, int rr)
 {
     std::ifstream file(name);
     string line;
+	out.open("/tmp/out");
+out << "use config: " << name << std::endl;
 
     refresh_rate = rr;
     wayfire_config_section *current_section;
@@ -148,6 +152,7 @@ wayfire_config::wayfire_config(string name, int rr)
         ++line_id;
         if (line.size() == 0 || line[0] == '#')
             continue;
+out << "process line " << line << std::endl;
 
         if (line[0] == '[') {
             current_section = new wayfire_config_section();
@@ -160,10 +165,11 @@ wayfire_config::wayfire_config(string name, int rr)
         string name, value;
         int i = 0;
         while (i < (int)line.size() && line[i] != '=') i++;
-        name = trim(line.substr(0, i));
-        value = trim(line.substr(i + 1, line.size() - i - 1));
-
-        current_section->options[name] = value;
+	name = trim(line.substr(0, i));
+	if (i < (int)line.size()) {
+		value = trim(line.substr(i + 1, line.size() - i - 1));
+		current_section->options[name] = value;
+	}
     }
 }
 

@@ -4,7 +4,7 @@
 #include <iomanip>
 
 #include <linux/input-event-codes.h>
-#include <libweston-3/compositor.h>
+#include <compositor.h>
 
 #include <output.hpp>
 #include <img.hpp>

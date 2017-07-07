@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(simple_plugins CXX)
 
-include_directories(SYSTEM /usr/include/pixman-1)
-
 add_library(move     SHARED "move.cpp")
 add_library(resize   SHARED "resize.cpp")
 add_library(expo     SHARED "expo.cpp")

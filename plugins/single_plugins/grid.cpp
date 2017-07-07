@@ -6,8 +6,8 @@
 #include "../../shared/config.hpp"
 
 #include "snap_signal.hpp"
-#include <libweston-3/compositor.h>
-#include <libweston-3/libweston-desktop.h>
+#include <compositor.h>
+#include <libweston-desktop.h>
 
 class wayfire_grid : public wayfire_plugin_t {
 

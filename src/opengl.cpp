@@ -1,5 +1,5 @@
 #include "opengl.hpp"
-#include <libweston-3/compositor.h>
+#include <compositor.h>
 
 namespace {
     OpenGL::context_t *bound;

@@ -2,7 +2,7 @@
 #include <core.hpp>
 #include "../../shared/config.hpp"
 #include <linux/input-event-codes.h>
-#include <libweston-3/compositor.h>
+#include <compositor.h>
 
 class wayfire_rotator : public wayfire_plugin_t {
     key_callback up, down, left, right;

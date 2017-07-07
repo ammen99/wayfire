@@ -2,7 +2,7 @@
 #include <sys/wait.h>
 #include <cstring>
 
-#include <libweston-3/libweston-desktop.h>
+#include <libweston-desktop.h>
 
 #include "core.hpp"
 #include "output.hpp"

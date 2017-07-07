@@ -1,8 +1,8 @@
 #ifndef XWAYLAND_HPP
 #define XWAYLAND_HPP
 
-#include <libweston-3/compositor.h>
-#include <libweston-3/xwayland-api.h>
+#include <compositor.h>
+#include <xwayland-api.h>
 #include "debug.hpp"
 #include <sys/socket.h>
 #include <string>

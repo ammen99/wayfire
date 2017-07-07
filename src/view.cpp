@@ -4,8 +4,8 @@
 #include <glm/glm.hpp>
 #include "signal_definitions.hpp"
 
-#include <libweston-3/xwayland-api.h>
-#include <libweston-3/libweston-desktop.h>
+#include <xwayland-api.h>
+#include <libweston-desktop.h>
 
 
 /* misc definitions */

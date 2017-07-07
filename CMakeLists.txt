@@ -15,7 +15,7 @@ find_package(PkgConfig)
 pkg_check_modules(IMAGEIO_LIBS libpng libjpeg)
 
 set(BUILD_WITH_IMAGEIO ${PKG_CONFIG_FOUND})
-set(USE_GLES32 TRUE)
+set(USE_GLES32 FALSE)
 
 configure_file(config.h.in config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
