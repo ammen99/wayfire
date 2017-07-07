@@ -115,8 +115,6 @@ int load_wayland_backend(weston_compositor *ec) {
 
     if (api->output_create(ec, "wl1") < 0)
         return -1;
-    if (api->output_create(ec, "wl2") < 0)
-        return -1;
 
     return 0;
 }

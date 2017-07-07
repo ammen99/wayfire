@@ -154,8 +154,10 @@ int get_battery_energy(std::string path, std::string suffix)
 void battery_widget::create()
 {
     battery = "/sys/class/power_supply/" + find_battery();
-    if (battery == "")
+    if (battery == "") {
+        active = false;
         return;
+    }
 
     percent_max = get_battery_energy(battery, "energy_full");
 
@@ -170,6 +172,9 @@ void battery_widget::create()
 
 bool battery_widget::update()
 {
+    if (!active)
+        return false;
+
     int percent = get_battery_energy(battery, "energy_now");
 
     if (percent_current != percent) {
@@ -182,6 +187,9 @@ bool battery_widget::update()
 
 void battery_widget::repaint()
 {
+    if (!active)
+        return;
+
     int per = percent_current * 100LL / percent_max;
     std::string battery_string = std::to_string(per) + "%";
 
