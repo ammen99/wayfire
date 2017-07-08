@@ -177,14 +177,6 @@ void render_manager::set_renderer(render_hook_t rh)
     }
 }
 
-struct weston_gl_renderer {
-    weston_renderer base;
-    int a, b;
-    void *c, *d;
-    EGLDisplay display;
-    EGLContext context;
-};
-
 void render_manager::paint(pixman_region32_t *damage)
 {
     if (dirty_context)
@@ -197,11 +189,11 @@ void render_manager::paint(pixman_region32_t *damage)
     }
 
     if (renderer) {
-        // This is a hack, weston renderer_state is a struct and the EGLSurface is the first field
-        // In the future this might change so we need to track changes in weston
-        EGLSurface surf = *(EGLSurface*)output->handle->renderer_state;
-        weston_gl_renderer *gr = (weston_gl_renderer*) core->ec->renderer;
-        eglMakeCurrent(gr->display, surf, surf, gr->context);
+        EGLSurface surf = core->ec->renderer->get_egl_surface(output->handle);
+        EGLContext context = core->ec->renderer->get_egl_context(output->handle);
+        EGLDisplay display = core->ec->renderer->get_egl_display(output->handle);
+
+        eglMakeCurrent(display, surf, surf, context);
 
         GL_CALL(glViewport(output->handle->x, output->handle->y,
                     output->handle->width, output->handle->height));
@@ -210,7 +202,7 @@ void render_manager::paint(pixman_region32_t *damage)
         renderer();
 
         wl_signal_emit(&output->handle->frame_signal, output->handle);
-        eglSwapBuffers(gr->display, surf);
+        eglSwapBuffers(display, surf);
     } else {
         core->weston_repaint(output->handle, damage);
     }

@@ -243,26 +243,12 @@ static inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surfa
     }
 }
 
-
-/* This is a hack, we use it so that we can reach the memory used by
- * the texture pointer in the surface
- * weston has the function surface_copy_content,
- * but that approach would require glReadPixels to copy data from GPU->CPU
- * and then again we upload it CPU->GPU, which is slow */
-struct weston_gl_surface_state {
-    GLfloat color[4];
-    void *shader;
-    GLuint textures[3];
-};
-
 static void render_surface(weston_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4 transform, glm::vec4 color, uint32_t bits)
 {
     if (!surface->is_mapped || !surface->renderer_state ||
             surface->width * surface->height == 0)
         return;
-
-    auto gs = (weston_gl_surface_state *) surface->renderer_state;
 
     pixman_region32_t damaged_region;
     pixman_region32_init_rect(&damaged_region, x, y,
@@ -276,8 +262,10 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
     int n = 0;
     pixman_box32_t *boxes = pixman_region32_rectangles(&damaged_region, &n);
 
+    GLuint *tex = (GLuint*)core->ec->renderer->get_gl_surface_contents(surface);
+
     for (int i = 0; i < n; i++) {
-        render_surface_box(gs->textures, surface_box, boxes[i],
+        render_surface_box(tex, surface_box, boxes[i],
                 transform, color, bits | TEXTURE_USE_TEX_GEOMETRY);
     }
     pixman_region32_fini(&damaged_region);
