@@ -129,13 +129,18 @@ std::string find_battery()
     FILE *fin = popen("/bin/sh -c \"ls /sys/class/power_supply | grep BAT\"",
             "r");
 
-    while(std::fscanf(fin, "%s", buf)) {
+    if (fin == NULL)
+        return "";
+
+    while(std::fgets(buf, 255, fin))
+    {
         int len = strlen(buf);
         if (len > 0) {
             pclose(fin);
             return buf;
         }
     }
+
     pclose(fin);
     return "";
 }
@@ -144,6 +149,9 @@ int get_battery_energy(std::string path, std::string suffix)
 {
     std::string cmd = path + "/" + suffix;
     FILE *fin = fopen(cmd.c_str() , "r");
+    if (!fin)
+        return -1;
+
     int percent = 0;
 
     std::fscanf(fin, "%d", &percent);
@@ -153,12 +161,14 @@ int get_battery_energy(std::string path, std::string suffix)
 
 void battery_widget::create()
 {
-    battery = "/sys/class/power_supply/" + find_battery();
+    battery = find_battery();
     if (battery == "") {
         active = false;
         return;
     }
 
+    /* battery ends with a newline, so erase the last symbol */
+    battery = "/sys/class/power_supply/" + battery.substr(0, battery.size() - 1);
     percent_max = get_battery_energy(battery, "energy_full");
 
     load_default_font();
