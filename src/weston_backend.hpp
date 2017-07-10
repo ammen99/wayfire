@@ -4,6 +4,7 @@
 #include "commonincludes.hpp"
 #include "core.hpp"
 #include <compositor-drm.h>
+#include <compositor-x11.h>
 #include <compositor-wayland.h>
 #include <windowed-output-api.h>
 #include <cstring>
@@ -11,13 +12,16 @@
 #include <libinput.h>
 
 wl_listener output_pending_listener;
-void set_output_pending_handler(weston_compositor *ec, wl_notify_func_t handler) {
+void set_output_pending_handler(weston_compositor *ec, wl_notify_func_t handler)
+{
     output_pending_listener.notify = handler;
     wl_signal_add(&ec->output_pending_signal, &output_pending_listener);
 }
 
-void configure_input_device(weston_compositor *ec, libinput_device *device) {
-    if (libinput_device_config_tap_get_finger_count(device) > 0) {
+void configure_input_device(weston_compositor *ec, libinput_device *device)
+{
+    if (libinput_device_config_tap_get_finger_count(device) > 0)
+    {
         /* TODO: read option from config */
         libinput_device_config_tap_set_enabled(device, LIBINPUT_CONFIG_TAP_ENABLED);
     }
@@ -26,9 +30,11 @@ void configure_input_device(weston_compositor *ec, libinput_device *device) {
 bool backend_loaded = false;
 std::vector<weston_output*> pending_outputs;
 
-void configure_drm_backend_output (wl_listener *listener, void *data) {
+void configure_drm_backend_output (wl_listener *listener, void *data)
+{
     weston_output *output = (weston_output*)data;
-    if (!backend_loaded) {
+    if (!backend_loaded)
+    {
         pending_outputs.push_back(output);
         return;
     }
@@ -45,7 +51,8 @@ void configure_drm_backend_output (wl_listener *listener, void *data) {
     weston_output_enable(output);
 }
 
-int load_drm_backend(weston_compositor *ec) {
+int load_drm_backend(weston_compositor *ec)
+{
     weston_drm_backend_config config;
     std::memset(&config, 0, sizeof(config));
 
@@ -61,7 +68,8 @@ int load_drm_backend(weston_compositor *ec) {
 
     set_output_pending_handler(ec, configure_drm_backend_output);
     auto ret = weston_compositor_load_backend(ec, WESTON_BACKEND_DRM, &config.base);
-    if (ret >= 0) {
+    if (ret >= 0)
+    {
         backend_loaded = true;
         for (auto output : pending_outputs)
             configure_drm_backend_output(&output_pending_listener, output);
@@ -73,7 +81,8 @@ int load_drm_backend(weston_compositor *ec) {
 }
 
 const int default_width = 800, default_height = 450;
-void configure_wayland_backend_output (wl_listener *listener, void *data) {
+void configure_windowed_output (wl_listener *listener, void *data)
+{
     weston_output *output = (weston_output*)data;
     auto api = weston_windowed_output_get_api(output->compositor);
     assert(api != NULL);
@@ -89,7 +98,8 @@ void configure_wayland_backend_output (wl_listener *listener, void *data) {
 }
 
 
-int load_wayland_backend(weston_compositor *ec) {
+int load_wayland_backend(weston_compositor *ec)
+{
     weston_wayland_backend_config config;
     std::memset(&config, 0, sizeof(config));
 
@@ -103,17 +113,40 @@ int load_wayland_backend(weston_compositor *ec) {
     config.fullscreen = 0;
     config.cursor_theme = NULL;
 
-    if (weston_compositor_load_backend(ec, WESTON_BACKEND_WAYLAND, &config.base) < 0) {
+    if (weston_compositor_load_backend(ec, WESTON_BACKEND_WAYLAND, &config.base) < 0)
         return -1;
-    }
+
     auto api = weston_windowed_output_get_api(ec);
     if (api == NULL)
         return -1;
 
     core->backend = WESTON_BACKEND_WAYLAND;
-    set_output_pending_handler(ec, configure_wayland_backend_output);
+    set_output_pending_handler(ec, configure_windowed_output);
 
     if (api->output_create(ec, "wl1") < 0)
+        return -1;
+
+    return 0;
+}
+
+int load_x11_backend(weston_compositor *ec)
+{
+    weston_x11_backend_config config;
+
+    config.base.struct_version = WESTON_X11_BACKEND_CONFIG_VERSION;
+    config.base.struct_size = sizeof(weston_x11_backend_config);
+
+    config.use_pixman = false;
+    config.fullscreen = false;
+    config.no_input = false;
+
+    if (weston_compositor_load_backend(ec, WESTON_BACKEND_X11, &config.base) < 0)
+        return -1;
+
+    set_output_pending_handler(ec, configure_windowed_output);
+
+    auto api = weston_windowed_output_get_api(ec);
+    if (!api || api->output_create(ec, "wl1") < 0)
         return -1;
 
     return 0;

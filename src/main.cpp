@@ -76,10 +76,13 @@ int main(int argc, char *argv[]) {
     wl_signal_add(&ec->wake_signal, &ec_wake_listener);
 
     int ret;
-    if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET"))
+    if (getenv("WAYLAND_DISPLAY") || getenv("WAYLAND_SOCKET")) {
         ret = load_wayland_backend(ec);
-    else
+    } else if (getenv("DISPLAY")) {
+        ret = load_x11_backend(ec);
+    } else {
         ret = load_drm_backend(ec);
+    }
 
     if (ret < 0) {
         debug << "failed to load weston backend, exiting" << std::endl;
