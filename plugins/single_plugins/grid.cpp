@@ -9,10 +9,12 @@
 #include <compositor.h>
 #include <libweston-desktop.h>
 
+/* TODO: add support for more than one window animation at a time */
+
 class wayfire_grid : public wayfire_plugin_t {
 
     std::unordered_map<wayfire_view, wayfire_geometry> saved_view_geometry;
-    signal_callback_t output_resized_cb;
+    signal_callback_t output_resized_cb, view_destroyed_cb;
 
     std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
     std::vector<wayfire_key> default_keys = {
@@ -79,6 +81,18 @@ class wayfire_grid : public wayfire_plugin_t {
             saved_view_geometry.clear();
         };
         output->signal->connect_signal("output-resized", &output_resized_cb);
+
+        view_destroyed_cb = [=] (signal_data *data)
+        {
+            auto conv = static_cast<destroy_view_signal*> (data);
+            if (conv && conv->destroyed_view == current_view.view)
+            {
+                stop_animation();
+            }
+        };
+
+        output->signal->connect_signal("destroy-view", &view_destroyed_cb);
+        output->signal->connect_signal("detach-view", &view_destroyed_cb);
     }
 
     void handle_key(wayfire_view view, int key)
@@ -125,16 +139,24 @@ class wayfire_grid : public wayfire_plugin_t {
         current_view.view->set_geometry(cx, cy, cw, ch);
 
         current_step++;
-        if (current_step == total_steps) {
+        if (current_step == total_steps)
+        {
             current_view.view->set_geometry(current_view.target);
-
             weston_desktop_surface_set_resizing(current_view.view->desktop_surface, false);
-            output->render->auto_redraw(false);
 
-            output->render->rem_effect(&hook);
-            core->input->ungrab_input(grab_interface);
-            output->deactivate_plugin(grab_interface);
+            stop_animation();
         }
+    }
+
+    void stop_animation()
+    {
+        output->render->auto_redraw(false);
+        output->render->rem_effect(&hook);
+
+        core->input->ungrab_input(grab_interface);
+        output->deactivate_plugin(grab_interface);
+
+        current_view.view = nullptr;
     }
 
     void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h,
