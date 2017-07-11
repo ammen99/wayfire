@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include <cstring>
 #include <algorithm>
+#include <wayland-cursor.h>
 
 #include <GL/gl.h>
 
@@ -213,6 +214,48 @@ void delete_window(wayfire_window *window)
 	wl_surface_destroy (window->surface);
 }
 
+wl_cursor *cursor;
+wl_surface *cursor_surface;
+
+bool load_cursor()
+{
+    auto cursor_theme = wl_cursor_theme_load(NULL, 16, display.shm);
+    if (!cursor_theme) {
+        std::cout << "failed to load cursor theme" << std::endl;
+        return false;
+    }
+
+    const char* alternatives[] = {
+        "left_ptr", "default",
+        "top_left_arrow", "left-arrow"
+    };
+
+    cursor = NULL;
+    for (int i = 0; i < 4 && !cursor; i++)
+        cursor = wl_cursor_theme_get_cursor(cursor_theme, alternatives[i]);
+
+    cursor_surface = wl_compositor_create_surface(display.compositor);
+    if (!cursor || !cursor_surface) {
+        std::cout << "failed to load cursor" << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
+void show_default_cursor(uint32_t serial)
+{
+    auto image = cursor->images[0];
+    auto buffer = wl_cursor_image_get_buffer(image);
+
+    wl_surface_attach(cursor_surface, buffer, 0, 0);
+    wl_surface_damage(cursor_surface, 0, 0, image->width, image->height);
+    wl_surface_commit(cursor_surface);
+
+    wl_pointer_set_cursor(display.pointer, serial, cursor_surface,
+            image->hotspot_x, image->hotspot_y);
+}
+
 bool setup_wayland_connection()
 {
     display.wl_disp = wl_display_connect(NULL);
@@ -228,6 +271,9 @@ bool setup_wayland_connection()
     wl_registry_destroy(registry);
 
     if (!setup_egl())
+        return false;
+
+    if (!load_cursor())
         return false;
 
     return true;

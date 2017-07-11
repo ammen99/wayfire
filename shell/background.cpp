@@ -8,27 +8,6 @@ wayfire_background::wayfire_background(std::string image)
 
 void wayfire_background::create_background(uint32_t output, uint32_t w, uint32_t h)
 {
-    auto cursor_theme = wl_cursor_theme_load(NULL, 16, display.shm);
-    if (!cursor_theme) {
-        std::cout << "failed to load cursor theme" << std::endl;
-        return;
-    }
-
-    const char* alternatives[] = {
-        "left_ptr", "default",
-        "top_left_arrow", "left-arrow"
-    };
-
-    cursor = NULL;
-    for (int i = 0; i < 4 && !cursor; i++)
-        cursor = wl_cursor_theme_get_cursor(cursor_theme, alternatives[i]);
-
-    cursor_surface = wl_compositor_create_surface(display.compositor);
-    if (!cursor || !cursor_surface) {
-        std::cout << "failed to load cursor" << std::endl;
-        return;
-    }
-
     window = create_window(w, h);
     wayfire_shell_add_background(display.wfshell, output, window->surface, 0, 0);
 
@@ -62,12 +41,5 @@ void wayfire_background::resize(uint32_t w, uint32_t h)
 
 void wayfire_background::on_enter(wl_pointer *ptr, uint32_t serial, int x, int y)
 {
-    auto image = cursor->images[0];
-    auto buffer = wl_cursor_image_get_buffer(image);
-
-    wl_surface_attach(cursor_surface, buffer, 0, 0);
-    wl_surface_damage(cursor_surface, 0, 0, image->width, image->height);
-    wl_surface_commit(cursor_surface);
-
-    wl_pointer_set_cursor(ptr, serial, cursor_surface, image->hotspot_x, image->hotspot_y);
+    show_default_cursor(serial);
 }

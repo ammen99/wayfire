@@ -45,7 +45,8 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
     //wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width, hidden_height);
     wayfire_shell_add_panel(display.wfshell, output, window->surface);
 
-    window->pointer_enter = std::bind(std::mem_fn(&wayfire_panel::on_enter), this);
+    using namespace std::placeholders;
+    window->pointer_enter = std::bind(std::mem_fn(&wayfire_panel::on_enter), this, _1, _2);
     window->pointer_leave = std::bind(std::mem_fn(&wayfire_panel::on_leave), this);
 }
 
@@ -66,8 +67,9 @@ void wayfire_panel::toggle_animation()
     animation.dy *= -1;
 }
 
-void wayfire_panel::on_enter()
+void wayfire_panel::on_enter(wl_pointer *ptr, uint32_t serial)
 {
+    show_default_cursor(serial);
     toggle_animation();
     add_callback(false);
 }

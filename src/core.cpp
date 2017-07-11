@@ -104,8 +104,8 @@ void input_manager::grab_input(wayfire_grab_interface iface)
 
     active_grabs.insert(iface);
     if (1 == active_grabs.size()) {
-        weston_pointer_start_grab(weston_seat_get_pointer(core->get_current_seat()),
-                                  &pgrab);
+        auto ptr = weston_seat_get_pointer(core->get_current_seat());
+        weston_pointer_start_grab(ptr, &pgrab);
         weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
                                    &kgrab);
 
@@ -113,6 +113,10 @@ void input_manager::grab_input(wayfire_grab_interface iface)
 
         wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
                 idle_finalize_grab, nullptr);
+
+        auto background = core->get_active_output()->workspace->get_background_view();
+        if (background)
+            weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
     }
 }
 

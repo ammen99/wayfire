@@ -23,7 +23,7 @@ class wayfire_panel {
     } animation;
 
     void toggle_animation();
-    void on_enter();
+    void on_enter(wl_pointer*, uint32_t);
     void on_leave();
 
     void add_callback(bool swapped);

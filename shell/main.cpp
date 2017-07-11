@@ -55,7 +55,7 @@ void output_gamma_size_cb(void *data, wayfire_shell *shell, uint32_t output,
 static const struct wayfire_shell_listener bg_shell_listener = {
     .output_created = output_created_cb,
     .output_resized = output_resized_cb,
-    .gamma_size = output_gamma_size_cb
+    .gamma_size = output_gamma_size_cb,
 };
 
 int main()

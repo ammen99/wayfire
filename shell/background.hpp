@@ -2,7 +2,6 @@
 #define BACKGROUND_HPP
 
 #include "common.hpp"
-#include <wayland-cursor.h>
 
 class wayfire_background {
     void on_enter(wl_pointer*, uint32_t, int, int);
@@ -10,9 +9,6 @@ class wayfire_background {
     std::string image;
     cairo_surface_t *img_surface;
     cairo_t *cr;
-
-    wl_cursor *cursor;
-    wl_surface *cursor_surface;
 
     public:
         wayfire_window *window;

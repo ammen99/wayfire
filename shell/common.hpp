@@ -53,4 +53,6 @@ wayfire_window* create_window(int32_t width, int32_t height);
 void set_active_window(wayfire_window* window);
 void delete_window(wayfire_window* window);
 
+void show_default_cursor(uint32_t serial);
+
 #endif /* end of include guard: COMMON_HPP */
