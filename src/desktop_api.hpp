@@ -92,7 +92,7 @@ void desktop_surface_maximized_requested(weston_desktop_surface *ds,
         bool maximized, void *shell)
 {
     auto view = core->find_view(ds);
-    if (!view)
+    if (!view || view->maximized == maximized)
         return;
 
     view->set_maximized(maximized);
@@ -112,7 +112,7 @@ void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
         bool full, weston_output *output, void *shell)
 {
     auto view = core->find_view(ds);
-    if (!view)
+    if (!view || view->fullscreen == full)
         return;
 
     auto wo = (output ? core->get_output(output) : view->output);

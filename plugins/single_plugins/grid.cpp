@@ -58,7 +58,7 @@ class wayfire_grid : public wayfire_plugin_t {
 
             bindings[i] = [=] (weston_keyboard *kbd, uint32_t key) {
                 auto view = output->get_top_view();
-                if (view)
+                if (view && current_view.view == nullptr)
                     handle_key(view, i);
             };
 
@@ -97,11 +97,6 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void handle_key(wayfire_view view, int key)
     {
-
-        if (!output->activate_plugin(grab_interface))
-            return;
-        core->input->grab_input(grab_interface);
-
         int tx, ty, tw, th; // target dimensions
         if (slots[key] == "c") {
             toggle_maximized(view, tx, ty, tw, th);
@@ -114,6 +109,10 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void start_animation(wayfire_view view, int tx, int ty, int tw, int th)
     {
+        if (!output->activate_plugin(grab_interface))
+            return;
+        core->input->grab_input(grab_interface);
+
         current_step = 0;
         current_view.view = view;
         current_view.original = view->geometry;
@@ -230,9 +229,13 @@ class wayfire_grid : public wayfire_plugin_t {
 
         int x, y, w, h;
         toggle_maximized(data->view, x, y, w, h, data->state);
-        start_animation(data->view, x, y, w, h);
 
-        weston_desktop_surface_set_maximized(data->view->desktop_surface, data->state);
+        if (current_view.view) {
+            data->view->set_geometry(x, y, w, h);
+            return;
+        }
+
+        start_animation(data->view, x, y, w, h);
     }
 
     void fullscreen_signal_cb(signal_data *ddata)
@@ -242,8 +245,13 @@ class wayfire_grid : public wayfire_plugin_t {
 
         int x, y, w, h;
         toggle_maximized(data->view, x, y, w, h, data->state, true);
+
+        if (current_view.view) {
+            data->view->set_geometry(x, y, w, h);
+            return;
+        }
+
         start_animation(data->view, x, y, w, h);
-        weston_desktop_surface_set_fullscreen(data->view->desktop_surface, data->state);
     }
 };
 
