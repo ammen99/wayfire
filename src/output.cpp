@@ -128,6 +128,8 @@ struct plugin_manager
 
 /* End plugin_manager */
 
+const weston_gl_renderer_api *render_manager::renderer_api = nullptr;
+
 /* Start render_manager */
 render_manager::render_manager(wayfire_output *o)
 {

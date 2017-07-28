@@ -193,8 +193,9 @@ class wayfire_expo : public wayfire_plugin_t {
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
-        moving_view->move(moving_view->geometry.origin.x + (cx - sx) * vw,
-                moving_view->geometry.origin.y + (cy - sy) * vh);
+        int max = std::max(vw, vh);
+        moving_view->move(moving_view->geometry.origin.x + (cx - sx) * max,
+                moving_view->geometry.origin.y + (cy - sy) * max);
 
         sx = cx;
         sy = cy;
@@ -209,19 +210,35 @@ class wayfire_expo : public wayfire_plugin_t {
             output->bring_to_front(moving_view);
     }
 
-    wayfire_view find_view_at(int sx, int sy)
+    void input_coordinates_to_global_coordinates(int &sx, int &sy)
     {
         auto og = output->get_full_geometry();
         sx -= og.origin.x;
         sy -= og.origin.y;
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
-        sx *= vw;
-        sy *= vh;
 
+        float max = std::max(vw, vh);
+
+        float grid_start_x = og.size.w * (max - vw) / float(max) / 2;
+        float grid_start_y = og.size.h * (max - vh) / float(max) / 2;
+
+        sx -= grid_start_x;
+        sy -= grid_start_y;
+
+        sx *= max;
+        sy *= max;
+    }
+
+    wayfire_view find_view_at(int sx, int sy)
+    {
         GetTuple(vx, vy, output->workspace->get_current_workspace());
-        sx -= vx * output->handle->width;
-        sy -= vy * output->handle->height;
+        auto og = output->get_full_geometry();
+
+        input_coordinates_to_global_coordinates(sx, sy);
+
+        sx -= vx * og.size.w;
+        sy -= vy * og.size.h;
 
         wayfire_view search = nullptr;
         output->workspace->for_each_view([&search, og, sx, sy] (wayfire_view v) {
@@ -233,17 +250,12 @@ class wayfire_expo : public wayfire_plugin_t {
     }
 
     void update_target_workspace(int x, int y) {
-        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         auto og = output->get_full_geometry();
-        x -= og.origin.x;
-        y -= og.origin.y;
 
-        /* TODO: these are approximate, maybe won't work between them */
-        int ew = output->handle->width / vw;
-        int eh = output->handle->height / vh;
+        input_coordinates_to_global_coordinates(x, y);
 
-        target_vx = x / ew;
-        target_vy = y / eh;
+        target_vx = x / og.size.w;
+        target_vy = y / og.size.h;
     }
 
     void handle_input_press(wl_fixed_t x, wl_fixed_t y, uint32_t state)
@@ -348,6 +360,13 @@ class wayfire_expo : public wayfire_plugin_t {
     {
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
+        int max = std::max(vw, vh);
+
+        float diff_w = (max - vw) / (1. * max);
+        float diff_h = (max - vh) / (1. * max);
+
+        vw = vh = max;
+
         float center_w = vw / 2.f;
         float center_h = vh / 2.f;
 
@@ -366,8 +385,8 @@ class wayfire_expo : public wayfire_plugin_t {
         zoom_target.scale_x = {1, 1.f / vw};
         zoom_target.scale_y = {1, 1.f / vh};
 
-        zoom_target.off_x   = {-mf_x, ((target_vx - center_w) * 2.f + 1.f) / vw};
-        zoom_target.off_y   = { mf_y, ((center_h - target_vy) * 2.f - 1.f) / vh};
+        zoom_target.off_x   = {-mf_x, ((target_vx - center_w) * 2.f + 1.f) / vw + diff_w};
+        zoom_target.off_y   = { mf_y, ((center_h - target_vy) * 2.f - 1.f) / vh - diff_h};
     }
 
     void update_zoom()
