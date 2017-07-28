@@ -13,6 +13,7 @@ namespace OpenGL {
 }
 struct weston_seat;
 struct weston_output;
+struct weston_gl_renderer_api;
 
 /* Controls loading of plugins */
 struct plugin_manager {
@@ -51,6 +52,8 @@ struct render_manager {
 
     public:
         OpenGL::context_t *ctx;
+	static const weston_gl_renderer_api *renderer_api;
+
         render_manager(wayfire_output *o);
 
         void set_renderer(render_hook_t rh = nullptr);

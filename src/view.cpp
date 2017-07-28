@@ -6,7 +6,7 @@
 
 #include <xwayland-api.h>
 #include <libweston-desktop.h>
-
+#include <gl-renderer-api.h>
 
 /* misc definitions */
 
@@ -88,8 +88,6 @@ wayfire_view_t::~wayfire_view_t()
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
-
-
 
 // TODO: implement is_visible
 bool wayfire_view_t::is_visible()
@@ -221,7 +219,7 @@ void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
         (*hook)();
 }
 
-static inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surface_box,
+static inline void render_surface_box(GLuint tex[3], int n_tex, const pixman_box32_t& surface_box,
         const pixman_box32_t& subbox, glm::mat4 transform,
         glm::vec4 color, uint32_t bits)
 {
@@ -237,7 +235,7 @@ static inline void render_surface_box(GLuint tex[3], const pixman_box32_t& surfa
      .size = {subbox.x2 - subbox.x1, subbox.y2 - subbox.y1}
     };
 
-    for (int i = 0; i < 3 && tex[i]; i++) {
+    for (int i = 0; i < n_tex; i++) {
         OpenGL::render_transformed_texture(tex[i], geometry, texg, transform,
                                            color, bits);
     }
@@ -249,6 +247,9 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
     if (!surface->is_mapped || !surface->renderer_state ||
             surface->width * surface->height == 0)
         return;
+
+    if (!render_manager::renderer_api)
+	return;
 
     pixman_region32_t damaged_region;
     pixman_region32_init_rect(&damaged_region, x, y,
@@ -262,10 +263,11 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
     int n = 0;
     pixman_box32_t *boxes = pixman_region32_rectangles(&damaged_region, &n);
 
-    GLuint *tex = (GLuint*)core->ec->renderer->get_gl_surface_contents(surface);
+    int n_tex;
+    GLuint *tex = (GLuint*)render_manager::renderer_api->surface_get_textures(surface, &n_tex);
 
     for (int i = 0; i < n; i++) {
-        render_surface_box(tex, surface_box, boxes[i],
+        render_surface_box(tex, n_tex, surface_box, boxes[i],
                 transform, color, bits | TEXTURE_USE_TEX_GEOMETRY);
     }
     pixman_region32_fini(&damaged_region);

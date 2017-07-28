@@ -14,6 +14,9 @@
 #include <EGL/eglext.h>
 
 #include <libweston-desktop.h>
+#include <gl-renderer-api.h>
+
+const weston_gl_renderer_api *render_manager::renderer_api = nullptr;
 
 /* Start plugin manager */
 plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config)
@@ -115,8 +118,13 @@ render_manager::render_manager(wayfire_output *o)
 {
     output = o;
 
+    if (!renderer_api) {
+	    renderer_api = (const weston_gl_renderer_api*)
+		    weston_plugin_api_get(core->ec, WESTON_GL_RENDERER_API_NAME,
+				    sizeof(weston_gl_renderer_api));
+    }
+
     if (core->backend == WESTON_BACKEND_WAYLAND) {
-        debug << "Yes, try it" << std::endl;
         output->output_dx = output->output_dy = 38;
     } else {
         output->output_dx = output->output_dy = 0;
@@ -189,9 +197,9 @@ void render_manager::paint(pixman_region32_t *damage)
     }
 
     if (renderer) {
-        EGLSurface surf = core->ec->renderer->get_egl_surface(output->handle);
-        EGLContext context = core->ec->renderer->get_egl_context(output->handle);
-        EGLDisplay display = core->ec->renderer->get_egl_display(output->handle);
+        EGLSurface surf = renderer_api->output_get_egl_surface(output->handle);
+        EGLContext context = renderer_api->compositor_get_egl_context(core->ec);
+        EGLDisplay display = renderer_api->compositor_get_egl_display(core->ec);
 
         eglMakeCurrent(display, surf, surf, context);
 
