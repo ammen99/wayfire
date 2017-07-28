@@ -14,18 +14,9 @@ namespace OpenGL {
 struct weston_seat;
 struct weston_output;
 struct weston_gl_renderer_api;
+struct plugin_manager;
 
-/* Controls loading of plugins */
-struct plugin_manager {
-    std::vector<wayfire_plugin> plugins;
-
-    template<class T> wayfire_plugin create_plugin();
-    wayfire_plugin load_plugin_from_file(std::string path, void **handle);
-    void load_dynamic_plugins();
-    void init_default_plugins();
-    plugin_manager(wayfire_output *o, wayfire_config *config);
-    ~plugin_manager();
-};
+class workspace_manager;
 
 /* Workspace streams are used if you need to continuously render a workspace
  * to a texture, for example if you call texture_from_viewport at every frame */
@@ -52,7 +43,7 @@ struct render_manager {
 
     public:
         OpenGL::context_t *ctx;
-	static const weston_gl_renderer_api *renderer_api;
+    	static const weston_gl_renderer_api *renderer_api;
 
         render_manager(wayfire_output *o);
 
@@ -78,7 +69,8 @@ struct render_manager {
         void workspace_stream_stop(wf_workspace_stream *stream);
 };
 
-class workspace_manager {
+class workspace_manager
+{
     public:
         virtual void init(wayfire_output *output) = 0;
 

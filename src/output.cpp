@@ -18,32 +18,6 @@
 
 #include <config.hpp>
 
-/* Start plugin manager */
-plugin_manager::plugin_manager(wayfire_output *o, wayfire_config *config)
-{
-    init_default_plugins();
-    load_dynamic_plugins();
-
-    for (auto p : plugins) {
-        p->grab_interface = new wayfire_grab_interface_t(o);
-        p->output = o;
-
-        p->init(config);
-    }
-}
-
-plugin_manager::~plugin_manager()
-{
-    for (auto p : plugins) {
-        p->fini();
-        delete p->grab_interface;
-
-        if (p->dynamic)
-            dlclose(p->handle);
-        p.reset();
-    }
-}
-
 namespace
 {
 template<class A, class B> B union_cast(A object)
@@ -57,59 +31,100 @@ template<class A, class B> B union_cast(A object)
 }
 }
 
-wayfire_plugin plugin_manager::load_plugin_from_file(std::string path, void **h)
+/* Controls loading of plugins */
+struct plugin_manager
 {
-    void *handle = dlopen(path.c_str(), RTLD_NOW);
-    if(handle == NULL) {
-        errio << "Can't load plugin " << path << std::endl;
-        errio << "\t" << dlerror() << std::endl;
-        return nullptr;
+    std::vector<wayfire_plugin> plugins;
+
+    plugin_manager(wayfire_output *o, wayfire_config *config)
+    {
+        init_default_plugins();
+        load_dynamic_plugins();
+
+        for (auto p : plugins)
+        {
+            p->grab_interface = new wayfire_grab_interface_t(o);
+            p->output = o;
+
+            p->init(config);
+        }
     }
 
-    debug << "Loading plugin " << path << std::endl;
+    ~plugin_manager()
+    {
+        for (auto p : plugins)
+        {
+            p->fini();
+            delete p->grab_interface;
 
-    auto initptr = dlsym(handle, "newInstance");
-    if(initptr == NULL) {
-        errio << "Missing function newInstance in file " << path << std::endl;
-        errio << dlerror();
-        return nullptr;
+            if (p->dynamic)
+                dlclose(p->handle);
+            p.reset();
+        }
     }
-    get_plugin_instance_t init = union_cast<void*, get_plugin_instance_t> (initptr);
-    *h = handle;
-    return wayfire_plugin(init());
-}
 
-void plugin_manager::load_dynamic_plugins()
-{
-    std::stringstream stream(core->plugins);
-    auto path = core->plugin_path + "/wayfire/";
 
-    std::string plugin;
-    while(stream >> plugin) {
-        if(plugin != "") {
-            void *handle;
-            auto ptr = load_plugin_from_file(path + "/lib" + plugin + ".so", &handle);
-            if(ptr) {
-                ptr->handle  = handle;
-                ptr->dynamic = true;
-                plugins.push_back(ptr);
+
+    wayfire_plugin load_plugin_from_file(std::string path, void **h)
+    {
+        void *handle = dlopen(path.c_str(), RTLD_NOW);
+        if(handle == NULL)
+        {
+            errio << "Can't load plugin " << path << std::endl;
+            errio << "\t" << dlerror() << std::endl;
+            return nullptr;
+        }
+
+        debug << "Loading plugin " << path << std::endl;
+
+        auto initptr = dlsym(handle, "newInstance");
+        if(initptr == NULL)
+        {
+            errio << "Missing function newInstance in file " << path << std::endl;
+            errio << dlerror();
+            return nullptr;
+        }
+
+        get_plugin_instance_t init = union_cast<void*, get_plugin_instance_t> (initptr);
+        *h = handle;
+        return wayfire_plugin(init());
+    }
+
+    void load_dynamic_plugins()
+    {
+        std::stringstream stream(core->plugins);
+        auto path = core->plugin_path + "/wayfire/";
+
+        std::string plugin;
+        while(stream >> plugin)
+        {
+            if(plugin != "")
+            {
+                void *handle;
+                auto ptr = load_plugin_from_file(path + "/lib" + plugin + ".so", &handle);
+                if(ptr)
+                {
+                    ptr->handle  = handle;
+                    ptr->dynamic = true;
+                    plugins.push_back(ptr);
+                }
             }
         }
     }
-}
 
-template<class T>
-wayfire_plugin plugin_manager::create_plugin()
-{
-    return std::static_pointer_cast<wayfire_plugin_t>(std::make_shared<T>());
-}
+    template<class T>
+    wayfire_plugin create_plugin()
+    {
+        return std::static_pointer_cast<wayfire_plugin_t>(std::make_shared<T>());
+    }
 
-void plugin_manager::init_default_plugins()
-{
-    plugins.push_back(create_plugin<wayfire_focus>());
-    plugins.push_back(create_plugin<wayfire_close>());
-    plugins.push_back(create_plugin<wayfire_exit>());
-}
+    void init_default_plugins()
+    {
+        plugins.push_back(create_plugin<wayfire_focus>());
+        plugins.push_back(create_plugin<wayfire_close>());
+        plugins.push_back(create_plugin<wayfire_exit>());
+    }
+};
 
 /* End plugin_manager */
 
