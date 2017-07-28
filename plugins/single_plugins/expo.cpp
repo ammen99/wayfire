@@ -298,6 +298,7 @@ class wayfire_expo : public wayfire_plugin_t {
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
         glClear(GL_COLOR_BUFFER_BIT);
+
         for(int j = 0; j < vh; j++) {
             for(int i = 0; i < vw; i++) {
                 if (!streams[i][j]->running) {
@@ -311,8 +312,11 @@ class wayfire_expo : public wayfire_plugin_t {
                                (j - vy) * h + delimiter_offset},
                     .size = {w - 2 * delimiter_offset, h - 2 * delimiter_offset}};
 
+                glEnable(GL_SCISSOR_TEST);
+                glScissor(0, 0, w, h);
                 OpenGL::render_transformed_texture(streams[i][j]->tex, g, {}, matrix,
                         glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y | TEXTURE_TRANSFORM_USE_DEVCOORD);
+                glDisable(GL_SCISSOR_TEST);
             }
         }
 
