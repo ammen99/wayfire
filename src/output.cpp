@@ -133,7 +133,8 @@ render_manager::render_manager(wayfire_output *o)
 {
     output = o;
 
-    if (!renderer_api) {
+    if (!renderer_api)
+    {
 	    renderer_api = (const weston_gl_renderer_api*)
 		    weston_plugin_api_get(core->ec, WESTON_GL_RENDERER_API_NAME,
 				    sizeof(weston_gl_renderer_api));
@@ -328,6 +329,7 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
 {
     streams_running++;
     stream->running = true;
+    stream->scale_x = stream->scale_y = 1;
 
     OpenGL::bind_context(output->render->ctx);
 
@@ -335,7 +337,8 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
         OpenGL::prepare_framebuffer(stream->fbuff, stream->tex);
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
-    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
+    GL_CALL(glViewport(0, 0, output->handle->width * stream->scale_x,
+                output->handle->height * stream->scale_y));
 
     auto g = output->get_full_geometry();
 
@@ -370,7 +373,8 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
-void render_manager::workspace_stream_update(wf_workspace_stream *stream)
+void render_manager::workspace_stream_update(wf_workspace_stream *stream,
+                                             float scale_x, float scale_y)
 {
     OpenGL::bind_context(output->render->ctx);
     auto g = output->get_full_geometry();
@@ -384,12 +388,23 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
     pixman_region32_t ws_damage;
     pixman_region32_init_rect(&ws_damage, -dx, -dy,
             output->handle->width, output->handle->height);
+
     pixman_region32_intersect(&ws_damage, &frame_damage, &ws_damage);
 
     /* we don't have to update anything */
-    if (!pixman_region32_not_empty(&ws_damage)) {
+    if (!pixman_region32_not_empty(&ws_damage))
+    {
         pixman_region32_fini(&ws_damage);
         return;
+    }
+
+    if (scale_x != stream->scale_x || scale_y != stream->scale_y)
+    {
+        stream->scale_x = scale_x;
+        stream->scale_y = scale_y;
+
+        pixman_region32_union_rect(&ws_damage, &ws_damage, -dx, -dy,
+                output->handle->width, output->handle->height);
     }
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
@@ -403,11 +418,13 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
 
     auto it = views.begin();
 
-    while (it != views.end() && pixman_region32_not_empty(&ws_damage)) {
+    while (it != views.end() && pixman_region32_not_empty(&ws_damage))
+    {
         damaged_view dv;
         dv.view = *it;
 
-        if (dv.view->is_visible()) {
+        if (dv.view->is_visible())
+        {
             dv.damage = new pixman_region32_t;
             if (dv.view->is_special)
                 pixman_region32_translate(&ws_damage, dx, dy);
@@ -416,6 +433,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
                     dv.view->geometry.origin.x - dv.view->ds_geometry.origin.x,
                     dv.view->geometry.origin.y - dv.view->ds_geometry.origin.y,
                     dv.view->surface->width, dv.view->surface->height);
+
             pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
 
             if (dv.view->is_special) {
@@ -437,7 +455,13 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
     };
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
-    GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
+    GL_CALL(glViewport(0, 0, output->handle->width * scale_x,
+                output->handle->height * scale_y));
+
+    glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(scale_x, scale_y, 1));
+    glm::mat4 translate = glm::translate(glm::mat4(), glm::vec3(scale_x - 1, scale_y - 1, 0));
+    std::swap(wayfire_view_transform::global_scale, scale);
+    std::swap(wayfire_view_transform::global_translate, translate);
 
     auto rev_it = update_views.rbegin();
     while(rev_it != update_views.rend()) {
@@ -457,6 +481,9 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream)
         delete dv.damage;
         ++rev_it;
     }
+
+    std::swap(wayfire_view_transform::global_scale, scale);
+    std::swap(wayfire_view_transform::global_translate, translate);
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     pixman_region32_fini(&ws_damage);

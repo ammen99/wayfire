@@ -277,7 +277,8 @@ namespace OpenGL {
         GL_CALL(glDisable(GL_BLEND));
     }
 
-    void prepare_framebuffer(GLuint &fbuff, GLuint &texture)
+    void prepare_framebuffer(GLuint &fbuff, GLuint &texture,
+                             float scale_x, float scale_y)
     {
         if (fbuff == (uint)-1)
             GL_CALL(glGenFramebuffers(1, &fbuff));
@@ -296,7 +297,8 @@ namespace OpenGL {
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
         if (!existing_texture)
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bound->width, bound->height,
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                        bound->width * scale_x, bound->height * scale_y,
                         0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
 
         GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
@@ -307,7 +309,8 @@ namespace OpenGL {
             errio << "Error in framebuffer!\n";
     }
 
-    GLuint duplicate_texture(GLuint tex, int w, int h) {
+    GLuint duplicate_texture(GLuint tex, int w, int h)
+    {
         GLuint dst_tex = -1;
 
         GLuint dst_fbuff = -1, src_fbuff = -1;

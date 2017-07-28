@@ -24,6 +24,8 @@ struct wf_workspace_stream {
     std::tuple<int, int> ws;
     uint fbuff, tex;
     bool running = false;
+
+    float scale_x, scale_y;
 };
 
 struct render_manager {
@@ -65,7 +67,8 @@ struct render_manager {
         void texture_from_workspace(std::tuple<int, int>, uint& fbuff, uint &tex);
 
         void workspace_stream_start(wf_workspace_stream *stream);
-        void workspace_stream_update(wf_workspace_stream *stream);
+        void workspace_stream_update(wf_workspace_stream *stream,
+                float scale_x = 1, float scale_y = 1);
         void workspace_stream_stop(wf_workspace_stream *stream);
 };
 
@@ -114,7 +117,8 @@ struct signal_data {
 };
 using signal_callback_t = std::function<void(signal_data*)>;
 
-struct signal_manager {
+struct signal_manager
+{
     private:
         std::unordered_map<std::string, std::vector<signal_callback_t*>> sig;
     public:
@@ -123,7 +127,8 @@ struct signal_manager {
         void emit_signal(std::string name, signal_data *data);
 };
 
-class wayfire_output {
+class wayfire_output
+{
     friend class core_t;
     private:
        std::unordered_set<wayfire_grab_interface> active_plugins;

@@ -298,13 +298,13 @@ class wayfire_expo : public wayfire_plugin_t {
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
         glClear(GL_COLOR_BUFFER_BIT);
-
         for(int j = 0; j < vh; j++) {
             for(int i = 0; i < vw; i++) {
                 if (!streams[i][j]->running) {
                     output->render->workspace_stream_start(streams[i][j]);
                 } else {
-                    output->render->workspace_stream_update(streams[i][j]);
+                    output->render->workspace_stream_update(streams[i][j],
+                            render_params.scale_x, render_params.scale_y);
                 }
 
                 wayfire_geometry g = {
@@ -312,11 +312,21 @@ class wayfire_expo : public wayfire_plugin_t {
                                (j - vy) * h + delimiter_offset},
                     .size = {w - 2 * delimiter_offset, h - 2 * delimiter_offset}};
 
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(0, 0, w, h);
-                OpenGL::render_transformed_texture(streams[i][j]->tex, g, {}, matrix,
-                        glm::vec4(1), TEXTURE_TRANSFORM_INVERT_Y | TEXTURE_TRANSFORM_USE_DEVCOORD);
-                glDisable(GL_SCISSOR_TEST);
+                OpenGL::texture_geometry texg;
+                texg.x1 = 0;
+                texg.y1 = 0;
+                texg.x2 = streams[i][j]->scale_x;
+                texg.y2 = streams[i][j]->scale_y;
+
+                GL_CALL(glEnable(GL_SCISSOR_TEST));
+                GL_CALL(glScissor(0, 0, output->render->ctx->device_width,
+                            output->render->ctx->device_height));
+
+                OpenGL::render_transformed_texture(streams[i][j]->tex, g, texg, matrix,
+                        glm::vec4(1), TEXTURE_TRANSFORM_USE_DEVCOORD | TEXTURE_TRANSFORM_INVERT_Y |
+                        TEXTURE_USE_TEX_GEOMETRY);
+
+                GL_CALL(glDisable(GL_SCISSOR_TEST));
             }
         }
 
@@ -343,8 +353,11 @@ class wayfire_expo : public wayfire_plugin_t {
 
         if (zoom_in) {
             zoom_target.steps = 0;
+            render_params.scale_x = render_params.scale_y = 1;
         } else {
             zoom_target.steps = max_steps;
+            render_params.scale_x = 1.f / vw;
+            render_params.scale_y = 1.f / vh;
         }
 
         float mf_x = 2. * delimiter_offset / output->handle->width;
@@ -352,6 +365,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
         zoom_target.scale_x = {1, 1.f / vw};
         zoom_target.scale_y = {1, 1.f / vh};
+
         zoom_target.off_x   = {-mf_x, ((target_vx - center_w) * 2.f + 1.f) / vw};
         zoom_target.off_y   = { mf_y, ((center_h - target_vy) * 2.f - 1.f) / vh};
     }

@@ -67,7 +67,8 @@ namespace OpenGL {
     GLuint load_shader(const char *path, GLuint type);
     GLuint compile_shader(const char *src, GLuint type);
 
-    void prepare_framebuffer(GLuint& fbuff, GLuint& texture);
+    void prepare_framebuffer(GLuint& fbuff, GLuint& texture,
+            float scale_x = 1, float scale_y = 1);
 
     /* set program to current program */
     void use_default_program();
