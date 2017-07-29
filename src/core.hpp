@@ -75,7 +75,7 @@ struct input_manager {
         void propagate_touch_motion(weston_touch*, uint32_t, int32_t, wl_fixed_t, wl_fixed_t);
         void grab_send_touch_motion(weston_touch*, int32_t, wl_fixed_t, wl_fixed_t);
 
-        void check_touch_grabs(weston_touch*, wl_fixed_t sx, wl_fixed_t sy);
+        void check_touch_bindings(weston_touch*, wl_fixed_t sx, wl_fixed_t sy);
 
         void end_grabs();
 

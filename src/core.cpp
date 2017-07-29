@@ -33,7 +33,7 @@ struct wf_gesture_recognizer {
         int id;
         int sx, sy;
         int ix, iy;
-        bool sent;
+        bool sent_to_client, sent_to_grab;
     };
 
     std::map<int, finger> current;
@@ -85,15 +85,15 @@ struct wf_gesture_recognizer {
         reset_gesture();
 
         for (auto &f : current) {
-            if (f.first != reason_id && f.second.sent) {
-                if (!in_grab) {
+            if (f.first != reason_id) {
+                if (f.second.sent_to_client) {
                     weston_touch_send_up(touch, last_time, f.first);
-                } else {
+                } else if (f.second.sent_to_grab) {
                     core->input->grab_send_touch_up(touch, f.first);
                 }
-
             }
-            f.second.sent = false;
+
+            f.second.sent_to_grab = f.second.sent_to_client = false;
         }
     }
 
@@ -193,22 +193,41 @@ struct wf_gesture_recognizer {
 
     void register_touch(int id, int sx, int sy)
     {
-        current[id] = {id, sx, sy, sx, sy, !in_gesture};
+        auto& f = current[id] = {id, sx, sy, sx, sy, false, false};
         if (in_gesture)
             reset_gesture();
 
         if (current.size() >= MIN_FINGERS && !in_gesture)
             start_new_gesture(id);
 
-        if (!in_grab && !in_gesture) {
-            if (id < 1) {
-                core->input->check_touch_grabs(touch,
-                        wl_fixed_from_int(sx), wl_fixed_from_int(sy));
-            }
+        bool send_to_client = !in_gesture && !in_grab;
+        bool send_to_grab = !in_gesture && in_grab;
 
+        if (send_to_client && id < 1)
+        {
+            core->input->check_touch_bindings(touch,
+                    wl_fixed_from_int(sx), wl_fixed_from_int(sy));
+        }
+
+        /* while checking for touch grabs, some plugin might have started the grab,
+         * so check again */
+        if (in_grab && send_to_client)
+        {
+            send_to_client = false;
+            send_to_grab = true;
+        }
+
+        f.sent_to_grab = send_to_grab;
+        f.sent_to_client = send_to_client;
+
+        assert(!send_to_grab || !send_to_client);
+
+        if (send_to_client)
+        {
             weston_touch_send_down(touch, last_time, id, wl_fixed_from_int(sx),
                     wl_fixed_from_int(sy));
-        } else if (!in_gesture) {
+        } else if (send_to_grab)
+        {
             core->input->grab_send_touch_down(touch, id, wl_fixed_from_int(sx),
                     wl_fixed_from_int(sy));
         }
@@ -228,19 +247,52 @@ struct wf_gesture_recognizer {
             } else {
                 reset_gesture();
             }
-        } else if (f.sent && !in_grab) {
+        } else if (f.sent_to_client) {
             weston_touch_send_up(touch, last_time, id);
-        } else if (f.sent) {
+        } else if (f.sent_to_grab) {
             core->input->grab_send_touch_up(touch, id);
         }
     }
 
-    bool is_finger_sent(int id)
+    bool is_finger_sent_to_client(int id)
     {
         auto it = current.find(id);
-        if (it == current.end() || !it->second.sent)
+        if (it == current.end())
             return false;
-        return true;
+        return it->second.sent_to_client;
+    }
+
+    bool is_finger_sent_to_grab(int id)
+    {
+        auto it = current.find(id);
+        if (it == current.end())
+            return false;
+        return it->second.sent_to_grab;
+    }
+
+    void start_grab()
+    {
+        in_grab = true;
+
+        for (auto &f : current)
+        {
+            if (f.second.sent_to_client)
+                weston_touch_send_up(touch, last_time, f.first);
+
+            f.second.sent_to_client = false;
+
+            if (!in_gesture)
+            {
+                core->input->grab_send_touch_down(touch, f.first,
+                        wl_fixed_from_int(f.second.sx), wl_fixed_from_int(f.second.sy));
+                f.second.sent_to_grab = true;
+            }
+        }
+    }
+
+    void end_grab()
+    {
+        in_grab = false;
     }
 };
 
@@ -272,7 +324,7 @@ static const weston_touch_grab_interface touch_grab_interface = {
 };
 
 /* called upon the corresponding event, we actually just call the gesture
- * recognizer functions, they will actually send the touch event to the client
+ * recognizer functions, they will send the touch event to the client
  * or to plugin callbacks, or emit a gesture */
 void input_manager::propagate_touch_down(weston_touch* touch, uint32_t time,
         int32_t id, wl_fixed_t sx, wl_fixed_t sy)
@@ -297,9 +349,9 @@ void input_manager::propagate_touch_motion(weston_touch* touch, uint32_t time,
     gr->touch = touch;
     gr->update_touch(id, wl_fixed_to_int(sx), wl_fixed_to_int(sy));
 
-    if (!gr->in_gesture && !gr->in_grab && gr->is_finger_sent(id)) {
+    if (gr->is_finger_sent_to_client(id)) {
         weston_touch_send_motion(touch, time, id, sx, sy);
-    } else if(!gr->in_gesture && gr->is_finger_sent(id)) {
+    } else if(gr->is_finger_sent_to_grab(id)) {
         grab_send_touch_motion(touch, id, sx, sy);
     }
 }
@@ -351,7 +403,7 @@ void input_manager::grab_send_touch_motion(weston_touch* touch, int32_t id,
         grab->callbacks.touch.motion(touch, id, sx, sy);
 }
 
-void input_manager::check_touch_grabs(weston_touch* touch, wl_fixed_t sx, wl_fixed_t sy)
+void input_manager::check_touch_bindings(weston_touch* touch, wl_fixed_t sx, wl_fixed_t sy)
 {
     uint32_t mods = tgrab.touch->seat->modifier_state;
     std::vector<touch_callback*> calls;
@@ -488,7 +540,7 @@ void input_manager::grab_input(wayfire_grab_interface iface)
         if (background)
             weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
 
-        gr->in_grab = true;
+        gr->start_grab();
     }
 }
 
@@ -498,7 +550,8 @@ void input_manager::ungrab_input(wayfire_grab_interface iface)
     if (active_grabs.empty()) {
         weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
         weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
-        gr->in_grab = false;
+
+        gr->end_grab();
     }
 }
 
