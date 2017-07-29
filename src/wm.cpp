@@ -49,7 +49,7 @@ void wayfire_focus::init(wayfire_config *)
         wayfire_view view;
         if (!touch->focus || !(view = core->find_view(weston_surface_get_main_surface(touch->focus->surface))))
             return;
-        if (!output->activate_plugin(grab_interface))
+        if (view->is_special || !output->activate_plugin(grab_interface))
             return;
         output->deactivate_plugin(grab_interface);
         view->output->focus_view(view, touch->seat);

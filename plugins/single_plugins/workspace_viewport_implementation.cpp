@@ -181,7 +181,8 @@ std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
 {
     std::vector<wayfire_view> ret = get_views_on_workspace(ws);
     auto bg = get_background_view();
-    if (bg) ret.push_back(bg);
+    if (bg)
+        ret.push_back(bg);
 
     return ret;
 }
