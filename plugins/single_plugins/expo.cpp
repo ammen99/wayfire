@@ -13,6 +13,8 @@ class wayfire_expo : public wayfire_plugin_t {
         touch_gesture_callback touch_toggle_cb;
         wayfire_button action_button;
 
+        wayfire_color background_color;
+
         int max_steps;
 
         render_hook_t renderer;
@@ -136,6 +138,8 @@ class wayfire_expo : public wayfire_plugin_t {
         };
 
         output->signal->connect_signal("output-resized", &resized_cb);
+
+        background_color = section->get_color("background", {0, 0, 0, 1});
     }
 
     void activate()
@@ -309,6 +313,8 @@ class wayfire_expo : public wayfire_plugin_t {
         matrix = glm::translate(matrix, glm::vec3(render_params.off_x, render_params.off_y, 0));
         matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
 
+        glClearColor(background_color.r, background_color.g,
+                     background_color.b, background_color.a);
         glClear(GL_COLOR_BUFFER_BIT);
         for(int j = 0; j < vh; j++) {
             for(int i = 0; i < vw; i++) {

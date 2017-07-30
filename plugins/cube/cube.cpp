@@ -201,7 +201,8 @@ class wayfire_cube : public wayfire_plugin_t {
             load_program();
 
         GL_CALL(glClearColor(backgroud_color.r, backgroud_color.g,
-                backgroud_color.b + 0.5, backgroud_color.a + 1));
+                backgroud_color.b, backgroud_color.a));
+
         GL_CALL(glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT));
 
         for(size_t i = 0; i < streams.size(); i++) {
