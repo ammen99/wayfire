@@ -180,6 +180,19 @@ class wayfire_expo : public wayfire_plugin_t {
         update_zoom();
     }
 
+    weston_geometry get_grid_geometry()
+    {
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+        auto full_g = output->get_full_geometry();
+
+        weston_geometry grid;
+        grid.x = grid.y = 0;
+        grid.width = full_g.width * vw;
+        grid.height = full_g.height * vh;
+
+        return grid;
+    }
+
     int sx, sy;
     wayfire_view moving_view;
     void handle_input_move(wl_fixed_t x, wl_fixed_t y)
@@ -195,9 +208,16 @@ class wayfire_expo : public wayfire_plugin_t {
         int cx = wl_fixed_to_int(x);
         int cy = wl_fixed_to_int(y);
 
-        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+        int global_x = cx, global_y = cy;
+        input_coordinates_to_global_coordinates(global_x, global_y);
 
+        auto grid = get_grid_geometry();
+        if (!point_inside({global_x, global_y}, grid))
+            return;
+
+        GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         int max = std::max(vw, vh);
+
         moving_view->move(moving_view->geometry.x + (cx - sx) * max,
                 moving_view->geometry.y + (cy - sy) * max);
 
@@ -257,6 +277,10 @@ class wayfire_expo : public wayfire_plugin_t {
         auto og = output->get_full_geometry();
 
         input_coordinates_to_global_coordinates(x, y);
+
+        auto grid = get_grid_geometry();
+        if (!point_inside({x, y}, grid))
+            return;
 
         target_vx = x / og.width;
         target_vy = y / og.height;
