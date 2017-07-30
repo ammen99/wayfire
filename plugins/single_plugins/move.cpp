@@ -149,10 +149,10 @@ class wayfire_move : public wayfire_plugin_t {
         {
             auto g = output->get_full_geometry();
 
-            bool is_left = std::abs(prev_x - g.origin.x) <= snap_pixels;
-            bool is_right = std::abs(g.origin.x + g.size.w - prev_x) <= snap_pixels;
-            bool is_top = std::abs(prev_y - g.origin.y) < snap_pixels;
-            bool is_bottom = std::abs(g.origin.y + g.size.h - prev_y) < snap_pixels;
+            bool is_left = std::abs(prev_x - g.x) <= snap_pixels;
+            bool is_right = std::abs(g.x + g.width - prev_x) <= snap_pixels;
+            bool is_top = std::abs(prev_y - g.y) < snap_pixels;
+            bool is_bottom = std::abs(g.y + g.height - prev_y) < snap_pixels;
 
             if (is_left && is_top)
                 return SLOT_TL;
@@ -179,8 +179,8 @@ class wayfire_move : public wayfire_plugin_t {
             int nx = wl_fixed_to_int(sx);
             int ny = wl_fixed_to_int(sy);
 
-            view->move(view->geometry.origin.x + nx - prev_x,
-                    view->geometry.origin.y + ny - prev_y);
+            view->move(view->geometry.x + nx - prev_x,
+                    view->geometry.y + ny - prev_y);
             prev_x = nx;
             prev_y = ny;
 

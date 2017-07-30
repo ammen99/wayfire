@@ -19,7 +19,6 @@ class wayfire_command : public wayfire_plugin_t {
         using namespace std::placeholders;
 
 
-        debug << "load commmand" << std::endl;
         auto section = config->get_section("command");
 
         std::vector<std::string> commands;
@@ -30,7 +29,6 @@ class wayfire_command : public wayfire_plugin_t {
         }
 
         v.resize(commands.size());
-        debug << "size: " << commands.size() << std::endl;
         int i = 0;
 
         for (auto num : commands) {
@@ -40,11 +38,9 @@ class wayfire_command : public wayfire_plugin_t {
             auto comvalue = section->get_string(command, "");
             auto key = section->get_key(binding, {0, 0});
 
-            debug << "got " << comvalue << std::endl;
             if (key.keyval == 0 || command == "")
                 continue;
 
-            debug << "register" << key.mod << " " << key.keyval << " " << XKB_KEY_d  << " " << KEY_D << std::endl;
             v[i++] = [=] (weston_keyboard* kbd, uint32_t key) {
                 core->run(comvalue.c_str());
             };

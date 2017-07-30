@@ -33,7 +33,8 @@ class wayfire_expo : public wayfire_plugin_t {
         int delimiter_offset;
 
     public:
-    void init(wayfire_config *config) {
+    void init(wayfire_config *config)
+    {
         grab_interface->name = "expo";
         grab_interface->compatAll = false;
         grab_interface->compat.insert("screenshot");
@@ -74,7 +75,6 @@ class wayfire_expo : public wayfire_plugin_t {
         };
 
         core->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb, output);
-
 
         wayfire_touch_gesture activate_gesture;
         activate_gesture.type = GESTURE_PINCH;
@@ -194,8 +194,8 @@ class wayfire_expo : public wayfire_plugin_t {
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
         int max = std::max(vw, vh);
-        moving_view->move(moving_view->geometry.origin.x + (cx - sx) * max,
-                moving_view->geometry.origin.y + (cy - sy) * max);
+        moving_view->move(moving_view->geometry.x + (cx - sx) * max,
+                moving_view->geometry.y + (cy - sy) * max);
 
         sx = cx;
         sy = cy;
@@ -213,15 +213,15 @@ class wayfire_expo : public wayfire_plugin_t {
     void input_coordinates_to_global_coordinates(int &sx, int &sy)
     {
         auto og = output->get_full_geometry();
-        sx -= og.origin.x;
-        sy -= og.origin.y;
+        sx -= og.x;
+        sy -= og.y;
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
         float max = std::max(vw, vh);
 
-        float grid_start_x = og.size.w * (max - vw) / float(max) / 2;
-        float grid_start_y = og.size.h * (max - vh) / float(max) / 2;
+        float grid_start_x = og.width * (max - vw) / float(max) / 2;
+        float grid_start_y = og.height * (max - vh) / float(max) / 2;
 
         sx -= grid_start_x;
         sy -= grid_start_y;
@@ -237,12 +237,12 @@ class wayfire_expo : public wayfire_plugin_t {
 
         input_coordinates_to_global_coordinates(sx, sy);
 
-        sx -= vx * og.size.w;
-        sy -= vy * og.size.h;
+        sx -= vx * og.width;
+        sy -= vy * og.height;
 
         wayfire_view search = nullptr;
         output->workspace->for_each_view([&search, og, sx, sy] (wayfire_view v) {
-            if (!search && point_inside({sx + og.origin.x, sy + og.origin.y}, v->geometry))
+            if (!search && point_inside({sx + og.x, sy + og.y}, v->geometry))
             search = v;
         });
 
@@ -254,8 +254,8 @@ class wayfire_expo : public wayfire_plugin_t {
 
         input_coordinates_to_global_coordinates(x, y);
 
-        target_vx = x / og.size.w;
-        target_vy = y / og.size.h;
+        target_vx = x / og.width;
+        target_vy = y / og.height;
     }
 
     void handle_input_press(wl_fixed_t x, wl_fixed_t y, uint32_t state)
@@ -319,10 +319,12 @@ class wayfire_expo : public wayfire_plugin_t {
                             render_params.scale_x, render_params.scale_y);
                 }
 
-                wayfire_geometry g = {
-                    .origin = {(i - vx) * w + delimiter_offset,
-                               (j - vy) * h + delimiter_offset},
-                    .size = {w - 2 * delimiter_offset, h - 2 * delimiter_offset}};
+                weston_geometry g = {
+                    (i - vx) * w + delimiter_offset,
+                    (j - vy) * h + delimiter_offset,
+                    w - 2 * delimiter_offset,
+                    h - 2 * delimiter_offset
+                };
 
                 OpenGL::texture_geometry texg;
                 texg.x1 = 0;

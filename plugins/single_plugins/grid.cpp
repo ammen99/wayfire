@@ -13,7 +13,7 @@
 
 class wayfire_grid : public wayfire_plugin_t {
 
-    std::unordered_map<wayfire_view, wayfire_geometry> saved_view_geometry;
+    std::unordered_map<wayfire_view, weston_geometry> saved_view_geometry;
     signal_callback_t output_resized_cb, view_destroyed_cb;
 
     std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
@@ -37,7 +37,7 @@ class wayfire_grid : public wayfire_plugin_t {
     signal_callback_t snap_cb, maximized_cb, fullscreen_cb;
 
     struct {
-        wayfire_geometry original, target;
+        weston_geometry original, target;
         wayfire_view view;
     } current_view;
 
@@ -116,7 +116,7 @@ class wayfire_grid : public wayfire_plugin_t {
         current_step = 0;
         current_view.view = view;
         current_view.original = view->geometry;
-        current_view.target = {{tx, ty}, {tw, th}};
+        current_view.target = {tx, ty, tw, th};
 
         weston_desktop_surface_set_resizing(view->desktop_surface, true);
         output->render->auto_redraw(true);
@@ -126,14 +126,14 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void update_pos_size()
     {
-        int cx = GetProgress(current_view.original.origin.x,
-                current_view.target.origin.x, current_step, total_steps);
-        int cy = GetProgress(current_view.original.origin.y,
-                current_view.target.origin.y, current_step, total_steps);
-        int cw = GetProgress(current_view.original.size.w,
-                current_view.target.size.w, current_step, total_steps);
-        int ch = GetProgress(current_view.original.size.h,
-                current_view.target.size.h, current_step, total_steps);
+        int cx = GetProgress(current_view.original.x,
+                current_view.target.x, current_step, total_steps);
+        int cy = GetProgress(current_view.original.y,
+                current_view.target.y, current_step, total_steps);
+        int cw = GetProgress(current_view.original.width,
+                current_view.target.width, current_step, total_steps);
+        int ch = GetProgress(current_view.original.height,
+                current_view.target.height, current_step, total_steps);
 
         current_view.view->set_geometry(cx, cy, cw, ch);
 
@@ -170,18 +170,18 @@ class wayfire_grid : public wayfire_plugin_t {
                 force_maximize)
         {
             saved_view_geometry[v] = v->geometry;
-            x = g.origin.x;
-            y = g.origin.y;
-            w = g.size.w;
-            h = g.size.h;
+            x = g.x;
+            y = g.y;
+            w = g.width;
+            h = g.height;
 
             if (!use_full_area)
                 v->set_maximized(true);
         } else {
-            x = it->second.origin.x;
-            y = it->second.origin.y;
-            w = it->second.size.w;
-            h = it->second.size.h;
+            x = it->second.x;
+            y = it->second.y;
+            w = it->second.width;
+            h = it->second.height;
 
             saved_view_geometry.erase(it);
 
@@ -194,25 +194,25 @@ class wayfire_grid : public wayfire_plugin_t {
     {
         auto g = output->workspace->get_workarea();
 
-        int w2 = g.size.w / 2;
-        int h2 = g.size.h / 2;
+        int w2 = g.width / 2;
+        int h2 = g.height / 2;
 
         if(n == 7)
-            x = g.origin.x, y = g.origin.y, w = w2, h = h2;
+            x = g.x, y = g.y, w = w2, h = h2;
         if(n == 8)
-            x = g.origin.x, y = g.origin.y, w = g.size.w, h = h2;
+            x = g.x, y = g.y, w = g.width, h = h2;
         if(n == 9)
-            x = g.origin.x + w2, y = g.origin.y, w = w2, h = h2;
+            x = g.x + w2, y = g.y, w = w2, h = h2;
         if(n == 4)
-            x = g.origin.x, y = g.origin.y, w = w2, h = g.size.h;
+            x = g.x, y = g.y, w = w2, h = g.height;
         if(n == 6)
-            x = g.origin.x + w2, y = g.origin.y, w = w2, h = g.size.h;
+            x = g.x + w2, y = g.y, w = w2, h = g.height;
         if(n == 1)
-            x = g.origin.x, y = g.origin.y + h2, w = w2, h = h2;
+            x = g.x, y = g.y + h2, w = w2, h = h2;
         if(n == 2)
-            x = g.origin.x, y = g.origin.y + h2, w = g.size.w, h = h2;
+            x = g.x, y = g.y + h2, w = g.width, h = h2;
         if(n == 3)
-            x = g.origin.x + w2, y = g.origin.y + h2, w = w2, h = h2;
+            x = g.x + w2, y = g.y + h2, w = w2, h = h2;
     }
 
     void snap_signal_cb(signal_data *ddata)

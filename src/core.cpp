@@ -1012,7 +1012,7 @@ void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayf
 
         old_x = new_output->handle->x - old_x;
         old_y = new_output->handle->y - old_y;
-        v->move(v->geometry.origin.x + old_x, v->geometry.origin.y + old_y);
+        v->move(v->geometry.x + old_x, v->geometry.y + old_y);
     } else {
         close_view(v);
     }

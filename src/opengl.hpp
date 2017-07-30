@@ -56,10 +56,10 @@ namespace OpenGL {
 
     /* texg arguments are used only when bits has USE_TEX_GEOMETRY
      * if you don't wish to use them, simply pass {} as argument */
-    void render_transformed_texture(GLuint text, const wayfire_geometry& g,
+    void render_transformed_texture(GLuint text, const weston_geometry& g,
             const texture_geometry& texg, glm::mat4 transform = glm::mat4(),
             glm::vec4 color = glm::vec4(1.f), uint32_t bits = 0);
-    void render_texture(GLuint tex, const wayfire_geometry& g,
+    void render_texture(GLuint tex, const weston_geometry& g,
             const texture_geometry& texg, uint32_t bits);
 
     GLuint duplicate_texture(GLuint source_tex, int w, int h);

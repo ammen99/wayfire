@@ -302,8 +302,8 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
     GetTuple(x, y, vp);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
 
-    int dx = -g.origin.x + (cx - x)  * output->handle->width,
-        dy = -g.origin.y + (cy - y)  * output->handle->height;
+    int dx = -g.x + (cx - x)  * output->handle->width,
+        dy = -g.y + (cy - y)  * output->handle->height;
 
     auto views = output->workspace->get_renderable_views_on_workspace(vp);
     auto it = views.rbegin();
@@ -312,13 +312,13 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
         auto v = *it;
         if (v->is_visible()) {
             if (!v->is_special) {
-                v->geometry.origin.x += dx;
-                v->geometry.origin.y += dy;
+                v->geometry.x += dx;
+                v->geometry.y += dy;
             }
             v->render(0);
             if (!v->is_special) {
-                v->geometry.origin.x -= dx;
-                v->geometry.origin.y -= dy;
+                v->geometry.x -= dx;
+                v->geometry.y -= dy;
             }
         }
         ++it;
@@ -350,8 +350,8 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
     /* TODO: this assumes we use viewports arranged in a grid
      * It would be much better to actually ask the workspace_manager
      * for view's position on the given workspace*/
-    int dx = -g.origin.x + (cx - x)  * output->handle->width,
-        dy = -g.origin.y + (cy - y)  * output->handle->height;
+    int dx = -g.x + (cx - x)  * output->handle->width,
+        dy = -g.y + (cy - y)  * output->handle->height;
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
     auto it = views.rbegin();
@@ -360,13 +360,13 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
         auto v = *it;
         if (v->is_visible()) {
             if (!v->is_special) {
-                v->geometry.origin.x += dx;
-                v->geometry.origin.y += dy;
+                v->geometry.x += dx;
+                v->geometry.y += dy;
             }
             v->render(0);
             if (!v->is_special) {
-                v->geometry.origin.x -= dx;
-                v->geometry.origin.y -= dy;
+                v->geometry.x -= dx;
+                v->geometry.y -= dy;
             }
         }
         ++it;
@@ -384,13 +384,11 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
 
-    int dx = -g.origin.x + (cx - x) * output->handle->width,
-        dy = -g.origin.y + (cy - y) * output->handle->height;
+    int dx = -g.x + (cx - x) * g.width,
+        dy = -g.y + (cy - y) * g.height;
 
     pixman_region32_t ws_damage;
-    pixman_region32_init_rect(&ws_damage, -dx, -dy,
-            output->handle->width, output->handle->height);
-
+    pixman_region32_init_rect(&ws_damage, -dx, -dy, g.width, g.height);
     pixman_region32_intersect(&ws_damage, &frame_damage, &ws_damage);
 
     /* we don't have to update anything */
@@ -406,7 +404,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
         stream->scale_y = scale_y;
 
         pixman_region32_union_rect(&ws_damage, &ws_damage, -dx, -dy,
-                output->handle->width, output->handle->height);
+                g.width, g.height);
     }
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
@@ -432,8 +430,8 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
                 pixman_region32_translate(&ws_damage, dx, dy);
 
             pixman_region32_init_rect(dv.damage,
-                    dv.view->geometry.origin.x - dv.view->ds_geometry.origin.x,
-                    dv.view->geometry.origin.y - dv.view->ds_geometry.origin.y,
+                    dv.view->geometry.x - dv.view->ds_geometry.x,
+                    dv.view->geometry.y - dv.view->ds_geometry.y,
                     dv.view->surface->width, dv.view->surface->height);
 
             pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
@@ -457,8 +455,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     };
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
-    GL_CALL(glViewport(0, 0, output->handle->width * scale_x,
-                output->handle->height * scale_y));
+    GL_CALL(glViewport(0, 0, g.width * scale_x, g.height * scale_y));
 
     glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(scale_x, scale_y, 1));
     glm::mat4 translate = glm::translate(glm::mat4(), glm::vec3(scale_x - 1, scale_y - 1, 0));
@@ -469,14 +466,14 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     while(rev_it != update_views.rend()) {
         auto dv = *rev_it;
         if (!dv.view->is_special) {
-            dv.view->geometry.origin.x += dx;
-            dv.view->geometry.origin.y += dy;
+            dv.view->geometry.x += dx;
+            dv.view->geometry.y += dy;
         }
         pixman_region32_translate(dv.damage, dx, dy);
         dv.view->render(0, dv.damage);
         if (!dv.view->is_special) {
-            dv.view->geometry.origin.x -= dx;
-            dv.view->geometry.origin.y -= dy;
+            dv.view->geometry.x -= dx;
+            dv.view->geometry.y -= dy;
         }
 
         pixman_region32_fini(dv.damage);
@@ -658,10 +655,10 @@ wayfire_output::~wayfire_output()
     delete render;
 }
 
-wayfire_geometry wayfire_output::get_full_geometry()
+weston_geometry wayfire_output::get_full_geometry()
 {
-    return {.origin = {handle->x, handle->y},
-            .size = {handle->width, handle->height}};
+    return {handle->x, handle->y,
+            handle->width, handle->height};
 }
 
 void wayfire_output::set_transform(wl_output_transform new_tr)
@@ -685,21 +682,18 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
             if (view->maximized)
                 g = workspace->get_workarea();
 
-            /* TODO: this code assumes that we have viewports arranged in a grid
-             * this should be fixed by introducing view->workspace field
-             * and workspace->get_position_for_view_in_workspace() or similar */
-            int vx = view->geometry.origin.x / old_w;
-            int vy = view->geometry.origin.y / old_h;
+            int vx = view->geometry.x / old_w;
+            int vy = view->geometry.y / old_h;
 
-            g.origin.x += vx * handle->width;
-            g.origin.y += vy * handle->height;
+            g.x += vx * handle->width;
+            g.y += vy * handle->height;
 
             view->set_geometry(g);
         } else {
-            float px = 1. * view->geometry.origin.x / old_w;
-            float py = 1. * view->geometry.origin.y / old_h;
-            float pw = 1. * view->geometry.size.w / old_w;
-            float ph = 1. * view->geometry.size.h / old_h;
+            float px = 1. * view->geometry.x / old_w;
+            float py = 1. * view->geometry.y / old_h;
+            float pw = 1. * view->geometry.width / old_w;
+            float ph = 1. * view->geometry.height / old_h;
 
             view->set_geometry(px * handle->width, py * handle->height,
 			    pw * handle->width, ph * handle->height);
@@ -724,8 +718,8 @@ void wayfire_output::ensure_pointer()
 
     auto g = get_full_geometry();
     if (!point_inside({px, py}, g)) {
-        wl_fixed_t cx = wl_fixed_from_int(g.origin.x + g.size.w / 2);
-        wl_fixed_t cy = wl_fixed_from_int(g.origin.y + g.size.h / 2);
+        wl_fixed_t cx = wl_fixed_from_int(g.x + g.width / 2);
+        wl_fixed_t cy = wl_fixed_from_int(g.y + g.height / 2);
 
         weston_pointer_motion_event ev;
         ev.mask |= WESTON_POINTER_MOTION_ABS;

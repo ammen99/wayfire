@@ -158,7 +158,7 @@ class vswitch : public wayfire_plugin_t {
 
         for (auto view : views_to_move) {
             if (view->is_mapped && !view->destroyed)
-                views.push_back({view, view->geometry.origin.x, view->geometry.origin.y});
+                views.push_back({view, view->geometry.x, view->geometry.y});
         }
 
         /* both workspaces are empty, so no animation, just switch */

@@ -30,7 +30,7 @@ class viewport_manager : public workspace_manager {
 
         std::vector<wayfire_view> get_views_on_workspace(std::tuple<int, int>);
         std::vector<wayfire_view>
-            get_renderable_views_on_workspace(std::tuple<int, int> ws);
+        get_renderable_views_on_workspace(std::tuple<int, int> ws);
 
         void set_workspace(std::tuple<int, int>);
 
@@ -42,10 +42,10 @@ class viewport_manager : public workspace_manager {
         void add_background(wayfire_view background, int x, int y);
         void add_panel(wayfire_view panel);
         void reserve_workarea(wayfire_shell_panel_position position,
-                uint32_t width, uint32_t height);
+             uint32_t width, uint32_t height);
         void configure_panel(wayfire_view view, int x, int y);
 
-        wayfire_geometry get_workarea();
+        weston_geometry get_workarea();
 };
 
 /* Start viewport_manager */
@@ -129,7 +129,7 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     auto dy = (vy - ny) * output->handle->height;
 
     for_each_view([=] (wayfire_view v) {
-        v->move(v->geometry.origin.x + dx, v->geometry.origin.y + dy);
+        v->move(v->geometry.x + dx, v->geometry.y + dy);
     });
 
 
@@ -162,13 +162,15 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 {
     GetTuple(tx, ty, vp);
 
-    wayfire_geometry g;
-    g.origin = {(tx - vx) * output->handle->width, (ty - vy) * (output->handle->height)};
-    g.size = {output->handle->width, output->handle->height};
+    weston_geometry g;
+    g.x = (tx - vx) * output->handle->width;
+    g.y = (ty - vy) * (output->handle->height);
+    g.width = output->handle->width;
+    g.height = output->handle->height;
 
     std::vector<wayfire_view> ret;
     for_each_view([&ret, g] (wayfire_view view) {
-        if (rect_inside(g, view->geometry)) {
+        if (rect_intersect(g, view->geometry)) {
             ret.push_back(view);
         }
     });
@@ -204,7 +206,7 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
     background->is_special = true;
 
     auto g = output->get_full_geometry();
-    background->move(x + g.origin.x, y + g.origin.y);
+    background->move(x + g.x, y + g.y);
 
     output->detach_view(background);
 
@@ -215,8 +217,8 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
 
     this->background = background;
 
-    background->ds_geometry.origin.x += g.origin.x;
-    background->ds_geometry.origin.y += g.origin.y;
+    background->ds_geometry.x += g.x;
+    background->ds_geometry.y += g.y;
 }
 
 void viewport_manager::add_panel(wayfire_view panel)
@@ -251,17 +253,18 @@ void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
 void viewport_manager::configure_panel(wayfire_view view, int x, int y)
 {
     auto g = output->get_full_geometry();
-    view->move(g.origin.x + x, g.origin.y + y);
+    view->move(g.x + x, g.y + y);
 }
 
-wayfire_geometry viewport_manager::get_workarea()
+weston_geometry viewport_manager::get_workarea()
 {
     auto g = output->get_full_geometry();
     return
     {
-        .origin = {g.origin.x + workarea.left_padding, g.origin.y + workarea.top_padding},
-        .size = {g.size.w - workarea.left_padding - workarea.right_padding,
-                 g.size.h - workarea.top_padding - workarea.bot_padding}
+        g.x + workarea.left_padding,
+        g.y + workarea.top_padding,
+        g.width - workarea.left_padding - workarea.right_padding,
+        g.height - workarea.top_padding - workarea.bot_padding
     };
 }
 

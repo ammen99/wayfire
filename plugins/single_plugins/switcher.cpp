@@ -177,10 +177,10 @@ class view_switcher : public wayfire_plugin_t {
         active_views.clear();
         for (auto v : views) {
             /* center of screen minus center of view */
-            float cx = -(sw / 2 - (v->geometry.origin.x + v->geometry.size.w / 2.f)) / sw * 2.f;
-            float cy =  (sh / 2 - (v->geometry.origin.y + v->geometry.size.h / 2.f)) / sh * 2.f;
+            float cx = -(sw / 2 - (v->geometry.x + v->geometry.width / 2.f)) / sw * 2.f;
+            float cy =  (sh / 2 - (v->geometry.y + v->geometry.height / 2.f)) / sh * 2.f;
 
-            float scale_factor = get_scale_factor(v->geometry.size.w, v->geometry.size.h, sw, sh, 0.28888);
+            float scale_factor = get_scale_factor(v->geometry.width, v->geometry.height, sw, sh, 0.28888);
 
             view_paint_attribs elem;
             elem.view = v;
@@ -221,9 +221,9 @@ class view_switcher : public wayfire_plugin_t {
         int cy = sh / 2;
 
 
-        wayfire_geometry compositor_geometry = v->geometry;
-        v->geometry.origin.x = cx - compositor_geometry.size.w / 2;
-        v->geometry.origin.y = cy - compositor_geometry.size.h / 2;
+        auto compositor_geometry = v->geometry;
+        v->geometry.x = cx - compositor_geometry.width / 2;
+        v->geometry.y = cy - compositor_geometry.height / 2;
         v->render(TEXTURE_TRANSFORM_USE_DEVCOORD);
         v->geometry = compositor_geometry;
     }
@@ -604,10 +604,10 @@ class view_switcher : public wayfire_plugin_t {
 
             const auto& v = views[i];
             /* center of screen minus center of view */
-            float cx = -(sw / 2 - (v->geometry.origin.x + v->geometry.size.w / 2.f)) / sw * 2.f;
-            float cy =  (sh / 2 - (v->geometry.origin.y + v->geometry.size.h / 2.f)) / sh * 2.f;
+            float cx = -(sw / 2 - (v->geometry.x + v->geometry.width / 2.f)) / sw * 2.f;
+            float cy =  (sh / 2 - (v->geometry.y + v->geometry.height / 2.f)) / sh * 2.f;
 
-            float scale_factor = get_scale_factor(v->geometry.size.w, v->geometry.size.h, sw, sh, 0.28888);
+            float scale_factor = get_scale_factor(v->geometry.width, v->geometry.height, sw, sh, 0.28888);
 
             if (i != next && i != prev && prev != next) {
                 elem.view = v;

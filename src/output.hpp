@@ -109,7 +109,7 @@ class workspace_manager
 
         /* returns the available area for views, it is basically
          * the output geometry minus the area reserved for panels */
-        virtual wayfire_geometry get_workarea() = 0;
+        virtual weston_geometry get_workarea() = 0;
 };
 
 /* when creating a signal there should be the definition of the derived class */
@@ -150,7 +150,7 @@ class wayfire_output
 
     wayfire_output(weston_output*, wayfire_config *config);
     ~wayfire_output();
-    wayfire_geometry get_full_geometry();
+    weston_geometry get_full_geometry();
 
     void set_transform(wl_output_transform new_transform);
     wl_output_transform get_transform();

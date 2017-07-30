@@ -5,10 +5,10 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include <functional>
+#include <libweston-desktop.h>
 #include <pixman.h>
 
 struct weston_view;
-struct weston_desktop_surface;
 struct weston_surface;
 
 class wayfire_view_transform {
@@ -36,22 +36,11 @@ struct wayfire_point {
     int x, y;
 };
 
-struct wayfire_size {
-    int w, h;
-};
+bool operator == (const weston_geometry& a, const weston_geometry& b);
+bool operator != (const weston_geometry& a, const weston_geometry& b);
 
-/* TODO: we already have weston_geometry, it makes more sense to use it wherever possible,
- * we should remove this one */
-struct wayfire_geometry {
-    wayfire_point origin;
-    wayfire_size size;
-};
-
-bool operator == (const wayfire_geometry& a, const wayfire_geometry& b);
-bool operator != (const wayfire_geometry& a, const wayfire_geometry& b);
-
-bool point_inside(wayfire_point point, wayfire_geometry rect);
-bool rect_inside(wayfire_geometry screen, wayfire_geometry win);
+bool point_inside(wayfire_point point, weston_geometry rect);
+bool rect_intersect(weston_geometry screen, weston_geometry win);
 
 class wayfire_view_t {
     public:
@@ -64,8 +53,8 @@ class wayfire_view_t {
 
         wayfire_output *output;
 
-        wayfire_geometry geometry, saved_geometry;
-        wayfire_geometry ds_geometry;
+        weston_geometry geometry, saved_geometry;
+        weston_geometry ds_geometry;
 
         struct {
             bool is_xorg = false;
@@ -74,7 +63,7 @@ class wayfire_view_t {
 
         void move(int x, int y);
         void resize(int w, int h);
-        void set_geometry(wayfire_geometry g);
+        void set_geometry(weston_geometry g);
         /* convenience function */
         void set_geometry(int x, int y, int w, int h);
 

@@ -52,10 +52,10 @@ class wayfire_screenshot : public wayfire_plugin_t {
             output->render->rem_effect(&hook);
 
             auto geometry = output->get_full_geometry();
-            uint8_t *pixels = new uint8_t[geometry.size.w * geometry.size.h * 4];
+            uint8_t *pixels = new uint8_t[geometry.width * geometry.height * 4];
 
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-            GL_CALL(glReadPixels(0, 0, 1920, 1080, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
+            GL_CALL(glReadPixels(0, 0, geometry.width, geometry.height, GL_RGBA, GL_UNSIGNED_BYTE, pixels));
 
             std::ostringstream out;
 
@@ -65,7 +65,7 @@ class wayfire_screenshot : public wayfire_plugin_t {
             auto fname = path + "screenshot-" + out.str() + ".png";
 
             image_io::write_to_file(fname, pixels,
-                    geometry.size.w, geometry.size.h, "png");
+                    geometry.width, geometry.height, "png");
         }
 };
 

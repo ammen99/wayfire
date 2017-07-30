@@ -21,39 +21,38 @@ glm::mat4 wayfire_view_transform::calculate_total_transform()
            (global_rotation * rotation) * (global_scale * scale);
 }
 
-bool operator == (const wayfire_geometry& a, const wayfire_geometry& b)
+bool operator == (const weston_geometry& a, const weston_geometry& b)
 {
-    return a.origin.x == b.origin.x && a.origin.y == b.origin.y &&
-        a.size.w == b.size.w && a.size.h == b.size.h;
+    return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
 }
 
-bool operator != (const wayfire_geometry& a, const wayfire_geometry& b)
+bool operator != (const weston_geometry& a, const weston_geometry& b)
 {
     return !(a == b);
 }
 
-bool point_inside(wayfire_point point, wayfire_geometry rect)
+bool point_inside(wayfire_point point, weston_geometry rect)
 {
-    if(point.x < rect.origin.x || point.y < rect.origin.y)
+    if(point.x < rect.x || point.y < rect.y)
         return false;
 
-    if(point.x > rect.origin.x + (int32_t)rect.size.w)
+    if(point.x > rect.x + rect.width)
         return false;
 
-    if(point.y > rect.origin.y + (int32_t)rect.size.h)
+    if(point.y > rect.y + rect.height)
         return false;
 
     return true;
 }
 
-bool rect_inside(wayfire_geometry screen, wayfire_geometry win)
+bool rect_intersect(weston_geometry screen, weston_geometry win)
 {
-    if (win.origin.x + (int32_t)win.size.w <= screen.origin.x ||
-            win.origin.y + (int32_t)win.size.h <= screen.origin.y)
+    if (win.x + (int32_t)win.width <= screen.x ||
+        win.y + (int32_t)win.height <= screen.y)
         return false;
 
-    if (screen.origin.x + (int32_t)screen.size.w <= win.origin.x ||
-            screen.origin.y + (int32_t)screen.size.h <= win.origin.y)
+    if (screen.x + (int32_t)screen.width <= win.x ||
+        screen.y + (int32_t)screen.height <= win.y)
         return false;
     return true;
 }
@@ -70,11 +69,11 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
     weston_desktop_surface_set_activated(ds, true);
 
     desktop_surface = ds;
-    ds_geometry = {{0, 0}, {0, 0}};
+    ds_geometry = {0, 0, 0, 0};
     surface = weston_desktop_surface_get_surface(ds);
 
-    geometry.size.w = surface->width;
-    geometry.size.h = surface->height;
+    geometry.width = surface->width;
+    geometry.height = surface->height;
 
     transform.color = glm::vec4(1, 1, 1, 1);
 
@@ -97,15 +96,16 @@ bool wayfire_view_t::is_visible()
 
 void wayfire_view_t::move(int x, int y)
 {
-    geometry.origin = {x, y};
-    weston_view_set_position(handle, x - ds_geometry.origin.x,
-            y - ds_geometry.origin.y);
+    geometry.x = x;
+    geometry.y = y;
+    weston_view_set_position(handle, x - ds_geometry.x,
+            y - ds_geometry.y);
 
     /* TODO: we should check if surface is wayland/xwayland in the beginning, since
      * this won't change, it doesn't make sense to check this every time */
     if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
-        xwayland_surface_api->send_position(surface, x - ds_geometry.origin.x,
-                y - ds_geometry.origin.y);
+        xwayland_surface_api->send_position(surface, x - ds_geometry.x,
+                y - ds_geometry.y);
 }
 
 void wayfire_view_t::resize(int w, int h)
@@ -113,20 +113,16 @@ void wayfire_view_t::resize(int w, int h)
     weston_desktop_surface_set_size(desktop_surface, w, h);
 }
 
-void wayfire_view_t::set_geometry(wayfire_geometry g)
+void wayfire_view_t::set_geometry(weston_geometry g)
 {
-    move(g.origin.x, g.origin.y);
-    resize(g.size.w, g.size.h);
+    move(g.x, g.y);
+    resize(g.width, g.height);
 }
 
 void wayfire_view_t::set_geometry(int x, int y, int w, int h)
 {
-    geometry = (wayfire_geometry) {
-        .origin = {x, y},
-         .size = {(int32_t)w, (int32_t)h}
-    };
-
-    set_geometry(geometry);
+    move(x, y);
+    resize(w, h);
 }
 
 void wayfire_view_t::set_maximized(bool maxim)
@@ -149,15 +145,10 @@ void wayfire_view_t::map(int sx, int sy)
             sx += output->handle->x;
             sy += output->handle->y;
 
-            auto g = weston_desktop_surface_get_geometry(desktop_surface);
+            ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
 
-            if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface)) {
-                ds_geometry.origin = {0, 0};
-            } else {
-                ds_geometry.origin = {g.x, g.y};
-            }
-
-            ds_geometry.size = {g.width, g.height};
+            if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
+                ds_geometry.x = ds_geometry.y = 0;
 
             if (xwayland.is_xorg) {
                 sx = xwayland.x;
@@ -165,7 +156,8 @@ void wayfire_view_t::map(int sx, int sy)
             }
 
             move(sx, sy);
-            geometry.origin = {sx, sy};
+            geometry.x = sx;
+            geometry.y = sy;
         }
 
         weston_view_update_transform(handle);
@@ -180,12 +172,13 @@ void wayfire_view_t::map(int sx, int sy)
     }
 
     auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
-    if (new_ds_g.x != ds_geometry.origin.x || new_ds_g.y != ds_geometry.origin.y) {
-        ds_geometry.origin = {new_ds_g.x, new_ds_g.y};
-        move(geometry.origin.x, geometry.origin.y);
+    if (new_ds_g.x != ds_geometry.x || new_ds_g.y != ds_geometry.y) {
+        ds_geometry = new_ds_g;
+        move(geometry.x, geometry.y);
     }
 
-    geometry.size = {new_ds_g.width, new_ds_g.height};
+    geometry.width = new_ds_g.width;
+    geometry.height = new_ds_g.height;
 }
 
 static void render_surface(weston_surface *surface, pixman_region32_t *damage,
@@ -205,7 +198,7 @@ void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
     }
 
     render_surface(surface, damage,
-            geometry.origin.x - ds_geometry.origin.x, geometry.origin.y - ds_geometry.origin.y,
+            geometry.x - ds_geometry.x, geometry.y - ds_geometry.y,
             transform.calculate_total_transform(), transform.color, bits);
 
     if (free_damage)
@@ -230,9 +223,10 @@ static inline void render_surface_box(GLuint tex[3], int n_tex, const pixman_box
         1.0f * (subbox.y2 - surface_box.y1) / (surface_box.y2 - surface_box.y1),
     };
 
-    wayfire_geometry geometry =
-    {.origin = {subbox.x1, subbox.y1},
-     .size = {subbox.x2 - subbox.x1, subbox.y2 - subbox.y1}
+    weston_geometry geometry =
+    {
+        subbox.x1, subbox.y1,
+        subbox.x2 - subbox.x1, subbox.y2 - subbox.y1
     };
 
     for (int i = 0; i < n_tex; i++) {

@@ -15,7 +15,7 @@ class wayfire_resize : public wayfire_plugin_t {
     wayfire_view view;
 
     int initial_x, initial_y;
-    wayfire_geometry initial_geometry;
+    weston_geometry initial_geometry;
 
     uint32_t edges;
     public:
@@ -113,17 +113,17 @@ class wayfire_resize : public wayfire_plugin_t {
         initial_geometry = view->geometry;
 
         if (forced_edges == 0) {
-            int view_x = initial_x - view->geometry.origin.x;
-            int view_y = initial_y - view->geometry.origin.y;
+            int view_x = initial_x - view->geometry.x;
+            int view_y = initial_y - view->geometry.y;
 
             edges = 0;
-            if (view_x < view->geometry.size.w / 2) {
+            if (view_x < view->geometry.width / 2) {
                 edges |= WL_SHELL_SURFACE_RESIZE_LEFT;
             } else {
                 edges |= WL_SHELL_SURFACE_RESIZE_RIGHT;
             }
 
-            if (view_y < view->geometry.size.h / 2) {
+            if (view_y < view->geometry.height / 2) {
                 edges |= WL_SHELL_SURFACE_RESIZE_TOP;
             } else {
                 edges |= WL_SHELL_SURFACE_RESIZE_BOTTOM;
@@ -167,17 +167,17 @@ class wayfire_resize : public wayfire_plugin_t {
         int dy = current_y - initial_y;
 
         if (edges & WL_SHELL_SURFACE_RESIZE_LEFT) {
-            newg.origin.x += dx;
-            newg.size.w -= dx;
+            newg.x += dx;
+            newg.width -= dx;
         } else {
-            newg.size.w += dx;
+            newg.width += dx;
         }
 
         if (edges & WL_SHELL_SURFACE_RESIZE_TOP) {
-            newg.origin.y += dy;
-            newg.size.h -= dy;
+            newg.y += dy;
+            newg.height -= dy;
         } else {
-            newg.size.h += dy;
+            newg.height += dy;
         }
 
         auto max_size = weston_desktop_surface_get_max_size(view->desktop_surface);
@@ -187,12 +187,12 @@ class wayfire_resize : public wayfire_plugin_t {
         min_size.height = std::max(min_size.height, 10);
 
         if (max_size.width > 0)
-            newg.size.w = std::min(max_size.width, newg.size.w);
-        newg.size.w = std::max(min_size.width, newg.size.w);
+            newg.width = std::min(max_size.width, newg.width);
+        newg.width = std::max(min_size.width, newg.width);
 
         if (max_size.height > 0)
-            newg.size.h = std::min(max_size.height, newg.size.h);
-        newg.size.h = std::max(min_size.height, newg.size.h);
+            newg.height = std::min(max_size.height, newg.height);
+        newg.height = std::max(min_size.height, newg.height);
 
         view->set_geometry(newg);
     }
