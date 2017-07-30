@@ -173,6 +173,17 @@ class wayfire_output
     void focus_view(wayfire_view v, weston_seat *seat);
     void set_active_view(wayfire_view v);
     void bring_to_front(wayfire_view v);
+
+    weston_binding *add_key(uint32_t mod, uint32_t key, key_callback *);
+    weston_binding *add_button(uint32_t mod, uint32_t button, button_callback *);
+
+    int add_touch(uint32_t mod, touch_callback*);
+    void rem_touch(int32_t id);
+
+    /* we take only gesture type and finger count into account,
+     * we send for all possible directions */
+    int add_gesture(const wayfire_touch_gesture& gesture, touch_gesture_callback* callback);
+    void rem_gesture(int id);
 };
 extern const struct wayfire_shell_interface shell_interface_impl;
 #endif /* end of include guard: OUTPUT_HPP */

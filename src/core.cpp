@@ -6,6 +6,7 @@
 
 #include "core.hpp"
 #include "output.hpp"
+#include "input-manager.hpp"
 
 #if BUILD_WITH_IMAGEIO
 #include "img.hpp"
@@ -492,9 +493,9 @@ input_manager::input_manager()
 }
 
 int input_manager::add_gesture(const wayfire_touch_gesture& gesture,
-        touch_gesture_callback *callback)
+        touch_gesture_callback *callback, wayfire_output *output)
 {
-    gesture_listeners[gesture_id] = {gesture, callback};
+    gesture_listeners[gesture_id] = {gesture, callback, output};
     gesture_id++;
     return gesture_id - 1;
 }
@@ -508,8 +509,11 @@ void input_manager::handle_gesture(wayfire_touch_gesture g)
 {
     for (const auto& listener : gesture_listeners) {
         if (listener.second.gesture.type == g.type &&
-                listener.second.gesture.finger_count == g.finger_count)
+            listener.second.gesture.finger_count == g.finger_count &&
+            core->get_active_output() == listener.second.output)
+        {
             (*listener.second.call)(&g);
+        }
     }
 }
 
@@ -775,8 +779,10 @@ void refocus_idle_cb(void *data)
 
 void wayfire_core::wake()
 {
-    if (times_wake == 0 && run_panel)
+    if (times_wake == 0 && run_panel) {
+        input = new input_manager();
         run(INSTALL_PREFIX "/lib/wayfire/wayfire-shell-client");
+    }
 
     for (auto out : pending_outputs)
         add_output(out);

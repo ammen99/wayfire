@@ -84,7 +84,7 @@ class view_switcher : public wayfire_plugin_t {
             fast_switch();
         };
 
-        core->input->add_key(fast_switch_key.mod, fast_switch_key.keyval, &fast_switch_binding, output);
+        output->add_key(fast_switch_key.mod, fast_switch_key.keyval, &fast_switch_binding);
 
         max_steps = section->get_duration("duration", 30);
         initial_animation_steps = section->get_duration("initial_animation", 5);;
@@ -102,7 +102,8 @@ class view_switcher : public wayfire_plugin_t {
                 }
             }
         };
-        core->input->add_key(activate_key.mod, activate_key.keyval, &init_binding, output);
+
+        output->add_key(activate_key.mod, activate_key.keyval, &init_binding);
 
         using namespace std::placeholders;
         grab_interface->callbacks.keyboard.key = std::bind(std::mem_fn(&view_switcher::handle_key),

@@ -74,12 +74,12 @@ class wayfire_expo : public wayfire_plugin_t {
                 activate();
         };
 
-        core->input->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb, output);
+        output->add_key(toggle_key.mod, toggle_key.keyval, &toggle_cb);
 
         wayfire_touch_gesture activate_gesture;
         activate_gesture.type = GESTURE_PINCH;
         activate_gesture.finger_count = 3;
-        core->input->add_gesture(activate_gesture, &touch_toggle_cb);
+        output->add_gesture(activate_gesture, &touch_toggle_cb);
 
         action_button = section->get_button("action", {0, BTN_LEFT});
 

@@ -62,7 +62,7 @@ class wayfire_grid : public wayfire_plugin_t {
                     handle_key(view, i);
             };
 
-            core->input->add_key(keys[i].mod, keys[i].keyval, &bindings[i], output);
+            output->add_key(keys[i].mod, keys[i].keyval, &bindings[i]);
         }
 
         hook = std::bind(std::mem_fn(&wayfire_grid::update_pos_size), this);
@@ -111,7 +111,8 @@ class wayfire_grid : public wayfire_plugin_t {
     {
         if (!output->activate_plugin(grab_interface))
             return;
-        core->input->grab_input(grab_interface);
+
+        grab_interface->grab();
 
         current_step = 0;
         current_view.view = view;
@@ -152,7 +153,7 @@ class wayfire_grid : public wayfire_plugin_t {
         output->render->auto_redraw(false);
         output->render->rem_effect(&hook);
 
-        core->input->ungrab_input(grab_interface);
+        grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
 
         current_view.view = nullptr;

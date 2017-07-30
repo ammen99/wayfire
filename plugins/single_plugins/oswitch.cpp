@@ -49,8 +49,8 @@ class wayfire_output_manager : public wayfire_plugin_t {
                 wl_event_loop_add_idle(loop, next_output_idle_cb, next);
             };
 
-            core->input->add_key(actkey.mod, actkey.keyval, &switch_output, output);
-            core->input->add_key(withwin.mod, withwin.keyval, &switch_output_with_window, output);
+            output->add_key(actkey.mod, actkey.keyval, &switch_output);
+            output->add_key(withwin.mod, withwin.keyval, &switch_output_with_window);
 
             /* we exploit the fact that when we're called a new output is
              * created, so we can configure it here */

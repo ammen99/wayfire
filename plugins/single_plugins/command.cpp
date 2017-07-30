@@ -45,7 +45,7 @@ class wayfire_command : public wayfire_plugin_t {
                 core->run(comvalue.c_str());
             };
 
-            core->input->add_key((weston_keyboard_modifier)key.mod, key.keyval, &v[i - 1], output);
+            output->add_key((weston_keyboard_modifier)key.mod, key.keyval, &v[i - 1]);
         }
     }
 };

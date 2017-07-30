@@ -9,7 +9,7 @@ void wayfire_exit::init(wayfire_config*)
         weston_compositor_shutdown(core->ec);
     };
 
-    core->input->add_key(MODIFIER_SUPER | MODIFIER_SHIFT, KEY_ESC, &key, output);
+    output->add_key(MODIFIER_SUPER | MODIFIER_SHIFT, KEY_ESC, &key);
 }
 
 void wayfire_close::init(wayfire_config *config)
@@ -21,7 +21,7 @@ void wayfire_close::init(wayfire_config *config)
             core->close_view(view);
     };
 
-    core->input->add_key(key.mod, key.keyval, &callback, output);
+    output->add_key(key.mod, key.keyval, &callback);
 }
 
 void wayfire_focus::init(wayfire_config *)
@@ -42,7 +42,7 @@ void wayfire_focus::init(wayfire_config *)
         view->output->focus_view(view, ptr->seat);
     };
 
-    core->input->add_button((weston_keyboard_modifier)0, BTN_LEFT, &callback, output);
+    output->add_button((weston_keyboard_modifier)0, BTN_LEFT, &callback);
 
     touch = [=] (weston_touch *touch, wl_fixed_t sx, wl_fixed_t sy)
     {
@@ -55,5 +55,5 @@ void wayfire_focus::init(wayfire_config *)
         view->output->focus_view(view, touch->seat);
     };
 
-    core->input->add_touch(0, &touch, output);
+    output->add_touch(0, &touch);
 }

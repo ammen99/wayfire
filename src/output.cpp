@@ -1,6 +1,8 @@
 #include "opengl.hpp"
 #include "output.hpp"
 #include "signal_definitions.hpp"
+#include "input-manager.hpp"
+
 #include <linux/input.h>
 
 #include "wm.hpp"
@@ -893,4 +895,37 @@ bool wayfire_output::is_plugin_active(owner_t name)
             return true;
 
     return false;
+}
+
+/* simple wrappers for core->input, as it isn't exposed to plugins */
+
+weston_binding* wayfire_output::add_key(uint32_t mod, uint32_t key, key_callback* callback)
+{
+    return core->input->add_key(mod, key, callback, this);
+}
+
+weston_binding* wayfire_output::add_button(uint32_t mod, uint32_t button, button_callback* callback)
+{
+    return core->input->add_button(mod, button, callback, this);
+}
+
+int wayfire_output::add_touch(uint32_t mod, touch_callback* callback)
+{
+    return core->input->add_touch(mod, callback, this);
+}
+
+void wayfire_output::rem_touch(int32_t id)
+{
+    core->input->rem_touch(id);
+}
+
+int wayfire_output::add_gesture(const wayfire_touch_gesture& gesture,
+                                touch_gesture_callback* callback)
+{
+    return core->input->add_gesture(gesture, callback, this);
+}
+
+void wayfire_output::rem_gesture(int id)
+{
+    core->input->rem_gesture(id);
 }

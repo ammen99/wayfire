@@ -14,6 +14,25 @@ using button_callback = std::function<void(weston_pointer*, uint32_t)>;
 using touch_callback = std::function<void(weston_touch*, wl_fixed_t, wl_fixed_t)>;
 using touch_gesture_callback = std::function<void(wayfire_touch_gesture*)>;
 
+enum wayfire_gesture_type {
+    GESTURE_NONE,
+    GESTURE_SWIPE,
+    GESTURE_PINCH
+};
+
+#define GESTURE_DIRECTION_LEFT (1 << 0)
+#define GESTURE_DIRECTION_RIGHT (1 << 1)
+#define GESTURE_DIRECTION_UP (1 << 2)
+#define GESTURE_DIRECTION_DOWN (1 << 3)
+#define GESTURE_DIRECTION_IN (1 << 4)
+#define GESTURE_DIRECTION_OUT (1 << 5)
+
+struct wayfire_touch_gesture {
+    wayfire_gesture_type type;
+    uint32_t direction;
+    int finger_count;
+};
+
 class wayfire_output;
 class wayfire_config;
 using owner_t = string;
@@ -22,7 +41,7 @@ using owner_t = string;
 struct wayfire_grab_interface_t {
     private:
         bool grabbed = false;
-        friend struct input_manager;
+        friend class input_manager;
 
     public:
     owner_t name;

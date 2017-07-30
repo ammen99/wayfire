@@ -1,6 +1,7 @@
 #include "core.hpp"
 #include "output.hpp"
 #include <cmath>
+#include "input-manager.hpp"
 
 bool wayfire_grab_interface_t::grab()
 {

@@ -40,8 +40,8 @@ class wayfire_move : public wayfire_plugin_t {
                 initiate(core->find_view(touch->focus), sx, sy);
             };
 
-            core->input->add_button(button.mod, button.button, &activate_binding, output);
-            core->input->add_touch(button.mod, &touch_activate_binding, output);
+            output->add_button(button.mod, button.button, &activate_binding);
+            output->add_touch(button.mod, &touch_activate_binding);
 
             enable_snap = section->get_int("enable_snap", 1);
             snap_pixels = section->get_int("snap_threshold", 2);

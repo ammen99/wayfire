@@ -36,10 +36,10 @@ class wayfire_rotator : public wayfire_plugin_t {
             output->set_transform(WL_OUTPUT_TRANSFORM_90);
         };
 
-        core->input->add_key((weston_keyboard_modifier)up_key.mod, up_key.keyval, &up, output);
-        core->input->add_key((weston_keyboard_modifier)down_key.mod, down_key.keyval, &down, output);
-        core->input->add_key((weston_keyboard_modifier)left_key.mod, left_key.keyval, &left, output);
-        core->input->add_key((weston_keyboard_modifier)right_key.mod, right_key.keyval, &right, output);
+        output->add_key((weston_keyboard_modifier)up_key.mod, up_key.keyval, &up);
+        output->add_key((weston_keyboard_modifier)down_key.mod, down_key.keyval, &down);
+        output->add_key((weston_keyboard_modifier)left_key.mod, left_key.keyval, &left);
+        output->add_key((weston_keyboard_modifier)right_key.mod, right_key.keyval, &right);
     }
 };
 

@@ -44,7 +44,7 @@ class wayfire_screenshot : public wayfire_plugin_t {
                 output->render->add_output_effect(&hook);
                 weston_output_schedule_repaint(output->handle);
             };
-            core->input->add_key(key.mod, key.keyval, &binding, output);
+            output->add_key(key.mod, key.keyval, &binding);
         }
 
         void save_screenshot()

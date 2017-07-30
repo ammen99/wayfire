@@ -41,8 +41,8 @@ class wayfire_resize : public wayfire_plugin_t {
         };
 
 
-        core->input->add_button(button.mod, button.button, &activate_binding, output);
-        core->input->add_touch(button.mod, &touch_activate_binding, output);
+        output->add_button(button.mod, button.button, &activate_binding);
+        output->add_touch(button.mod, &touch_activate_binding);
 
         grab_interface->callbacks.pointer.button = [=] (weston_pointer*,
                 uint32_t b, uint32_t s)

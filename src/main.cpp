@@ -121,12 +121,12 @@ int main(int argc, char *argv[]) {
     desktop_api.set_xwayland_position = desktop_surface_set_xwayland_position;
 
     auto desktop = weston_desktop_create(ec, &desktop_api, NULL);
-    if (!desktop) {
+    if (!desktop)
+    {
         errio << "Failed to create weston_desktop" << std::endl;
         return -1;
     }
 
-    core->input = new input_manager();
     core->wake();
 
     weston_compositor_wake(ec);

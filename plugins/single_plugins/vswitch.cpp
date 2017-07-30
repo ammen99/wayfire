@@ -50,10 +50,10 @@ class vswitch : public wayfire_plugin_t {
         auto key_up    = section->get_key("binding_up",    {MODIFIER_SUPER, KEY_UP});
         auto key_down  = section->get_key("binding_down",  {MODIFIER_SUPER, KEY_DOWN});
 
-        core->input->add_key(key_left.mod,  key_left.keyval,  &callback_left, output);
-        core->input->add_key(key_right.mod, key_right.keyval, &callback_right, output);
-        core->input->add_key(key_up.mod,    key_up.keyval,    &callback_up, output);
-        core->input->add_key(key_down.mod,  key_down.keyval,  &callback_down, output);
+        output->add_key(key_left.mod,  key_left.keyval,  &callback_left);
+        output->add_key(key_right.mod, key_right.keyval, &callback_right);
+        output->add_key(key_up.mod,    key_up.keyval,    &callback_up);
+        output->add_key(key_down.mod,  key_down.keyval,  &callback_down);
 
         wayfire_touch_gesture activation_gesture;
         activation_gesture.finger_count = 4;
@@ -69,7 +69,7 @@ class vswitch : public wayfire_plugin_t {
             if (gesture->direction & GESTURE_DIRECTION_RIGHT)
                 add_direction(-1, 0);
         };
-        core->input->add_gesture(activation_gesture, &gesture_cb);
+        output->add_gesture(activation_gesture, &gesture_cb);
 
         max_step = section->get_duration("duration", 15);
         hook = std::bind(std::mem_fn(&vswitch::slide_update), this);

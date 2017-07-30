@@ -116,8 +116,8 @@ class wayfire_backlight : public wayfire_plugin_t {
                 backend->set(value);
             };
 
-            core->input->add_key(br_up.mod, br_up.keyval, &up, output);
-            core->input->add_key(br_down.mod, br_down.keyval, &down, output);
+            output->add_key(br_up.mod, br_up.keyval, &up);
+            output->add_key(br_down.mod, br_down.keyval, &down);
         }
 };
 

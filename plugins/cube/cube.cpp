@@ -71,8 +71,7 @@ class wayfire_cube : public wayfire_plugin_t {
             initiate(wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y));
         };
 
-        core->input->add_button(act_button.mod, act_button.button,
-                &activate, output);
+        output->add_button(act_button.mod, act_button.button, &activate);
 
         grab_interface->callbacks.pointer.button = [=] (weston_pointer*,
                 uint32_t b, uint32_t s)
