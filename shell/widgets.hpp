@@ -2,7 +2,8 @@
 #define WIDGETS_HPP
 
 #include <string>
-#include <cairo/cairo-ft.h>
+#include <cairo-ft.h>
+#include <functional>
 #include "../shared/config.hpp"
 
 void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
@@ -26,6 +27,9 @@ struct widget
     virtual bool update() = 0;
 
     virtual void repaint() = 0;
+
+    std::function<void(int x, int y)> pointer_motion = nullptr;
+    std::function<void(uint32_t, uint32_t, int, int)> pointer_button = nullptr;
 };
 
 struct clock_widget : public widget
@@ -47,6 +51,22 @@ struct battery_widget : public widget
     void create();
     bool update();
     void repaint();
+};
+
+struct launcher;
+struct launchers_widget : public widget
+{
+    bool need_repaint = true;
+
+    std::vector<launcher*> launchers;
+    void init_launchers(wayfire_config *config);
+
+    void create();
+    bool update();
+    void repaint();
+
+    void on_pointer_button(uint32_t state, int x, int y);
+    void on_pointer_motion(int x, int y);
 };
 
 struct net_widget : public widget

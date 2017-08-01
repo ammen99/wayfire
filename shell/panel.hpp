@@ -23,13 +23,18 @@ class wayfire_panel {
     } animation;
 
     void toggle_animation();
+
     void on_enter(wl_pointer*, uint32_t);
     void on_leave();
+    void on_button(uint32_t, uint32_t, int, int);
+    void on_motion(int, int);
 
     void add_callback(bool swapped);
 
     std::vector<widget*> widgets;
     void init_widgets();
+
+    wayfire_config *config;
 
     public:
         wayfire_window *window;

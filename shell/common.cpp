@@ -7,14 +7,19 @@
 
 wayfire_window *current_window = nullptr;
 
+int pointer_x, pointer_y;
+
 void pointer_enter(void *data, struct wl_pointer *wl_pointer,
     uint32_t serial, struct wl_surface *surface, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
+    pointer_x = wl_fixed_to_int(surface_x);
+    pointer_y = wl_fixed_to_int(surface_y);
+
     auto window = (wayfire_window*) wl_surface_get_user_data(surface);
     if (window && window->pointer_enter)
         window->pointer_enter(wl_pointer, serial,
-                wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y));
-    else if (window)
+                pointer_x, pointer_y);
+    if (window)
         current_window = window;
 }
 
@@ -30,15 +35,17 @@ void pointer_leave(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
 void pointer_motion(void *data, struct wl_pointer *wl_pointer, uint32_t time,
     wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
+    pointer_x = wl_fixed_to_int(surface_x);
+    pointer_y = wl_fixed_to_int(surface_y);
     if (current_window && current_window->pointer_move)
-        current_window->pointer_move(wl_fixed_to_int(surface_x), wl_fixed_to_int(surface_y));
+        current_window->pointer_move(pointer_x, pointer_y);
 }
 
 void pointer_button(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     uint32_t time, uint32_t button, uint32_t state)
 {
     if (current_window && current_window->pointer_button)
-        current_window->pointer_button(button, state);
+        current_window->pointer_button(button, state, pointer_x, pointer_y);
 }
 
 void pointer_axis(void *data, struct wl_pointer *wl_pointer, uint32_t time,

@@ -16,6 +16,7 @@ static const struct wl_callback_listener frame_listener = {
 
 wayfire_panel::wayfire_panel(wayfire_config *config)
 {
+    this->config = config;
     auto section = config->get_section("shell_panel");
     widget::background_color = section->get_color("background_color",
             {0.033, 0.041, 0.047, 0.9});
@@ -48,6 +49,8 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
     using namespace std::placeholders;
     window->pointer_enter = std::bind(std::mem_fn(&wayfire_panel::on_enter), this, _1, _2);
     window->pointer_leave = std::bind(std::mem_fn(&wayfire_panel::on_leave), this);
+    window->pointer_move  = std::bind(std::mem_fn(&wayfire_panel::on_motion), this, _1, _2);
+    window->pointer_button= std::bind(std::mem_fn(&wayfire_panel::on_button), this, _1, _2, _3, _4);
 }
 
 void wayfire_panel::resize(uint32_t w, uint32_t h)
@@ -77,6 +80,24 @@ void wayfire_panel::on_enter(wl_pointer *ptr, uint32_t serial)
 void wayfire_panel::on_leave()
 {
     toggle_animation();
+}
+
+void wayfire_panel::on_button(uint32_t button, uint32_t state, int x, int y)
+{
+    for (auto w : widgets)
+    {
+        if (w->pointer_button)
+            w->pointer_button(button, state, x, y);
+    }
+}
+
+void wayfire_panel::on_motion(int x, int y)
+{
+    for (auto w : widgets)
+    {
+        if (w->pointer_motion)
+            w->pointer_motion(x, y);
+    }
 }
 
 void wayfire_panel::add_callback(bool swapped)
@@ -109,9 +130,18 @@ void wayfire_panel::init_widgets()
     battery_widget *bat = new battery_widget();
     bat->cr = cairo_create(window->cairo_surface);
     bat->panel_h = height;
-    bat->max_w = 60;
+    bat->max_w = widget::font_size * 3;
     bat->center_x = width - bat->max_w / 2;
     widgets.push_back(bat);
+
+    launchers_widget *launch = new launchers_widget();
+    launch->cr = cairo_create(window->cairo_surface);
+    launch->panel_h = height;
+    launch->max_w = width / 2 - width / 5;
+    launch->center_x = launch->max_w / 2;
+    launch->init_launchers(config);
+
+    widgets.push_back(launch);
 
     for (auto w : widgets)
         w->create();

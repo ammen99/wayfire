@@ -8,7 +8,7 @@
 #include <iostream>
 #include <functional>
 
-#include <cairo/cairo-gl.h>
+#include <cairo-gl.h>
 
 extern struct wayfire_display {
     wl_compositor *compositor;
@@ -40,7 +40,7 @@ struct wayfire_window {
     std::function<void(wl_pointer*, uint32_t, int x, int y)> pointer_enter;
     std::function<void()> pointer_leave;
     std::function<void(int x, int y)> pointer_move;
-    std::function<void(uint32_t button, uint32_t state)> pointer_button;
+    std::function<void(uint32_t button, uint32_t state, int x, int y)> pointer_button;
 
     cairo_surface_t *cairo_surface;
 

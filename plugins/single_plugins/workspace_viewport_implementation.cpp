@@ -78,6 +78,9 @@ void viewport_manager::view_removed(wayfire_view view)
     debug << "view removed" << view->desktop_surface << std::endl;
     if (view->handle->layer_link.layer)
         weston_layer_entry_remove(&view->handle->layer_link);
+
+    if (view == background)
+        background = nullptr;
 }
 
 void viewport_manager::for_each_view(view_callback_proc_t call)
