@@ -9,18 +9,27 @@
 #define MAX_DIRS_IN_QUEUE 4
 
 class vswitch;
-struct slide_data {
+struct slide_data
+{
     vswitch* plugin;
     int index;
 };
 
-using pair = std::pair<int, int>;
-class vswitch : public wayfire_plugin_t {
+struct switch_direction
+{
+    int dx, dy;
+    wayfire_view view;
+};
+
+class vswitch : public wayfire_plugin_t
+{
     private:
         key_callback callback_left, callback_right, callback_up, callback_down;
+        key_callback callback_win_left, callback_win_right, callback_win_up, callback_win_down;
+
         touch_gesture_callback gesture_cb;
 
-        std::queue<pair>dirs; // series of moves we have to do
+        std::queue<switch_direction> dirs; // series of moves we have to do
         int current_step = 0, max_step;
         bool running = false;
         effect_hook_t hook;
@@ -44,16 +53,47 @@ class vswitch : public wayfire_plugin_t {
             add_direction(0, 1);
         };
 
+        callback_win_left = [=] (weston_keyboard*, uint32_t) {
+            add_direction(-1, 0, output->get_top_view());
+        };
+        callback_win_right = [=] (weston_keyboard*, uint32_t) {
+            add_direction(1, 0, output->get_top_view());
+        };
+        callback_win_up = [=] (weston_keyboard*, uint32_t) {
+            add_direction(0, -1, output->get_top_view());
+        };
+        callback_win_down = [=] (weston_keyboard*, uint32_t) {
+            add_direction(0, 1, output->get_top_view());
+        };
+
         auto section   = config->get_section("vswitch");
         auto key_left  = section->get_key("binding_left",  {MODIFIER_SUPER, KEY_LEFT});
         auto key_right = section->get_key("binding_right", {MODIFIER_SUPER, KEY_RIGHT});
         auto key_up    = section->get_key("binding_up",    {MODIFIER_SUPER, KEY_UP});
         auto key_down  = section->get_key("binding_down",  {MODIFIER_SUPER, KEY_DOWN});
 
-        output->add_key(key_left.mod,  key_left.keyval,  &callback_left);
-        output->add_key(key_right.mod, key_right.keyval, &callback_right);
-        output->add_key(key_up.mod,    key_up.keyval,    &callback_up);
-        output->add_key(key_down.mod,  key_down.keyval,  &callback_down);
+        auto key_win_left  = section->get_key("binding_win_left",  {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_LEFT});
+        auto key_win_right = section->get_key("binding_win_right", {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_RIGHT});
+        auto key_win_up    = section->get_key("binding_win_up",    {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_UP});
+        auto key_win_down  = section->get_key("binding_win_down",  {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_DOWN});
+
+        if (key_left.keyval)
+            output->add_key(key_left.mod,  key_left.keyval,  &callback_left);
+        if (key_right.keyval)
+            output->add_key(key_right.mod, key_right.keyval, &callback_right);
+        if (key_up.keyval)
+            output->add_key(key_up.mod,    key_up.keyval,    &callback_up);
+        if (key_down.keyval)
+            output->add_key(key_down.mod,  key_down.keyval,  &callback_down);
+
+        if (key_win_left.keyval)
+            output->add_key(key_win_left.mod,  key_win_left.keyval,  &callback_win_left);
+        if (key_win_right.keyval)
+            output->add_key(key_win_right.mod, key_win_right.keyval, &callback_win_right);
+        if (key_win_up.keyval)
+            output->add_key(key_win_up.mod,    key_win_up.keyval,    &callback_win_up);
+        if (key_win_down.keyval)
+            output->add_key(key_win_down.mod,  key_win_down.keyval,  &callback_win_down);
 
         wayfire_touch_gesture activation_gesture;
         activation_gesture.finger_count = 4;
@@ -75,12 +115,12 @@ class vswitch : public wayfire_plugin_t {
         hook = std::bind(std::mem_fn(&vswitch::slide_update), this);
     }
 
-    void add_direction(int dx, int dy) {
+    void add_direction(int dx, int dy, wayfire_view view = nullptr) {
         if (!running)
-            dirs.push({0, 0});
+            dirs.push({0, 0, view});
 
         if (dirs.size() < MAX_DIRS_IN_QUEUE)
-            dirs.push({dx, dy});
+            dirs.push({dx, dy, view});
 
         /* this is the first direction, we have pushed {0, 0} so that slide_done()
          * will do nothing on the first time */
@@ -117,7 +157,8 @@ class vswitch : public wayfire_plugin_t {
         dirs.pop();
 
         GetTuple(vx, vy, output->workspace->get_current_workspace());
-        int dx = front.first, dy = front.second;
+        int dx = front.dx, dy = front.dy;
+
 
         vx += dx;
         vy += dy;
@@ -126,6 +167,15 @@ class vswitch : public wayfire_plugin_t {
             v.v->move(v.ox, v.oy);
 
         output->workspace->set_workspace(std::make_tuple(vx, vy));
+
+        auto output_g = output->get_full_geometry();
+        if (front.view)
+        {
+            front.view->move(front.view->geometry.x + dx * output_g.width,
+                             front.view->geometry.y + dy * output_g.height);
+            output->focus_view(front.view, core->get_current_seat());
+        }
+
         views.clear();
 
         if (dirs.size() == 0) {
@@ -134,7 +184,8 @@ class vswitch : public wayfire_plugin_t {
         }
 
         current_step = 0;
-        dx = dirs.front().first, dy = dirs.front().second;
+        dx = dirs.front().dx, dy = dirs.front().dy;
+        wayfire_view static_view = front.view;
 
         sx = sy = 0;
         tx = -dx * output->handle->width;
@@ -157,7 +208,7 @@ class vswitch : public wayfire_plugin_t {
             views_to_move.insert(view);
 
         for (auto view : views_to_move) {
-            if (view->is_mapped && !view->destroyed)
+            if (view->is_mapped && !view->destroyed && view != static_view)
                 views.push_back({view, view->geometry.x, view->geometry.y});
         }
 
@@ -169,7 +220,7 @@ class vswitch : public wayfire_plugin_t {
     void start_switch()
     {
         if (!output->activate_plugin(grab_interface)) {
-            dirs = std::queue<pair> ();
+            dirs = std::queue<switch_direction> ();
             return;
         }
 
@@ -181,7 +232,7 @@ class vswitch : public wayfire_plugin_t {
     void stop_switch()
     {
         output->deactivate_plugin(grab_interface);
-        dirs = std::queue<pair> ();
+        dirs = std::queue<switch_direction> ();
         running = false;
         output->render->rem_effect(&hook, nullptr);
         output->render->auto_redraw(false);
@@ -189,7 +240,8 @@ class vswitch : public wayfire_plugin_t {
 };
 
 extern "C" {
-    wayfire_plugin_t* newInstance() {
+    wayfire_plugin_t* newInstance()
+    {
         return new vswitch();
     }
 }
