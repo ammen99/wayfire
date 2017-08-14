@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include "panel.hpp"
 #include "widgets.hpp"
+#include "net.hpp"
 #include "../proto/wayfire-shell-client.h"
 #include "../shared/config.hpp"
 
@@ -140,8 +141,14 @@ void wayfire_panel::init_widgets()
     launch->max_w = width / 2 - width / 5;
     launch->center_x = launch->max_w / 2;
     launch->init_launchers(config);
-
     widgets.push_back(launch);
+
+    network_widget *net = new network_widget();
+    net->cr = cairo_create(window->cairo_surface);
+    net->panel_h = height;
+    net->max_w = widget::font_size * 15;
+    net->center_x = bat->center_x - bat->max_w / 2 - net->max_w / 2;
+    widgets.push_back(net);
 
     for (auto w : widgets)
         w->create();

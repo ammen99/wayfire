@@ -9,6 +9,8 @@
 void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
         double r, double g, double b, double a);
 
+extern cairo_font_face_t *cairo_font_face;
+
 struct widget
 {
     static wayfire_color background_color;

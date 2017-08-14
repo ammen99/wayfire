@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.1.0)
 
-file(GLOB SOURCES "common.cpp" "background.cpp" "panel.cpp" "main.cpp" "widgets.cpp" "gamma.cpp")
+file(GLOB SOURCES "common.cpp" "background.cpp" "panel.cpp" "main.cpp" "widgets.cpp" "gamma.cpp" "net.cpp")
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(REQLIBS libevdev freetype2 wayland-client wayland-egl cairo cairo-gl egl wayland-cursor)
+pkg_check_modules(REQLIBS libevdev freetype2 wayland-client wayland-egl cairo cairo-gl egl wayland-cursor gio-2.0)
 
 add_definitions(${REQLIBS_CFLAGS_OTHER})
 link_directories(${REQLIBS_LIBRARY_DIRS})
