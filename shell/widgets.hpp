@@ -4,6 +4,7 @@
 #include <string>
 #include <cairo-ft.h>
 #include <functional>
+#include <thread>
 #include "../shared/config.hpp"
 
 void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height, double radius,
@@ -43,12 +44,25 @@ struct clock_widget : public widget
     void repaint();
 };
 
+struct battery_info;
+struct upower_backend;
+
+struct battery_options
+{
+    static std::string icon_path_prefix;
+    static bool invert_icons;
+    static float text_scale;
+};
+
 struct battery_widget : public widget
 {
-    std::string battery;
     bool active = false;
-    int percent_current = -1, percent_max;
-    std::string icon_current;
+
+    cairo_surface_t *icon_surface = nullptr;
+
+    battery_info *info;
+    upower_backend *backend;
+    std::thread backend_thread;
 
     void create();
     bool update();
@@ -69,10 +83,6 @@ struct launchers_widget : public widget
 
     void on_pointer_button(uint32_t state, int x, int y);
     void on_pointer_motion(int x, int y);
-};
-
-struct net_widget : public widget
-{
 };
 
 #endif /* end of include guard: WIDGETS_HPP */

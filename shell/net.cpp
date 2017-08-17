@@ -126,12 +126,15 @@ struct network_manager_provider : public network_provider_backend
         info->updated = true;
         info->mutex.unlock();
 
+        g_variant_unref(gv);
+
         g_signal_connect(current_specific_proxy, "g-properties-changed",
                          G_CALLBACK(on_wifi_properties_changed), info);
     }
 
     void load_bluetooth_data(const gchar *dev)
     {
+        info->mutex.lock();
         /* TODO: implement */
     }
 
@@ -185,12 +188,14 @@ struct network_manager_provider : public network_provider_backend
         gv = g_dbus_proxy_get_cached_property(aconn_proxy, "Type");
         std::string type = g_variant_get_string(gv, &n);
 
+        g_variant_unref(gv);
         gv = g_dbus_proxy_get_cached_property(aconn_proxy, "Id");
 
         info->mutex.lock();
         info->name = g_variant_get_string(gv, &n);
         info->mutex.unlock();
 
+        g_variant_unref(gv);
         gv = g_dbus_proxy_get_cached_property(aconn_proxy, "SpecificObject");
         const gchar *object = g_variant_get_string(gv, &n);
 
@@ -208,6 +213,7 @@ struct network_manager_provider : public network_provider_backend
             load_wifi_data(object);
         }
 
+        g_variant_unref(gv);
         g_object_unref(aconn_proxy);
     }
 

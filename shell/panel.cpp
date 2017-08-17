@@ -24,6 +24,11 @@ wayfire_panel::wayfire_panel(wayfire_config *config)
     widget::font_size = section->get_int("font_size", 25);
     widget::font_face = section->get_string("font_face",
             "/usr/share/fonts/dejavu/DejaVuSerif.ttf");
+
+    battery_options::icon_path_prefix = section->get_string("battery_icon_path_prefix",
+            "/usr/share/icons/Adwaita/64x64/status");
+    battery_options::invert_icons = section->get_int("battery_invert_icons", 1);
+    battery_options::text_scale = section->get_double("battery_text_scale", 0.6);
 }
 
 void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)
@@ -131,7 +136,7 @@ void wayfire_panel::init_widgets()
     battery_widget *bat = new battery_widget();
     bat->cr = cairo_create(window->cairo_surface);
     bat->panel_h = height;
-    bat->max_w = widget::font_size * 3;
+    bat->max_w = widget::font_size * 4.5;
     bat->center_x = width - bat->max_w / 2;
     widgets.push_back(bat);
 

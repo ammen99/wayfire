@@ -8,6 +8,12 @@
 #include <cmath>
 #include <wayland-client.h>
 #include <linux/input-event-codes.h>
+#include <gio/gio.h>
+#include <mutex>
+#include <thread>
+
+#include <sys/dir.h>
+#include <dirent.h>
 
 #include <freetype2/ft2build.h>
 
@@ -126,59 +132,253 @@ void clock_widget::repaint() {
 }
 
 /* --------------- Battery widget ---------------------- */
-char buf[256];
-std::string find_battery()
+std::string battery_options::icon_path_prefix;
+bool battery_options::invert_icons;
+float battery_options::text_scale;
+
+struct battery_info
 {
-    FILE *fin = popen("/bin/sh -c \"ls /sys/class/power_supply | grep BAT\"",
-            "r");
+    std::string icon;
+    int percentage;
 
-    if (fin == NULL)
-        return "";
+    /* currently unused, once popups have been implemented,
+     * it will be used to show time to fill */
+    bool charging;
 
-    while(std::fgets(buf, 255, fin))
+    bool percentage_updated, icon_updated;
+    std::mutex mutex;
+};
+
+static std::string
+find_battery_icon_path(std::string icon_name)
+{
+    DIR *dp = opendir(battery_options::icon_path_prefix.c_str());
+    if (dp == NULL)
     {
-        int len = strlen(buf);
-        if (len > 0) {
-            pclose(fin);
-            return buf;
+        std::cerr << "Failed to open icon directory " << battery_options::icon_path_prefix
+                  << ". Not using status icons" << std::endl;
+        return "none";
+    }
+
+    dirent *dir_entry;
+    while((dir_entry = readdir(dp)) != NULL)
+    {
+        std::string file = dir_entry->d_name;
+
+        if (file.find(icon_name) != std::string::npos)
+        {
+            file = battery_options::icon_path_prefix + "/" + file;
+            closedir(dp);
+            return file;
         }
     }
 
-    pclose(fin);
-    return "";
+    closedir(dp);
+    return "none";
 }
 
-int get_battery_energy(std::string path, std::string suffix)
+static void
+on_battery_changed (GDBusProxy          *proxy,
+                            GVariant            *changed_properties,
+                            const gchar* const  *invalidated_properties,
+                            gpointer             user_data)
 {
-    std::string cmd = path + "/" + suffix;
-    FILE *fin = fopen(cmd.c_str() , "r");
-    if (!fin)
-        return -1;
+    battery_info *info = (battery_info*) user_data;
+    if (g_variant_n_children(changed_properties) > 0)
+    {
+        GVariantIter *iter;
+        g_variant_get(changed_properties, "a{sv}", &iter);
 
-    int percent = 0;
+        const gchar *key;
+        GVariant *value;
+        while (g_variant_iter_loop(iter, "{&sv}", &key, &value))
+        {
+            if (std::string(key) == "Percentage")
+            {
+                info->mutex.lock();
+                info->percentage = g_variant_get_double(value);
+                info->percentage_updated = true;
+                info->mutex.unlock();
+            } else if (std::string(key) == "IconName")
+            {
+                gsize n;
+                info->mutex.lock();
+                info->icon = find_battery_icon_path(g_variant_get_string(value, &n));
+                info->icon_updated = true;
+                info->mutex.unlock();
+            } else if (std::string(key) == "State")
+            {
+                uint32_t state = g_variant_get_uint32(value);
 
-    std::fscanf(fin, "%d", &percent);
-    fclose(fin);
-    return percent;
+                info->mutex.lock();
+                info->charging = (state == 1) || (state == 5);
+                info->percentage_updated = true;
+                info->mutex.unlock();
+            }
+        }
+
+        g_variant_iter_free(iter);
+    }
 }
+
+struct upower_backend
+{
+    GDBusConnection *dbus_connection;
+    GDBusProxy *upower_proxy;
+    GDBusProxy *battery_proxy;
+
+    battery_info *info;
+
+#define UPOWER_NAME "org.freedesktop.UPower"
+
+    bool load(battery_info* info)
+    {
+        GError *error = NULL;
+        dbus_connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
+
+        if (!dbus_connection)
+        {
+            std::cerr << "Failed to connect to system bus: "
+                      << error->message << std::endl;
+            return false;
+        }
+
+        upower_proxy = g_dbus_proxy_new_sync(dbus_connection,
+                                             G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                             UPOWER_NAME,
+                                             "/org/freedesktop/UPower",
+                                             "org.freedesktop.UPower",
+                                             NULL, &error);
+
+        if (!upower_proxy)
+        {
+            std::cerr << "Failed to connect to upower: " << error << std::endl;
+            return false;
+        }
+
+        GVariant* gv = g_dbus_proxy_call_sync(upower_proxy,
+                                              "EnumerateDevices",
+                                              NULL, G_DBUS_CALL_FLAGS_NONE,
+                                              -1, NULL, &error);
+
+        if (!gv)
+        {
+            std::cerr << "Failed to enumerate devices: " << error->message << std::endl;
+            return false;
+        }
+
+        gv = g_variant_get_child_value(gv, 0);
+
+        GVariantIter iter;
+        g_variant_iter_init(&iter, gv);
+
+        gchar *buf;
+        battery_proxy = nullptr;
+
+        while(g_variant_iter_loop(&iter, "o", &buf))
+        {
+            battery_proxy =
+                g_dbus_proxy_new_sync(dbus_connection,
+                                      G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                      UPOWER_NAME,
+                                      buf,
+                                      "org.freedesktop.UPower.Device",
+                                      NULL, &error);
+
+            if (!battery_proxy)
+            {
+                std::cerr << "warning: failed to open device " << buf
+                          << ": " << error->message << std::endl;
+                continue;
+            }
+
+            GVariant *gv1 = g_dbus_proxy_get_cached_property(battery_proxy, "Type");
+            uint32_t type = g_variant_get_uint32(gv1);
+
+            if (type == 2)
+            {
+                g_variant_unref(gv1);
+                break;
+            }
+
+            g_variant_unref(gv1);
+            g_object_unref(battery_proxy);
+            battery_proxy = nullptr;
+        }
+
+        if (!battery_proxy)
+        {
+            g_variant_unref(gv);
+            return false;
+        }
+
+        uint32_t percentage, state;
+        std::string icon;
+
+        gv = g_dbus_proxy_get_cached_property(battery_proxy, "Percentage");
+        percentage = g_variant_get_double(gv);
+        g_variant_unref(gv);
+
+        gv = g_dbus_proxy_get_cached_property(battery_proxy, "State");
+        state = g_variant_get_uint32(gv);
+        g_variant_unref(gv);
+
+        gv = g_dbus_proxy_get_cached_property(battery_proxy, "IconName");
+        gsize n;
+        icon = find_battery_icon_path(g_variant_get_string(gv, &n));
+        g_variant_unref(gv);
+
+        this->info = info;
+
+        info->mutex.lock();
+        info->charging = (state == 1) || (state == 5);
+        info->icon = icon;
+        info->percentage = percentage;
+
+        info->percentage_updated = info->icon_updated = true;
+        info->mutex.unlock();
+
+        return true;
+    }
+
+    void start_loop()
+    {
+        g_signal_connect(battery_proxy,
+                "g-properties-changed", G_CALLBACK(on_battery_changed), info);
+
+        auto loop = g_main_loop_new(NULL, FALSE);
+        g_main_loop_run(loop);
+
+        g_object_unref(upower_proxy);
+        g_main_loop_unref(loop);
+    }
+};
 
 void battery_widget::create()
 {
-    battery = find_battery();
-    if (battery == "") {
+    backend = new upower_backend();
+    info = new battery_info();
+
+    if (!backend || !info || !backend->load(info))
+    {
+        delete backend;
+        delete info;
+
         active = false;
         return;
     }
 
-    /* battery ends with a newline, so erase the last symbol */
-    battery = "/sys/class/power_supply/" + battery.substr(0, battery.size() - 1);
-    percent_max = get_battery_energy(battery, "energy_full");
+    backend_thread = std::thread([=] () { backend->start_loop(); });
 
     load_default_font();
 
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
-    cairo_set_font_size(cr, font_size);
+    cairo_set_font_size(cr, font_size * battery_options::text_scale);
     cairo_set_font_face(cr, cairo_font_face);
+
+    /* calculate luminance of the background color */
+    float y = background_color.r * 0.2126 + background_color.g * 0.7152 + background_color.b * 0.0722;
+    y *= background_color.a;
 
     active = true;
 }
@@ -188,13 +388,45 @@ bool battery_widget::update()
     if (!active)
         return false;
 
-    int percent = get_battery_energy(battery, "energy_now");
+    bool result;
+    info->mutex.lock();
+    result = info->icon_updated || info->percentage_updated;
+    info->mutex.unlock();
 
-    if (percent_current != percent) {
-        percent_current = percent;
-        return true;
-    } else {
-        return false;
+    return result;
+}
+
+cairo_surface_t* prepare_icon(std::string path)
+{
+    auto img = cairo_image_surface_create_from_png(path.c_str());
+    int w = cairo_image_surface_get_width(img);
+    int h = cairo_image_surface_get_height(img);
+
+    if (battery_options::invert_icons)
+    {
+        auto dest = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+        auto cr = cairo_create(dest);
+
+        cairo_set_source_rgba(cr, 1, 1, 1, 1);
+        cairo_rectangle(cr, 0, 0, w, h);
+        cairo_mask_surface(cr, img, 0, 0);
+
+        cairo_new_path(cr);
+
+        cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
+        cairo_set_source_surface(cr, img, 0, 0);
+        cairo_rectangle(cr, 0, 0, w, h);
+        cairo_fill(cr);
+
+        cairo_surface_flush(dest);
+
+        cairo_surface_destroy(img);
+        cairo_destroy(cr);
+
+        return dest;
+    } else
+    {
+        return img;
     }
 }
 
@@ -203,24 +435,67 @@ void battery_widget::repaint()
     if (!active)
         return;
 
-    int per = percent_current * 100LL / percent_max;
-    std::string battery_string = std::to_string(per) + "%";
+    /* this is main thread, even if the dbus one has to wait, we
+     * don't care, as it isn't crucial for performance, so lock for more time in order
+     * to avoid constant lock()/unlock() calls */
+    info->mutex.lock();
 
+    if (info->icon_updated)
+    {
+        if (icon_surface)
+            cairo_surface_destroy(icon_surface);
+        icon_surface = nullptr;
+
+        if (info->icon != "none")
+            icon_surface = prepare_icon(info->icon);
+    }
+
+    std::string battery_string = std::to_string(info->percentage) + "%";
+
+    info->icon_updated = info->percentage_updated = false;
+    info->mutex.unlock();
+
+    cairo_identity_matrix(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+
     render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
             widget::background_color.r, widget::background_color.g,
             widget::background_color.b, widget::background_color.a);
 
+    cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
+    int icon_size = font_size;
+    cairo_new_path(cr);
+
     cairo_text_extents_t te;
     cairo_text_extents(cr, battery_string.c_str(), &te);
 
-    double x = 0, y = font_size;
+    double x = icon_size * 1.1, y = (panel_h + te.height) / 2.0;
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
-    x = center_x - te.width / 2;
+    x = center_x + max_w / 2 - te.width - font_size * 0.5;
 
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, battery_string.c_str());
+
+    if (icon_surface)
+    {
+        y = (panel_h - icon_size) / 2;
+        x = x - icon_size;
+
+        double img_w = cairo_image_surface_get_width (icon_surface);
+        double img_h = cairo_image_surface_get_height(icon_surface);
+
+        cairo_identity_matrix(cr);
+        cairo_new_path(cr);
+
+        float scale_w = 1.0 * icon_size / img_w;
+        float scale_h = 1.0 * icon_size / img_h;
+        cairo_scale(cr, scale_w, scale_h);
+        cairo_rectangle(cr, x / scale_w, y / scale_h, icon_size / scale_w, icon_size / scale_h);
+        cairo_set_source_surface(cr, icon_surface, x / scale_w, y / scale_h);
+        cairo_fill(cr);
+    }
+
 }
 
 /* --------------- Launchers widget ---------------------- */
@@ -326,8 +601,8 @@ void launchers_widget::create()
 
 void launchers_widget::repaint()
 {
-    const int icon_offset = font_size * 0.5;
-    const int base_icon_size = font_size * 1.1;
+    int icon_offset = font_size * 0.5;
+    int base_icon_size = font_size * 1.1;
 
     cairo_identity_matrix(cr);
 
