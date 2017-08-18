@@ -146,6 +146,8 @@ void wayfire_view_t::map(int sx, int sy)
             sy += output->handle->y;
 
             ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
+            geometry.width = ds_geometry.width;
+            geometry.height = ds_geometry.height;
 
             if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
                 ds_geometry.x = ds_geometry.y = 0;
@@ -164,6 +166,8 @@ void wayfire_view_t::map(int sx, int sy)
         handle->is_mapped  = true;
         surface->is_mapped = true;
         is_mapped = true;
+
+
 
         auto sig_data = create_view_signal{core->find_view(handle)};
         output->signal->emit_signal("create-view", &sig_data);
