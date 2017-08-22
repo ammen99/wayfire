@@ -50,8 +50,7 @@ class wayfire_cube : public wayfire_plugin_t {
     void init(wayfire_config *config)
     {
         grab_interface->name = "cube";
-        grab_interface->compatAll = false;
-        grab_interface->compat.insert("screenshot");
+        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
 
         auto section = config->get_section("cube");
 

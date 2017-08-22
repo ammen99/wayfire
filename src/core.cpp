@@ -997,7 +997,11 @@ void wayfire_core::close_view(wayfire_view v)
 void wayfire_core::erase_view(wayfire_view v)
 {
     if (!v) return;
+
     views.erase(v->handle);
+    v->output->detach_view(v);
+    if (v->handle)
+        weston_view_destroy(v->handle);
 }
 
 void wayfire_core::run(const char *command)

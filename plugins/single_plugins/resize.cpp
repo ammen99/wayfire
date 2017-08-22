@@ -22,7 +22,7 @@ class wayfire_resize : public wayfire_plugin_t {
     void init(wayfire_config *config)
     {
         grab_interface->name = "resize";
-        grab_interface->compatAll = true;
+        grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY;
 
         auto button = config->get_section("resize")->get_button("initiate",
                 {MODIFIER_SUPER, BTN_LEFT});
@@ -99,7 +99,7 @@ class wayfire_resize : public wayfire_plugin_t {
     void initiate(wayfire_view view, wl_fixed_t sx, wl_fixed_t sy,
             uint32_t forced_edges = 0)
     {
-        if (!view || view->is_special)
+        if (!view || view->is_special || view->destroyed)
             return;
         if (!output->activate_plugin(grab_interface))
             return;

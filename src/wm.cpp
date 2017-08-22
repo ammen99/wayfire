@@ -27,7 +27,7 @@ void wayfire_close::init(wayfire_config *config)
 void wayfire_focus::init(wayfire_config *)
 {
     grab_interface->name = "_wf_focus";
-    grab_interface->compatAll = false;
+    grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
 
     callback = [=] (weston_pointer * ptr, uint32_t button)
     {
@@ -36,7 +36,7 @@ void wayfire_focus::init(wayfire_config *)
             !(view = core->find_view(weston_surface_get_main_surface(ptr->focus->surface))))
             return;
 
-        if (view->is_special || !output->activate_plugin(grab_interface))
+        if (view->is_special || view->destroyed || !output->activate_plugin(grab_interface))
             return;
         output->deactivate_plugin(grab_interface);
         view->output->focus_view(view, ptr->seat);
@@ -49,7 +49,7 @@ void wayfire_focus::init(wayfire_config *)
         wayfire_view view;
         if (!touch->focus || !(view = core->find_view(weston_surface_get_main_surface(touch->focus->surface))))
             return;
-        if (view->is_special || !output->activate_plugin(grab_interface))
+        if (view->is_special || view->destroyed || !output->activate_plugin(grab_interface))
             return;
         output->deactivate_plugin(grab_interface);
         view->output->focus_view(view, touch->seat);

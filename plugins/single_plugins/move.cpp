@@ -22,7 +22,7 @@ class wayfire_move : public wayfire_plugin_t {
         void init(wayfire_config *config)
         {
             grab_interface->name = "move";
-            grab_interface->compatAll = true;
+            grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY;
 
             auto section = config->get_section("move");
             wayfire_button button = section->get_button("activate", {MODIFIER_ALT, BTN_LEFT});
@@ -97,7 +97,7 @@ class wayfire_move : public wayfire_plugin_t {
 
         void initiate(wayfire_view view, wl_fixed_t sx, wl_fixed_t sy)
         {
-            if (!view || view->is_special)
+            if (!view || view->is_special || view->destroyed)
                 return;
 
             if (!output->activate_plugin(grab_interface))
@@ -131,6 +131,11 @@ class wayfire_move : public wayfire_plugin_t {
             if (state != WL_POINTER_BUTTON_STATE_RELEASED)
                 return;
 
+            grab_interface->ungrab();
+            output->deactivate_plugin(grab_interface);
+            view->output->focus_view(view, core->get_current_seat());
+            view->output->render->auto_redraw(false);
+
             if (enable_snap && slot != 0) {
                 snap_signal data;
                 data.view = view;
@@ -138,11 +143,6 @@ class wayfire_move : public wayfire_plugin_t {
 
                 output->signal->emit_signal("view-snap", &data);
             }
-
-            grab_interface->ungrab();
-            output->deactivate_plugin(grab_interface);
-            view->output->focus_view(view, core->get_current_seat());
-            view->output->render->auto_redraw(false);
         }
 
         int calc_slot()

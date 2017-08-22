@@ -1,13 +1,14 @@
 #include "particle.hpp"
 #include <opengl.hpp>
+
+#include <GLES3/gl32.h>
+#include <GLES3/gl3ext.h>
+#include <EGL/egl.h>
+
 #include <thread>
 
-#define NUM_PARTICLES maxParticles
-#define NUM_WORKGROUPS 384
-#define WORKGROUP_SIZE (NUM_PARTICLES / NUM_WORKGROUPS)
-
-
-glm::vec4 operator * (glm::vec4 v, float x) {
+glm::vec4 operator * (glm::vec4 v, float x)
+{
     v[0] *= x;
     v[1] *= x;
     v[2] *= x;
@@ -15,7 +16,8 @@ glm::vec4 operator * (glm::vec4 v, float x) {
     return v;
 }
 
-glm::vec4 operator / (glm::vec4 v, float x) {
+glm::vec4 operator / (glm::vec4 v, float x)
+{
     v[0] /= x;
     v[1] /= x;
     v[2] /= x;
@@ -24,67 +26,72 @@ glm::vec4 operator / (glm::vec4 v, float x) {
 }
 
 template<class T>
-T *getShaderStorageBuffer(GLuint bufID, size_t arrSize) {
+T *get_shader_storage_buffer(GLuint bufID, size_t arrSize)
+{
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, bufID);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, arrSize,
-            NULL, GL_STATIC_DRAW);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, arrSize, NULL, GL_STATIC_DRAW);
 
-    GLint mask =  GL_MAP_WRITE_BIT |
-        GL_MAP_INVALIDATE_BUFFER_BIT;
+    GLint mask =  GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
 
     return (T*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER,
-            0, arrSize, mask);
+                                 0, arrSize, mask);
 }
 
 /* Implementation of ParticleSystem */
 
-void ParticleSystem::loadRenderingProgram() {
+void wf_particle_system::load_rendering_program()
+{
     renderProg = glCreateProgram();
     GLuint vss, fss;
-    std::string shaderSrcPath = "/usr/local/share/fireman/animate/shaders";
+    std::string shaderSrcPath = INSTALL_PREFIX"/share/wayfire/animate/shaders";
 
-    vss = GLXUtils::loadShader(std::string(shaderSrcPath)
+    vss = OpenGL::load_shader(std::string(shaderSrcPath)
             .append("/vertex.glsl").c_str(), GL_VERTEX_SHADER);
 
-    fss = GLXUtils::loadShader(std::string(shaderSrcPath)
+    fss = OpenGL::load_shader(std::string(shaderSrcPath)
             .append("/frag.glsl").c_str(), GL_FRAGMENT_SHADER);
 
-    glAttachShader (renderProg, vss);
-    glAttachShader (renderProg, fss);
+    GL_CALL(glAttachShader(renderProg, vss));
+    GL_CALL(glAttachShader (renderProg, fss));
 
-    glBindFragDataLocation (renderProg, 0, "outColor");
-    glLinkProgram (renderProg);
-    glUseProgram(renderProg);
+    GL_CALL(glLinkProgram (renderProg));
+    GL_CALL(glUseProgram(renderProg));
+
+    GL_CALL(glUniform1f(4, std::sqrt(2.0) * particleSize));
 }
 
-void ParticleSystem::loadComputeProgram() {
-    std::string shaderSrcPath = "/usr/local/share/fireman/animate/shaders";
+void wf_particle_system::load_compute_program()
+{
+    std::string shaderSrcPath = INSTALL_PREFIX"/share/wayfire/animate/shaders";
 
-    computeProg = glCreateProgram();
+    computeProg = GL_CALL(glCreateProgram());
     GLuint css =
-        GLXUtils::loadShader(std::string(shaderSrcPath)
+        OpenGL::load_shader(std::string(shaderSrcPath)
                 .append("/compute.glsl").c_str(),
                 GL_COMPUTE_SHADER);
 
-    glAttachShader(computeProg, css);
-    glLinkProgram(computeProg);
-    glUseProgram(computeProg);
+    GL_CALL(glAttachShader(computeProg, css));
+    GL_CALL(glLinkProgram(computeProg));
+    GL_CALL(glUseProgram(computeProg));
 
-    glUniform1f(1, particleLife);
+    GL_CALL(glUniform1i(1, particleLife));
 }
 
-void ParticleSystem::loadGLPrograms() {
-    loadRenderingProgram();
-    loadComputeProgram();
+void wf_particle_system::load_gles_programs()
+{
+    load_rendering_program();
+    load_compute_program();
 }
 
-void ParticleSystem::createBuffers() {
-    glGenBuffers(1, &base_mesh);
-    glGenBuffers(1, &particleSSbo);
-    glGenBuffers(1, &lifeInfoSSbo);
+void wf_particle_system::create_buffers()
+{
+    GL_CALL(glGenBuffers(1, &base_mesh));
+    GL_CALL(glGenBuffers(1, &particleSSbo));
+    GL_CALL(glGenBuffers(1, &lifeInfoSSbo));
 }
 
-void ParticleSystem::defaultParticleIniter(Particle &p) {
+void wf_particle_system::default_particle_initer(particle_t &p)
+{
     p.life = particleLife + 1;
 
     p.x = p.y = -2;
@@ -94,25 +101,26 @@ void ParticleSystem::defaultParticleIniter(Particle &p) {
     p.r = p.g = p.b = p.a = 0;
 }
 
-void ParticleSystem::threadWorker_InitParticles(Particle *p,
-        size_t start, size_t end) {
-
+void wf_particle_system::thread_worker_init_particles(particle_t *p,
+                                                      size_t start, size_t end)
+{
     for(size_t i = start; i < end; ++i)
-        defaultParticleIniter(p[i]);
+        default_particle_initer(p[i]);
 
 }
 
-void ParticleSystem::initParticleBuffer() {
+void wf_particle_system::init_particle_buffer()
+{
 
-    particleBufSz = maxParticles * sizeof(Particle);
+    particleBufSz = maxParticles * sizeof(particle_t);
 
-    Particle *p = getShaderStorageBuffer<Particle>(particleSSbo,
-            particleBufSz);
+    particle_t *p = get_shader_storage_buffer<particle_t>(particleSSbo,
+                                                          particleBufSz);
 
     using namespace std::placeholders;
     auto threadFunction =
-        std::bind(std::mem_fn(&ParticleSystem::threadWorker_InitParticles),
-                this, _1, _2, _3);
+        std::bind(std::mem_fn(&wf_particle_system::thread_worker_init_particles),
+                  this, _1, _2, _3);
 
     size_t sz = std::thread::hardware_concurrency();
 
@@ -123,7 +131,8 @@ void ParticleSystem::initParticleBuffer() {
     std::vector<std::thread> threads;
     threads.resize(sz);
 
-    for(size_t i = 0; i < sz; ++i) {
+    for(size_t i = 0; i < sz; ++i)
+    {
         auto start = i * interval;
         auto end   = std::min((i + 1) * interval, maxParticles);
         threads[i] = std::thread(threadFunction, p, start, end);
@@ -132,68 +141,87 @@ void ParticleSystem::initParticleBuffer() {
     for(size_t i = 0; i < sz; ++i)
         threads[i].join();
 
-    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+    GL_CALL(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
 }
 
-void ParticleSystem::initLifeInfoBuffer() {
-    lifeBufSz = sizeof(uint) * maxParticles;
-    uint *lives = getShaderStorageBuffer<uint>(lifeInfoSSbo, lifeBufSz);
+void wf_particle_system::init_life_info_buffer()
+{
+    lifeBufSz = sizeof(int) * maxParticles;
+    int *lives = get_shader_storage_buffer<int>(lifeInfoSSbo, lifeBufSz);
 
-    for(int i = 0; i < maxParticles; ++i)
+    for(size_t i = 0; i < maxParticles; ++i)
         lives[i] = 0;
 
-    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+    GL_CALL(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
+    GL_CALL(memoryBarrierProc(GL_ALL_BARRIER_BITS));
 }
 
-void ParticleSystem::genBaseMesh() {
+void wf_particle_system::gen_base_mesh()
+{
     /* scale base mesh */
-    for(int i = 0; i < sizeof(vertices) / sizeof(float); i++)
+    for(size_t i = 0; i < sizeof(vertices) / sizeof(float); i++)
         vertices[i] *= particleSize;
-
 }
-void ParticleSystem::uploadBaseMesh() {
-    glUseProgram(renderProg);
 
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+void wf_particle_system::upload_base_mesh()
+{
+    GL_CALL(glUseProgram(renderProg));
+
+    GL_CALL(glGenVertexArrays(1, &vao));
+    GL_CALL(glBindVertexArray(vao));
 
     /* upload static base mesh */
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, base_mesh);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices),
-            vertices, GL_STATIC_DRAW);
-    glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glDisableVertexAttribArray(0);
+    GL_CALL(glEnableVertexAttribArray(0));
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, base_mesh));
+    GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(vertices),
+                         vertices, GL_STATIC_DRAW));
+    GL_CALL(glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0));
+    GL_CALL(glDisableVertexAttribArray(0));
 
-    glUseProgram(0);
+    GL_CALL(glBindVertexArray(0));
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GL_CALL(glUseProgram(0));
 }
 
-void ParticleSystem::initGLPart() {
-    loadGLPrograms();
-    createBuffers();
+void wf_particle_system::init_gles_part()
+{
+    memoryBarrierProc =
+        (PFNGLMEMORYBARRIERPROC) eglGetProcAddress("glMemoryBarrier");
+    dispatchComputeProc =
+        (PFNGLDISPATCHCOMPUTEPROC) eglGetProcAddress("glDispatchCompute");
 
-    using namespace std::placeholders;
-    initParticleBuffer();
-    initLifeInfoBuffer();
-    genBaseMesh();
-    uploadBaseMesh();
+    if (!memoryBarrierProc || !dispatchComputeProc)
+    {
+        errio << "missing compute shader functionality, can't use fire effect!" << std::endl;
+        return;
+    }
+
+    load_gles_programs();
+    create_buffers();
+
+    init_particle_buffer();
+    init_life_info_buffer();
+    gen_base_mesh();
+    upload_base_mesh();
 }
 
-void ParticleSystem::setParticleColor(glm::vec4 scol,
-        glm::vec4 ecol) {
+void wf_particle_system::set_particle_color(glm::vec4 scol,
+                                            glm::vec4 ecol)
+{
 
-    glUseProgram(computeProg);
-    glUniform4fv(2, 1, &scol[0]);
-    glUniform4fv(3, 1, &ecol[0]);
+    GL_CALL(glUseProgram(computeProg));
+    GL_CALL(glUniform4fv(2, 1, &scol[0]));
+    GL_CALL(glUniform4fv(3, 1, &ecol[0]));
 
     auto tmp = (ecol - scol) / float(particleLife);
-    glUniform4fv(4, 1, &tmp[0]);
+    GL_CALL(glUniform4fv(4, 1, &tmp[0]));
 }
 
-ParticleSystem::ParticleSystem() {}
-ParticleSystem::ParticleSystem(float size,  size_t _maxp,
-            size_t _pspawn, size_t _plife, size_t _respInterval) {
-
+wf_particle_system::wf_particle_system() {}
+wf_particle_system::wf_particle_system(float size,  size_t _maxp,
+                                       size_t _pspawn, size_t _plife,
+                                       size_t _respInterval)
+{
     particleSize = size;
 
     maxParticles    = _maxp;
@@ -201,96 +229,106 @@ ParticleSystem::ParticleSystem(float size,  size_t _maxp,
     particleLife    = _plife;
     respawnInterval = _respInterval;
 
-    initGLPart();
-    setParticleColor(glm::vec4(0, 0, 1, 1), glm::vec4(1, 0, 0, 1));
+    init_gles_part();
+    set_particle_color(glm::vec4(0, 0, 1, 1), glm::vec4(1, 0, 0, 1));
 }
 
-ParticleSystem::~ParticleSystem() {
+wf_particle_system::~wf_particle_system()
+{
 
-    glDeleteBuffers(1, &particleSSbo);
-    glDeleteBuffers(1, &lifeInfoSSbo);
-    glDeleteBuffers(1, &base_mesh);
+    GL_CALL(glDeleteBuffers(1, &particleSSbo));
+    GL_CALL(glDeleteBuffers(1, &lifeInfoSSbo));
+    GL_CALL(glDeleteBuffers(1, &base_mesh));
+    GL_CALL(glDeleteVertexArrays(1, &vao));
 
-    glUseProgram(renderProg);
-    glDeleteVertexArrays(1, &vao);
-    glUseProgram(0);
-
-    glDeleteProgram(renderProg);
-    glDeleteProgram(computeProg);
+    GL_CALL(glDeleteProgram(renderProg));
+    GL_CALL(glDeleteProgram(computeProg));
 }
 
-void ParticleSystem::pause () {spawnNew = false;}
-void ParticleSystem::resume() {spawnNew = true; }
+void wf_particle_system::pause () {spawnNew = false;}
+void wf_particle_system::resume() {spawnNew = true; }
 
-void ParticleSystem::simulate() {
-    glUseProgram(computeProg);
+void wf_particle_system::simulate()
+{
+    GL_CALL(glUseProgram(computeProg));
 
-    if(currentIteration++ % respawnInterval == 0 && spawnNew) {
-        glUseProgram(computeProg);
+    if(currentIteration++ % respawnInterval == 0 && spawnNew)
+    {
+        GL_CALL(glUseProgram(computeProg));
 
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, lifeInfoSSbo);
-        auto lives =  (uint*) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
-                sizeof(GLint),
-                GL_MAP_WRITE_BIT | GL_MAP_READ_BIT);
+        GL_CALL(glBindBuffer(GL_SHADER_STORAGE_BUFFER, lifeInfoSSbo));
+        auto lives =
+            (int*) GL_CALL(glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0,
+                                             sizeof(GLint) * maxParticles,
+                                             GL_MAP_WRITE_BIT | GL_MAP_READ_BIT));
 
         size_t sp_num = partSpawn, i = 0;
 
-        while(i < maxParticles && sp_num > 0) {
-            if(lives[i] == 0) {
+        while(i < maxParticles && sp_num > 0)
+        {
+            if(lives[i] == 0)
+            {
                 lives[i] = 1;
                 --sp_num;
             }
+
             ++i;
         }
 
-
-        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        GL_CALL(glUnmapBuffer(GL_SHADER_STORAGE_BUFFER));
+        GL_CALL(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
     }
 
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleSSbo);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lifeInfoSSbo);
+    GL_CALL(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, particleSSbo));
+    GL_CALL(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, lifeInfoSSbo));
 
-    glDispatchComputeGroupSizeARB(NUM_WORKGROUPS, 1, 1,
-                    WORKGROUP_SIZE, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    GL_CALL(dispatchComputeProc(WORKGROUP_COUNT, 1, 1));
+    GL_CALL(memoryBarrierProc(GL_ALL_BARRIER_BITS));
+    GL_CALL(glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0));
+    GL_CALL(glUseProgram(0));
 }
 
 
 /* TODO: use glDrawElementsInstanced instead of glDrawArraysInstanced */
-void ParticleSystem::render() {
+void wf_particle_system::render()
+{
+    GL_CALL(glUseProgram(renderProg));
+    GL_CALL(glEnable(GL_BLEND));
+    GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE));
 
-    glUseProgram(renderProg);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glBindVertexArray(vao);
+    GL_CALL(glBindVertexArray(vao));
 
     /* prepare vertex attribs */
-    glEnableVertexAttribArray(0);
-    glBindBuffer (GL_ARRAY_BUFFER, base_mesh);
-    glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    GL_CALL(glEnableVertexAttribArray(0));
+    GL_CALL(glBindBuffer (GL_ARRAY_BUFFER, base_mesh));
+    GL_CALL(glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0));
 
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, particleSSbo);
-    glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)sizeof(float));
+    GL_CALL(glEnableVertexAttribArray(1));
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, particleSSbo));
+    GL_CALL(glVertexAttribPointer (1, 2, GL_FLOAT, GL_FALSE,
+                                   sizeof(particle_t), 0));
 
-    glEnableVertexAttribArray(2);
-    glBindBuffer(GL_ARRAY_BUFFER, particleSSbo);
-    glVertexAttribPointer (2, 4, GL_FLOAT, GL_FALSE, sizeof(Particle), (void*)(5 * sizeof(float)));
+    GL_CALL(glEnableVertexAttribArray(2));
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, particleSSbo));
 
-    glVertexAttribDivisor(0, 0);
-    glVertexAttribDivisor(1, 1);
-    glVertexAttribDivisor(2, 1);
+    GL_CALL(glVertexAttribPointer (2, 4, GL_FLOAT, GL_FALSE,
+                                   sizeof(particle_t),
+                                   (void*) (4 * sizeof(float))));
+
+    GL_CALL(glVertexAttribDivisor(0, 0));
+    GL_CALL(glVertexAttribDivisor(1, 1));
+    GL_CALL(glVertexAttribDivisor(2, 1));
 
     /* draw particles */
-    glDrawArraysInstanced (GL_TRIANGLES, 0, 6,
-            maxParticles);
+    GL_CALL(glDrawArraysInstanced(GL_TRIANGLES, 0, 6,
+                                  maxParticles));
 
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(2);
+    GL_CALL(glDisableVertexAttribArray(0));
+    GL_CALL(glDisableVertexAttribArray(1));
+    GL_CALL(glDisableVertexAttribArray(2));
 
-    glUseProgram(0);
+    GL_CALL(glBindVertexArray(0));
+    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+    GL_CALL(glUseProgram(0));
 }
 

@@ -89,7 +89,7 @@ void viewport_manager::for_each_view(view_callback_proc_t call)
     wayfire_view v;
 
     wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link) {
-        if ((v = core->find_view(view)))
+        if ((v = core->find_view(view)) && v->is_visible())
             call(v);
     }
 }
@@ -100,7 +100,7 @@ void viewport_manager::for_each_view_reverse(view_callback_proc_t call)
     wayfire_view v;
 
     wl_list_for_each_reverse(view, &normal_layer.view_list.link, layer_link.link) {
-        if ((v = core->find_view(view)))
+        if ((v = core->find_view(view)) && v->is_visible())
             call(v);
     }
 }
@@ -184,10 +184,26 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
         std::tuple<int, int> ws)
 {
-    std::vector<wayfire_view> ret = get_views_on_workspace(ws);
+    std::vector<wayfire_view> ret;
+    weston_view *view;
+    wayfire_view v;
+
+    GetTuple(tx, ty, ws);
+
+    weston_geometry g;
+    g.x = (tx - vx) * output->handle->width;
+    g.y = (ty - vy) * (output->handle->height);
+    g.width = output->handle->width;
+    g.height = output->handle->height;
+
+    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link) {
+        if ((v = core->find_view(view)) && rect_intersect(g, v->geometry))
+            ret.push_back(v);
+    }
+
     auto bg = get_background_view();
-    if (bg)
-        ret.push_back(bg);
+    if (bg) ret.push_back(bg);
+
 
     return ret;
 }

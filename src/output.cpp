@@ -235,7 +235,8 @@ void render_manager::paint(pixman_region32_t *damage)
         core->weston_repaint(output->handle, damage);
     }
 
-    if (constant_redraw) {
+    if (constant_redraw)
+    {
         wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
                 redraw_idle_cb, output);
     }
@@ -257,11 +258,17 @@ void render_manager::transformation_renderer()
     auto views = output->workspace->get_renderable_views_on_workspace(
             output->workspace->get_current_workspace());
 
+    GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
+
     auto it = views.rbegin();
-    while (it != views.rend()) {
+    while (it != views.rend())
+    {
         auto view = *it;
-        if (!view->destroyed && !view->is_hidden) /* use is_visible() when implemented */
+        if (!view->is_hidden) /* use is_visible() when implemented */
+        {
             view->render();
+        }
+
         ++it;
     }
 }
@@ -276,16 +283,29 @@ void render_manager::add_output_effect(effect_hook_t* hook, wayfire_view v)
 
 void render_manager::rem_effect(const effect_hook_t *hook, wayfire_view v)
 {
-    decltype(output_effects)& container = output_effects;
-    if (v) container = v->effects;
-    auto it = std::remove_if(container.begin(), container.end(),
-    [hook] (const effect_hook_t *h) {
-        if (h == hook)
-            return true;
-        return false;
-    });
+    if (v)
+    {
+        auto it = std::remove_if(v->effects.begin(), v->effects.end(),
+                                 [hook] (const effect_hook_t *h)
+                                 {
+                                     if (h == hook)
+                                         return true;
+                                     return false;
+                                 });
 
-    container.erase(it, container.end());
+        v->effects.erase(it, v->effects.end());
+    } else
+    {
+        auto it = std::remove_if(output_effects.begin(), output_effects.end(),
+                                 [hook] (const effect_hook_t *h)
+                                 {
+                                     if (h == hook)
+                                         return true;
+                                     return false;
+                                 });
+
+        output_effects.erase(it, output_effects.end());
+    }
 }
 
 void render_manager::texture_from_workspace(std::tuple<int, int> vp,
@@ -754,7 +774,7 @@ void wayfire_output::attach_view(wayfire_view v)
 void wayfire_output::detach_view(wayfire_view v)
 {
     auto sig_data = destroy_view_signal{v};
-    signal->emit_signal("destroy-view", &sig_data);
+    signal->emit_signal("detach-view", &sig_data);
 
     if (v->keep_count <= 0)
         workspace->view_removed(v);
@@ -861,19 +881,15 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner)
         return false;
 
     if (active_plugins.find(owner) != active_plugins.end())
+    {
+        active_plugins.insert(owner);
         return true;
+    }
 
-    for(auto act_owner : active_plugins) {
-        bool owner_in_act_owner_compat =
-            act_owner->compat.find(owner->name) != act_owner->compat.end();
-
-        bool act_owner_in_owner_compat =
-            owner->compat.find(act_owner->name) != owner->compat.end();
-
-        if(!owner_in_act_owner_compat && !act_owner->compatAll)
-            return false;
-
-        if(!act_owner_in_owner_compat && !owner->compatAll)
+    for(auto act_owner : active_plugins)
+    {
+        bool compatible = (act_owner->abilities_mask & owner->abilities_mask) == 0;
+        if (!compatible)
             return false;
     }
 
@@ -883,9 +899,20 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner)
 
 bool wayfire_output::deactivate_plugin(wayfire_grab_interface owner)
 {
-    owner->ungrab();
-    active_plugins.erase(owner);
-    return true;
+    auto it = active_plugins.find(owner);
+    if (it == active_plugins.end())
+        return true;
+
+    active_plugins.erase(it);
+
+    if (active_plugins.count(owner) == 0)
+    {
+        owner->ungrab();
+        active_plugins.erase(owner);
+        return true;
+    }
+
+    return false;
 }
 
 bool wayfire_output::is_plugin_active(owner_t name)

@@ -20,15 +20,25 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
     debug << "desktop_surface_removed" << std::endl;
 
     auto view = core->find_view(surface);
-    core->erase_view(view);
-
     weston_desktop_surface_unlink_view(view->handle);
-    view->destroyed = true;
-    view->output->detach_view(view);
 
-    if (view->keep_count <= 0) /* plugins might want to keep this */
-        weston_view_destroy(view->handle);
+    pixman_region32_fini(&view->surface->pending.input);
+    pixman_region32_init(&view->surface->pending.input);
+    pixman_region32_fini(&view->surface->input);
+    pixman_region32_init(&view->surface->input);
+
+    view->destroyed = true;
+
+    auto sig_data = destroy_view_signal{view};
+    view->output->signal->emit_signal("destroy-view", &sig_data);
+
+    if (view->keep_count <= 0) {
+        errio << "Here we destroy our beloved view" << std::endl;
+        /* plugins might want to keep this */
+        core->erase_view(view);
+    }
 }
+
 
 void desktop_surface_commited (weston_desktop_surface *desktop_surface,
         int32_t sx, int32_t sy, void *data)

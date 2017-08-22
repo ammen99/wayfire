@@ -1,269 +1,253 @@
 #include <opengl.hpp>
 #include <cmath>
 #include "fire.hpp"
+#include <signal_definitions.hpp>
+#include <chrono>
+#include <img.hpp>
 
-#define EFFECT_CYCLES 16
-#define BURSTS 10
-#define MAX_PARTICLES 1024 * 384
-#define PARTICLE_SIZE 0.006
-#define MAX_LIFE 32
-#define RESP_INTERVAL 1
+#define MAX_PARTICLES (1024)
+#define PARTICLE_SIZE 0.1
 
 bool run = true;
 
 #define avg(x,y) (((x) + (y))/2.0)
 #define clamp(t,x,y) t=(t > (y) ? (y) : (t < (x) ? (x) : t))
 
-/* a set of windows we are animating,
- * so that we don't create 2+ particle systems
- * for the same window */
-std::unordered_set<Window> animating_windows;
+unsigned char data[256 * 256];
+GLuint rand_tex;
+bool data_filled = false;
 
-class FireParticleSystem : public ParticleSystem {
+class fire_particle_system : public wf_particle_system
+{
     float _cx, _cy;
     float _w, _h;
 
-    float wind, gravity;
+    float global_dx, global_dy;
+
+    float gravity;
+
+    int effect_cycles;
 
     public:
 
-    void loadComputeProgram() {
-        std::string shaderSrcPath = "/usr/local/share/fireman/animate/shaders";
+    void load_compute_program()
+    {
+        std::string shaderSrcPath = INSTALL_PREFIX"/share/wayfire/animate/shaders";
 
-        computeProg = glCreateProgram();
+        computeProg = GL_CALL(glCreateProgram());
         GLuint css =
-            GLXUtils::loadShader(std::string(shaderSrcPath)
+            OpenGL::load_shader(std::string(shaderSrcPath)
                     .append("/fire_compute.glsl").c_str(),
                     GL_COMPUTE_SHADER);
 
-        glAttachShader(computeProg, css);
-        glLinkProgram(computeProg);
-        glUseProgram(computeProg);
+        GL_CALL(glAttachShader(computeProg, css));
+        GL_CALL(glLinkProgram(computeProg));
+        GL_CALL(glUseProgram(computeProg));
 
-        glUniform1f(1, particleLife);
-        glUniform1f(5, _w);
-        glUniform1f(6, _h);
+        GL_CALL(glUniform1i(1, particleLife));
+        GL_CALL(glUniform1f(5, 2 * _w));
+        GL_CALL(glUniform1f(6, 2 * _h));
+
+        if (!data_filled)
+        {
+            std::srand(time(0));
+            for (int i = 0; i < 256 * 256; i++)
+            {
+                data[i] = std::rand() % 256;
+            }
+
+            GL_CALL(glGenTextures(1, &rand_tex));
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, rand_tex));
+            GL_CALL(glPixelStorei(GL_UNPACK_ALIGNMENT, 1));
+            GL_CALL(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+            GL_CALL(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
+            GL_CALL(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
+
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 256, 256, 0, GL_RED, GL_UNSIGNED_BYTE, data));
+        }
     }
 
-    void genBaseMesh() {
-        ParticleSystem::genBaseMesh();
-        for(int i = 0; i < 6; i++)
-            vertices[2 * i + 0] += _cx - _w,
-            vertices[2 * i + 1] += _cy - _h;
+    void gen_base_mesh()
+    {
+        wf_particle_system::gen_base_mesh();
+
+        global_dx = global_dy = 0;
+        add_offset(_cx - _w, _cy - _h);
     }
 
-    void defaultParticleIniter(Particle &p) {
-        p.life = particleLife + 1;
+    void default_particle_initer(particle_t &p)
+    {
+        p.life = 0;
 
-        p.dy = 2. * _h * float(std::rand() % 1001) / (1000 * EFFECT_CYCLES);
+        p.dy = 2. * _h * float(std::rand() % 50 + 951) / (950. * effect_cycles);
         p.dx = 0;
 
         p.x = (float(std::rand() % 1001) / 1000.0) * _w * 2.;
-        p.y = 0;
-
-        p.r = p.g = p.b = p.a = 0;
+        p.y = (float(std::rand() % 1001) / 1000.0) * _h * 0.02;
     }
 
-    FireParticleSystem(float cx, float cy,
-            float w, float h,
-            int numParticles) :
-        _cx(cx), _cy(cy), _w(w), _h(h) {
+    fire_particle_system(float cx, float cy, float w, float h, int numParticles,
+            int maxLife, int effect_cycles)
+        : _cx(cx), _cy(cy), _w(w), _h(h)
+    {
+        this->effect_cycles = effect_cycles;
+        particleSize = PARTICLE_SIZE;
 
-            particleSize = PARTICLE_SIZE;
+        gravity = -_h * 1 / (maxLife * maxLife / 2) / 3;
 
-            gravity = -_h * 0.001;
-            wind = -gravity * RESP_INTERVAL * BURSTS * 2;
+        maxParticles    = numParticles;
+        partSpawn       = numParticles;
+        particleLife    = maxLife;
+        respawnInterval = 1;
 
-            maxParticles    = numParticles;
-            partSpawn       = numParticles / BURSTS;
-            particleLife    = MAX_LIFE;
-            respawnInterval = RESP_INTERVAL;
+        init_gles_part();
+        set_particle_color(glm::vec4(0.4, 0.17, 0.05, 0.2), glm::vec4(0.4, 0.17, 0.05, 0.2));
 
-            initGLPart();
-            setParticleColor(glm::vec4(0, 0.5, 1, 1), glm::vec4(0, 0, 0.7, 0.2));
+        GL_CALL(glUseProgram(renderProg));
+        GL_CALL(glUniform1f(4, particleSize));
+        GL_CALL(glUseProgram(0));
+    }
 
-            glUseProgram(renderProg);
-            glUniform1f(1, particleSize);
-            glUseProgram(0);
+    int check()
+    {
+        /* after first simulation, don't spawn at all */
+        pause();
 
-            //wind = 0;
+        return currentIteration;
+    }
+
+    void simulate()
+   {
+        GL_CALL(glUseProgram(computeProg));
+        GL_CALL(glUniform1f(7, gravity));
+        GL_CALL(glUniform1f(8, 0.5 * currentIteration / effect_cycles));
+
+
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, rand_tex));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+
+        wf_particle_system::simulate();
+
+        if ((int)currentIteration >= effect_cycles / 2)
+        {
+            gravity *= -1;
         }
-
-    /* checks if PS should run further
-     * and if we should stop spawning */
-    int numSpawnedBursts = 0;
-
-    /* make particle system report it has stopped */
-    void disable() {
-        currentIteration = EFFECT_CYCLES + 1;
     }
 
-    bool check() {
+    void add_offset(float dx, float dy)
+    {
+        global_dx += dx;
+        global_dy += dy;
 
-        if((currentIteration - 1) % respawnInterval == 0)
-            ++numSpawnedBursts;
+        float data[] = {global_dx, global_dy};
 
-        if(numSpawnedBursts >= BURSTS)
-            pause();
-
-        return currentIteration <= EFFECT_CYCLES;
-    }
-
-    void simulate() {
-        glUseProgram(computeProg);
-        glUniform1f(7, wind);
-        ParticleSystem::simulate();
-
-        wind += gravity;
-    }
-
-    void addOffset(float dx, float dy) {
-        for(int i = 0; i < 6; ++i) {
-            vertices[2 * i + 0] += dx;
-            vertices[2 * i + 1] += dy;
-        }
-
-        uploadBaseMesh();
+        GL_CALL(glUseProgram(renderProg));
+        GL_CALL(glUniform2fv(3, 1, data));
     }
 };
-bool first_time = true;
 
-struct DeleteFireObjectHook {
+void wf_fire_effect::init(wayfire_view win, int fr_cnt, bool burnout)
+{
 
-};
+    this->burnout = burnout;
+    this->w = win;
+    effect_cycles = fr_cnt;
 
-Fire::Fire(View win) : w(win) {
-    auto x = win->attrib.x,
-         y = win->attrib.y,
-         w = win->attrib.width,
-         h = win->attrib.height;
+    auto x = w->geometry.x,
+         y = w->geometry.y,
+         wi = w->geometry.width,
+         he = w->geometry.height;
 
-    GetTuple(sw, sh, core->getScreenSize());
+    float sw = w->output->render->ctx->device_width;
+    float sh = w->output->render->ctx->device_height;
 
     float w2 = float(sw) / 2.,
           h2 = float(sh) / 2.;
 
-    float tlx = float(x) / w2 - 1.,
-          tly = 1. - float(y) / h2;
+    float tlx = (x - w2) / w2,
+          tly = (h2 - y) / h2;
 
-    float brx = tlx + w / w2,
-          bry = tly - h / h2;
+    float brx = tlx + wi / w2,
+          bry = tly - he / h2;
 
+    /* "short" surfaces need less time to burn,
+     * however try not to make the effect too short */
+    float percent = 1.0 * he / sh;
+    percent = std::pow(percent, 1.0 / 5.0);
+    fr_cnt *= percent;
+    effect_cycles = fr_cnt;
 
-    int numParticles =
-        MAX_PARTICLES *  w / float(sw) * h / float(sh);
+    ps = new fire_particle_system(avg(tlx, brx), avg(tly, bry),
+            wi / sw, he / sh, MAX_PARTICLES, fr_cnt * 3, fr_cnt);
 
-    ps = new FireParticleSystem(avg(tlx, brx), avg(tly, bry),
-            w / float(sw), h / float(sh), numParticles);
+    win->transform.color = glm::vec4(1, 1, 1, 0);
+    progress = 0;
 
-    hook.action = std::bind(std::mem_fn(&Fire::step), this);
-    hook.type = EFFECT_WINDOW;
-    hook.win = win;
-    core->addEffect(&hook);
-    hook.enable();
-
-    win->transform.color[3] = 0;
-    transparency.action = std::bind(std::mem_fn(&Fire::adjustAlpha), this);
-    core->addHook(&transparency);
-    transparency.enable();
-
-    moveListener.action =
-        std::bind(std::mem_fn(&Fire::handleWindowMoved),
-                this, std::placeholders::_1);
-    core->connect_signal("move-window", &moveListener);
-
-
-    if(animating_windows.find(this->w->id) != animating_windows.end()) {
-        ps->disable();
-    }
-    else {
-        animating_windows.insert(this->w->id);
-    }
-
-    unmapListener.action =
-        std::bind(std::mem_fn(&Fire::handleWindowUnmapped),
-                this, std::placeholders::_1);
-    core->connect_signal("unmap-window", &unmapListener);
-
-    /* TODO : Check if necessary */
-    core->setRedrawEverything(true);
-    OpenGL::useDefaultProgram();
+    last_geometry = win->geometry;
 }
 
-void Fire::step() {
+bool wf_fire_effect::step()
+{
+    if (w->geometry.x != last_geometry.x || w->geometry.y != last_geometry.y)
+    {
+        int dx = w->geometry.x - last_geometry.x;
+        int dy = w->geometry.y - last_geometry.y;
+
+        GetTuple(sw, sh, w->output->get_screen_size());
+
+        float fdx = 2. * float(dx) / float(sw);
+        float fdy = 2. * float(dy) / float(sh);
+
+        ps->add_offset(fdx, -fdy);
+
+        last_geometry = w->geometry;
+    }
+
     ps->simulate();
+    adjust_alpha();
 
-    if(w->isVisible())
+    if(w->is_mapped)
+    {
+        pixman_region32_t visible_region;
+
+        float a = 1.0 * progress / effect_cycles;
+        if (burnout)
+        {
+            pixman_region32_init_rect(&visible_region,
+                                      w->geometry.x, w->geometry.y,
+                                      w->geometry.width, w->geometry.height * (1 - a));
+        } else
+        {
+            pixman_region32_init_rect(&visible_region,
+                                      w->geometry.x, w->geometry.y + w->geometry.height * (1 - a),
+                                      w->geometry.width, w->geometry.height * a);
+        }
+
+        OpenGL::use_default_program();
+        w->simple_render(0, &visible_region);
+
+        w->transform.color[3] = 0.0f;
         ps->render();
-    OpenGL::useDefaultProgram();
-//
-    if(!ps->check()) {
-        w->transform.color[3] = 1;
-
-        core->remHook(transparency.id);
-        core->remEffect(hook.id, w);
-        core->disconnect_signal("move-window", moveListener.id);
-        core->disconnect_signal("unmap-window", unmapListener.id);
-
-        animating_windows.erase(w->id);
-        delete this;
-    }
-}
-
-void Fire::adjustAlpha() {
-
-    float c = float(progress) / float(EFFECT_CYCLES);
-    c = std::pow(100, c) / 100.;
-
-    w->transform.color[3] = c;
-    ++progress;
-}
-
-void Fire::handleWindowMoved(SignalListenerData d) {
-    FireWin *w = (FireWin*)d[0];
-    if(w->id != this->w->id)
-        return;
-
-    int dx = *(int*)d[1];
-    int dy = *(int*)d[2];
-
-    GetTuple(sw, sh, core->getScreenSize());
-
-    float fdx = 2. * float(dx) / float(sw);
-    float fdy = 2. * float(dy) / float(sh);
-
-    ps->addOffset(fdx, -fdy);
-    OpenGL::useDefaultProgram();
-}
-
-void Fire::handleWindowUnmapped(SignalListenerData d) {
-    View ww = *(FireWindow*)d[0];
-    if(ww->id == w->id) {
-        ps->disable();
-        step();
-    }
-}
-
-struct RedrawOnceMoreHook {
-    Hook h;
-    RedrawOnceMoreHook() {
-        h.action = std::bind(std::mem_fn(&RedrawOnceMoreHook::step), this);
-        core->addHook(&h);
-        h.enable();
     }
 
-    void step() {
-        core->damageRegion(core->getMaximisedRegion());
-        core->remHook(h.id);
-        delete this;
-        OpenGL::useDefaultProgram();
-    }
-};
+    return ps->check() <= effect_cycles;
+}
 
-Fire::~Fire() {
+wf_fire_effect::~wf_fire_effect()
+{
+    w->transform.color[3] = 1;
     delete ps;
-    core->setRedrawEverything(false);
-    core->damageRegion(core->getMaximisedRegion());
+}
 
-    new RedrawOnceMoreHook();
+void wf_fire_effect::adjust_alpha()
+{
+    if (burnout)
+    {
+        w->transform.color[3] = GetProgress(1.0f, 0.5f, progress, effect_cycles);
+    } else
+    {
+        w->transform.color[3] = GetProgress(0.5f, 1.0f, progress, effect_cycles);
+    }
+    ++progress;
 }

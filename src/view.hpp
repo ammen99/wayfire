@@ -93,6 +93,8 @@ class wayfire_view_t {
 
         std::vector<effect_hook_t*> effects;
 
+        /* simple_render is used to just render the view without running the attached effects */
+        void simple_render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
         void render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
 };
 

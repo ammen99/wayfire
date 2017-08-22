@@ -50,8 +50,8 @@ class wayfire_core
         wayfire_view find_view(weston_view *);
         wayfire_view find_view(weston_desktop_surface *);
         wayfire_view find_view(weston_surface *);
-        /* Only removes the view from the "database".
-         * Use only when view is already destroyed and detached from output */
+
+        /* completely destroy a view */
         void erase_view(wayfire_view view);
 
         /* brings the view to the top

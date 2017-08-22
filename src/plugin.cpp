@@ -39,7 +39,8 @@ const float MPI = 3.1415926535 / 2;
 
 float GetProgress(float start, float end, float current_step, float max_steps)
 {
-    assert(max_steps > 0);
+    if (max_steps <= 1e-4)
+        return end;
 
     float c = current_step / max_steps;
     float prog = std::sin(c * MPI);

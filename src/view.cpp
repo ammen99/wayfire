@@ -167,8 +167,6 @@ void wayfire_view_t::map(int sx, int sy)
         surface->is_mapped = true;
         is_mapped = true;
 
-
-
         auto sig_data = create_view_signal{core->find_view(handle)};
         output->signal->emit_signal("create-view", &sig_data);
 
@@ -189,14 +187,14 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4, glm::vec4, uint32_t bits);
 
 /* TODO: use bits */
-void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
+void wayfire_view_t::simple_render(uint32_t bits, pixman_region32_t *damage)
 {
     pixman_region32_t our_damage;
     bool free_damage = false;
 
     if (damage == nullptr) {
-        pixman_region32_init(&our_damage);
-        pixman_region32_copy(&our_damage, &output->handle->region);
+        auto og = output->get_full_geometry();
+        pixman_region32_init_rect(&our_damage, og.x, og.y, og.width, og.height);
         damage = &our_damage;
         free_damage = true;
     }
@@ -207,6 +205,11 @@ void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
 
     if (free_damage)
         pixman_region32_fini(&our_damage);
+}
+
+void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
+{
+    simple_render(bits, damage);
 
     std::vector<effect_hook_t*> hooks_to_run;
     for (auto hook : effects)
@@ -233,6 +236,7 @@ static inline void render_surface_box(GLuint tex[3], int n_tex, const pixman_box
         subbox.x2 - subbox.x1, subbox.y2 - subbox.y1
     };
 
+    OpenGL::use_default_program();
     for (int i = 0; i < n_tex; i++) {
         OpenGL::render_transformed_texture(tex[i], geometry, texg, transform,
                                            color, bits);

@@ -1,15 +1,18 @@
-#version 330
-#extension GL_ARB_explicit_uniform_location : enable
+#version 310 es
 
-in vec4 out_color;
-in vec2 pos;
-out vec4 outColor;
+in mediump vec4 out_color;
+in mediump vec2 pos;
+out mediump vec4 fragColor;
 
-layout(location = 1) uniform float size;
+layout(location = 4) uniform highp float radii;
 
-void main() {
-    float val = 10 * size / sqrt(pos.x * pos.x + pos.y * pos.y);
-    outColor = vec4(out_color.xyz, out_color.w * val);
-   // outColor = vec4(out_color.xyz, 1.0);
-//    outColor = vec4(1, 1, 1, 1);
+void main()
+{
+    mediump float dist_center = sqrt(pos.x * pos.x + pos.y * pos.y);
+    mediump float factor = (radii - dist_center) / radii;
+    if (factor < 0.0) factor = 0.0;
+    mediump float factor2 = factor * factor;
+
+    fragColor = vec4(out_color.xyz, out_color.w * factor2);
+    //fragColor = out_color;
 }

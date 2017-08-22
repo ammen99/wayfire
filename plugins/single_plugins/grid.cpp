@@ -47,8 +47,7 @@ class wayfire_grid : public wayfire_plugin_t {
     void init(wayfire_config *config)
     {
         grab_interface->name = "grid";
-        grab_interface->compatAll = false;
-        grab_interface->compat.insert("move");
+        grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY;
 
         auto section = config->get_section("grid");
         total_steps = section->get_duration("duration", 15);

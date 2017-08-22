@@ -37,8 +37,7 @@ class vswitch : public wayfire_plugin_t
 
     void init(wayfire_config *config) {
         grab_interface->name = "vswitch";
-        grab_interface->compatAll = false;
-        grab_interface->compat.insert("move");
+        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
 
         callback_left = [=] (weston_keyboard*, uint32_t) {
             add_direction(-1, 0);

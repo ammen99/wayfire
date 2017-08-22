@@ -74,8 +74,7 @@ class view_switcher : public wayfire_plugin_t {
 
     void init(wayfire_config *config) {
         grab_interface->name = "switcher";
-        grab_interface->compatAll = false;
-        grab_interface->compat.insert("screenshot");
+        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
 
         auto section = config->get_section("switcher");
 
@@ -167,6 +166,7 @@ class view_switcher : public wayfire_plugin_t {
             case WL_OUTPUT_TRANSFORM_270:
                 angle = M_PI / 2;
             default:
+                angle = 0;
                 break;
         }
         auto rot = glm::rotate(glm::mat4(), angle, glm::vec3(0.0, 0.0, 1.0));

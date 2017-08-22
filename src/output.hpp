@@ -131,7 +131,7 @@ class wayfire_output
 {
     friend class core_t;
     private:
-       std::unordered_set<wayfire_grab_interface> active_plugins;
+       std::unordered_multiset<wayfire_grab_interface> active_plugins;
        plugin_manager *plugin;
 
        wayfire_view active_view;

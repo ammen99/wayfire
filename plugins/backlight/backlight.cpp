@@ -77,7 +77,7 @@ class wayfire_backlight : public wayfire_plugin_t {
         void init(wayfire_config *config)
         {
             grab_interface->name = "backlight";
-            grab_interface->compatAll = true;
+            grab_interface->abilities_mask = WF_ABILITY_NONE;
 
             auto section = config->get_section("backlight");
             std::string back = section->get_string("backend", "weston");

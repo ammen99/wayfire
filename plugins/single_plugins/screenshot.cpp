@@ -22,7 +22,7 @@ class wayfire_screenshot : public wayfire_plugin_t {
         void init(wayfire_config *config)
         {
             grab_interface->name = "screenshot";
-            grab_interface->compatAll = true;
+            grab_interface->abilities_mask = WF_ABILITY_RECORD_SCREEN;
 
             auto section = config->get_section("screenshot");
 

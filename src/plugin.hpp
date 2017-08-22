@@ -37,6 +37,34 @@ class wayfire_output;
 class wayfire_config;
 using owner_t = string;
 
+/* In the current model, plugins can add as much keybindings as they want
+ * and receive events for them. However, some plugins cannot be active at
+ * the same * time - consider expo and cube as examples. As plugins are
+ * basically isolated except for signals, there must be a way for them
+ * to signal which other plugins might run. This is the role of "abilities".
+ * Each plugin specifies what it needs(to have a custom renderer, or to
+ * record screen). If there is already a running plugin which has overridden
+ * these, * the output->activate_plugin() function will fail and thus
+ * the plugin will know that it shouldn't run */
+
+/* base abilities */
+enum wayfire_grab_abilities
+{
+    WF_ABILITY_CHANGE_VIEW_GEOMETRY = 1 << 0,
+    WF_ABILITY_RECORD_SCREEN        = 1 << 1,
+    WF_ABILITY_CUSTOM_RENDERING     = 1 << 2,
+    WF_ABILITY_GRAB_INPUT           = 1 << 3
+};
+
+/* some more "high-level" ability names */
+#define WF_ABILITY_CONTROL_WM (WF_ABILITY_CHANGE_VIEW_GEOMETRY | \
+        WF_ABILITY_CUSTOM_RENDERING | WF_ABILITY_GRAB_INPUT)
+
+#define WF_ABILITY_ALL (WF_ABILITY_RECORD_SCREEN | WF_ABILITY_CUSTOM_RENDERING | \
+        WF_ABILITY_CHANGE_VIEW_GEOMETRY | WF_ABILITY_GRAB_INPUT)
+
+#define WF_ABILITY_NONE (0)
+
 /* owners are used to acquire screen grab and to activate */
 struct wayfire_grab_interface_t {
     private:
@@ -45,8 +73,7 @@ struct wayfire_grab_interface_t {
 
     public:
     owner_t name;
-    std::unordered_set<owner_t> compat;
-    bool compatAll = true;
+    uint32_t abilities_mask = 0;
     wayfire_output *output;
 
     wayfire_grab_interface_t(wayfire_output *_output) : output(_output) {}

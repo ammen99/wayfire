@@ -79,7 +79,7 @@ int load_drm_backend(weston_compositor *ec)
     return ret;
 }
 
-const int default_width = 800, default_height = 450;
+const int default_width = 1600, default_height = 900;
 void configure_windowed_output (wl_listener *listener, void *data)
 {
     weston_output *output = (weston_output*)data;

@@ -3,28 +3,26 @@
 
 #include "animate.hpp"
 #include "particle.hpp"
+#include <output.hpp>
 
-class FireParticleSystem;
+class fire_particle_system;
 
-class Fire {
-    FireParticleSystem *ps;
-    View w;
+class wf_fire_effect : public animation_base
+{
+    fire_particle_system *ps;
+    wayfire_view w;
 
-    EffectHook hook;
-    Hook transparency;
-    SignalListener moveListener,
-                   unmapListener;
+    weston_geometry last_geometry;
 
-    int progress = 0;
+    int progress = 0, effect_cycles;
+    bool burnout;
+
+    void adjust_alpha();
 
     public:
-        Fire(View win);
-        void step();
-        void adjustAlpha();
-        void handleWindowMoved(SignalListenerData d);
-        void handleWindowUnmapped(SignalListenerData d);
-
-        ~Fire();
+        void init(wayfire_view win, int fr_cnt, bool burnout);
+        bool step();
+        ~wf_fire_effect();
 };
 
 #endif

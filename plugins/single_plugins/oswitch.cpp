@@ -14,14 +14,15 @@ void next_output_idle_cb(void *data)
     core->focus_output(wo);
 }
 
-class wayfire_output_manager : public wayfire_plugin_t {
+class wayfire_output_manager : public wayfire_plugin_t
+{
     key_callback switch_output, switch_output_with_window;
 
     public:
         void init(wayfire_config *config)
         {
             grab_interface->name = "oswitch";
-            grab_interface->compatAll = true;
+            grab_interface->abilities_mask = WF_ABILITY_NONE;
 
             auto section = config->get_section("oswitch");
 
