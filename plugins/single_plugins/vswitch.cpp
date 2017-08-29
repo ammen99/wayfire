@@ -123,10 +123,8 @@ class vswitch : public wayfire_plugin_t
 
         /* this is the first direction, we have pushed {0, 0} so that slide_done()
          * will do nothing on the first time */
-        if (!running) {
-            start_switch();
+        if (!running && start_switch())
             slide_done();
-        }
     }
 
     float sx, sy, tx, ty;
@@ -216,16 +214,18 @@ class vswitch : public wayfire_plugin_t
             slide_done();
     }
 
-    void start_switch()
+    bool start_switch()
     {
         if (!output->activate_plugin(grab_interface)) {
             dirs = std::queue<switch_direction> ();
-            return;
+            return false;
         }
 
         running = true;
         output->render->add_output_effect(&hook, nullptr);
         output->render->auto_redraw(true);
+
+        return true;
     }
 
     void stop_switch()

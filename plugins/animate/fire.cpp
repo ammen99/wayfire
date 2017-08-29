@@ -36,7 +36,7 @@ class fire_particle_system : public wf_particle_system
 
         computeProg = GL_CALL(glCreateProgram());
         GLuint css =
-            OpenGL::load_shader(std::string(shaderSrcPath)
+                OpenGL::load_shader(std::string(shaderSrcPath)
                     .append("/fire_compute.glsl").c_str(),
                     GL_COMPUTE_SHADER);
 
@@ -64,6 +64,8 @@ class fire_particle_system : public wf_particle_system
             GL_CALL(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
 
             GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 256, 256, 0, GL_RED, GL_UNSIGNED_BYTE, data));
+
+            data_filled = true;
         }
     }
 
