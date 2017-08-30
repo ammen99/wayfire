@@ -5,8 +5,9 @@
 #include <chrono>
 #include <img.hpp>
 
-#define MAX_PARTICLES (1024)
-#define PARTICLE_SIZE 0.1
+#define MAX_PARTICLES (512)
+#define MIN_PARTICLE_SIZE 0.09
+#define MAX_PARTICLE_SIZE 0.12
 
 bool run = true;
 
@@ -93,7 +94,8 @@ class fire_particle_system : public wf_particle_system
         : _cx(cx), _cy(cy), _w(w), _h(h)
     {
         this->effect_cycles = effect_cycles;
-        particleSize = PARTICLE_SIZE;
+
+        particleSize = (1. - w) * MIN_PARTICLE_SIZE + w * MAX_PARTICLE_SIZE;
 
         gravity = -_h * 1 / (maxLife * maxLife / 2) / 3;
 
@@ -103,10 +105,10 @@ class fire_particle_system : public wf_particle_system
         respawnInterval = 1;
 
         init_gles_part();
-        set_particle_color(glm::vec4(0.4, 0.17, 0.05, 0.2), glm::vec4(0.4, 0.17, 0.05, 0.2));
+        set_particle_color(glm::vec4(0.4, 0.17, 0.05, 0.3 + w * 0.1), glm::vec4(0.4, 0.17, 0.05, 0.3));
 
         GL_CALL(glUseProgram(renderProg));
-        GL_CALL(glUniform1f(4, particleSize));
+        GL_CALL(glUniform1f(4, particleSize * 0.8));
         GL_CALL(glUseProgram(0));
     }
 
@@ -123,7 +125,6 @@ class fire_particle_system : public wf_particle_system
         GL_CALL(glUseProgram(computeProg));
         GL_CALL(glUniform1f(7, gravity));
         GL_CALL(glUniform1f(8, 0.5 * currentIteration / effect_cycles));
-
 
         GL_CALL(glBindTexture(GL_TEXTURE_2D, rand_tex));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));

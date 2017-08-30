@@ -51,22 +51,10 @@ class wf_particle_system
     size_t particleBufSz, lifeBufSz;
     GLuint particleSSbo, lifeInfoSSbo;
 
-    float uv[24] = {
-        -1.f, -1.f, 0.0f, 0.0f,
-         1.f, -1.f, 1.0f, 0.0f,
-         1.f,  1.f, 1.0f, 1.0f,
-         1.f,  1.f, 1.0f, 1.0f,
-        -1.f,  1.f, 0.0f, 1.0f,
-        -1.f, -1.f, 0.0f, 0.0f,
-    };
-
     float vertices[12] = {
         -1.f, -1.f,
          1.f, -1.f,
-         1.f,  1.f,
-         1.f,  1.f,
-        -1.f,  1.f,
-        -1.f, -1.f,
+         0.f,  std::sqrt(2.0)
     };
 
     using particle_tIniter = std::function<void(particle_t&)>;

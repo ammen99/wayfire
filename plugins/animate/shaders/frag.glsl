@@ -14,5 +14,4 @@ void main()
     mediump float factor2 = factor * factor;
 
     fragColor = vec4(out_color.xyz, out_color.w * factor2);
-    //fragColor = out_color;
 }

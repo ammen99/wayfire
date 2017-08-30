@@ -320,7 +320,7 @@ void wf_particle_system::render()
     GL_CALL(glVertexAttribDivisor(2, 1));
 
     /* draw particles */
-    GL_CALL(glDrawArraysInstanced(GL_TRIANGLES, 0, 6,
+    GL_CALL(glDrawArraysInstanced(GL_TRIANGLES, 0, 3,
                                   maxParticles));
 
     GL_CALL(glDisableVertexAttribArray(0));
