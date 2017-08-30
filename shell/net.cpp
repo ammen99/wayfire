@@ -283,6 +283,17 @@ bool network_widget::update()
     return result;
 }
 
+inline wayfire_color interpolate_color(wayfire_color start, wayfire_color end, float a)
+{
+    wayfire_color r;
+    r.r = start.r * a + end.r * (1. - a);
+    r.g = start.g * a + end.g * (1. - a);
+    r.b = start.b * a + end.b * (1. - a);
+    r.a = start.a * a + end.a * (1. - a);
+
+    return r;
+}
+
 void network_widget::repaint()
 {
     constexpr wayfire_color color_good = {0, 1, 0, 1},
@@ -301,15 +312,20 @@ void network_widget::repaint()
 
     connection.mutex.lock();
 
+#define STRENGTH_GOOD 40
+#define STRENGTH_AVG 25
+
     text = connection.name;
-    if (connection.strength >= 50)
-        color = color_good;
-    else if (connection.strength > 30)
-        color = color_avg;
+    if (connection.strength >= STRENGTH_GOOD)
+        color = interpolate_color(color_good, color_avg,
+                (connection.strength - STRENGTH_GOOD) * 1.0 / (100 - STRENGTH_GOOD));
+    else if (connection.strength >= STRENGTH_AVG)
+        color = interpolate_color(color_avg, color_bad,
+                (connection.strength - STRENGTH_AVG) * 1.0 / (STRENGTH_GOOD - STRENGTH_AVG));
     else
         color = color_bad;
-    connection.updated = false;
 
+    connection.updated = false;
     connection.mutex.unlock();
 
 
