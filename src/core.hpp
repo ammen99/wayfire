@@ -68,6 +68,7 @@ class wayfire_core
 
         wayfire_output *get_active_output();
         wayfire_output *get_next_output(wayfire_output *output);
+        wayfire_output *get_output_at(int x, int y);
         size_t          get_num_outputs();
 
         void for_each_output(output_callback_proc);

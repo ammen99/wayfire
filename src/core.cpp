@@ -922,6 +922,21 @@ wayfire_output* wayfire_core::get_active_output()
     return active_output;
 }
 
+wayfire_output* wayfire_core::get_output_at(int x, int y)
+{
+    wayfire_output *target = nullptr;
+    for_each_output([&] (wayfire_output *output)
+    {
+        if (point_inside({x, y}, output->get_full_geometry()) &&
+                target == nullptr)
+        {
+            target = output;
+        }
+    });
+
+    return target;
+}
+
 wayfire_output* wayfire_core::get_next_output(wayfire_output *output)
 {
     auto id = output->handle->id;
