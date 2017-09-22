@@ -811,6 +811,7 @@ void wayfire_core::wake()
 
 void wayfire_core::sleep()
 {
+    weston_compositor_sleep(ec);
 }
 
 /* FIXME: currently wayfire hijacks the built-in renderer, assuming that it is the gl-renderer
