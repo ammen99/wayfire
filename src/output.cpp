@@ -180,10 +180,15 @@ void redraw_idle_cb(void *data)
 
 void render_manager::auto_redraw(bool redraw)
 {
-    if (redraw == constant_redraw) /* no change, exit */
+    constant_redraw += (redraw ? 1 : -1);
+    if (constant_redraw > 1) /* no change, exit */
         return;
+    if (constant_redraw < 0)
+    {
+        constant_redraw = 0;
+        return;
+    }
 
-    constant_redraw = redraw;
     auto loop = wl_display_get_event_loop(core->ec->wl_display);
     wl_event_loop_add_idle(loop, redraw_idle_cb, output);
 }

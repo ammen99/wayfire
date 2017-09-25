@@ -31,7 +31,7 @@ struct wf_workspace_stream {
 struct render_manager {
     private:
         wayfire_output *output;
-        bool constant_redraw = false;
+        int constant_redraw = 0;
 
         bool dirty_context = true;
 
