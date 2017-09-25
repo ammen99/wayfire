@@ -3,6 +3,7 @@
 #include <signal_definitions.hpp>
 #include "../../shared/config.hpp"
 #include <type_traits>
+#include "system_fade.hpp"
 
 void animation_base::init(wayfire_view, int, bool) {}
 bool animation_base::step() {return false;}
@@ -159,10 +160,11 @@ class fade_animation : public animation_base
 };
 
 class wayfire_animation : public wayfire_plugin_t {
-    signal_callback_t create_cb, destroy_cb;
+    signal_callback_t create_cb, destroy_cb, wake_cb;
 
     std::string open_animation, close_animation;
     int frame_count;
+    int startup_duration;
 
     public:
     void init(wayfire_config *config)
@@ -174,6 +176,7 @@ class wayfire_animation : public wayfire_plugin_t {
         open_animation = section->get_string("open_animation", "fade");
         close_animation = section->get_string("close_animation", "fade");
         frame_count = section->get_duration("duration", 16);
+        startup_duration = section->get_duration("startup_duration", 36);
 
 #if not USE_GLES32
         if(open_animation == "fire" || close_animation == "fire")
@@ -191,8 +194,14 @@ class wayfire_animation : public wayfire_plugin_t {
         destroy_cb = std::bind(std::mem_fn(&wayfire_animation::view_destroyed),
                 this, _1);
 
+        wake_cb = [=] (signal_data *data)
+        {
+            new wf_system_fade(output, startup_duration);
+        };
+
         output->signal->connect_signal("create-view", &create_cb);
         output->signal->connect_signal("destroy-view", &destroy_cb);
+        output->signal->connect_signal("wake", &wake_cb);
     }
 
     /* TODO: enhance - add more animations */
@@ -227,9 +236,11 @@ class wayfire_animation : public wayfire_plugin_t {
             new animation_hook<wf_fire_effect, true> (grab_interface, data->destroyed_view, frame_count);
     }
 
-    void fini() {
+    void fini()
+    {
         output->signal->disconnect_signal("create-view", &create_cb);
         output->signal->disconnect_signal("destroy-view", &destroy_cb);
+        output->signal->disconnect_signal("wake", &wake_cb);
     }
     };
 
