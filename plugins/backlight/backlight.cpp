@@ -69,9 +69,11 @@ class weston_backlight_backend : public backlight_backend
 
 class wayfire_backlight : public wayfire_plugin_t {
     key_callback up, down;
+    signal_callback_t sleep, wake;
 
     backlight_backend *backend = nullptr;
     int max_brightness;
+    int stored_brightness = -1;
 
     public:
         void init(wayfire_config *config)
@@ -118,6 +120,21 @@ class wayfire_backlight : public wayfire_plugin_t {
 
             output->add_key(br_up.mod, br_up.keyval, &up);
             output->add_key(br_down.mod, br_down.keyval, &down);
+
+            sleep = [&] (signal_data*)
+            {
+                stored_brightness = backend->get_current();
+                backend->set(0);
+            };
+
+            wake = [&] (signal_data*)
+            {
+                if (stored_brightness > 0)
+                    backend->set(stored_brightness);
+            };
+
+            output->signal->connect_signal("sleep", &sleep);
+            output->signal->connect_signal("wake", &wake);
         }
 };
 

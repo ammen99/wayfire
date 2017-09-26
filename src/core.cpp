@@ -803,6 +803,7 @@ void wayfire_core::wake()
     for (auto out : pending_outputs)
         add_output(out);
     pending_outputs.clear();
+    weston_compositor_wake(ec);
 
     ++times_wake;
     auto loop = wl_display_get_event_loop(ec->wl_display);
@@ -814,6 +815,8 @@ void wayfire_core::wake()
 
 void wayfire_core::sleep()
 {
+    for_each_output([] (wayfire_output *output)
+            { output->signal->emit_signal("sleep", nullptr); });
     weston_compositor_sleep(ec);
 }
 
