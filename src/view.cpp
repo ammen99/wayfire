@@ -157,6 +157,7 @@ void wayfire_view_t::map(int sx, int sy)
                 sy = xwayland.y;
             }
 
+            debug << "initial map movement" << std::endl;
             move(sx, sy);
             geometry.x = sx;
             geometry.y = sy;

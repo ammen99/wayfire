@@ -196,7 +196,17 @@ std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
     g.width = output->handle->width;
     g.height = output->handle->height;
 
-    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link) {
+    if (tx == vx && ty == vy)
+    {
+        wl_list_for_each(view, &panel_layer.view_list.link, layer_link.link)
+        {
+            if ((v = core->find_view(view)) && rect_intersect(g, v->geometry))
+                ret.push_back(v);
+        }
+    }
+
+    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link)
+    {
         if ((v = core->find_view(view)) && rect_intersect(g, v->geometry))
             ret.push_back(v);
     }

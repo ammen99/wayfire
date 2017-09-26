@@ -3,8 +3,6 @@
 
 #include "output.hpp"
 #include "debug.hpp"
-#include "../shared/config.hpp"
-
 #include "weston_backend.hpp"
 #include "desktop_api.hpp"
 #include "xwayland.hpp"
@@ -61,10 +59,12 @@ int main(int argc, char *argv[]) {
     ec->default_pointer_grab = NULL;
     ec->vt_switching = true;
 
-    /* TODO: load non-hardcoded config file, useful for debug */
     std::string home_dir = secure_getenv("HOME");
     debug << "Using home directory: " << home_dir << std::endl;
+
     wayfire_config *config = new wayfire_config(home_dir + "/.config/wayfire.ini", 1000 / ec->repaint_msec);
+    input_device_config::load(config);
+
     core = new wayfire_core();
     core->init(ec, config);
 
