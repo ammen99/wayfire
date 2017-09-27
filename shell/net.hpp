@@ -27,7 +27,9 @@ struct network_widget : public widget
 
     public:
     void create();
+    int  get_width() { return width; };
     bool update();
+    bool resized();
     void repaint();
 };
 

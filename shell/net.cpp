@@ -272,14 +272,27 @@ void network_widget::create()
 
     cairo_set_font_size(cr, font_size);
     cairo_set_font_face(cr, cairo_font_face);
+
+    width = 20 * font_size;
 }
 
 bool network_widget::update()
 {
+    if (!backend)
+        return false;
+
     bool result;
+    std::string text;
     connection.mutex.lock();
     result = connection.updated;
+    text = connection.name;
     connection.mutex.unlock();
+
+    cairo_text_extents_t te;
+    cairo_text_extents(cr, text.c_str(), &te);
+
+    width = te.width + font_size;
+
     return result;
 }
 
@@ -296,14 +309,12 @@ inline wayfire_color interpolate_color(wayfire_color start, wayfire_color end, f
 
 void network_widget::repaint()
 {
+    if (!backend)
+        return;
+
     constexpr wayfire_color color_good = {0, 1, 0, 1},
                             color_avg  = {1, 1, 0.3, 1},
                             color_bad  = {1, 0, 0, 1};
-
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
-            widget::background_color.r, widget::background_color.g,
-            widget::background_color.b, widget::background_color.a);
 
     cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
 
@@ -328,15 +339,8 @@ void network_widget::repaint()
     connection.updated = false;
     connection.mutex.unlock();
 
-
-    cairo_text_extents_t te;
-    cairo_text_extents(cr, text.c_str(), &te);
-
-    double x = 0, y = font_size;
     cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
 
-    x = center_x + max_w / 2 - te.width;
-
-    cairo_move_to(cr, x, y);
+    cairo_move_to(cr, x + font_size * 0.5, font_size);
     cairo_show_text(cr, text.c_str());
 }

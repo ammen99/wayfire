@@ -31,8 +31,25 @@ class wayfire_panel {
 
     void add_callback(bool swapped);
 
-    std::vector<widget*> widgets;
+    std::vector<widget*> widgets[3];
+#define for_each_widget(w) for(int i = 0; i < 3; i++) for (auto w : widgets[i])
+
+    widget *create_widget_from_name(std::string name);
+    enum position_policy
+    {
+        PART_LEFT      = 0, /* widgets are placed on the left */
+        PART_SYMMETRIC = 1, /* widgets are ordered symmetrically around the center */
+        PART_RIGHT     = 2  /* widgets are placed on the right */
+    };
+
+    /* only reposition widgets, when for ex. output has been resized */
+    void position_widgets(position_policy policy);
+
+    void init_widgets(std::string str, position_policy policy);
+
+    /* load widget list and position them */
     void init_widgets();
+
 
     wayfire_config *config;
 

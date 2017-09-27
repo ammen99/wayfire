@@ -20,11 +20,16 @@ struct widget
 
     /* those are initialized before calling create() */
     cairo_t *cr;
-    /* position in panel, panel height, maximum width */
-    int center_x, panel_h, max_w;
+    /* leftmost position in panel, panel height, maximum width */
+    int x, panel_h, width = 0;
 
 
+    /* only panel_h is visible, the widget still hasn't been positioned */
     virtual void create() = 0;
+
+    /* must return the actual size of the widget
+     * in pixels right after create() has been called */
+    virtual int get_width() = 0;
 
     /* return true if widget has to be painted on this iter */
     virtual bool update() = 0;
@@ -40,7 +45,9 @@ struct clock_widget : public widget
     std::string current_text;
 
     void create();
+    int get_width() { return width; };
     bool update();
+    bool resized();
     void repaint();
 };
 
@@ -65,7 +72,9 @@ struct battery_widget : public widget
     std::thread backend_thread;
 
     void create();
+    int get_width() { return width; };
     bool update();
+    bool resized();
     void repaint();
 };
 
@@ -78,7 +87,9 @@ struct launchers_widget : public widget
     void init_launchers(wayfire_config *config);
 
     void create();
+    int get_width() { return width; };
     bool update();
+    bool resized();
     void repaint();
 
     void on_pointer_button(uint32_t state, int x, int y);

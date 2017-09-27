@@ -1,3 +1,4 @@
+#include <sstream>
 #include "common.hpp"
 #include "panel.hpp"
 #include "widgets.hpp"
@@ -15,10 +16,10 @@ static const struct wl_callback_listener frame_listener = {
     panel_redraw
 };
 
-wayfire_panel::wayfire_panel(wayfire_config *config)
+static void load_misc_config(wayfire_config *config)
 {
-    this->config = config;
     auto section = config->get_section("shell_panel");
+
     widget::background_color = section->get_color("background_color",
             {0.033, 0.041, 0.047, 0.9});
     widget::font_size = section->get_int("font_size", 25);
@@ -29,6 +30,12 @@ wayfire_panel::wayfire_panel(wayfire_config *config)
             "/usr/share/icons/Adwaita/64x64/status");
     battery_options::invert_icons = section->get_int("battery_invert_icons", 1);
     battery_options::text_scale = section->get_double("battery_text_scale", 0.6);
+}
+
+wayfire_panel::wayfire_panel(wayfire_config *config)
+{
+    this->config = config;
+    load_misc_config(config);
 }
 
 void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)
@@ -64,8 +71,8 @@ void wayfire_panel::resize(uint32_t w, uint32_t h)
     width = w;
     window->resize(width, height);
 
-    widgets[0]->center_x = width / 2; // first widget is the clock
-    widgets[1]->center_x = width - widgets[1]->max_w / 2; // second is the battery
+    for (int i = 0; i < 2; i++)
+        position_widgets((position_policy)i);
 
     need_fullredraw = true;
 }
@@ -90,7 +97,7 @@ void wayfire_panel::on_leave()
 
 void wayfire_panel::on_button(uint32_t button, uint32_t state, int x, int y)
 {
-    for (auto w : widgets)
+    for_each_widget(w)
     {
         if (w->pointer_button)
             w->pointer_button(button, state, x, y);
@@ -99,7 +106,7 @@ void wayfire_panel::on_button(uint32_t button, uint32_t state, int x, int y)
 
 void wayfire_panel::on_motion(int x, int y)
 {
-    for (auto w : widgets)
+    for_each_widget(w)
     {
         if (w->pointer_motion)
             w->pointer_motion(x, y);
@@ -118,45 +125,80 @@ void wayfire_panel::add_callback(bool swapped)
         wl_surface_commit(window->surface);
 }
 
+void wayfire_panel::position_widgets(position_policy policy)
+{
+    int widget_spacing = widget::font_size * 0.5;
+    int total_width = widget_spacing;
+
+    for (size_t i = 0; i < widgets[policy].size(); i++)
+    {
+        widgets[policy][i]->x = total_width;
+        total_width += widgets[policy][i]->get_width();
+        total_width += widget_spacing;
+    }
+
+    int delta = 0;
+    if (policy == PART_RIGHT)
+        delta += width - total_width;
+    if (policy == PART_SYMMETRIC)
+        delta += width / 2 - total_width / 2;
+
+    for (size_t i = 0; i < widgets[policy].size(); i++)
+        widgets[policy][i]->x += delta;
+}
+
+widget* wayfire_panel::create_widget_from_name(std::string name)
+{
+    widget *w = nullptr;
+    if (name == "clock")
+    {
+        w = new clock_widget();
+    } else if (name == "battery")
+    {
+        w = new battery_widget();
+    } else if (name == "launchers")
+    {
+        auto l = new launchers_widget();
+        l->init_launchers(config);
+        w = l;
+    } else if (name == "network")
+    {
+        w = new network_widget();
+    }
+
+    if (w)
+    {
+        w->cr = cairo_create(window->cairo_surface);
+        w->panel_h = height;
+        w->create();
+    }
+
+    return w;
+}
+
+void wayfire_panel::init_widgets(std::string str, position_policy policy)
+{
+    std::istringstream stream(str);
+    std::string name;
+    while(stream >> name)
+        widgets[policy].push_back(create_widget_from_name(name));
+
+    position_widgets(policy);
+}
+
 void wayfire_panel::init_widgets()
 {
     cr = cairo_create(window->cairo_surface);
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 
-    clock_widget *clock = new clock_widget();
-    clock->cr = cairo_create(window->cairo_surface);
-    clock->panel_h = height;
+    auto section = config->get_section("shell_panel");
+    std::string left = section->get_string("widgets_left", "");
+    std::string center = section->get_string("widgets_center", "clock");
+    std::string right = section->get_string("widgets_right", "");
 
-    /* FIXME: this won't work with all possible fonts and sizes */
-    clock->max_w = 0.2 * width;
-    clock->center_x = width / 2;
-
-    widgets.push_back(clock);
-
-    battery_widget *bat = new battery_widget();
-    bat->cr = cairo_create(window->cairo_surface);
-    bat->panel_h = height;
-    bat->max_w = widget::font_size * 4.5;
-    bat->center_x = width - bat->max_w / 2;
-    widgets.push_back(bat);
-
-    launchers_widget *launch = new launchers_widget();
-    launch->cr = cairo_create(window->cairo_surface);
-    launch->panel_h = height;
-    launch->max_w = width / 2 - width / 5;
-    launch->center_x = launch->max_w / 2;
-    launch->init_launchers(config);
-    widgets.push_back(launch);
-
-    network_widget *net = new network_widget();
-    net->cr = cairo_create(window->cairo_surface);
-    net->panel_h = height;
-    net->max_w = widget::font_size * 15;
-    net->center_x = bat->center_x - bat->max_w / 2 - net->max_w / 2;
-    widgets.push_back(net);
-
-    for (auto w : widgets)
-        w->create();
+    init_widgets(left, PART_LEFT);
+    init_widgets(center, PART_SYMMETRIC);
+    init_widgets(right, PART_RIGHT);
 }
 
 void wayfire_panel::render_frame(bool first_call)
@@ -173,27 +215,25 @@ void wayfire_panel::render_frame(bool first_call)
     }
 
     bool should_swap = first_call;
-    if (animation.current_y > hidden_height - (int)height) {
-        for (auto w : widgets) {
-            if (w->update())
-                should_swap = true;
-        }
+    if (animation.current_y > hidden_height - (int)height)
+    {
+        for_each_widget(w)
+            should_swap |= w->update();
     }
-
-    static int frame_count = 0;
 
     should_swap = should_swap || need_fullredraw;
 
-    if (should_swap) {
-        frame_count++;
-        if (frame_count <= 3 || need_fullredraw) {
-            render_rounded_rectangle(cr, 0, 0, width, height,
-                    4, widget::background_color.r, widget::background_color.g,
-                    widget::background_color.b, widget::background_color.a);
-            need_fullredraw = false;
-        }
+    if (should_swap)
+    {
+        render_rounded_rectangle(cr, 0, 0, width, height,
+                4, widget::background_color.r, widget::background_color.g,
+                widget::background_color.b, widget::background_color.a);
+        need_fullredraw = false;
 
-        for (auto w : widgets)
+        for (int i = 0; i < 3; i++)
+            position_widgets((position_policy) i);
+
+        for_each_widget(w)
             w->repaint();
     }
 

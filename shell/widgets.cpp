@@ -65,9 +65,12 @@ void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height,
 void clock_widget::create()
 {
     load_default_font();
+
     cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
     cairo_set_font_size(cr, font_size);
     cairo_set_font_face(cr, cairo_font_face);
+
+    width = font_size * 18;
 }
 
 const std::string months[] = {
@@ -105,29 +108,27 @@ bool clock_widget::update()
         months[time->tm_mon] + " " + format(time->tm_hour) +
         ":" + format(time->tm_min);
 
-    if (time_string != this->current_text) {
+    if (time_string != this->current_text)
+    {
         current_text = time_string;
+
+        cairo_text_extents_t te;
+        cairo_text_extents(cr, current_text.c_str(), &te);
+
+        width = te.width;
+
         return true;
-    } else {
+    } else
+    {
         return false;
     }
 }
 
-void clock_widget::repaint() {
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
-            widget::background_color.r, widget::background_color.g,
-            widget::background_color.b, widget::background_color.a);
-
-    cairo_text_extents_t te;
-    cairo_text_extents(cr, current_text.c_str(), &te);
-
-    double x, y = font_size;
+void clock_widget::repaint()
+{
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
-    x = center_x - te.width / 2;
-
-    cairo_move_to(cr, x, y);
+    cairo_move_to(cr, x, font_size);
     cairo_show_text(cr, current_text.c_str());
 }
 
@@ -380,6 +381,7 @@ void battery_widget::create()
     float y = background_color.r * 0.2126 + background_color.g * 0.7152 + background_color.b * 0.0722;
     y *= background_color.a;
 
+    width = 1. * font_size + font_size * battery_options::text_scale * 4;
     active = true;
 }
 
@@ -389,9 +391,17 @@ bool battery_widget::update()
         return false;
 
     bool result;
+    std::string battery_string;
+
     info->mutex.lock();
     result = info->icon_updated || info->percentage_updated;
+    battery_string = std::to_string(info->percentage) + "%";
     info->mutex.unlock();
+
+    cairo_text_extents_t te;
+    cairo_text_extents(cr, battery_string.c_str(), &te);
+    width = font_size + 0.2 * font_size + te.width;
+
 
     return result;
 }
@@ -456,12 +466,6 @@ void battery_widget::repaint()
     info->mutex.unlock();
 
     cairo_identity_matrix(cr);
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-
-    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
-            widget::background_color.r, widget::background_color.g,
-            widget::background_color.b, widget::background_color.a);
-
     cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
     int icon_size = font_size;
     cairo_new_path(cr);
@@ -469,18 +473,18 @@ void battery_widget::repaint()
     cairo_text_extents_t te;
     cairo_text_extents(cr, battery_string.c_str(), &te);
 
-    double x = icon_size * 1.1, y = (panel_h + te.height) / 2.0;
+    double sx = icon_size * 1.1, sy = (panel_h + te.height) / 2.0;
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
-    x = center_x + max_w / 2 - te.width - font_size * 0.5;
+    sx = x + font_size + 0.2 * font_size;
 
-    cairo_move_to(cr, x, y);
+    cairo_move_to(cr, sx, sy);
     cairo_show_text(cr, battery_string.c_str());
 
     if (icon_surface)
     {
-        y = (panel_h - icon_size) / 2;
-        x = x - icon_size;
+        sy = (panel_h - icon_size) / 2;
+        sx = x;
 
         double img_w = cairo_image_surface_get_width (icon_surface);
         double img_h = cairo_image_surface_get_height(icon_surface);
@@ -491,8 +495,8 @@ void battery_widget::repaint()
         float scale_w = 1.0 * icon_size / img_w;
         float scale_h = 1.0 * icon_size / img_h;
         cairo_scale(cr, scale_w, scale_h);
-        cairo_rectangle(cr, x / scale_w, y / scale_h, icon_size / scale_w, icon_size / scale_h);
-        cairo_set_source_surface(cr, icon_surface, x / scale_w, y / scale_h);
+        cairo_rectangle(cr, sx / scale_w, sy / scale_h, icon_size / scale_w, icon_size / scale_h);
+        cairo_set_source_surface(cr, icon_surface, sx / scale_w, sy / scale_h);
         cairo_fill(cr);
     }
 
@@ -564,8 +568,15 @@ void launchers_widget::init_launchers(wayfire_config *config)
 #define pointer_in_launcher(l,x,y) (l->x <= x && l->y <= y && \
                 l->x + l->size > x && l->y + l->size > y)
 
+int icon_offset, base_icon_size;
+
 void launchers_widget::create()
 {
+    icon_offset = font_size * 0.5;
+    base_icon_size = font_size * 1.1;
+
+    width = launchers.size() * (base_icon_size + icon_offset) - icon_offset;
+
     pointer_motion = [=] (int x, int y)
     {
         for (auto l : launchers)
@@ -601,27 +612,18 @@ void launchers_widget::create()
 
 void launchers_widget::repaint()
 {
-    int icon_offset = font_size * 0.5;
-    int base_icon_size = font_size * 1.1;
-
     cairo_identity_matrix(cr);
-
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    render_rounded_rectangle(cr, center_x - max_w / 2, 0, max_w, panel_h, 7,
-            widget::background_color.r, widget::background_color.g,
-            widget::background_color.b, widget::background_color.a);
-
     cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
 
     for (size_t i = 0; i < launchers.size(); i++)
     {
         int icon_size = base_icon_size * launchers[i]->scale;
 
-        int y = (panel_h - icon_size) / 2;
-        int x = icon_offset + i * (base_icon_size + icon_offset) - (icon_size - base_icon_size) / 2;
+        int sy = (panel_h - icon_size) / 2;
+        int sx = x + i * (base_icon_size + icon_offset) - (icon_size - base_icon_size) / 2;
 
-        launchers[i]->x = x;
-        launchers[i]->y = y;
+        launchers[i]->x = sx;
+        launchers[i]->y = sy;
         launchers[i]->size = icon_size;
 
         double img_w = cairo_image_surface_get_width(launchers[i]->img);
@@ -634,9 +636,9 @@ void launchers_widget::repaint()
         float scale_h = 1.0 * icon_size / img_h;
         cairo_scale(cr, scale_w, scale_h);
 
-        cairo_rectangle(cr, x / scale_w, y / scale_h, icon_size / scale_w, icon_size / scale_h);
+        cairo_rectangle(cr, sx / scale_w, sy / scale_h, icon_size / scale_w, icon_size / scale_h);
         cairo_set_source_rgba(cr, 1, 1, 1, 1);
-        cairo_set_source_surface(cr, launchers[i]->img, x / scale_w, y / scale_h);
+        cairo_set_source_surface(cr, launchers[i]->img, sx / scale_w, sy / scale_h);
         cairo_fill(cr);
     }
 

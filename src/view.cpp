@@ -65,6 +65,11 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
     output  = core->get_active_output();
     handle = weston_desktop_surface_create_view(ds);
 
+    if (!handle)
+    {
+        errio << "Failed to allocate handle for desktop surface\n"<< std::endl;
+    }
+
     weston_desktop_surface_set_user_data(ds, NULL);
     weston_desktop_surface_set_activated(ds, true);
 
