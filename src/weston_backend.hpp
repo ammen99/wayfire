@@ -61,7 +61,6 @@ int load_drm_backend(weston_compositor *ec)
     config.configure_device = configure_input_device;
 
     config.gbm_format = 0;
-    config.connector = 0;
     config.seat_id = 0;
     config.use_pixman = 0;
     config.tty = 0;
