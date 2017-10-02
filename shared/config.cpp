@@ -7,6 +7,8 @@
 
 #include <compositor.h>
 
+#include <config.h>
+
 std::ofstream out;
 
 using std::string;
@@ -84,10 +86,14 @@ wayfire_button wayfire_config_section::get_button(string name, wayfire_button df
     while(ss >> t)
         items.push_back(t);
 
-    wayfire_button ans;
+    if (items.empty())
+        return df;
 
+    wayfire_button ans;
     ans.mod = 0;
-    for (size_t i = 0; i < items.size() - 1; i++) {
+
+    for (size_t i = 0; i < items.size() - 1; i++)
+    {
         if (items[i] == "<alt>")
             ans.mod |= MODIFIER_ALT;
         if (items[i] == "<ctrl>")
@@ -123,12 +129,13 @@ wayfire_color wayfire_config_section::get_color(string name, wayfire_color df)
     return ans;
 }
 
-namespace {
+namespace
+{
     string trim(string x)
     {
         int i = 0, j = x.length() - 1;
-        while(i < (int)x.length() && x[i] == ' ') ++i;
-        while(j >= 0 && x[j] == ' ') --j;
+        while(i < (int)x.length() && std::iswspace(x[i])) ++i;
+        while(j >= 0 && std::iswspace(x[j])) --j;
 
         if (i <= j)
             return x.substr(i, j - i + 1);
@@ -141,20 +148,30 @@ wayfire_config::wayfire_config(string name, int rr)
 {
     std::ifstream file(name);
     string line;
-	out.open("/tmp/out");
-out << "use config: " << name << std::endl;
+
+#if WAYFIRE_DEBUG_ENABLED
+    out.open("/tmp/.wayfire_config_debug");
+    out << "use config: " << name << std::endl;
+#endif
 
     refresh_rate = rr;
     wayfire_config_section *current_section;
     int line_id = -1;
 
-    while(std::getline(file, line)) {
+    while(std::getline(file, line))
+    {
         ++line_id;
+
+        line = trim(line);
         if (line.size() == 0 || line[0] == '#')
             continue;
-out << "process line " << line << std::endl;
 
-        if (line[0] == '[') {
+#if WAYFIRE_DEBUG_ENABLED
+        out << "process line " << line << std::endl;
+#endif
+
+        if (line[0] == '[')
+        {
             current_section = new wayfire_config_section();
             current_section->refresh_rate = rr;
             current_section->name = line.substr(1, line.size() - 2);
@@ -165,11 +182,12 @@ out << "process line " << line << std::endl;
         string name, value;
         int i = 0;
         while (i < (int)line.size() && line[i] != '=') i++;
-	name = trim(line.substr(0, i));
-	if (i < (int)line.size()) {
-		value = trim(line.substr(i + 1, line.size() - i - 1));
-		current_section->options[name] = value;
-	}
+        name = trim(line.substr(0, i));
+        if (i < (int)line.size())
+        {
+            value = trim(line.substr(i + 1, line.size() - i - 1));
+            current_section->options[name] = value;
+        }
     }
 }
 
