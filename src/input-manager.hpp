@@ -37,6 +37,9 @@ class input_manager
             wayfire_output *output;
         };
         std::map<int, touch_listener> touch_listeners;
+
+        bool is_touch_enabled();
+
     public:
         input_manager();
         void grab_input(wayfire_grab_interface);

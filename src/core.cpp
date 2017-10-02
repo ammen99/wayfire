@@ -476,20 +476,31 @@ static const weston_keyboard_grab_interface keyboard_grab_interface = {
     keyboard_grab_key, keyboard_grab_mod, keyboard_grab_cancel
 };
 
+bool input_manager::is_touch_enabled()
+{
+    return weston_seat_get_touch(core->get_current_seat()) != nullptr;
+}
+
 input_manager::input_manager()
 {
     pgrab.interface = &pointer_grab_interface;
     kgrab.interface = &keyboard_grab_interface;
-    tgrab.interface = &touch_grab_interface;
 
-    auto touch = weston_seat_get_touch(core->get_current_seat());
-    touch->default_grab = tgrab;
-    tgrab.touch = touch;
-    touch->grab = &tgrab;
+    if (is_touch_enabled())
+    {
 
-    using namespace std::placeholders;
-    gr = new wf_gesture_recognizer(touch,
-            std::bind(std::mem_fn(&input_manager::handle_gesture), this, _1));
+        auto touch = weston_seat_get_touch(core->get_current_seat());
+        tgrab.interface = &touch_grab_interface;
+        tgrab.touch = touch;
+
+        touch->default_grab = tgrab;
+        touch->grab = &tgrab;
+
+        using namespace std::placeholders;
+        gr = new wf_gesture_recognizer(touch,
+                                       std::bind(std::mem_fn(&input_manager::handle_gesture),
+                                                 this, _1));
+    }
 }
 
 int input_manager::add_gesture(const wayfire_touch_gesture& gesture,
@@ -544,7 +555,8 @@ void input_manager::grab_input(wayfire_grab_interface iface)
         if (background)
             weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
 
-        gr->start_grab();
+        if (is_touch_enabled())
+            gr->start_grab();
     }
 }
 
@@ -555,7 +567,8 @@ void input_manager::ungrab_input(wayfire_grab_interface iface)
         weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
         weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
 
-        gr->end_grab();
+        if (is_touch_enabled())
+            gr->end_grab();
     }
 }
 
@@ -779,9 +792,12 @@ void refocus_idle_cb(void *data)
 
 void wayfire_core::wake()
 {
-    if (times_wake == 0 && run_panel) {
+    if (times_wake == 0)
+    {
         input = new input_manager();
-        run(INSTALL_PREFIX "/lib/wayfire/wayfire-shell-client");
+
+        if (run_panel)
+            run(INSTALL_PREFIX "/lib/wayfire/wayfire-shell-client");
     }
 
     for (auto out : pending_outputs)
@@ -803,7 +819,8 @@ void wayfire_core::sleep()
 void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
 {
     auto output = core->get_output(o);
-    if (output) {
+    if (output)
+    {
         output->render->pre_paint();
         output->render->paint(damage);
     }
