@@ -103,6 +103,8 @@ class view_switcher : public wayfire_plugin_t
     std::vector<wayfire_view> views; // all views on current viewport
     std::vector<view_paint_attribs> active_views; // views that are rendered
 
+    float view_scale_config;
+
     public:
 
     void init(wayfire_config *config)
@@ -123,6 +125,7 @@ class view_switcher : public wayfire_plugin_t
 
         max_steps = section->get_duration("duration", 30);
         initial_animation_steps = section->get_duration("initial_animation", 5);;
+        view_scale_config = section->get_double("view_thumbnail_size", 0.4);
 
         activate_key = section->get_key("activate", {MODIFIER_ALT, KEY_TAB});
 
@@ -377,7 +380,7 @@ class view_switcher : public wayfire_plugin_t
             float cx = -(sw / 2 - (v->geometry.x + v->geometry.width / 2.f)) / sw * 2.f;
             float cy =  (sh / 2 - (v->geometry.y + v->geometry.height / 2.f)) / sh * 2.f;
 
-            float scale_factor = get_scale_factor(v->geometry.width, v->geometry.height, sw, sh, 0.28888);
+            float scale_factor = get_scale_factor(v->geometry.width, v->geometry.height, sw, sh, view_scale_config);
 
             view_paint_attribs elem;
             elem.view = v;
