@@ -35,6 +35,7 @@ struct animation_hook
 
     animation_base *base = nullptr;
     wayfire_view view;
+    wayfire_output *output;
     wayfire_grab_interface iface;
 
     effect_hook_t hook;
@@ -47,8 +48,9 @@ struct animation_hook
         iface(ifc)
     {
         this->view = view;
+        output = view->output;
 
-        if (!view->output->activate_plugin(iface))
+        if (!output->activate_plugin(iface))
         {
             effect_running = false;
             delete_hook(this);
@@ -71,11 +73,14 @@ struct animation_hook
                 first_run = false;
             }
 
-            if (!base->step())
+            if (!base->step()) {
                 delete_hook(this);
+                debug << "doing a step " << output->handle->id << " " << view->desktop_surface << std::endl;
+            }
+debug << "doing a step " << output->handle->id << " " << view->desktop_surface << std::endl;
         };
 
-        view->output->render->add_output_effect(&hook, view);
+        output->render->add_output_effect(&hook, view);
 
         if (!effect_running)
             return;
@@ -88,11 +93,12 @@ struct animation_hook
                 delete_hook(this);
         };
 
-        view->output->signal->connect_signal("destroy-view", &view_removed);
-        view->output->signal->connect_signal("detach-view", &view_removed);
+        output->signal->connect_signal("destroy-view", &view_removed);
+        output->signal->connect_signal("detach-view", &view_removed);
 
-        view->output->render->auto_redraw(true);
-        view->output->render->set_renderer();
+        output->render->auto_redraw(true);
+        debug << "animate: set renderer " << output->handle->id << " " << view->desktop_surface << std::endl;
+        output->render->set_renderer();
     }
 
     ~animation_hook()
@@ -103,9 +109,9 @@ struct animation_hook
         if (base)
             delete base;
 
-        view->output->render->rem_effect(&hook, view);
-        view->output->signal->disconnect_signal("detach-view", &view_removed);
-        view->output->signal->disconnect_signal("destroy-view", &view_removed);
+        output->render->rem_effect(&hook, view);
+        output->signal->disconnect_signal("detach-view", &view_removed);
+        output->signal->disconnect_signal("destroy-view", &view_removed);
 
         if (close_animation)
         {
@@ -113,11 +119,12 @@ struct animation_hook
             view->handle = nullptr;
         }
 
+        debug << "animate: reset renderer " << output->handle->id << std::endl;
         /* will be false if other animations are still running */
-        if (view->output->deactivate_plugin(iface))
+        if (output->deactivate_plugin(iface))
         {
-            view->output->render->auto_redraw(false);
-            view->output->render->reset_renderer();
+            output->render->auto_redraw(false);
+            output->render->reset_renderer();
         }
 
         if (close_animation)
@@ -177,7 +184,10 @@ class wayfire_animation : public wayfire_plugin_t {
         assert(data);
 
         if (data->created_view->is_special)
+        {
+            debug << " got a special view " << data->created_view->output->handle->id << std::endl;
             return;
+        }
         if (close_animation != "none")
             data->created_view->surface->ref_count++;
 
