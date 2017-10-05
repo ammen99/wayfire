@@ -900,6 +900,9 @@ void wayfire_core::focus_output(wayfire_output *wo)
     active_output = wo;
     refocus_active_output_active_view();
 
+    if (wo)
+        debug << "focus output: " << wo->handle->id << std::endl;
+
     if (active_output)
         weston_output_schedule_repaint(active_output->handle);
 }

@@ -215,21 +215,22 @@ void render_manager::paint(pixman_region32_t *damage)
     if (dirty_context)
         load_context();
 
-    if (streams_running) {
+    if (streams_running)
+    {
         pixman_region32_union(&frame_damage,
                 &core->ec->primary_plane.damage, &prev_damage);
         pixman_region32_copy(&prev_damage, &core->ec->primary_plane.damage);
     }
 
-    if (renderer) {
+    if (renderer)
+    {
         EGLSurface surf = renderer_api->output_get_egl_surface(output->handle);
         EGLContext context = renderer_api->compositor_get_egl_context(core->ec);
         EGLDisplay display = renderer_api->compositor_get_egl_display(core->ec);
 
         eglMakeCurrent(display, surf, surf, context);
 
-        GL_CALL(glViewport(output->handle->x, output->handle->y,
-                    output->handle->width, output->handle->height));
+        GL_CALL(glViewport(0, 0, output->handle->width, output->handle->height));
 
         OpenGL::bind_context(ctx);
         renderer();
@@ -335,17 +336,23 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
     auto views = output->workspace->get_renderable_views_on_workspace(vp);
     auto it = views.rbegin();
 
-    while (it != views.rend()) {
+    while (it != views.rend())
+    {
         auto v = *it;
-        if (v->is_visible()) {
-            if (!v->is_special) {
+        if (v->is_visible())
+        {
+            if (!v->is_special)
+            {
                 v->geometry.x += dx;
                 v->geometry.y += dy;
-            }
-            v->render(0);
-            if (!v->is_special) {
+
+                v->render();
+
                 v->geometry.x -= dx;
                 v->geometry.y -= dy;
+            } else
+            {
+                v->render();
             }
         }
         ++it;
@@ -369,31 +376,33 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
     GL_CALL(glViewport(0, 0, output->handle->width * stream->scale_x,
                 output->handle->height * stream->scale_y));
 
-    auto g = output->get_full_geometry();
-
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
 
     /* TODO: this assumes we use viewports arranged in a grid
      * It would be much better to actually ask the workspace_manager
      * for view's position on the given workspace*/
-    int dx = -g.x + (cx - x)  * output->handle->width,
-        dy = -g.y + (cy - y)  * output->handle->height;
+    int dx = (cx - x)  * output->handle->width,
+        dy = (cy - y)  * output->handle->height;
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
     auto it = views.rbegin();
 
-    while (it != views.rend()) {
+    while (it != views.rend())
+    {
         auto v = *it;
-        if (v->is_visible()) {
-            if (!v->is_special) {
+        if (v->is_visible())
+        {
+            if (!v->is_special)
+            {
                 v->geometry.x += dx;
                 v->geometry.y += dy;
-            }
-            v->render(0);
-            if (!v->is_special) {
+                v->render();
                 v->geometry.x -= dx;
                 v->geometry.y -= dy;
+            } else
+            {
+                v->render();
             }
         }
         ++it;
@@ -411,11 +420,11 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
 
-    int dx = -g.x + (cx - x) * g.width,
-        dy = -g.y + (cy - y) * g.height;
+    int dx = g.x + (x - cx) * g.width,
+        dy = g.y + (y - cy) * g.height;
 
     pixman_region32_t ws_damage;
-    pixman_region32_init_rect(&ws_damage, -dx, -dy, g.width, g.height);
+    pixman_region32_init_rect(&ws_damage, dx, dy, g.width, g.height);
     pixman_region32_intersect(&ws_damage, &frame_damage, &ws_damage);
 
     /* we don't have to update anything */
@@ -430,7 +439,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
         stream->scale_x = scale_x;
         stream->scale_y = scale_y;
 
-        pixman_region32_union_rect(&ws_damage, &ws_damage, -dx, -dy,
+        pixman_region32_union_rect(&ws_damage, &ws_damage, dx, dy,
                 g.width, g.height);
     }
 
@@ -454,23 +463,25 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
         {
             dv.damage = new pixman_region32_t;
             if (dv.view->is_special)
-                pixman_region32_translate(&ws_damage, dx, dy);
-
-            pixman_region32_init_rect(dv.damage,
-                    dv.view->geometry.x - dv.view->ds_geometry.x,
-                    dv.view->geometry.y - dv.view->ds_geometry.y,
+            {
+                /* make background's damage be at the target viewport */
+                pixman_region32_init_rect(dv.damage,
+                    dv.view->geometry.x - dv.view->ds_geometry.x + (dx - g.x),
+                    dv.view->geometry.y - dv.view->ds_geometry.y + (dy - g.y),
                     dv.view->surface->width, dv.view->surface->height);
-
-            pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
-
-            if (dv.view->is_special) {
-                pixman_region32_translate(&ws_damage, -dx, -dy);
-                pixman_region32_translate(dv.damage, -dx, -dy);
+            } else
+            {
+                pixman_region32_init_rect(dv.damage,
+                        dv.view->geometry.x - dv.view->ds_geometry.x,
+                        dv.view->geometry.y - dv.view->ds_geometry.y,
+                        dv.view->surface->width, dv.view->surface->height);
             }
 
+            pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
             if (pixman_region32_not_empty(dv.damage)) {
                 update_views.push_back(dv);
-                /* If we are processing background, then this is not correct. But as
+                /* If we are processing background, then this is not correct, as its
+                 * transform.opaque isn't positioned properly. But as
                  * background is the last in the list, we don' care */
                 pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->handle->transform.opaque);
             } else {
@@ -490,17 +501,25 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     std::swap(wayfire_view_transform::global_translate, translate);
 
     auto rev_it = update_views.rbegin();
-    while(rev_it != update_views.rend()) {
+    while(rev_it != update_views.rend())
+    {
         auto dv = *rev_it;
-        if (!dv.view->is_special) {
-            dv.view->geometry.x += dx;
-            dv.view->geometry.y += dy;
-        }
-        pixman_region32_translate(dv.damage, dx, dy);
-        dv.view->render(0, dv.damage);
-        if (!dv.view->is_special) {
-            dv.view->geometry.x -= dx;
-            dv.view->geometry.y -= dy;
+
+#define render_op(dx, dy) \
+        dv.view->geometry.x -= dx; \
+        dv.view->geometry.y -= dy; \
+        dv.view->render(0, dv.damage); \
+        dv.view->geometry.x += dx; \
+        dv.view->geometry.y += dy;
+
+
+        pixman_region32_translate(dv.damage, -(dx - g.x), -(dy - g.y));
+        if (dv.view->is_special)
+        {
+            render_op(0, 0);
+        } else
+        {
+            render_op(dx - g.x, dy - g.y);
         }
 
         pixman_region32_fini(dv.damage);

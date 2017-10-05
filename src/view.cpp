@@ -197,17 +197,22 @@ void wayfire_view_t::simple_render(uint32_t bits, pixman_region32_t *damage)
 {
     pixman_region32_t our_damage;
     bool free_damage = false;
+    auto og = output->get_full_geometry();
 
-    if (damage == nullptr) {
-        auto og = output->get_full_geometry();
+    if (damage == nullptr)
+    {
         pixman_region32_init_rect(&our_damage, og.x, og.y, og.width, og.height);
         damage = &our_damage;
         free_damage = true;
     }
 
+    pixman_region32_translate(damage, -og.x, -og.y);
+
     render_surface(surface, damage,
-            geometry.x - ds_geometry.x, geometry.y - ds_geometry.y,
+            geometry.x - ds_geometry.x - og.x, geometry.y - ds_geometry.y - og.y,
             transform.calculate_total_transform(), transform.color, bits);
+
+    pixman_region32_translate(damage, og.x, og.y);
 
     if (free_damage)
         pixman_region32_fini(&our_damage);

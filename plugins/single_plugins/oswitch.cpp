@@ -3,11 +3,6 @@
 #include <linux/input-event-codes.h>
 #include "../../shared/config.hpp"
 
-
-/* TODO: merge with workspace manager and introduce
- * workspace_delta for distance between workspaces */
-#define MAX_OUTPUT_WIDTH 4096
-
 void next_output_idle_cb(void *data)
 {
     auto wo = (wayfire_output*) data;
@@ -52,12 +47,6 @@ class wayfire_output_manager : public wayfire_plugin_t
 
             output->add_key(actkey.mod, actkey.keyval, &switch_output);
             output->add_key(withwin.mod, withwin.keyval, &switch_output_with_window);
-
-            /* we exploit the fact that when we're called a new output is
-             * created, so we can configure it here */
-
-            int n = core->get_num_outputs();
-            weston_output_move(output->handle, 6 * n * MAX_OUTPUT_WIDTH, 0);
         }
 };
 

@@ -165,11 +165,9 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 {
     GetTuple(tx, ty, vp);
 
-    weston_geometry g;
-    g.x = (tx - vx) * output->handle->width;
-    g.y = (ty - vy) * (output->handle->height);
-    g.width = output->handle->width;
-    g.height = output->handle->height;
+    weston_geometry g = output->get_full_geometry();
+    g.x += (tx - vx) * output->handle->width;
+    g.y += (ty - vy) * (output->handle->height);
 
     std::vector<wayfire_view> ret;
     for_each_view([&ret, g] (wayfire_view view) {
@@ -190,11 +188,9 @@ std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
 
     GetTuple(tx, ty, ws);
 
-    weston_geometry g;
-    g.x = (tx - vx) * output->handle->width;
-    g.y = (ty - vy) * (output->handle->height);
-    g.width = output->handle->width;
-    g.height = output->handle->height;
+    weston_geometry g = output->get_full_geometry();
+    g.x += (tx - vx) * output->handle->width;
+    g.y += (ty - vy) * (output->handle->height);
 
     if (tx == vx && ty == vy)
     {
@@ -237,7 +233,8 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
     auto g = output->get_full_geometry();
     background->move(x + g.x, y + g.y);
 
-    output->detach_view(background);
+    background->output->detach_view(background);
+    background->output = output;
 
     weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
 
@@ -245,16 +242,14 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
     wl_event_loop_add_idle(loop, bg_idle_cb, output->handle);
 
     this->background = background;
-
-    background->ds_geometry.x += g.x;
-    background->ds_geometry.y += g.y;
 }
 
 void viewport_manager::add_panel(wayfire_view panel)
 {
     /* views have first been created as desktop views,
      * so they are currently in the normal layer, we must remove them first */
-    output->detach_view(panel);
+    panel->output->detach_view(panel);
+    panel->output = output;
 
     weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
     panel->is_special = true;
