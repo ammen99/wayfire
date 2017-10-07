@@ -236,6 +236,8 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
     background->output->detach_view(background);
     background->output = output;
 
+    pixman_region32_copy(&background->handle->damage_clip_region, &output->handle->region);
+
     weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
 
     auto loop = wl_display_get_event_loop(core->ec->wl_display);
@@ -250,6 +252,8 @@ void viewport_manager::add_panel(wayfire_view panel)
      * so they are currently in the normal layer, we must remove them first */
     panel->output->detach_view(panel);
     panel->output = output;
+
+    pixman_region32_copy(&panel->handle->damage_clip_region, &output->handle->region);
 
     weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
     panel->is_special = true;

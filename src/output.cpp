@@ -744,6 +744,8 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
             view->set_geometry(px * handle->width, py * handle->height,
 			    pw * handle->width, ph * handle->height);
         }
+
+        pixman_region32_copy(&view->handle->damage_clip_region, &handle->region);
     });
 }
 
@@ -788,6 +790,7 @@ void wayfire_output::deactivate()
 void wayfire_output::attach_view(wayfire_view v)
 {
     v->output = this;
+    pixman_region32_copy(&v->handle->damage_clip_region, &handle->region);
 
     workspace->view_bring_to_front(v);
 
