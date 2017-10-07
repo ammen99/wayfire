@@ -127,7 +127,13 @@ void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
     assert(wo);
 
     if (view->output != wo)
-        core->move_view_to_output(view, view->output, wo);
+    {
+        auto pg = view->output->get_full_geometry();
+        auto ng = wo->get_full_geometry();
+
+        core->move_view_to_output(view, wo);
+        view->move(view->geometry.x + ng.x - pg.x, view->geometry.y + ng.y - pg.y);
+    }
 
     view->set_fullscreen(full);
 

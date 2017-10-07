@@ -58,7 +58,7 @@ class wayfire_core
          * and also focuses its output */
         void focus_view(wayfire_view win, weston_seat *seat);
         void close_view(wayfire_view win);
-        void move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output);
+        void move_view_to_output(wayfire_view v, wayfire_output *new_output);
 
         void add_output(weston_output *output);
         wayfire_output *get_output(weston_output *output);

@@ -39,7 +39,12 @@ class wayfire_output_manager : public wayfire_plugin_t
                 auto next = core->get_next_output(output);
                 auto view = output->get_top_view();
 
-                core->move_view_to_output(view, view->output, next);
+                auto pg = view->output->get_full_geometry();
+                auto ng = next->get_full_geometry();
+
+                view->move(view->geometry.x + ng.x - pg.x,
+                           view->geometry.y + ng.y - pg.y);
+                core->move_view_to_output(view, next);
 
                 auto loop = wl_display_get_event_loop(core->ec->wl_display);
                 wl_event_loop_add_idle(loop, next_output_idle_cb, next);

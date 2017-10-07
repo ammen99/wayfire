@@ -1049,22 +1049,15 @@ void wayfire_core::run(const char *command)
     }
 }
 
-void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *old, wayfire_output *new_output)
+void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *new_output)
 {
-    int old_x = 0, old_y = 0;
-    if (old && v->output && old == v->output)
+    if (v->output)
     {
-        old_x = old->handle->x;
-        old_y = old->handle->y;
-        old->detach_view(v);
+        v->output->detach_view(v);
     }
 
     if (new_output) {
         new_output->attach_view(v);
-
-        old_x = new_output->handle->x - old_x;
-        old_y = new_output->handle->y - old_y;
-        v->move(v->geometry.x + old_x, v->geometry.y + old_y);
     } else {
         close_view(v);
     }
