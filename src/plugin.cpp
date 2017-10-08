@@ -30,7 +30,12 @@ void wayfire_grab_interface_t::ungrab()
         return;
 
     grabbed = false;
-    core->input->ungrab_input(this);
+    core->input->ungrab_input();
+}
+
+bool wayfire_grab_interface_t::is_grabbed()
+{
+    return grabbed;
 }
 
 void wayfire_plugin_t::fini() {}

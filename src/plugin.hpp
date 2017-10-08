@@ -79,6 +79,7 @@ struct wayfire_grab_interface_t {
     wayfire_grab_interface_t(wayfire_output *_output) : output(_output) {}
 
     bool grab();
+    bool is_grabbed();
     void ungrab();
 
     struct {

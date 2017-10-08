@@ -13,7 +13,7 @@ struct wf_gesture_recognizer;
 class input_manager
 {
     private:
-        std::unordered_set<wayfire_grab_interface> active_grabs;
+        wayfire_grab_interface active_grab = nullptr;
 
         weston_keyboard_grab kgrab;
         weston_pointer_grab pgrab;
@@ -43,7 +43,7 @@ class input_manager
     public:
         input_manager();
         void grab_input(wayfire_grab_interface);
-        void ungrab_input(wayfire_grab_interface);
+        void ungrab_input();
         bool input_grabbed();
 
         void propagate_pointer_grab_axis  (weston_pointer *ptr, weston_pointer_axis_event *ev);

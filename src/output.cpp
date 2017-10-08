@@ -951,6 +951,15 @@ bool wayfire_output::is_plugin_active(owner_t name)
     return false;
 }
 
+wayfire_grab_interface wayfire_output::get_input_grab_interface()
+{
+    for (auto p : active_plugins)
+        if (p && p->is_grabbed())
+            return p;
+
+    return nullptr;
+}
+
 /* simple wrappers for core->input, as it isn't exposed to plugins */
 
 weston_binding* wayfire_output::add_key(uint32_t mod, uint32_t key, key_callback* callback)

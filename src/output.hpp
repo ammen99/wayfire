@@ -129,12 +129,17 @@ struct signal_manager
 
 class wayfire_output
 {
-    friend class core_t;
+    friend class wayfire_core;
+
     private:
        std::unordered_multiset<wayfire_grab_interface> active_plugins;
        plugin_manager *plugin;
 
        wayfire_view active_view;
+
+       /* return an active wayfire_grab_interface on this output
+        * which has grabbed the input. If none, then return nullptr */
+       wayfire_grab_interface get_input_grab_interface();
 
     public:
     weston_output* handle;

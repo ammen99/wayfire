@@ -363,45 +363,21 @@ void input_manager::propagate_touch_motion(weston_touch* touch, uint32_t time,
 void input_manager::grab_send_touch_down(weston_touch* touch, int32_t id,
         wl_fixed_t sx, wl_fixed_t sy)
 {
-    /* Important note to all such functions: we must copy grabs that receive
-     * the callback in a separate vector, as grabs might be "removed" upon call
-     * and thus our iterator might become invalid and crash the compositor */
-    std::vector<wayfire_grab_interface> grabs;
-
-    for (auto grab : active_grabs) {
-        if (grab->callbacks.touch.down)
-            grabs.push_back(grab);
-    }
-
-    for (auto grab : grabs)
-        grab->callbacks.touch.down(touch, id, sx, sy);
+    if (active_grab && active_grab->callbacks.touch.down)
+        active_grab->callbacks.touch.down(touch, id, sx, sy);
 }
 
 void input_manager::grab_send_touch_up(weston_touch* touch, int32_t id)
 {
-    std::vector<wayfire_grab_interface> grabs;
-
-    for (auto grab : active_grabs) {
-        if (grab->callbacks.touch.up)
-            grabs.push_back(grab);
-    }
-
-    for (auto grab : grabs)
-        grab->callbacks.touch.up(touch, id);
+    if (active_grab && active_grab->callbacks.touch.up)
+        active_grab->callbacks.touch.up(touch, id);
 }
 
 void input_manager::grab_send_touch_motion(weston_touch* touch, int32_t id,
         wl_fixed_t sx, wl_fixed_t sy)
 {
-    std::vector<wayfire_grab_interface> grabs;
-
-    for (auto grab : active_grabs) {
-        if (grab->callbacks.touch.motion)
-            grabs.push_back(grab);
-    }
-
-    for (auto grab : grabs)
-        grab->callbacks.touch.motion(touch, id, sx, sy);
+    if (active_grab && active_grab->callbacks.touch.motion)
+        active_grab->callbacks.touch.motion(touch, id, sx, sy);
 }
 
 void input_manager::check_touch_bindings(weston_touch* touch, wl_fixed_t sx, wl_fixed_t sy)
@@ -539,117 +515,81 @@ void input_manager::grab_input(wayfire_grab_interface iface)
     if (!iface->grabbed)
         return;
 
-    active_grabs.insert(iface);
-    if (1 == active_grabs.size()) {
-        auto ptr = weston_seat_get_pointer(core->get_current_seat());
-        weston_pointer_start_grab(ptr, &pgrab);
-        weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
-                                   &kgrab);
+    assert(!active_grab); // cannot have two active input grabs!
+    active_grab = iface;
 
-        grab_start_finalized = false;
+    auto ptr = weston_seat_get_pointer(core->get_current_seat());
+    weston_pointer_start_grab(ptr, &pgrab);
+    weston_keyboard_start_grab(weston_seat_get_keyboard(core->get_current_seat()),
+            &kgrab);
 
-        wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
-                idle_finalize_grab, nullptr);
+    grab_start_finalized = false;
 
-        auto background = core->get_active_output()->workspace->get_background_view();
-        if (background)
-            weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
+    wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
+            idle_finalize_grab, nullptr);
 
-        if (is_touch_enabled())
-            gr->start_grab();
-    }
+    auto background = core->get_active_output()->workspace->get_background_view();
+    if (background)
+        weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
+
+    if (is_touch_enabled())
+        gr->start_grab();
 }
 
-void input_manager::ungrab_input(wayfire_grab_interface iface)
+void input_manager::ungrab_input()
 {
-    active_grabs.erase(iface);
-    if (active_grabs.empty()) {
-        weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
-        weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
+    active_grab = nullptr;
+    weston_pointer_end_grab(weston_seat_get_pointer(core->get_current_seat()));
+    weston_keyboard_end_grab(weston_seat_get_keyboard(core->get_current_seat()));
 
-        if (is_touch_enabled())
-            gr->end_grab();
-    }
+    if (is_touch_enabled())
+        gr->end_grab();
 }
 
 bool input_manager::input_grabbed()
 {
-    return !active_grabs.empty();
+    return active_grab;
 }
 
 void input_manager::propagate_pointer_grab_axis(weston_pointer *ptr,
         weston_pointer_axis_event *ev)
 {
-    std::vector<wayfire_grab_interface> grab;
-    for (auto x : active_grabs) {
-        if (x->callbacks.pointer.axis)
-            grab.push_back(x);
-    }
-
-    for (auto x : grab) x->callbacks.pointer.axis(ptr, ev);
+    if (active_grab->callbacks.pointer.axis)
+        active_grab->callbacks.pointer.axis(ptr, ev);
 }
 
 void input_manager::propagate_pointer_grab_motion(
     weston_pointer *ptr, weston_pointer_motion_event *ev)
 {
-    std::vector<wayfire_grab_interface> grab;
-    for (auto x : active_grabs) {
-        if (x->callbacks.pointer.motion) grab.push_back(x);
-    }
-
-    for (auto x : grab) x->callbacks.pointer.motion(ptr, ev);
+    if (active_grab->callbacks.pointer.motion)
+        active_grab->callbacks.pointer.motion(ptr, ev);
 }
 
 void input_manager::propagate_pointer_grab_button(weston_pointer *ptr,
         uint32_t button,
         uint32_t state)
 {
-    std::vector<wayfire_grab_interface> grab;
-    for (auto x : active_grabs) {
-        if (x->callbacks.pointer.button)
-            grab.push_back(x);
-    }
-
-    for (auto x : grab)
-        x->callbacks.pointer.button(ptr, button, state);
+    if (active_grab->callbacks.pointer.button)
+        active_grab->callbacks.pointer.button(ptr, button, state);
 }
 
 void input_manager::propagate_keyboard_grab_key(weston_keyboard *kbd,
         uint32_t key, uint32_t state)
 {
-    std::vector<wayfire_grab_interface> grab;
-    for (auto x : active_grabs) {
-        if (x->callbacks.keyboard.key) {
-            grab.push_back(x);
-        }
-    }
-
-    for (auto x : grab)
-        x->callbacks.keyboard.key(kbd, key, state);
+    if (active_grab->callbacks.keyboard.key)
+        active_grab->callbacks.keyboard.key(kbd, key, state);
 }
 
 void input_manager::propagate_keyboard_grab_mod(weston_keyboard *kbd,
         uint32_t depressed, uint32_t locked, uint32_t latched, uint32_t group)
 {
-    std::vector<wayfire_grab_interface> grab;
-    for (auto x : active_grabs) {
-        if (x->callbacks.keyboard.mod)
-            grab.push_back(x);
-    }
-
-    for (auto x : grab)
-        x->callbacks.keyboard.mod(kbd, depressed, locked, latched, group);
+    if (active_grab->callbacks.keyboard.mod)
+        active_grab->callbacks.keyboard.mod(kbd, depressed, locked, latched, group);
 }
 
 void input_manager::end_grabs()
 {
-    std::vector<wayfire_grab_interface> v;
-
-    for (auto x : active_grabs)
-        v.push_back(x);
-
-    for (auto x : v)
-        ungrab_input(x);
+    ungrab_input();
 }
 
 struct key_callback_data {
@@ -894,14 +834,34 @@ void wayfire_core::focus_output(wayfire_output *wo)
 
     wo->ensure_pointer();
 
+    wayfire_grab_interface old_grab = nullptr;
+
     if (active_output)
+    {
+        old_grab = active_output->get_input_grab_interface();
         active_output->focus_view(nullptr, get_current_seat());
+    }
 
     active_output = wo;
-    refocus_active_output_active_view();
-
     if (wo)
         debug << "focus output: " << wo->handle->id << std::endl;
+
+    /* invariant: input is grabbed only if the current output
+     * has an input grab */
+    if (input->input_grabbed())
+    {
+        assert(old_grab);
+        input->ungrab_input();
+    }
+
+    wayfire_grab_interface iface = wo->get_input_grab_interface();
+
+    /* this cannot be recursion as active_output will be equal to wo,
+     * and wo->active_view->output == wo */
+    if (!iface)
+        refocus_active_output_active_view();
+    else
+        input->grab_input(iface);
 
     if (active_output)
         weston_output_schedule_repaint(active_output->handle);
