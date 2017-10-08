@@ -6,12 +6,14 @@
 #include <libweston-desktop.h>
 #include "../../shared/config.hpp"
 
-class wayfire_move : public wayfire_plugin_t {
+class wayfire_move : public wayfire_plugin_t
+{
     signal_callback_t move_request;
     button_callback activate_binding;
     touch_callback touch_activate_binding;
     wayfire_view view;
 
+    bool is_using_touch;
     bool enable_snap;
     int slot;
     int snap_pixels;
@@ -31,12 +33,14 @@ class wayfire_move : public wayfire_plugin_t {
 
             activate_binding = [=] (weston_pointer* ptr, uint32_t)
             {
+                is_using_touch = false;
                 this->initiate(core->find_view(ptr->focus), ptr->x, ptr->y);
             };
 
             touch_activate_binding = [=] (weston_touch* touch,
                     wl_fixed_t sx, wl_fixed_t sy)
             {
+                is_using_touch = false;
                 initiate(core->find_view(touch->focus), sx, sy);
             };
 
@@ -53,6 +57,7 @@ class wayfire_move : public wayfire_plugin_t {
                 if (b != button.button)
                     return;
 
+                is_using_touch = false;
                 input_pressed(state);
             };
             grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
@@ -88,8 +93,10 @@ class wayfire_move : public wayfire_plugin_t {
                 auto touch = weston_seat_get_touch(seat);
 
                 if (ptr && ptr->grab_serial == converted->serial) {
+                    is_using_touch = false;
                     initiate(converted->view, ptr->x, ptr->y);
                 } else if (touch && touch->grab_serial == converted->serial) {
+                    is_using_touch = false;
                     initiate(converted->view, touch->grab_x, touch->grab_y);
                 }
             }
@@ -183,6 +190,27 @@ class wayfire_move : public wayfire_plugin_t {
                     view->geometry.y + ny - prev_y);
             prev_x = nx;
             prev_y = ny;
+
+
+            auto target_output = core->get_output_at(nx, ny);
+            if (target_output != output)
+            {
+                input_pressed(WL_POINTER_BUTTON_STATE_RELEASED);
+
+                weston_view_damage_below(view->handle);
+                weston_view_geometry_dirty(view->handle);
+
+                core->move_view_to_output(view, target_output);
+                core->focus_view(view, core->get_current_seat());
+
+                move_request_signal req;
+                req.view = view;
+                req.serial = is_using_touch ?  weston_seat_get_touch(core->get_current_seat())->grab_serial :
+                    weston_seat_get_pointer(core->get_current_seat())->grab_serial;
+
+                target_output->signal->emit_signal("move-request", &req);
+                return;
+            }
 
             /* TODO: possibly show some visual indication */
             if (enable_snap)
