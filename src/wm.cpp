@@ -31,6 +31,9 @@ void wayfire_focus::init(wayfire_config *)
 
     callback = [=] (weston_pointer * ptr, uint32_t button)
     {
+        core->focus_output(core->get_output_at(
+                    wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y)));
+
         wayfire_view view;
         if (!ptr->focus ||
             !(view = core->find_view(weston_surface_get_main_surface(ptr->focus->surface))))
@@ -46,11 +49,15 @@ void wayfire_focus::init(wayfire_config *)
 
     touch = [=] (weston_touch *touch, wl_fixed_t sx, wl_fixed_t sy)
     {
+        core->focus_output(core->get_output_at(
+                    wl_fixed_to_int(sx), wl_fixed_to_int(sy)));
+
         wayfire_view view;
         if (!touch->focus || !(view = core->find_view(weston_surface_get_main_surface(touch->focus->surface))))
             return;
         if (view->is_special || view->destroyed || !output->activate_plugin(grab_interface))
             return;
+
         output->deactivate_plugin(grab_interface);
         view->output->focus_view(view, touch->seat);
     };
