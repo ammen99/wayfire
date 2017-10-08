@@ -793,6 +793,11 @@ weston_seat* wayfire_core::get_current_seat()
     return nullptr;
 }
 
+void output_destroyed_callback(wl_listener *, void *data)
+{
+    core->remove_output(core->get_output((weston_output*) data));
+}
+
 void wayfire_core::add_output(weston_output *output)
 {
     debug << "Adding output " << output->id << std::endl;
@@ -812,6 +817,38 @@ void wayfire_core::add_output(weston_output *output)
                 output->width, output->height);
 
     weston_output_schedule_repaint(output);
+}
+
+/* TODO: FIXME: we have to delete all bindings set by this output, this should preferably be done
+ * automatically(e.g by a register of all key/button/etc bindings associated with an output). However,
+ * this shouldn't be much of a problem for now, as these bindings aren't called unless their output
+ * matches the currently focused one, and because their output points to an invalid output,
+ * they won't be activated at all */
+void wayfire_core::remove_output(wayfire_output *output)
+{
+    outputs.erase(output->handle->id);
+
+    /* we have no outputs, simply quit */
+    if (outputs.empty())
+    {
+        weston_compositor_exit(ec);
+        std::exit(0);
+    }
+
+    if (output == active_output)
+        focus_output(outputs.begin()->second);
+
+    auto og = output->get_full_geometry();
+    auto ng = active_output->get_full_geometry();
+
+    int dx = ng.x - og.x, dy = ng.y - og.y;
+    output->workspace->for_each_view_reverse([=] (wayfire_view view)
+    {
+        move_view_to_output(view, active_output);
+        view->move(view->geometry.x + dx, view->geometry.y + dy);
+    });
+
+    delete output;
 }
 
 void wayfire_core::refocus_active_output_active_view()

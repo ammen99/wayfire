@@ -141,6 +141,8 @@ class wayfire_output
         * which has grabbed the input. If none, then return nullptr */
        wayfire_grab_interface get_input_grab_interface();
 
+       wl_listener destroy_listener;
+
     public:
     weston_output* handle;
 
