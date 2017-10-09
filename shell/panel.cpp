@@ -24,7 +24,7 @@ static void load_misc_config(wayfire_config *config)
             {0.033, 0.041, 0.047, 0.9});
     widget::font_size = section->get_int("font_size", 25);
     widget::font_face = section->get_string("font_face",
-            "/usr/share/fonts/dejavu/DejaVuSerif.ttf");
+            "/usr/share/fonts/gnu-free/FreeSerif.ttf");
 
     battery_options::icon_path_prefix = section->get_string("battery_icon_path_prefix",
             "/usr/share/icons/Adwaita/64x64/status");
@@ -169,6 +169,7 @@ widget* wayfire_panel::create_widget_from_name(std::string name)
     if (w)
     {
         w->cr = cairo_create(window->cairo_surface);
+        cairo_set_operator(w->cr, CAIRO_OPERATOR_SOURCE);
         w->panel_h = height;
         w->create();
     }
