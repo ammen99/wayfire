@@ -33,9 +33,12 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
     view->output->signal->emit_signal("destroy-view", &sig_data);
 
     if (view->keep_count <= 0) {
-        errio << "Here we destroy our beloved view" << std::endl;
         /* plugins might want to keep this */
         core->erase_view(view);
+    } else
+    {
+        view->handle = nullptr;
+        view->desktop_surface = nullptr;
     }
 }
 
