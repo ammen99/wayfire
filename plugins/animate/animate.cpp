@@ -4,6 +4,7 @@
 #include "../../shared/config.hpp"
 #include <type_traits>
 #include "system_fade.hpp"
+#include "basic_animations.hpp"
 
 void animation_base::init(wayfire_view, int, bool) {}
 bool animation_base::step() {return false;}
@@ -124,41 +125,6 @@ struct animation_hook
     }
 };
 
-class fade_animation : public animation_base
-{
-    wayfire_view view;
-
-    float start = 0, end = 1;
-    int total_frames, current_frame;
-
-    public:
-
-    void init(wayfire_view view, int tf, bool close)
-    {
-        this->view = view;
-        total_frames = tf;
-        current_frame = 0;
-
-        if (close)
-            std::swap(start, end);
-
-    }
-
-    bool step()
-    {
-        view->transform.color[3] = GetProgress(start, end, current_frame, total_frames);
-        view->simple_render();
-        view->transform.color[3] = 0.0f;
-
-        return current_frame++ < total_frames;
-    }
-
-    ~fade_animation()
-    {
-        view->transform.color[3] = 1.0f;
-    }
-};
-
 class wayfire_animation : public wayfire_plugin_t {
     signal_callback_t create_cb, destroy_cb, wake_cb;
 
@@ -217,6 +183,8 @@ class wayfire_animation : public wayfire_plugin_t {
 
         if (open_animation == "fade")
             new animation_hook<fade_animation, false>(grab_interface, data->created_view, frame_count);
+        else if (open_animation == "zoom")
+            new animation_hook<zoom_animation, false>(grab_interface, data->created_view, frame_count);
         else if (open_animation == "fire")
             new animation_hook<wf_fire_effect, false>(grab_interface, data->created_view, frame_count);
     }
@@ -232,6 +200,8 @@ class wayfire_animation : public wayfire_plugin_t {
 
         if (close_animation == "fade")
             new animation_hook<fade_animation, true> (grab_interface, data->destroyed_view, frame_count);
+        else if (close_animation == "zoom")
+            new animation_hook<zoom_animation, true> (grab_interface, data->destroyed_view, frame_count);
         else if (close_animation == "fire")
             new animation_hook<wf_fire_effect, true> (grab_interface, data->destroyed_view, frame_count);
     }
