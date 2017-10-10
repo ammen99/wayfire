@@ -316,7 +316,7 @@ void network_widget::repaint()
                             color_avg  = {1, 1, 0.3, 1},
                             color_bad  = {1, 0, 0, 1};
 
-    cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
     std::string text;
     wayfire_color color;

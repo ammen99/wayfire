@@ -169,7 +169,6 @@ widget* wayfire_panel::create_widget_from_name(std::string name)
     if (w)
     {
         w->cr = cairo_create(window->cairo_surface);
-        cairo_set_operator(w->cr, CAIRO_OPERATOR_SOURCE);
         w->panel_h = height;
         w->create();
     }
@@ -190,7 +189,6 @@ void wayfire_panel::init_widgets(std::string str, position_policy policy)
 void wayfire_panel::init_widgets()
 {
     cr = cairo_create(window->cairo_surface);
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
 
     auto section = config->get_section("shell_panel");
     std::string left = section->get_string("widgets_left", "");
@@ -226,6 +224,7 @@ void wayfire_panel::render_frame(bool first_call)
 
     if (should_swap)
     {
+        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
         render_rounded_rectangle(cr, 0, 0, width, height,
                 4, widget::background_color.r, widget::background_color.g,
                 widget::background_color.b, widget::background_color.a);

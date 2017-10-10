@@ -126,6 +126,7 @@ bool clock_widget::update()
 
 void clock_widget::repaint()
 {
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
     cairo_move_to(cr, x, font_size);
@@ -466,7 +467,7 @@ void battery_widget::repaint()
     info->mutex.unlock();
 
     cairo_identity_matrix(cr);
-    cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     int icon_size = font_size;
     cairo_new_path(cr);
 
@@ -613,7 +614,7 @@ void launchers_widget::create()
 void launchers_widget::repaint()
 {
     cairo_identity_matrix(cr);
-    cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
 
     for (size_t i = 0; i < launchers.size(); i++)
     {
