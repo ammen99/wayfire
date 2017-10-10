@@ -127,6 +127,9 @@ debug << "doing a step " << output->handle->id << " " << view->desktop_surface <
             output->render->reset_renderer();
         }
 
+        /* make sure we "unhide" the view */
+        view->transform.color[3] = 1;
+
         if (close_animation)
             core->erase_view(view);
     }
