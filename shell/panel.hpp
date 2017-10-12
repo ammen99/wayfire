@@ -1,7 +1,7 @@
 #ifndef PANEL_HPP
 #define PANEL_HPP
 
-#include "common.hpp"
+#include "window.hpp"
 #include <vector>
 
 struct widget;
@@ -49,7 +49,9 @@ class wayfire_panel {
 
     /* load widget list and position them */
     void init_widgets();
+    void reinit_widgets_context();
 
+    void setup_window();
 
     wayfire_config *config;
 

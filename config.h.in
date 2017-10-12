@@ -5,5 +5,6 @@
 #cmakedefine01 BUILD_WITH_IMAGEIO
 #cmakedefine01 WAYFIRE_DEBUG_ENABLED
 #cmakedefine01 USE_GLES32
+#cmakedefine01 HAS_CAIRO_GL_H
 
 #endif /* end of include guard: CONFIG_H */

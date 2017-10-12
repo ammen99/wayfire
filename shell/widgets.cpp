@@ -9,6 +9,7 @@
 #include <wayland-client.h>
 #include <linux/input-event-codes.h>
 #include <gio/gio.h>
+#include <glib-unix.h>
 #include <mutex>
 #include <thread>
 
@@ -16,6 +17,7 @@
 #include <dirent.h>
 
 #include <freetype2/ft2build.h>
+#include <pthread.h>
 
 wayfire_color widget::background_color;
 int32_t widget::font_size;
@@ -65,11 +67,6 @@ void render_rounded_rectangle(cairo_t *cr, int x, int y, int width, int height,
 void clock_widget::create()
 {
     load_default_font();
-
-    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
-    cairo_set_font_size(cr, font_size);
-    cairo_set_font_face(cr, cairo_font_face);
-
     width = font_size * 18;
 }
 
@@ -126,6 +123,10 @@ bool clock_widget::update()
 
 void clock_widget::repaint()
 {
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
+    cairo_set_font_size(cr, font_size);
+    cairo_set_font_face(cr, cairo_font_face);
+ 
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_rgb(cr, 0.91, 0.918, 0.965);
 
@@ -221,6 +222,12 @@ on_battery_changed (GDBusProxy          *proxy,
 
         g_variant_iter_free(iter);
     }
+}
+
+static gboolean handle_exit_signal(gpointer data)
+{
+    g_main_loop_quit((GMainLoop*) data);
+    return G_SOURCE_REMOVE;
 }
 
 struct upower_backend
@@ -349,6 +356,8 @@ struct upower_backend
                 "g-properties-changed", G_CALLBACK(on_battery_changed), info);
 
         auto loop = g_main_loop_new(NULL, FALSE);
+        g_unix_signal_add(SIGUSR1, handle_exit_signal, loop);
+
         g_main_loop_run(loop);
 
         g_object_unref(upower_proxy);
@@ -373,10 +382,6 @@ void battery_widget::create()
     backend_thread = std::thread([=] () { backend->start_loop(); });
 
     load_default_font();
-
-    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
-    cairo_set_font_size(cr, font_size * battery_options::text_scale);
-    cairo_set_font_face(cr, cairo_font_face);
 
     /* calculate luminance of the background color */
     float y = background_color.r * 0.2126 + background_color.g * 0.7152 + background_color.b * 0.0722;
@@ -466,6 +471,10 @@ void battery_widget::repaint()
     info->icon_updated = info->percentage_updated = false;
     info->mutex.unlock();
 
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0); /* blank to white */
+    cairo_set_font_size(cr, font_size * battery_options::text_scale);
+    cairo_set_font_face(cr, cairo_font_face);
+
     cairo_identity_matrix(cr);
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     int icon_size = font_size;
@@ -500,7 +509,6 @@ void battery_widget::repaint()
         cairo_set_source_surface(cr, icon_surface, sx / scale_w, sy / scale_h);
         cairo_fill(cr);
     }
-
 }
 
 /* --------------- Launchers widget ---------------------- */

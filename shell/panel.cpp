@@ -1,5 +1,4 @@
 #include <sstream>
-#include "common.hpp"
 #include "panel.hpp"
 #include "widgets.hpp"
 #include "net.hpp"
@@ -45,7 +44,16 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
 
     this->output = output;
 
+    setup_window();
+    init_widgets();
+    render_frame(true);
+}
+
+void wayfire_panel::setup_window()
+{
     window = create_window(width, height);
+    cr = cairo_create(window->cairo_surface);
+
 
     animation.dy = -5;
     animation.target_y = hidden_height - height;
@@ -53,9 +61,6 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
     animation.current_y = animation.start_y;
 
     repaint_callback = nullptr;
-    init_widgets();
-    render_frame(true);
-
     //wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width, hidden_height);
     wayfire_shell_add_panel(display.wfshell, output, window->surface);
 
@@ -69,12 +74,20 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
 void wayfire_panel::resize(uint32_t w, uint32_t h)
 {
     width = w;
-    window->resize(width, height);
 
-    for (int i = 0; i < 2; i++)
-        position_widgets((position_policy)i);
+    for_each_widget(w)
+        cairo_destroy(w->cr);
 
-    need_fullredraw = true;
+    cairo_destroy(cr);
+
+    delete_window(window);
+    setup_window();
+
+    for_each_widget(w)
+        w->cr = cairo_create(window->cairo_surface);
+
+    cr = cairo_create(window->cairo_surface);
+    render_frame(true);
 }
 
 void wayfire_panel::toggle_animation()
@@ -241,5 +254,5 @@ void wayfire_panel::render_frame(bool first_call)
         add_callback(should_swap);
 
     if (should_swap)
-        cairo_gl_surface_swapbuffers(window->cairo_surface);
+        damage_commit_window(window);
 }

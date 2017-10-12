@@ -20,12 +20,24 @@ if (NOT DEFINED USE_GLES32)
     set(USE_GLES32 TRUE)
 endif(NOT DEFINED USE_GLES32)
 
+if (NOT DEFINED HAS_CAIRO_GL_H)
+    include(CheckIncludeFiles)
+    CHECK_INCLUDE_FILES("cairo/cairo-gl.h" HAS_CAIRO_GL_H)
+endif(NOT DEFINED HAS_CAIRO_GL_H)
+
+if (HAS_CAIRO_GL_H)
+    set(HAS_CAIRO_GL_H TRUE)
+else (HAS_CAIRO_GL_H)
+    set(HAS_CAIRO_GL_H FALSE)
+endif (HAS_CAIRO_GL_H)
+
 configure_file(config.h.in config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 message("\n\nConfiguration options:\n")
 message("    ImageIO: " ${BUILD_WITH_IMAGEIO})
 message("    OpenGL ES 3.2: " ${USE_GLES32})
+message("    Cario-GL: " ${HAS_CAIRO_GL_H})
 message("    Debugging output: " ${WAYFIRE_DEBUG_ENABLED})
 message("\n")
 

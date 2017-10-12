@@ -1,6 +1,8 @@
 #include "net.hpp"
 #include <gio/gio.h>
+#include <glib-unix.h>
 #include <iostream>
+#include <signal.h>
 
 struct network_provider_backend
 {
@@ -69,6 +71,12 @@ on_nm_properties_changed (GDBusProxy          *proxy,
 
         g_variant_iter_free(iter);
     }
+}
+
+static gboolean handle_exit_signal(gpointer data)
+{
+    g_main_loop_quit((GMainLoop*) data);
+    return G_SOURCE_REMOVE;
 }
 
 struct network_manager_provider : public network_provider_backend
@@ -247,10 +255,14 @@ struct network_manager_provider : public network_provider_backend
                          G_CALLBACK(on_nm_properties_changed), &callback);
 
         GMainLoop *loop = g_main_loop_new(NULL, false);
+        g_unix_signal_add(SIGUSR1, handle_exit_signal, loop);
+
         g_main_loop_run(loop);
 
         g_main_loop_unref(loop);
         g_object_unref(nm_proxy);
+
+        delete this;
     }
 
     ~network_manager_provider()
@@ -268,12 +280,10 @@ void network_widget::create()
         return;
     }
 
+    load_default_font();
     updater_thread = std::thread([=] () { backend->thread_loop(); });
 
-    cairo_set_font_size(cr, font_size);
-    cairo_set_font_face(cr, cairo_font_face);
-
-    width = 20 * font_size;
+        width = 20 * font_size;
 }
 
 bool network_widget::update()
@@ -339,6 +349,8 @@ void network_widget::repaint()
     connection.updated = false;
     connection.mutex.unlock();
 
+    cairo_set_font_size(cr, font_size);
+    cairo_set_font_face(cr, cairo_font_face);
     cairo_set_source_rgba(cr, color.r, color.g, color.b, color.a);
 
     cairo_move_to(cr, x + font_size * 0.5, font_size);

@@ -1,9 +1,7 @@
-#include "common.hpp"
+#include "window.hpp"
 #include <cstring>
 #include <algorithm>
 #include <wayland-cursor.h>
-
-#include <GL/gl.h>
 
 wayfire_window *current_window = nullptr;
 
@@ -12,6 +10,10 @@ int pointer_x, pointer_y;
 void pointer_enter(void *data, struct wl_pointer *wl_pointer,
     uint32_t serial, struct wl_surface *surface, wl_fixed_t surface_x, wl_fixed_t surface_y)
 {
+    /* possibly an event for a surface we just destroyed */
+    if (!surface)
+        return;
+
     pointer_x = wl_fixed_to_int(surface_x);
     pointer_y = wl_fixed_to_int(surface_y);
 
@@ -26,6 +28,11 @@ void pointer_enter(void *data, struct wl_pointer *wl_pointer,
 void pointer_leave(void *data, struct wl_pointer *wl_pointer, uint32_t serial,
     struct wl_surface *surface)
 {
+    /* possibly an event for a surface we just destroyed */
+    if (!surface)
+        return;
+
+
     auto window = (wayfire_window*) wl_surface_get_user_data(surface);
     if (window && window->pointer_leave)
         window->pointer_leave();
@@ -71,6 +78,19 @@ static const struct wl_pointer_listener pointer_listener = {
     .axis_stop = pointer_axis_stop,
     .axis_discrete = pointer_axis_discrete
 };
+
+void delete_window(wayfire_window *window)
+{
+    if (current_window == window)
+        current_window = nullptr;
+
+    wl_shell_surface_destroy (window->shell_surface);
+    wl_surface_destroy (window->surface);
+
+    cairo_surface_destroy(window->cairo_surface);
+
+    backend_delete_window(window);
+}
 
 // listeners
 void registry_add_object(void *data, struct wl_registry *registry, uint32_t name,
@@ -121,105 +141,12 @@ static void shell_surface_popup_done(void *data, struct wl_shell_surface *shell_
 {
 }
 
-static struct wl_shell_surface_listener shell_surface_listener =
+const struct wl_shell_surface_listener shell_surface_listener =
 {
     &shell_surface_ping,
     &shell_surface_configure,
     &shell_surface_popup_done
 };
-
-bool setup_egl()
-{
-    display.egl_display = eglGetDisplay (display.wl_disp);
-	if (!eglInitialize(display.egl_display, NULL, NULL)) {
-        std::cerr << "Failed to initialize EGL" << std::endl;
-        return false;
-    }
-
-	if (!eglBindAPI(EGL_OPENGL_API)) {
-        std::cerr << "Failed to bind EGL API" << std::endl;
-        return false;
-    }
-
-	EGLint attributes[] =
-    {
-		EGL_RED_SIZE, 8,
-		EGL_GREEN_SIZE, 8,
-		EGL_BLUE_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
-	    EGL_NONE
-    };
-
-	EGLint num_config;
-	if (!eglChooseConfig(display.egl_display, attributes, &display.egl_config, 1, &num_config)) {
-        std::cerr << "Failed to choose EGL config" << std::endl;
-        return false;
-    }
-
-	display.egl_context = eglCreateContext(display.egl_display, display.egl_config, EGL_NO_CONTEXT, NULL);
-    if (display.egl_context == NULL) {
-        std::cerr << "Failed to create EGL context" << std::endl;
-        return false;
-    }
-
-    display.rgb_device = cairo_egl_device_create(display.egl_display, display.egl_context);
-    if (display.rgb_device == NULL) {
-        std::cerr << "Failed to create cairo device" << std::endl;
-        return false;
-    }
-
-    return true;
-}
-
-void finish_egl()
-{
-    eglDestroyContext (display.egl_display, display.egl_context);
-}
-
-void wayfire_window::resize(uint32_t width, uint32_t height)
-{
-    wl_egl_window_resize(egl_window, width, height, 0, 0);
-    cairo_gl_surface_set_size(cairo_surface, width, height);
-}
-
-wayfire_window *create_window(int32_t width, int32_t height)
-{
-    wayfire_window *window = new wayfire_window;
-	window->surface = wl_compositor_create_surface(display.compositor);
-    wl_surface_set_user_data(window->surface, window);
-
-	window->shell_surface = wl_shell_get_shell_surface(display.shell, window->surface);
-	wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
-	wl_shell_surface_set_toplevel(window->shell_surface);
-
-	window->egl_window = wl_egl_window_create(window->surface, width, height);
-	window->egl_surface = eglCreateWindowSurface(display.egl_display, display.egl_config,
-            window->egl_window, NULL);
-
-	eglMakeCurrent(display.egl_display, window->egl_surface, window->egl_surface, display.egl_config);
-
-    window->cairo_surface = cairo_gl_surface_create_for_egl(display.rgb_device,
-            window->egl_surface, width, height);
-
-    window->resize(width, height);
-    window->cairo_surface = cairo_surface_reference(window->cairo_surface);
-    return window;
-}
-
-void set_active_window(wayfire_window *window)
-{
-    cairo_device_flush(display.rgb_device);
-    cairo_device_acquire(display.rgb_device);
-	eglMakeCurrent(display.egl_display, window->egl_surface, window->egl_surface, display.egl_config);
-}
-
-void delete_window(wayfire_window *window)
-{
-	eglDestroySurface (display.egl_display, window->egl_surface);
-	wl_egl_window_destroy (window->egl_window);
-	wl_shell_surface_destroy (window->shell_surface);
-	wl_surface_destroy (window->surface);
-}
 
 wl_cursor *cursor;
 wl_surface *cursor_surface;
@@ -277,7 +204,7 @@ bool setup_wayland_connection()
     wl_display_roundtrip(display.wl_disp);
     wl_registry_destroy(registry);
 
-    if (!setup_egl())
+    if (!setup_backend())
         return false;
 
     if (!load_cursor())
@@ -286,3 +213,8 @@ bool setup_wayland_connection()
     return true;
 }
 
+void finish_wayland_connection()
+{
+    finish_backend();
+    wl_display_disconnect(display.wl_disp);
+}

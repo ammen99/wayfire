@@ -8,6 +8,7 @@ wayfire_background::wayfire_background(std::string image)
 
 void wayfire_background::create_background(uint32_t output, uint32_t w, uint32_t h)
 {
+    this->output = output;
     window = create_window(w, h);
     wayfire_shell_add_background(display.wfshell, output, window->surface, 0, 0);
 
@@ -17,14 +18,7 @@ void wayfire_background::create_background(uint32_t output, uint32_t w, uint32_t
 
     cr = cairo_create(window->cairo_surface);
     img_surface = cairo_image_surface_create_from_png(image.c_str());
-    resize(w, h);
-}
 
-void wayfire_background::resize(uint32_t w, uint32_t h)
-{
-    cairo_identity_matrix(cr);
-
-    window->resize(w, h);
     set_active_window(window);
 
     double img_w = cairo_image_surface_get_width(img_surface);
@@ -36,7 +30,15 @@ void wayfire_background::resize(uint32_t w, uint32_t h)
 
     cairo_fill(cr);
 
-    cairo_gl_surface_swapbuffers(window->cairo_surface);
+    damage_commit_window(window);
+}
+
+void wayfire_background::resize(uint32_t w, uint32_t h)
+{
+    cairo_destroy(cr);
+    cairo_surface_destroy(img_surface);
+    delete_window(window);
+    create_background(output, w, h);
 }
 
 void wayfire_background::on_enter(wl_pointer *ptr, uint32_t serial, int x, int y)

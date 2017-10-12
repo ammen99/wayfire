@@ -4,6 +4,7 @@
 #include "../shared/config.hpp"
 #include <vector>
 #include <map>
+#include <signal.h>
 
 wayfire_display display;
 
@@ -70,7 +71,6 @@ int main()
     if (!setup_wayland_connection())
         return -1;
 
-    /* TODO: parse background src from command line */
     wayfire_shell_add_listener(display.wfshell, &bg_shell_listener, 0);
 
     while(true) {
@@ -87,5 +87,5 @@ int main()
             delete x.second.gamma;
     }
 
-    wl_display_disconnect(display.wl_disp);
+    finish_wayland_connection();
 }
