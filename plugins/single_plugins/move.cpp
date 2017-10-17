@@ -107,6 +107,11 @@ class wayfire_move : public wayfire_plugin_t
             if (!view || view->is_special || view->destroyed)
                 return;
 
+            if (!output->workspace->
+                    get_implementation(output->workspace->get_current_workspace())->
+                        view_movable(view))
+                return;
+
             if (!output->activate_plugin(grab_interface))
                 return;
 

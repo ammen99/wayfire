@@ -2,6 +2,7 @@
 #define VIEW_HPP
 #include "commonincludes.hpp"
 #include <vector>
+#include <map>
 #include <memory>
 #include <glm/glm.hpp>
 #include <functional>
@@ -42,11 +43,21 @@ bool operator != (const weston_geometry& a, const weston_geometry& b);
 bool point_inside(wayfire_point point, weston_geometry rect);
 bool rect_intersect(weston_geometry screen, weston_geometry win);
 
+struct wf_custom_view_data
+{
+    virtual ~wf_custom_view_data();
+};
+
 class wayfire_view_t {
     public:
         weston_desktop_surface *desktop_surface;
         weston_surface *surface;
         weston_view *handle;
+
+        /* plugins can subclass wf_custom_view_data and use it to store view-specific information
+         * it must provide a virtual destructor to free its data. Custom data is deleted when the view
+         * is destroyed if not removed earlier */
+        std::map<std::string, wf_custom_view_data*> custom_data;
 
         wayfire_view_t(weston_desktop_surface *ds);
         ~wayfire_view_t();

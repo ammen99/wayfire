@@ -108,6 +108,11 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void start_animation(wayfire_view view, int tx, int ty, int tw, int th)
     {
+        auto impl = output->workspace->
+            get_implementation(output->workspace->get_current_workspace());
+
+        if (!impl->view_movable(view) || !impl->view_resizable(view))
+            return;
         if (!output->activate_plugin(grab_interface))
             return;
         output->focus_view(nullptr);

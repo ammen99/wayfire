@@ -4,7 +4,14 @@
 #include <pixman-1/pixman.h>
 #include <opengl.hpp>
 
-class viewport_manager : public workspace_manager {
+struct wf_default_workspace_implementation : wf_workspace_implementation
+{
+    bool view_movable (wayfire_view view)  { return true; }
+    bool view_resizable(wayfire_view view) { return true; }
+};
+
+class viewport_manager : public workspace_manager
+{
     private:
         int vwidth, vheight, vx, vy;
         wayfire_output *output;
@@ -20,6 +27,10 @@ class viewport_manager : public workspace_manager {
             int right_padding;
         } workarea;
 
+        std::vector<std::vector<wf_workspace_implementation*>> implementation;
+
+        wf_default_workspace_implementation default_implementation;
+
     public:
         void init(wayfire_output *output);
 
@@ -28,6 +39,9 @@ class viewport_manager : public workspace_manager {
 
         void for_each_view(view_callback_proc_t call);
         void for_each_view_reverse(view_callback_proc_t call);
+
+        wf_workspace_implementation* get_implementation(std::tuple<int, int>);
+        bool set_implementation(std::tuple<int, int>, wf_workspace_implementation*, bool override = false);
 
         std::vector<wayfire_view> get_views_on_workspace(std::tuple<int, int>);
         std::vector<wayfire_view>
@@ -67,6 +81,8 @@ void viewport_manager::init(wayfire_output *o)
 
     vwidth = core->vwidth;
     vheight = core->vheight;
+    implementation.resize(vwidth, std::vector<wf_workspace_implementation*>
+            (vheight, &default_implementation));
 
     adjust_fullscreen_layer = [=] (signal_data *data)
     {
@@ -125,6 +141,23 @@ void viewport_manager::for_each_view_reverse(view_callback_proc_t call)
         if ((v = core->find_view(view)) && v->is_visible())
             call(v);
     }
+}
+
+wf_workspace_implementation* viewport_manager::get_implementation(std::tuple<int, int> vt)
+{
+    GetTuple(x, y, vt);
+    return implementation[x][y];
+}
+
+bool viewport_manager::set_implementation(std::tuple<int, int> vt, wf_workspace_implementation* impl, bool override)
+{
+    GetTuple(x, y, vt);
+    bool replace = override || implementation[x][y] == nullptr;
+
+    if (replace)
+        implementation[x][y] = impl;
+
+    return replace;
 }
 
 std::tuple<int, int> viewport_manager::get_current_workspace()
@@ -341,8 +374,10 @@ class viewport_impl_plugin : public wayfire_plugin_t {
 
     void init(wayfire_config *config)
     {
-        output->workspace = new viewport_manager();
-        output->workspace->init(output);
+        auto vp = new viewport_manager();
+        vp->init(output);
+
+        output->workspace = vp;
     }
 };
 

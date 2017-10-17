@@ -89,6 +89,8 @@ wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
 
 wayfire_view_t::~wayfire_view_t()
 {
+    for (auto& kv : custom_data)
+        delete kv.second;
 }
 
 #define Mod(x,m) (((x)%(m)+(m))%(m))
