@@ -85,6 +85,9 @@ class workspace_manager
         virtual void view_bring_to_front(wayfire_view view) = 0;
         virtual void view_removed(wayfire_view view) = 0;
 
+        /* return if the view is visible on the given workspace */
+        virtual bool view_visible_on(wayfire_view view, std::tuple<int, int>) = 0;
+
         virtual void for_each_view(view_callback_proc_t call) = 0;
         virtual void for_each_view_reverse(view_callback_proc_t call) = 0;
 

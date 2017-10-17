@@ -37,6 +37,8 @@ class viewport_manager : public workspace_manager
         void view_bring_to_front(wayfire_view view);
         void view_removed(wayfire_view view);
 
+        bool view_visible_on(wayfire_view, std::tuple<int, int>);
+
         void for_each_view(view_callback_proc_t call);
         void for_each_view_reverse(view_callback_proc_t call);
 
@@ -119,6 +121,17 @@ void viewport_manager::view_removed(wayfire_view view)
 
     if (view == background)
         background = nullptr;
+}
+
+bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> vp)
+{
+    GetTuple(tx, ty, vp);
+
+    weston_geometry g = output->get_full_geometry();
+    g.x += (tx - vx) * output->handle->width;
+    g.y += (ty - vy) * (output->handle->height);
+
+    return rect_intersect(g, view->geometry);
 }
 
 void viewport_manager::for_each_view(view_callback_proc_t call)
@@ -305,6 +318,7 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
 
 void viewport_manager::add_panel(wayfire_view panel)
 {
+    panel->is_special = true;
     /* views have first been created as desktop views,
      * so they are currently in the normal layer, we must remove them first */
     panel->output->detach_view(panel);
@@ -313,7 +327,6 @@ void viewport_manager::add_panel(wayfire_view panel)
     pixman_region32_copy(&panel->handle->damage_clip_region, &output->handle->region);
 
     weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
-    panel->is_special = true;
 }
 
 void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,

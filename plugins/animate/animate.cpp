@@ -73,11 +73,8 @@ struct animation_hook
                 first_run = false;
             }
 
-            if (!base->step()) {
+            if (!base->step())
                 delete_hook(this);
-                debug << "doing a step " << output->handle->id << " " << view->desktop_surface << std::endl;
-            }
-debug << "doing a step " << output->handle->id << " " << view->desktop_surface << std::endl;
         };
 
         output->render->add_output_effect(&hook);

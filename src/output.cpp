@@ -633,7 +633,6 @@ void shell_configure_panel(struct wl_client *client, struct wl_resource *resourc
         return;
     }
 
-    debug << "wf_shell: configure_panel" << std::endl;
     wo->workspace->configure_panel(view, x, y);
 }
 

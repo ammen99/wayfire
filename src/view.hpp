@@ -45,7 +45,7 @@ bool rect_intersect(weston_geometry screen, weston_geometry win);
 
 struct wf_custom_view_data
 {
-    virtual ~wf_custom_view_data();
+    virtual ~wf_custom_view_data() {}
 };
 
 class wayfire_view_t
