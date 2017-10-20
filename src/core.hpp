@@ -52,7 +52,7 @@ class wayfire_core
         wayfire_view find_view(weston_surface *);
 
         /* completely destroy a view */
-        void erase_view(wayfire_view view);
+        void erase_view(wayfire_view view, bool destroy_libweston_view = false);
 
         /* brings the view to the top
          * and also focuses its output */

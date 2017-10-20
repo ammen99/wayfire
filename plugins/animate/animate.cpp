@@ -80,7 +80,7 @@ struct animation_hook
 debug << "doing a step " << output->handle->id << " " << view->desktop_surface << std::endl;
         };
 
-        output->render->add_output_effect(&hook, view);
+        output->render->add_output_effect(&hook);
 
         if (!effect_running)
             return;
@@ -109,15 +109,10 @@ debug << "doing a step " << output->handle->id << " " << view->desktop_surface <
         if (base)
             delete base;
 
-        output->render->rem_effect(&hook, view);
+        output->render->rem_effect(&hook);
         output->signal->disconnect_signal("detach-view", &view_removed);
         output->signal->disconnect_signal("destroy-view", &view_removed);
 
-        if (close_animation)
-        {
-            weston_surface_destroy(view->surface);
-            view->handle = nullptr;
-        }
 
         debug << "animate: reset renderer " << output->handle->id << std::endl;
         /* will be false if other animations are still running */
@@ -131,7 +126,7 @@ debug << "doing a step " << output->handle->id << " " << view->desktop_surface <
         view->transform.color[3] = 1;
 
         if (close_animation)
-            core->erase_view(view);
+            weston_surface_destroy(view->surface);
     }
 };
 

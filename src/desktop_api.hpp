@@ -32,16 +32,8 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
     auto sig_data = destroy_view_signal{view};
     view->output->signal->emit_signal("destroy-view", &sig_data);
 
-    if (view->keep_count <= 0) {
-        /* plugins might want to keep this */
-        core->erase_view(view);
-    } else
-    {
-        view->handle = nullptr;
-        view->desktop_surface = nullptr;
-    }
+    core->erase_view(view, view->keep_count <= 0);
 }
-
 
 void desktop_surface_commited (weston_desktop_surface *desktop_surface,
         int32_t sx, int32_t sy, void *data)

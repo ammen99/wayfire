@@ -1031,13 +1031,14 @@ void wayfire_core::close_view(wayfire_view v)
     weston_desktop_surface_close(v->desktop_surface);
 }
 
-void wayfire_core::erase_view(wayfire_view v)
+void wayfire_core::erase_view(wayfire_view v, bool destroy_handle)
 {
     if (!v) return;
 
     views.erase(v->handle);
     v->output->detach_view(v);
-    if (v->handle)
+
+    if (v->handle && destroy_handle)
         weston_view_destroy(v->handle);
 }
 
