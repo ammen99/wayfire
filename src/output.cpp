@@ -236,10 +236,13 @@ void render_manager::paint(pixman_region32_t *damage)
         OpenGL::bind_context(ctx);
         renderer();
 
+        run_effects();
+
         wl_signal_emit(&output->handle->frame_signal, output->handle);
         eglSwapBuffers(display, surf);
     } else {
         core->weston_repaint(output->handle, damage);
+        run_effects();
     }
 
     if (constant_redraw)
@@ -250,12 +253,11 @@ void render_manager::paint(pixman_region32_t *damage)
     core->hijack_renderer();
 }
 
-void render_manager::pre_paint()
+void render_manager::run_effects()
 {
     std::vector<effect_hook_t*> active_effects;
-    for (auto effect : output_effects) {
+    for (auto effect : output_effects)
         active_effects.push_back(effect);
-    }
 
     for (auto& effect : active_effects)
         (*effect)();

@@ -56,7 +56,7 @@ struct render_manager {
         void reset_renderer();
 
         void paint(pixman_region32_t *damage);
-        void pre_paint();
+        void run_effects();
 
         std::vector<effect_hook_t*> output_effects;
         void add_output_effect(effect_hook_t*, wayfire_view v = nullptr);

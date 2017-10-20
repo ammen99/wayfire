@@ -767,10 +767,7 @@ void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
 {
     auto output = core->get_output(o);
     if (output)
-    {
-        output->render->pre_paint();
         output->render->paint(damage);
-    }
 }
 
 void wayfire_core::hijack_renderer()
