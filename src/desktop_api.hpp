@@ -148,4 +148,17 @@ void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
     view->set_fullscreen(full);
 }
 
+void desktop_surface_set_parent(weston_desktop_surface *ds,
+                                weston_desktop_surface *parent_ds,
+                                void *data)
+{
+    auto view = core->find_view(ds);
+    auto parent = core->find_view(parent_ds);
+
+    if (!view || !parent)
+        return;
+
+    view->parent_surface = parent_ds;
+}
+
 #endif /* end of include guard: DESKTOP_API_HPP */

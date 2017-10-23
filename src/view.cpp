@@ -148,10 +148,14 @@ void wayfire_view_t::map(int sx, int sy)
 {
     if (!weston_surface_is_mapped(surface)) {
         /* special views are panels/backgrounds, workspace_manager handles their position */
-        if (!is_special) {
-            auto wa = output->workspace->get_workarea();
-            sx += wa.x;
-            sy += wa.y;
+
+        if (!is_special)
+        {
+            if (xwayland.is_xorg)
+            {
+                sx = xwayland.x;
+                sy = xwayland.y;
+            }
 
             ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
             geometry.width = ds_geometry.width;
@@ -160,13 +164,17 @@ void wayfire_view_t::map(int sx, int sy)
             if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
                 ds_geometry.x = ds_geometry.y = 0;
 
-            if (xwayland.is_xorg)
+            auto parent_view = core->find_view(parent_surface);
+            if (parent_view)
             {
-                sx = xwayland.x;
-                sy = xwayland.y;
+                sx += parent_view->geometry.x + (parent_view->geometry.width  - geometry.width) / 2;
+                sy += parent_view->geometry.y + (parent_view->geometry.height - geometry.height) / 2;
+            } else
+            {
+                sx += output->handle->x;
+                sy += output->handle->y;
             }
 
-            debug << "initial map movement" << std::endl;
             move(sx, sy);
             geometry.x = sx;
             geometry.y = sy;

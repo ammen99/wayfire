@@ -48,9 +48,10 @@ struct wf_custom_view_data
     virtual ~wf_custom_view_data();
 };
 
-class wayfire_view_t {
+class wayfire_view_t
+{
     public:
-        weston_desktop_surface *desktop_surface;
+        weston_desktop_surface *desktop_surface, *parent_surface = nullptr;
         weston_surface *surface;
         weston_view *handle;
 

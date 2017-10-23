@@ -119,6 +119,7 @@ int main(int argc, char *argv[]) {
     desktop_api.maximized_requested = desktop_surface_maximized_requested;
     desktop_api.fullscreen_requested = desktop_surface_fullscreen_requested;
     desktop_api.set_xwayland_position = desktop_surface_set_xwayland_position;
+    desktop_api.set_parent = desktop_surface_set_parent;
 
     auto desktop = weston_desktop_create(ec, &desktop_api, NULL);
     if (!desktop)
