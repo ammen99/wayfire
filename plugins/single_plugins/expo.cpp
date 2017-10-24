@@ -5,6 +5,7 @@
 /* TODO: this file should be included in some header maybe(plugin.hpp) */
 #include <linux/input-event-codes.h>
 #include "../../shared/config.hpp"
+#include "view-change-viewport-signal.hpp"
 
 
 class wayfire_expo : public wayfire_plugin_t {
@@ -28,6 +29,7 @@ class wayfire_expo : public wayfire_plugin_t {
             int zoom_delta = 1;
         } state;
         int target_vx, target_vy;
+        std::tuple<int, int> move_started_ws;
 
         std::vector<std::vector<wf_workspace_stream*>> streams;
         signal_callback_t resized_cb;
@@ -196,16 +198,17 @@ class wayfire_expo : public wayfire_plugin_t {
     wayfire_view moving_view;
     void handle_input_move(wl_fixed_t x, wl_fixed_t y)
     {
-        if (state.button_pressed && !state.in_zoom) {
+        int cx = wl_fixed_to_int(x);
+        int cy = wl_fixed_to_int(y);
+
+        if (state.button_pressed && !state.in_zoom)
+        {
+            start_move(cx, cy);
             state.button_pressed = false;
-            start_move();
         }
 
         if (!state.moving || !moving_view)
             return;
-
-        int cx = wl_fixed_to_int(x);
-        int cy = wl_fixed_to_int(y);
 
         int global_x = cx, global_y = cy;
         input_coordinates_to_global_coordinates(global_x, global_y);
@@ -226,13 +229,32 @@ class wayfire_expo : public wayfire_plugin_t {
         update_target_workspace(sx, sy);
     }
 
-    void start_move()
+    void start_move(int x, int y)
     {
+        /* target workspace has been updated on the last click
+         * so it has accurate information about views' viewport */
+        if (!moving_view)
+            return;
+
+        move_started_ws = {target_vx, target_vy};
         state.moving = true;
-        if (moving_view)
-            output->bring_to_front(moving_view);
+        output->bring_to_front(moving_view);
     }
 
+    void end_move()
+    {
+        state.moving = false;
+
+        if (moving_view)
+        {
+            view_change_viewport_signal data;
+            data.view = moving_view;
+            data.from = move_started_ws;
+            data.to   = {target_vx, target_vy};
+
+            output->signal->emit_signal("view-change-viewport", &data);
+        }
+    }
     void input_coordinates_to_global_coordinates(int &sx, int &sy)
     {
         auto og = output->get_full_geometry();
@@ -290,7 +312,7 @@ class wayfire_expo : public wayfire_plugin_t {
         if (state == WL_POINTER_BUTTON_STATE_RELEASED && !this->state.moving) {
             deactivate();
         } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
-            this->state.moving = false;
+            end_move();
         } else {
             this->state.button_pressed = true;
             sx = wl_fixed_to_int(x);
