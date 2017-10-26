@@ -3,7 +3,8 @@
 
 #include "output.hpp"
 
-struct create_view_signal : public signal_data {
+struct create_view_signal : public signal_data
+{
     wayfire_view created_view;
 
     create_view_signal(wayfire_view view) {
@@ -11,7 +12,8 @@ struct create_view_signal : public signal_data {
     }
 };
 
-struct destroy_view_signal : public signal_data {
+struct destroy_view_signal : public signal_data
+{
     wayfire_view destroyed_view;
 
     destroy_view_signal(wayfire_view view) {
@@ -19,7 +21,13 @@ struct destroy_view_signal : public signal_data {
     }
 };
 
-struct view_maximized_signal : public signal_data {
+struct focus_view_signal : public signal_data
+{
+    wayfire_view focus;
+};
+
+struct view_maximized_signal : public signal_data
+{
     wayfire_view view;
     bool state;
 };
@@ -34,18 +42,21 @@ struct view_maximized_signal : public signal_data {
 using view_fullscreen_signal = view_maximized_signal;
 
 /* same as both change_viewport_request and change_viewport_notify */
-struct change_viewport_signal : public signal_data {
+struct change_viewport_signal : public signal_data
+{
     int old_vx, old_vy;
     int new_vx, new_vy;
 };
 using change_viewport_notify = change_viewport_signal;
 
-struct move_request_signal : public signal_data {
+struct move_request_signal : public signal_data
+{
     wayfire_view view;
     uint32_t serial;
 };
 
-struct resize_request_signal : public signal_data {
+struct resize_request_signal : public signal_data
+{
     wayfire_view view;
     uint32_t edges;
     uint32_t serial;
