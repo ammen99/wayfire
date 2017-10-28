@@ -41,6 +41,11 @@ struct view_maximized_signal : public signal_data
  * wants to use this signal, then it should apply the state in advance */
 using view_fullscreen_signal = view_maximized_signal;
 
+struct view_set_parent_signal : public signal_data
+{
+    wayfire_view view;
+};
+
 /* same as both change_viewport_request and change_viewport_notify */
 struct change_viewport_signal : public signal_data
 {

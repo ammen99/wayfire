@@ -151,6 +151,9 @@ void desktop_surface_set_parent(weston_desktop_surface *ds,
         return;
 
     view->parent_surface = parent_ds;
+
+    view_set_parent_signal sdata; sdata.view = view;
+    view->output->signal->emit_signal("view-set-parent", &sdata);
 }
 
 #endif /* end of include guard: DESKTOP_API_HPP */
