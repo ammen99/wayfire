@@ -982,8 +982,6 @@ void wayfire_core::add_view(weston_desktop_surface *ds)
 
     assert(active_output);
     active_output->attach_view(view);
-
-    focus_view(view, get_current_seat());
 }
 
 wayfire_view wayfire_core::find_view(weston_view *handle)

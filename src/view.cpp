@@ -146,7 +146,8 @@ void wayfire_view_t::set_fullscreen(bool full)
 
 void wayfire_view_t::map(int sx, int sy)
 {
-    if (!weston_surface_is_mapped(surface)) {
+    if (!weston_surface_is_mapped(surface))
+    {
         /* special views are panels/backgrounds, workspace_manager handles their position */
 
         if (!is_special)
@@ -187,6 +188,9 @@ void wayfire_view_t::map(int sx, int sy)
 
         auto sig_data = create_view_signal{core->find_view(handle)};
         output->signal->emit_signal("create-view", &sig_data);
+
+        if (!is_special)
+            output->focus_view(core->find_view(handle), core->get_current_seat());
 
         return;
     }
