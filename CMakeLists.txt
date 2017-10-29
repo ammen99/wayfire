@@ -31,6 +31,9 @@ else (HAS_CAIRO_GL_H)
     set(HAS_CAIRO_GL_H FALSE)
 endif (HAS_CAIRO_GL_H)
 
+# TODO: check if the egl-surface backend in shell still works
+set(HAS_CAIRO_GL_H FALSE)
+
 configure_file(config.h.in config.h)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
