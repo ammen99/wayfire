@@ -170,7 +170,7 @@ class vswitch : public wayfire_plugin_t
         {
             front.view->move(front.view->geometry.x + dx * output_g.width,
                              front.view->geometry.y + dy * output_g.height);
-            output->focus_view(front.view, core->get_current_seat());
+            output->focus_view(front.view);
         }
 
         views.clear();

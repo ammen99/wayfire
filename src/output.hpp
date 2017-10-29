@@ -177,7 +177,7 @@ class wayfire_output
     void attach_view(wayfire_view v);
     void detach_view(wayfire_view v);
 
-    void focus_view(wayfire_view v, weston_seat *seat);
+    void focus_view(wayfire_view v, weston_seat *seat = nullptr);
     void set_active_view(wayfire_view v);
     void bring_to_front(wayfire_view v);
 

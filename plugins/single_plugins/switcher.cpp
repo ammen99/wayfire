@@ -196,7 +196,7 @@ class view_switcher : public wayfire_plugin_t
         state.reversed_folds = false;
 
         grab_interface->grab();
-        output->focus_view(nullptr, core->get_current_seat());
+        output->focus_view(nullptr);
 
         output->render->auto_redraw(true);
         output->render->set_renderer(renderer);
@@ -662,7 +662,7 @@ class view_switcher : public wayfire_plugin_t
             v->transform.scale = v->transform.translation = v->transform.rotation = glm::mat4();
 
         state.active = false;
-        output->focus_view(views[current_view_index], core->get_current_seat());
+        output->focus_view(views[current_view_index]);
     }
 
     void fast_switch()
@@ -698,7 +698,7 @@ class view_switcher : public wayfire_plugin_t
             }
 
             grab_interface->grab();
-            output->focus_view(nullptr, core->get_current_seat());
+            output->focus_view(nullptr);
 
             fast_switch_next();
         }
@@ -716,7 +716,7 @@ class view_switcher : public wayfire_plugin_t
                 weston_view_update_transform(view->handle);
             }
         }
-        output->focus_view(views[current_view_index], core->get_current_seat());
+        output->focus_view(views[current_view_index]);
 
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);

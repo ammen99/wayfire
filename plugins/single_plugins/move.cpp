@@ -124,7 +124,7 @@ class wayfire_move : public wayfire_plugin_t
             if (view->fullscreen)
                 view->set_fullscreen(false);
 
-            view->output->focus_view(nullptr, core->get_current_seat());
+            view->output->focus_view(nullptr);
             if (enable_snap)
                 slot = 0;
 
@@ -140,7 +140,7 @@ class wayfire_move : public wayfire_plugin_t
 
             grab_interface->ungrab();
             output->deactivate_plugin(grab_interface);
-            view->output->focus_view(view, core->get_current_seat());
+            view->output->focus_view(view);
             view->output->render->auto_redraw(false);
 
             if (enable_snap && slot != 0) {

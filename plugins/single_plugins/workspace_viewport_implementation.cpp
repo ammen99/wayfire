@@ -124,7 +124,7 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     if (nx == vx && ny == vy) {
         auto views = get_views_on_workspace(std::make_tuple(vx, vy));
         if (views.size() >= 1)
-            output->focus_view(views[0], core->get_current_seat());
+            output->focus_view(views[0]);
         return;
     }
 
@@ -149,14 +149,14 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     vy = ny;
     output->signal->emit_signal("viewport-changed", &data);
 
-    output->focus_view(nullptr, core->get_current_seat());
+    output->focus_view(nullptr);
     /* we iterate through views on current viewport from bottom to top
      * that way we ensure that they will be focused befor all others */
     auto views = get_views_on_workspace(std::make_tuple(vx, vy));
     auto it = views.rbegin();
     while(it != views.rend()) {
         if ((*it)->is_mapped && !(*it)->destroyed)
-            output->focus_view(*it, core->get_current_seat());
+            output->focus_view(*it);
         ++it;
     }
 }

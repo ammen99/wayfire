@@ -823,7 +823,7 @@ void wayfire_output::detach_view(wayfire_view v)
             if (v->keep_count) {
                 set_active_view(next);
             } else { /* Some plugins wants to keep the view, let it manage the position */
-                focus_view(next, core->get_current_seat());
+                focus_view(next);
             }
         }
     }
@@ -860,6 +860,9 @@ void wayfire_output::set_active_view(wayfire_view v)
 
 void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
 {
+    if (seat == nullptr)
+        seat = core->get_current_seat();
+
     set_active_view(v);
 
     if (v) {

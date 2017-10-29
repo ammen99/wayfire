@@ -858,8 +858,8 @@ void wayfire_core::refocus_active_output_active_view()
 
     auto view = active_output->get_top_view();
     if (view) {
-        active_output->focus_view(nullptr, get_current_seat());
-        active_output->focus_view(view, get_current_seat());
+        active_output->focus_view(nullptr);
+        active_output->focus_view(view);
     }
 }
 
@@ -876,7 +876,7 @@ void wayfire_core::focus_output(wayfire_output *wo)
     if (active_output)
     {
         old_grab = active_output->get_input_grab_interface();
-        active_output->focus_view(nullptr, get_current_seat());
+        active_output->focus_view(nullptr);
     }
 
     active_output = wo;
@@ -1013,7 +1013,7 @@ void wayfire_core::focus_view(wayfire_view v, weston_seat *seat)
     if (v->output != active_output)
         focus_output(v->output);
 
-    active_output->focus_view(v, seat);
+    active_output->focus_view(v);
 }
 
 void wayfire_core::close_view(wayfire_view v)
