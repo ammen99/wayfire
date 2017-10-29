@@ -936,6 +936,8 @@ wayfire_output* wayfire_core::get_output_at(int x, int y)
 
 wayfire_output* wayfire_core::get_next_output(wayfire_output *output)
 {
+    if (outputs.empty())
+        return output;
     auto id = output->handle->id;
     auto it = outputs.find(id);
     ++it;
