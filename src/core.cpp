@@ -964,15 +964,19 @@ void wayfire_core::add_view(weston_desktop_surface *ds)
     views[view->handle] = view;
 
     auto ptr = weston_seat_get_pointer(get_current_seat());
-    assert(ptr);
 
-    auto x = wl_fixed_to_int(ptr->x);
-    auto y = wl_fixed_to_int(ptr->y);
+    /* pointer may not be availble if we are on another tty as
+     * libweston "suspends" input devices while inactive */
+    if (ptr)
+    {
+        auto x = wl_fixed_to_int(ptr->x);
+        auto y = wl_fixed_to_int(ptr->y);
 
-    focus_output(get_output_at(x, y));
+        focus_output(get_output_at(x, y));
+    }
 
-    if (active_output)
-        active_output->attach_view(view);
+    assert(active_output);
+    active_output->attach_view(view);
 
     focus_view(view, get_current_seat());
 }
