@@ -901,7 +901,10 @@ void wayfire_core::focus_output(wayfire_output *wo)
         input->grab_input(iface);
 
     if (active_output)
+    {
         weston_output_schedule_repaint(active_output->handle);
+        active_output->signal->emit_signal("output-gain-focus", nullptr);
+    }
 }
 
 wayfire_output* wayfire_core::get_output(weston_output *handle)
