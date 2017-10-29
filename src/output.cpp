@@ -102,7 +102,7 @@ struct plugin_manager
         {
             if(plugin != "")
             {
-                void *handle;
+                void *handle = nullptr;
                 auto ptr = load_plugin_from_file(path + "/lib" + plugin + ".so", &handle);
                 if(ptr)
                 {

@@ -327,6 +327,7 @@ class wayfire_expo : public wayfire_plugin_t {
                 break;
             case WL_OUTPUT_TRANSFORM_270:
                 angle = M_PI / 2;
+                break;
             default:
                 angle = 0;
                 break;

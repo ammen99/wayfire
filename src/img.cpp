@@ -154,7 +154,6 @@ namespace image_io {
         unsigned int texture_id;
         unsigned long data_size;
         int channels;
-        unsigned int type;
         unsigned char *rowptr[1];
         unsigned char *jdata;
         struct jpeg_decompress_struct infot;
@@ -176,8 +175,6 @@ namespace image_io {
         x = infot.output_width;
         y = infot.output_height;
         channels = infot.num_components;
-        type = GL_RGB;
-        if(channels == 4) type = GL_RGBA;
         data_size = x * y * 3;
 
         jdata = new unsigned char[data_size];

@@ -96,7 +96,7 @@ class wayfire_grid : public wayfire_plugin_t {
 
     void handle_key(wayfire_view view, int key)
     {
-        int tx, ty, tw, th; // target dimensions
+        int tx = 0, ty = 0, tw = 0, th = 0; // target dimensions
         if (slots[key] == "c") {
             toggle_maximized(view, tx, ty, tw, th);
         } else {
