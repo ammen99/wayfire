@@ -4,6 +4,7 @@
 #include <linux/input.h>
 #include <utility>
 #include "../../shared/config.hpp"
+#include "view-change-viewport-signal.hpp"
 
 
 #define MAX_DIRS_IN_QUEUE 4
@@ -149,11 +150,13 @@ class vswitch : public wayfire_plugin_t
             slide_done();
     }
 
-    void slide_done() {
+    void slide_done()
+    {
         auto front = dirs.front();
         dirs.pop();
 
         GetTuple(vx, vy, output->workspace->get_current_workspace());
+        auto old_ws = output->workspace->get_current_workspace();
         int dx = front.dx, dy = front.dy;
 
 
@@ -171,6 +174,13 @@ class vswitch : public wayfire_plugin_t
             front.view->move(front.view->geometry.x + dx * output_g.width,
                              front.view->geometry.y + dy * output_g.height);
             output->focus_view(front.view);
+
+            view_change_viewport_signal data;
+            data.view = front.view;
+            data.from = old_ws;
+            data.to = output->workspace->get_current_workspace();
+
+            output->signal->emit_signal("view-change-viewport", &data);
         }
 
         views.clear();
