@@ -189,6 +189,27 @@ void wayfire_view_t::map(int sx, int sy)
 
     geometry.width = new_ds_g.width;
     geometry.height = new_ds_g.height;
+
+    auto full  = weston_desktop_surface_get_fullscreen(desktop_surface),
+         maxim = weston_desktop_surface_get_maximized(desktop_surface);
+
+    if (full != fullscreen)
+    {
+        view_fullscreen_signal data;
+        data.view = core->find_view(handle);
+        data.state = full;
+        output->signal->emit_signal("view-fullscreen-request", &data);
+
+        set_fullscreen(full);
+    } else if (maxim != maximized)
+    {
+        view_maximized_signal data;
+        data.view = core->find_view(handle);
+        data.state = maximized;
+
+        output->signal->emit_signal("view-maximized-request", &data);
+        set_maximized(maximized);
+    }
 }
 
 static void render_surface(weston_surface *surface, pixman_region32_t *damage,
