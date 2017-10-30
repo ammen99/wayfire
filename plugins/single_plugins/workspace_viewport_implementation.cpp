@@ -11,6 +11,7 @@ class viewport_manager : public workspace_manager {
         wayfire_view background;
 
         weston_layer panel_layer, normal_layer, background_layer;
+        signal_callback_t adjust_fullscreen_layer, view_detached;
 
         struct {
             int top_padding;
@@ -46,6 +47,8 @@ class viewport_manager : public workspace_manager {
         void configure_panel(wayfire_view view, int x, int y);
 
         weston_geometry get_workarea();
+
+        void check_lower_panel_layer(int base);
 };
 
 /* Start viewport_manager */
@@ -54,16 +57,35 @@ void viewport_manager::init(wayfire_output *o)
     output = o;
     vx = vy = 0;
 
-    weston_layer_init(&normal_layer, core->ec);
-    weston_layer_init(&panel_layer, core->ec);
-    weston_layer_init(&background_layer, core->ec);
+    weston_layer_init(&normal_layer,      core->ec);
+    weston_layer_init(&panel_layer,       core->ec);
+    weston_layer_init(&background_layer,  core->ec);
 
-    weston_layer_set_position(&normal_layer, WESTON_LAYER_POSITION_NORMAL);
-    weston_layer_set_position(&panel_layer, WESTON_LAYER_POSITION_TOP_UI);
-    weston_layer_set_position(&background_layer, WESTON_LAYER_POSITION_BACKGROUND);
+    weston_layer_set_position(&normal_layer,      WESTON_LAYER_POSITION_NORMAL);
+    weston_layer_set_position(&panel_layer,       WESTON_LAYER_POSITION_UI);
+    weston_layer_set_position(&background_layer,  WESTON_LAYER_POSITION_BACKGROUND);
 
     vwidth = core->vwidth;
     vheight = core->vheight;
+
+    adjust_fullscreen_layer = [=] (signal_data *data)
+    {
+        auto conv = static_cast<view_maximized_signal*> (data);
+        assert(conv);
+
+        if (conv->state != conv->view->fullscreen)
+            check_lower_panel_layer(conv->state ? 1 : -1);
+        else
+            check_lower_panel_layer(0);
+    };
+
+    view_detached = [=] (signal_data *data)
+    {
+        check_lower_panel_layer(0);
+    };
+    o->signal->connect_signal("view-fullscreen-request", &adjust_fullscreen_layer);
+    o->signal->connect_signal("attach-view", &view_detached);
+    o->signal->connect_signal("detach-view", &view_detached);
 }
 
 void viewport_manager::view_bring_to_front(wayfire_view view)
@@ -159,6 +181,8 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
             output->focus_view(*it);
         ++it;
     }
+
+    check_lower_panel_layer(0);
 }
 
 std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<int, int> vp)
@@ -294,6 +318,23 @@ weston_geometry viewport_manager::get_workarea()
         g.width - workarea.left_padding - workarea.right_padding,
         g.height - workarea.top_padding - workarea.bot_padding
     };
+}
+
+void viewport_manager::check_lower_panel_layer(int base)
+{
+    auto views = get_views_on_workspace(get_current_workspace());
+
+    int cnt_fullscreen = base;
+    for (auto v : views)
+        cnt_fullscreen += (v->fullscreen ? 1 : 0);
+
+    if (cnt_fullscreen)
+    {
+        weston_layer_unset_position(&panel_layer);
+    } else
+    {
+        weston_layer_set_position(&panel_layer, WESTON_LAYER_POSITION_UI);
+    }
 }
 
 class viewport_impl_plugin : public wayfire_plugin_t {

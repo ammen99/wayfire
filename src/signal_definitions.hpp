@@ -24,6 +24,13 @@ struct view_maximized_signal : public signal_data {
     bool state;
 };
 
+/* the view-fullscreen-request signal is sent on two ocassions:
+ * 1. The app requests to be fullscreened
+ * 2. Some plugin requests the view to be unfullscreened
+ * callbacks for this signal can differentiate between the two cases
+ * in the following way: when in case 1. then view->fullscreen != signal_data->state,
+ * i.e the state hasn't been applied already. However, when some plugin etc.
+ * wants to use this signal, then it should apply the state in advance */
 using view_fullscreen_signal = view_maximized_signal;
 
 /* same as both change_viewport_request and change_viewport_notify */

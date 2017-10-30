@@ -40,8 +40,8 @@ struct plugin_manager
 
     plugin_manager(wayfire_output *o, wayfire_config *config)
     {
-        init_default_plugins();
         load_dynamic_plugins();
+        init_default_plugins();
 
         for (auto p : plugins)
         {
@@ -125,6 +125,7 @@ struct plugin_manager
         plugins.push_back(create_plugin<wayfire_focus>());
         plugins.push_back(create_plugin<wayfire_close>());
         plugins.push_back(create_plugin<wayfire_exit>());
+        plugins.push_back(create_plugin<wayfire_fullscreen>());
     }
 };
 
@@ -246,6 +247,7 @@ void render_manager::paint(pixman_region32_t *damage)
         wl_event_loop_add_idle(wl_display_get_event_loop(core->ec->wl_display),
                 redraw_idle_cb, output);
     }
+    core->hijack_renderer();
 }
 
 void render_manager::pre_paint()
@@ -902,7 +904,7 @@ wayfire_view wayfire_output::get_view_at_point(int x, int y)
     return chosen;
 }
 
-bool wayfire_output::activate_plugin(wayfire_grab_interface owner)
+bool wayfire_output::activate_plugin(wayfire_grab_interface owner, bool lower_fs)
 {
     if (!owner)
         return false;
@@ -923,6 +925,12 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner)
             return false;
     }
 
+    /* _activation_request is a special signal,
+     * used to specify when a plugin is activated. It is used only internally, plugins
+     * shouldn't listen for it */
+    if (lower_fs && active_plugins.empty())
+        signal->emit_signal("_activation_request", (signal_data*)1);
+
     active_plugins.insert(owner);
     return true;
 }
@@ -939,8 +947,13 @@ bool wayfire_output::deactivate_plugin(wayfire_grab_interface owner)
     {
         owner->ungrab();
         active_plugins.erase(owner);
+
+        if (active_plugins.empty())
+            signal->emit_signal("_activation_request", nullptr);
+
         return true;
     }
+
 
     return false;
 }

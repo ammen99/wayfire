@@ -110,6 +110,7 @@ class wayfire_grid : public wayfire_plugin_t {
     {
         if (!output->activate_plugin(grab_interface))
             return;
+        output->focus_view(nullptr);
 
         grab_interface->grab();
 
@@ -119,8 +120,8 @@ class wayfire_grid : public wayfire_plugin_t {
         current_view.target = {tx, ty, tw, th};
 
         weston_desktop_surface_set_resizing(view->desktop_surface, true);
-        output->render->auto_redraw(true);
 
+        output->render->auto_redraw(true);
         output->render->add_output_effect(&hook);
     }
 
@@ -154,7 +155,7 @@ class wayfire_grid : public wayfire_plugin_t {
 
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
-
+        output->focus_view(current_view.view);
         current_view.view = nullptr;
     }
 
@@ -246,7 +247,8 @@ class wayfire_grid : public wayfire_plugin_t {
         int x, y, w, h;
         toggle_maximized(data->view, x, y, w, h, data->state, true);
 
-        if (current_view.view) {
+        if (current_view.view || data->view->fullscreen == data->state)
+        {
             data->view->set_geometry(x, y, w, h);
             return;
         }

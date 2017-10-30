@@ -112,11 +112,6 @@ class workspace_manager
         virtual weston_geometry get_workarea() = 0;
 };
 
-/* when creating a signal there should be the definition of the derived class */
-struct signal_data {
-};
-using signal_callback_t = std::function<void(signal_data*)>;
-
 struct signal_manager
 {
     private:
@@ -164,7 +159,8 @@ class wayfire_output
     /* makes sure that the pointer is inside the output's geometry */
     void ensure_pointer();
 
-    bool activate_plugin  (wayfire_grab_interface owner);
+    /* @param break_fs - lower fullscreen windows if any */
+    bool activate_plugin  (wayfire_grab_interface owner, bool lower_fs = true);
     bool deactivate_plugin(wayfire_grab_interface owner);
     bool is_plugin_active (owner_t owner_name);
 

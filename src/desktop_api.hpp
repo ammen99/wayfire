@@ -135,17 +135,17 @@ void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
         view->move(view->geometry.x + ng.x - pg.x, view->geometry.y + ng.y - pg.y);
     }
 
-    view->set_fullscreen(full);
-
     if (view->is_mapped) {
         view_fullscreen_signal data;
         data.view = view;
         data.state = full;
 
         wo->signal->emit_signal("view-fullscreen-request", &data);
-    } else {
+    } else if (full) {
         view->set_geometry(view->output->get_full_geometry());
     }
+
+    view->set_fullscreen(full);
 }
 
 #endif /* end of include guard: DESKTOP_API_HPP */

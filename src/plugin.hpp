@@ -8,6 +8,11 @@
 
 using std::string;
 
+/* when creating a signal there should be the definition of the derived class */
+struct signal_data {
+};
+using signal_callback_t = std::function<void(signal_data*)>;
+
 struct wayfire_touch_gesture;
 using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
 using button_callback = std::function<void(weston_pointer*, uint32_t)>;

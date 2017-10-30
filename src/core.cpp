@@ -775,8 +775,11 @@ void repaint_output_callback(weston_output *o, pixman_region32_t *damage)
 
 void wayfire_core::hijack_renderer()
 {
-    weston_renderer_repaint = core->ec->renderer->repaint_output;
-    core->ec->renderer->repaint_output = repaint_output_callback;
+    if (core->ec->renderer->repaint_output != repaint_output_callback)
+    {
+        weston_renderer_repaint = core->ec->renderer->repaint_output;
+        core->ec->renderer->repaint_output = repaint_output_callback;
+    }
 }
 
 void wayfire_core::weston_repaint(weston_output *output, pixman_region32_t *damage)
