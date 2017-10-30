@@ -15,6 +15,7 @@ class wayfire_panel {
     uint32_t width, height;
 
     int hidden_height = 1;
+    bool autohide = true;
     bool need_fullredraw = false;
 
     struct {

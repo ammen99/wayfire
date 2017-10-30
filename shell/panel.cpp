@@ -35,6 +35,8 @@ wayfire_panel::wayfire_panel(wayfire_config *config)
 {
     this->config = config;
     load_misc_config(config);
+
+    autohide = config->get_section("shell_panel")->get_int("autohide", 1);
 }
 
 void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)
@@ -61,14 +63,20 @@ void wayfire_panel::setup_window()
     animation.current_y = animation.start_y;
 
     repaint_callback = nullptr;
-    //wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width, hidden_height);
-    wayfire_shell_add_panel(display.wfshell, output, window->surface);
 
     using namespace std::placeholders;
     window->pointer_enter = std::bind(std::mem_fn(&wayfire_panel::on_enter), this, _1, _2);
     window->pointer_leave = std::bind(std::mem_fn(&wayfire_panel::on_leave), this);
     window->pointer_move  = std::bind(std::mem_fn(&wayfire_panel::on_motion), this, _1, _2);
     window->pointer_button= std::bind(std::mem_fn(&wayfire_panel::on_button), this, _1, _2, _3, _4);
+
+    wayfire_shell_add_panel(display.wfshell, output, window->surface);
+    if (!autohide)
+    {
+        wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width, height);
+        wayfire_shell_configure_panel(display.wfshell, output, window->surface, 0, 0);
+    }
+
 }
 
 void wayfire_panel::resize(uint32_t w, uint32_t h)
@@ -99,13 +107,15 @@ void wayfire_panel::toggle_animation()
 void wayfire_panel::on_enter(wl_pointer *ptr, uint32_t serial)
 {
     show_default_cursor(serial);
-    toggle_animation();
+    if (autohide)
+        toggle_animation();
     add_callback(false);
 }
 
 void wayfire_panel::on_leave()
 {
-    toggle_animation();
+    if (autohide)
+        toggle_animation();
 }
 
 void wayfire_panel::on_button(uint32_t button, uint32_t state, int x, int y)
@@ -216,7 +226,7 @@ void wayfire_panel::init_widgets()
 void wayfire_panel::render_frame(bool first_call)
 {
     set_active_window(window);
-    if (animation.current_y != animation.target_y) {
+    if (autohide && animation.current_y != animation.target_y) {
         animation.current_y += animation.dy;
 
         if (animation.current_y * animation.dy > animation.target_y * animation.dy)
@@ -227,7 +237,7 @@ void wayfire_panel::render_frame(bool first_call)
     }
 
     bool should_swap = first_call;
-    if (animation.current_y > hidden_height - (int)height)
+    if (animation.current_y > hidden_height - (int)height || !autohide)
     {
         for_each_widget(w)
             should_swap |= w->update();
@@ -250,7 +260,7 @@ void wayfire_panel::render_frame(bool first_call)
             w->repaint();
     }
 
-    if (animation.current_y != hidden_height - (int)height)
+    if (animation.current_y != hidden_height - (int)height || !autohide)
         add_callback(should_swap);
 
     if (should_swap)
