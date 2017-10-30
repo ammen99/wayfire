@@ -7,10 +7,11 @@
 void wayfire_exit::init(wayfire_config*)
 {
     key = [](weston_keyboard *kbd, uint32_t key) {
-        weston_compositor_shutdown(core->ec);
+        wl_display_terminate(kbd->seat->compositor->wl_display);
     };
 
-    output->add_key(MODIFIER_SUPER | MODIFIER_SHIFT, KEY_ESC, &key);
+    output->add_key(MODIFIER_SUPER | MODIFIER_SHIFT, KEY_ESC,       &key);
+    output->add_key(MODIFIER_ALT   | MODIFIER_CTRL,  KEY_BACKSPACE, &key);
 }
 
 void wayfire_close::init(wayfire_config *config)
