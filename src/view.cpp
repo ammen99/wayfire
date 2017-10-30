@@ -147,8 +147,9 @@ void wayfire_view_t::map(int sx, int sy)
     if (!weston_surface_is_mapped(surface)) {
         /* special views are panels/backgrounds, workspace_manager handles their position */
         if (!is_special) {
-            sx += output->handle->x;
-            sy += output->handle->y;
+            auto wa = output->workspace->get_workarea();
+            sx += wa.x;
+            sy += wa.y;
 
             ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
             geometry.width = ds_geometry.width;
@@ -157,7 +158,8 @@ void wayfire_view_t::map(int sx, int sy)
             if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
                 ds_geometry.x = ds_geometry.y = 0;
 
-            if (xwayland.is_xorg) {
+            if (xwayland.is_xorg)
+            {
                 sx = xwayland.x;
                 sy = xwayland.y;
             }
