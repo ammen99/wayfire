@@ -319,20 +319,31 @@ void viewport_manager::add_panel(wayfire_view panel)
 void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
         uint32_t width, uint32_t height)
 {
+    GetTuple(sw, sh, output->get_screen_size());
     switch(position) {
         case WAYFIRE_SHELL_PANEL_POSITION_LEFT:
             workarea.left_padding = width;
+            height = sh;
             break;
         case WAYFIRE_SHELL_PANEL_POSITION_RIGHT:
             workarea.right_padding = width;
+            height = sh;
             break;
         case WAYFIRE_SHELL_PANEL_POSITION_UP:
             workarea.top_padding = height;
+            width = sw;
             break;
         case WAYFIRE_SHELL_PANEL_POSITION_DOWN:
             workarea.bot_padding = height;
+            width = sw;
             break;
     }
+
+    reserved_workarea_signal data;
+    data.width = width;
+    data.height = height;
+    data.position = position;
+    output->signal->emit_signal("reserved-workarea", &data);
 }
 
 void viewport_manager::configure_panel(wayfire_view view, int x, int y)

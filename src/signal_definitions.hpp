@@ -66,5 +66,14 @@ struct resize_request_signal : public signal_data
     uint32_t edges;
     uint32_t serial;
 };
+
+/* sent when the workspace implementation actually reserves the workarea */
+struct reserved_workarea_signal : public signal_data
+{
+    wayfire_shell_panel_position position;
+    uint32_t width;
+    uint32_t height;
+};
+
 #endif
 
