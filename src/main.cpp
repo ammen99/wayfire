@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     debug << "Using home directory: " << home_dir << std::endl;
 
     wayfire_config *config = new wayfire_config(home_dir + "/.config/wayfire.ini", 1000 / ec->repaint_msec);
-    input_device_config::load(config);
+    device_config::load(config);
 
     core = new wayfire_core();
     core->init(ec, config);

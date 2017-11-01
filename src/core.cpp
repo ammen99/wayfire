@@ -801,7 +801,7 @@ void output_destroyed_callback(wl_listener *, void *data)
 void wayfire_core::add_output(weston_output *output)
 {
     debug << "Adding output " << output->id << std::endl;
-    if (outputs.find(output->id) != outputs.end())
+    if (outputs.find(output->id) != outputs.end() || !output->enabled)
         return;
 
     if (!input) {

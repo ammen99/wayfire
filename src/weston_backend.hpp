@@ -20,14 +20,19 @@ void set_output_pending_handler(weston_compositor *ec, wl_notify_func_t handler)
 }
 
 /* TODO: possibly add more input options which aren't available right now */
-namespace input_device_config
+namespace device_config
 {
     bool touchpad_tap_enabled;
     bool touchpad_dwl_enabled;
     bool touchpad_natural_scroll_enabled;
 
-    void load(wayfire_config *config)
+
+    wayfire_config *config;
+
+    void load(wayfire_config *conf)
     {
+        config = conf;
+
         auto section = config->get_section("input");
         touchpad_tap_enabled = section->get_int("tap_to_click", 1);
         touchpad_dwl_enabled = section->get_int("disable_while_typing", 1);
@@ -41,22 +46,34 @@ void configure_input_device(weston_compositor *ec, libinput_device *device)
     if (libinput_device_config_tap_get_finger_count(device) > 0)
     {
         libinput_device_config_tap_set_enabled(device,
-                input_device_config::touchpad_tap_enabled ?
+                device_config::touchpad_tap_enabled ?
                     LIBINPUT_CONFIG_TAP_ENABLED : LIBINPUT_CONFIG_TAP_DISABLED);
         libinput_device_config_dwt_set_enabled(device,
-                input_device_config::touchpad_dwl_enabled ?
+                device_config::touchpad_dwl_enabled ?
                 LIBINPUT_CONFIG_DWT_ENABLED : LIBINPUT_CONFIG_DWT_DISABLED);
 
         if (libinput_device_config_scroll_has_natural_scroll(device) > 0)
         {
             libinput_device_config_scroll_set_natural_scroll_enabled(device,
-                    input_device_config::touchpad_natural_scroll_enabled);
+                    device_config::touchpad_natural_scroll_enabled);
         }
     }
 }
 
 bool backend_loaded = false;
 std::vector<weston_output*> pending_outputs;
+
+static wl_output_transform get_transfrom_from_string(std::string transform)
+{
+    if (transform == "normal")
+        return WL_OUTPUT_TRANSFORM_NORMAL;
+    else if (transform == "90")
+        return WL_OUTPUT_TRANSFORM_90;
+    else if (transform == "180")
+        return WL_OUTPUT_TRANSFORM_180;
+    else
+        return WL_OUTPUT_TRANSFORM_270;
+}
 
 void configure_drm_backend_output (wl_listener *listener, void *data)
 {
@@ -68,15 +85,45 @@ void configure_drm_backend_output (wl_listener *listener, void *data)
     }
 
     auto api = weston_drm_output_get_api(output->compositor);
+    auto section = device_config::config->get_section(output->name);
 
-    weston_output_set_transform(output, WL_OUTPUT_TRANSFORM_NORMAL);
-    weston_output_set_scale(output, 1);
+    auto mode = section->get_string("mode", "preferred");
+
+    if (mode == "current")
+    {
+        api->set_mode(output, WESTON_DRM_BACKEND_OUTPUT_CURRENT, NULL);
+    } else if (mode == "preferred")
+    {
+        api->set_mode(output, WESTON_DRM_BACKEND_OUTPUT_PREFERRED, NULL);
+    } else if (mode == "off")
+    {
+        weston_output_disable(output);
+    } else
+    {
+        api->set_mode(output, WESTON_DRM_BACKEND_OUTPUT_PREFERRED, mode.c_str());
+    }
+
+    auto transform = section->get_string("rotation", "normal");
+    weston_output_set_transform(output, get_transfrom_from_string(transform));
+
+    int scale = section->get_int("scale", 1);
+    weston_output_set_scale(output, scale);
 
     api->set_gbm_format(output, NULL);
-    api->set_mode(output, WESTON_DRM_BACKEND_OUTPUT_CURRENT, NULL);
     api->set_seat(output, "");
 
     weston_output_enable(output);
+
+    /* default is some *magic* number, we hope that no sane person would position
+     * their output at INT_MIN */
+
+    std::string default_string = std::to_string(INT_MIN) + " " + std::to_string(INT_MIN);
+    auto pos = section->get_string("position", default_string);
+    int x, y;
+    std::sscanf(pos.c_str(), "%d %d", &x, &y);
+
+    if (x != INT_MIN && y != INT_MIN)
+        weston_output_move(output, x, y);
 }
 
 int load_drm_backend(weston_compositor *ec)
@@ -107,17 +154,26 @@ int load_drm_backend(weston_compositor *ec)
     return ret;
 }
 
-const int default_width = 1600, default_height = 900;
 void configure_windowed_output (wl_listener *listener, void *data)
 {
     weston_output *output = (weston_output*)data;
     auto api = weston_windowed_output_get_api(output->compositor);
     assert(api != NULL);
 
-    weston_output_set_scale(output, 1);
-    weston_output_set_transform(output, WL_OUTPUT_TRANSFORM_NORMAL);
-    if (api->output_set_size(output, default_width, default_height) < 0) {
-        errio << "can't configure output " << output->id << std::endl;
+    auto section = device_config::config->get_section(output->name);
+    auto transform = section->get_string("rotation", "normal");
+    weston_output_set_transform(output, get_transfrom_from_string(transform));
+
+    int scale = section->get_int("scale", 1);
+    weston_output_set_scale(output, scale);
+
+    auto resolution = section->get_string("mode", "1280x720");
+    int width = 1280, height = 720;
+    std::sscanf(resolution.c_str(), "%dx%d", &width, &height);
+
+    if (api->output_set_size(output, width, height) < 0)
+    {
+        errio << "can't configure output " << output->name << std::endl;
         return;
     }
 
@@ -173,7 +229,7 @@ int load_x11_backend(weston_compositor *ec)
     set_output_pending_handler(ec, configure_windowed_output);
 
     auto api = weston_windowed_output_get_api(ec);
-    if (!api || api->output_create(ec, "wl1") < 0)
+    if (!api || api->output_create(ec, "x11") < 0)
         return -1;
 
     return 0;
