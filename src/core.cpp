@@ -655,28 +655,29 @@ void wayfire_core::configure(wayfire_config *config)
     vwidth  = section->get_int("vwidth", 3);
     vheight = section->get_int("vheight", 3);
 
-    shadersrc = section->get_string("shadersrc", INSTALL_PREFIX "/share/wayfire/shaders");
+    shadersrc   = section->get_string("shadersrc", INSTALL_PREFIX "/share/wayfire/shaders");
     plugin_path = section->get_string("plugin_path_prefix", INSTALL_PREFIX "/lib/");
-    plugins = section->get_string("plugins", "");
+    plugins     = section->get_string("plugins", "");
+    run_panel   = section->get_int("run_panel", 1);
 
-    run_panel = section->get_int("run_panel", 1);
+    section = config->get_section("input");
 
-    string model = section->get_string("xkb_model", "pc100");
+    string model   = section->get_string("xkb_model", "pc100");
     string variant = section->get_string("xkb_variant", "");
-    string layout = section->get_string("xkb_layout", "us");
+    string layout  = section->get_string("xkb_layout", "us");
     string options = section->get_string("xkb_option", "");
-    string rules = section->get_string("xkb_rule", "evdev");
+    string rules   = section->get_string("xkb_rule", "evdev");
 
     xkb_rule_names names;
-    names.rules = strdup(rules.c_str());
-    names.model = strdup(model.c_str());
-    names.layout = strdup(layout.c_str());
+    names.rules   = strdup(rules.c_str());
+    names.model   = strdup(model.c_str());
+    names.layout  = strdup(layout.c_str());
     names.variant = strdup(variant.c_str());
     names.options = strdup(options.c_str());
 
     weston_compositor_set_xkb_rule_names(ec, &names);
 
-    ec->kb_repeat_rate = section->get_int("kb_repeat_rate", 40);
+    ec->kb_repeat_rate  = section->get_int("kb_repeat_rate", 40);
     ec->kb_repeat_delay = section->get_int("kb_repeat_delay", 400);
 }
 
