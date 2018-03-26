@@ -1,10 +1,13 @@
 #ifndef DRIVER_H
 #define DRIVER_H
 
-#include <compositor.h>
-
 #include <GLES3/gl3.h>
 #include <GLES3/gl3ext.h>
+
+extern "C"
+{
+#include <wlr/types/wlr_box.h>
+}
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -13,6 +16,7 @@
 #include <map>
 
 class wayfire_output;
+using wf_geometry = wlr_box;
 
 void gl_call(const char*, uint32_t, const char*);
 
@@ -52,7 +56,7 @@ namespace OpenGL {
         int32_t width, height;
     };
 
-    weston_geometry get_device_viewport();
+    wf_geometry get_device_viewport();
     /* simply calls glViewport() with the geometry from get_device_viewport() */
     void use_device_viewport();
 
@@ -62,10 +66,10 @@ namespace OpenGL {
 
     /* texg arguments are used only when bits has USE_TEX_GEOMETRY
      * if you don't wish to use them, simply pass {} as argument */
-    void render_transformed_texture(GLuint text, const weston_geometry& g,
+    void render_transformed_texture(GLuint text, const wf_geometry& g,
             const texture_geometry& texg, glm::mat4 transform = glm::mat4(),
             glm::vec4 color = glm::vec4(1.f), uint32_t bits = 0);
-    void render_texture(GLuint tex, const weston_geometry& g,
+    void render_texture(GLuint tex, const wf_geometry& g,
             const texture_geometry& texg, uint32_t bits);
 
     GLuint duplicate_texture(GLuint source_tex, int w, int h);

@@ -183,12 +183,12 @@ class wayfire_expo : public wayfire_plugin_t {
         update_zoom();
     }
 
-    weston_geometry get_grid_geometry()
+    wf_geometry get_grid_geometry()
     {
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         auto full_g = output->get_full_geometry();
 
-        weston_geometry grid;
+        wf_geometry grid;
         grid.x = grid.y = 0;
         grid.width = full_g.width * vw;
         grid.height = full_g.height * vh;
@@ -380,7 +380,7 @@ class wayfire_expo : public wayfire_plugin_t {
                             render_params.scale_x, render_params.scale_y);
                 }
 
-                weston_geometry g = {
+                wf_geometry g = {
                     (i - vx) * w + delimiter_offset,
                     (j - vy) * h + delimiter_offset,
                     w - 2 * delimiter_offset,

@@ -5,11 +5,13 @@
 #include <map>
 #include <glm/glm.hpp>
 #include <functional>
-#include <libweston-desktop.h>
 #include <pixman.h>
 
-struct weston_view;
-struct weston_surface;
+extern "C"
+{
+#include <wlr/types/wlr_box.h>
+#include <wlr/types/wlr_surface.h>
+}
 
 class wayfire_view_transform {
     public: // applied to all views
@@ -29,15 +31,17 @@ class wayfire_view_transform {
 };
 class wayfire_output;
 
-struct wayfire_point {
+struct wf_point
+{
     int x, y;
 };
+using wf_geometry = wlr_box;
 
-bool operator == (const weston_geometry& a, const weston_geometry& b);
-bool operator != (const weston_geometry& a, const weston_geometry& b);
+bool operator == (const wf_geometry& a, const wf_geometry& b);
+bool operator != (const wf_geometry& a, const wf_geometry& b);
 
-bool point_inside(wayfire_point point, weston_geometry rect);
-bool rect_intersect(weston_geometry screen, weston_geometry win);
+bool point_inside(wf_point point, wf_geometry rect);
+bool rect_intersect(wf_geometry screen, wf_geometry win);
 
 struct wf_custom_view_data
 {
@@ -49,63 +53,53 @@ using wayfire_view = std::shared_ptr<wayfire_view_t>;
 
 class wayfire_view_t
 {
-    /* a nasty hack, a better solution should be done in libweston */
-    wl_event_source *source_resize_plus = NULL;
-    wl_event_source *source_resize_minus = NULL;
+    protected:
 
-    friend void idle_resize_plus(void *data);
-    friend void idle_resize_minus(void *data);
+        void force_update_xwayland_position();
+        int in_continuous_move = 0, in_continuous_resize = 0;
 
-    void force_update_xwayland_position();
-    int in_continuous_move = 0, in_continuous_resize = 0;
-
+        wl_listener committed;
+        inline wayfire_view self();
     public:
-        weston_desktop_surface *desktop_surface;
 
         wayfire_view parent = nullptr;
         std::vector<wayfire_view> children;
 
-        weston_surface *surface;
-        weston_view *handle;
+        wlr_surface *surface;
 
         /* plugins can subclass wf_custom_view_data and use it to store view-specific information
          * it must provide a virtual destructor to free its data. Custom data is deleted when the view
          * is destroyed if not removed earlier */
         std::map<std::string, wf_custom_view_data*> custom_data;
 
-        wayfire_view_t(weston_desktop_surface *ds);
+        wayfire_view_t(wlr_surface *surface);
         ~wayfire_view_t();
 
         wayfire_output *output;
+        wf_geometry geometry;
 
-        weston_geometry geometry, saved_geometry;
-        weston_geometry ds_geometry;
+        virtual void move(int x, int y, bool send_signal = true);
+        virtual void resize(int w, int h, bool send_signal = true);
+        virtual void activate(bool active) {};
+        virtual void close() {};
+        virtual void set_parent(wayfire_view parent);
 
-        struct {
-            bool is_xorg = false;
-            int x, y;
-        } xwayland;
-
-        void move(int x, int y, bool send_signal = true);
-        void resize(int w, int h, bool send_signal = true);
-        void set_geometry(weston_geometry g);
-        /* convenience function */
-        void set_geometry(int x, int y, int w, int h);
-
-        void set_resizing(bool resizing);
-        void set_moving(bool moving);
+        virtual void set_geometry(wf_geometry g);
+        virtual void set_resizing(bool resizing);
+        virtual void set_moving(bool moving);
 
         bool maximized = false, fullscreen = false;
 
-        void set_maximized(bool maxim);
-        void set_fullscreen(bool fullscreen);
+        virtual void set_maximized(bool maxim);
+        virtual void set_fullscreen(bool fullscreen);
 
         wayfire_view_transform transform;
 
         bool is_visible();
 
         bool is_mapped = false;
-        void map(int sx, int sy);
+        virtual void commit();
+        virtual void damage();
 
         /* Used to specify that this view has been destroyed.
          * Useful when animating view close */
@@ -122,7 +116,7 @@ class wayfire_view_t
         std::vector<effect_hook_t*> effects;
 
         /* simple_render is used to just render the view without running the attached effects */
-        void simple_render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
+        virtual void simple_render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
         void render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
 };
 #endif

@@ -29,7 +29,7 @@ void idle_send_signal(void *data)
 
 class wayfire_grid : public wayfire_plugin_t {
 
-    std::unordered_map<wayfire_view, weston_geometry> saved_view_geometry;
+    std::unordered_map<wayfire_view, wf_geometry> saved_view_geometry;
     signal_callback_t output_resized_cb, view_destroyed_cb;
 
     std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
@@ -53,7 +53,7 @@ class wayfire_grid : public wayfire_plugin_t {
     signal_callback_t snap_cb, maximized_cb, fullscreen_cb;
 
     struct {
-        weston_geometry original, target;
+        wf_geometry original, target;
         wayfire_view view;
         bool maximizing = false, fullscreening = false;
     } current_view;

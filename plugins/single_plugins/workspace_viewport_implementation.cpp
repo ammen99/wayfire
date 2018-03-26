@@ -1,11 +1,13 @@
 #include <config.hpp>
+#include <view.hpp>
 #include <output.hpp>
 #include <core.hpp>
-#include <view.hpp>
 #include <workspace-manager.hpp>
+#include <render-manager.hpp>
 #include <signal-definitions.hpp>
 #include <pixman-1/pixman.h>
 #include <opengl.hpp>
+#include <list>
 #include "proto/wayfire-shell-server.h"
 
 struct wf_default_workspace_implementation : wf_workspace_implementation
@@ -14,17 +16,18 @@ struct wf_default_workspace_implementation : wf_workspace_implementation
     bool view_resizable(wayfire_view view) { return true; }
 };
 
+using wf_layer = std::list<wayfire_view>;
+
 class viewport_manager : public workspace_manager
 {
     private:
         int vwidth, vheight, vx, vy;
         wayfire_output *output;
-        wayfire_view background;
 
         std::vector<wayfire_view> custom_views;
 
-        weston_layer panel_layer, normal_layer, background_layer;
-        signal_callback_t adjust_fullscreen_layer, view_detached, output_resized;
+        wf_layer panel_layer, normal_layer, background_layer;
+        signal_callback_t adjust_fullscreen_layer, view_detached;
 
         struct {
             int top_padding;
@@ -34,7 +37,6 @@ class viewport_manager : public workspace_manager
         } workarea;
 
         std::vector<std::vector<wf_workspace_implementation*>> implementation;
-
         wf_default_workspace_implementation default_implementation;
 
     public:
@@ -74,7 +76,7 @@ class viewport_manager : public workspace_manager
              uint32_t width, uint32_t height);
         void configure_panel(wayfire_view view, int x, int y);
 
-        weston_geometry get_workarea();
+        wf_geometry get_workarea();
 
         void check_lower_panel_layer(int base);
         bool draw_panel_over_fullscreen_windows;
@@ -86,19 +88,6 @@ void viewport_manager::init(wayfire_output *o)
 {
     output = o;
     vx = vy = 0;
-
-    weston_layer_init(&normal_layer,      core->ec);
-    weston_layer_init(&panel_layer,       core->ec);
-    weston_layer_init(&background_layer,  core->ec);
-
-    weston_layer_set_position(&normal_layer,      WESTON_LAYER_POSITION_NORMAL);
-    weston_layer_set_position(&panel_layer,       WESTON_LAYER_POSITION_UI);
-    weston_layer_set_position(&background_layer,  WESTON_LAYER_POSITION_BACKGROUND);
-
-    auto og = output->get_full_geometry();
-    weston_layer_set_mask(&normal_layer,     og.x, og.y, og.width, og.height);
-    weston_layer_set_mask(&panel_layer,      og.x, og.y, og.width, og.height);
-    weston_layer_set_mask(&background_layer, og.x, og.y, og.width, og.height);
 
     vwidth = core->vwidth;
     vheight = core->vheight;
@@ -121,47 +110,31 @@ void viewport_manager::init(wayfire_output *o)
         check_lower_panel_layer(0);
     };
 
-    output_resized = [=] (signal_data *data)
-    {
-        auto og = output->get_full_geometry();
-        weston_layer_set_mask(&normal_layer,     og.x, og.y, og.width, og.height);
-        weston_layer_set_mask(&panel_layer,      og.x, og.y, og.width, og.height);
-        weston_layer_set_mask(&background_layer, og.x, og.y, og.width, og.height);
-    };
-
     o->connect_signal("view-fullscreen-request", &adjust_fullscreen_layer);
     o->connect_signal("attach-view", &view_detached);
     o->connect_signal("detach-view", &view_detached);
-    o->connect_signal("output-resized", &output_resized);
 }
 
 viewport_manager::~viewport_manager()
 {
-    weston_layer_unset_position(&normal_layer);
-    weston_layer_unset_position(&panel_layer);
-    weston_layer_unset_position(&background_layer);
 }
 
 void viewport_manager::view_bring_to_front(wayfire_view view)
 {
-    if (view->handle->layer_link.layer == NULL)
-        weston_layer_entry_insert(&normal_layer.view_list, &view->handle->layer_link);
+    normal_layer.remove(view);
+    normal_layer.insert(normal_layer.begin(), view);
 }
 
 void viewport_manager::view_removed(wayfire_view view)
 {
-    if (view->handle->layer_link.layer)
-        weston_layer_entry_remove(&view->handle->layer_link);
-
-    if (view == background)
-        background = nullptr;
+    normal_layer.remove(view);
 }
 
 bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> vp)
 {
     GetTuple(tx, ty, vp);
 
-    weston_geometry g = output->get_full_geometry();
+    auto g = output->get_full_geometry();
     g.x += (tx - vx) * output->handle->width;
     g.y += (ty - vy) * (output->handle->height);
 
@@ -170,22 +143,13 @@ bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> v
 
 void viewport_manager::for_all_view(view_callback_proc_t call)
 {
-    weston_view *view;
-    wayfire_view v;
-
     std::vector<wayfire_view> views = custom_views;
-
-    wl_list_for_each(view, &panel_layer.view_list.link, layer_link.link)
-        if ((v = core->find_view(view)) && v->is_visible())
-            views.push_back(v);
-
-    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link)
-        if ((v = core->find_view(view)) && v->is_visible())
-            views.push_back(v);
-
-    wl_list_for_each(view, &background_layer.view_list.link, layer_link.link)
-        if ((v = core->find_view(view)) && v->is_visible())
-            views.push_back(v);
+    for (auto v : panel_layer)
+        views.push_back(v);
+    for (auto v : normal_layer)
+        views.push_back(v);
+    for (auto v : background_layer)
+        views.push_back(v);
 
     for (auto v : views)
         call(v);
@@ -193,14 +157,10 @@ void viewport_manager::for_all_view(view_callback_proc_t call)
 
 void viewport_manager::for_each_view(view_callback_proc_t call)
 {
-    weston_view *view;
-    wayfire_view v;
     std::vector<wayfire_view> views;
-
-    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link) {
-        if ((v = core->find_view(view)) && v->is_visible())
+    for (auto v : normal_layer)
+        if (v->is_visible())
             views.push_back(v);
-    }
 
     for (auto v : views)
         call(v);
@@ -208,17 +168,14 @@ void viewport_manager::for_each_view(view_callback_proc_t call)
 
 void viewport_manager::for_each_view_reverse(view_callback_proc_t call)
 {
-    weston_view *view;
-    wayfire_view v;
     std::vector<wayfire_view> views;
-
-    wl_list_for_each_reverse(view, &normal_layer.view_list.link, layer_link.link) {
-        if ((v = core->find_view(view)) && v->is_visible())
+    for (auto v : normal_layer)
+        if (v->is_visible())
             views.push_back(v);
-    }
 
-    for (auto v : views)
-        call(v);
+    auto it = views.rbegin();
+    while(it != views.rend())
+        call(*it++);
 }
 
 wf_workspace_implementation* viewport_manager::get_implementation(std::tuple<int, int> vt)
@@ -268,8 +225,7 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
         v->move(v->geometry.x + dx, v->geometry.y + dy);
     });
 
-
-    weston_output_schedule_repaint(output->handle);
+    output->render->schedule_redraw();
 
     change_viewport_signal data;
     data.old_vx = vx;
@@ -300,7 +256,7 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 {
     GetTuple(tx, ty, vp);
 
-    weston_geometry g = output->get_full_geometry();
+    wf_geometry g = output->get_full_geometry();
     g.x += (tx - vx) * output->handle->width;
     g.y += (ty - vy) * (output->handle->height);
 
@@ -318,24 +274,19 @@ std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
         std::tuple<int, int> ws)
 {
     std::vector<wayfire_view> ret = custom_views;
-    weston_view *view;
     wayfire_view v;
 
     GetTuple(tx, ty, ws);
 
-    weston_geometry g = output->get_full_geometry();
+    wf_geometry g = output->get_full_geometry();
     g.x += (tx - vx) * output->handle->width;
     g.y += (ty - vy) * (output->handle->height);
 
-    wl_list_for_each(view, &normal_layer.view_list.link, layer_link.link)
-    {
-        if ((v = core->find_view(view)) && rect_intersect(g, v->geometry))
+    for (auto v : normal_layer)
             ret.push_back(v);
-    }
 
     auto bg = get_background_view();
     if (bg) ret.push_back(bg);
-
 
     return ret;
 }
@@ -358,16 +309,11 @@ void viewport_manager::rem_renderable_view(wayfire_view v)
 std::vector<wayfire_view> viewport_manager::get_panels()
 {
     std::vector<wayfire_view> ret;
-    weston_view *view;
-    wayfire_view v;
 
-    weston_geometry g = output->get_full_geometry();
-
-    wl_list_for_each(view, &panel_layer.view_list.link, layer_link.link)
-    {
-        if ((v = core->find_view(view)) && rect_intersect(g, v->geometry))
+    auto g = output->get_full_geometry();
+    for (auto v : panel_layer)
+        if (rect_intersect(g, v->geometry))
             ret.push_back(v);
-    }
 
     return ret;
 }
@@ -375,14 +321,9 @@ std::vector<wayfire_view> viewport_manager::get_panels()
 
 wayfire_view viewport_manager::get_background_view()
 {
-    return background;
-}
-
-void bg_idle_cb(void *data)
-{
-    auto output = (weston_output*) data;
-    weston_output_damage(output);
-    weston_output_schedule_repaint(output);
+    if (background_layer.empty())
+        return nullptr;
+    return *background_layer.begin();
 }
 
 void viewport_manager::add_background(wayfire_view background, int x, int y)
@@ -395,12 +336,7 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
     background->output->detach_view(background);
     background->output = output;
 
-    weston_layer_entry_insert(&background_layer.view_list, &background->handle->layer_link);
-
-    auto loop = wl_display_get_event_loop(core->ec->wl_display);
-    wl_event_loop_add_idle(loop, bg_idle_cb, output->handle);
-
-    this->background = background;
+    background_layer.push_front(background);
 }
 
 void viewport_manager::add_panel(wayfire_view panel)
@@ -411,7 +347,7 @@ void viewport_manager::add_panel(wayfire_view panel)
     panel->output->detach_view(panel);
     panel->output = output;
 
-    weston_layer_entry_insert(&panel_layer.view_list, &panel->handle->layer_link);
+    panel_layer.push_front(panel);
 }
 
 void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
@@ -450,7 +386,7 @@ void viewport_manager::configure_panel(wayfire_view view, int x, int y)
     view->move(g.x + x, g.y + y);
 }
 
-weston_geometry viewport_manager::get_workarea()
+wf_geometry viewport_manager::get_workarea()
 {
     auto g = output->get_full_geometry();
     return
@@ -479,14 +415,17 @@ void viewport_manager::check_lower_panel_layer(int base)
                 sent_autohide = 1;
 
                 for (auto res : core->shell_clients)
-                    wayfire_shell_send_output_autohide_panels(res, output->handle->id, 1);
+                    wayfire_shell_send_output_autohide_panels(res, output->id, 1);
             }
         } else
         {
-            weston_layer_unset_position(&panel_layer);
+            /* TODO: Implement hiding of layers, possibly custom struct */
+            //weston_layer_unset_position(&panel_layer);
         }
     } else
     {
+        // TODO: imlement showing
+        /*
         weston_layer_set_position(&panel_layer, WESTON_LAYER_POSITION_UI);
 
         if (sent_autohide)
@@ -494,7 +433,7 @@ void viewport_manager::check_lower_panel_layer(int base)
             sent_autohide = 0;
             for (auto res : core->shell_clients)
                 wayfire_shell_send_output_autohide_panels(res, output->handle->id, 0);
-        }
+        } */
     }
 }
 

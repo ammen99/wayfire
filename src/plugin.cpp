@@ -1,7 +1,7 @@
 #include "core.hpp"
 #include "output.hpp"
-#include <cmath>
 #include "input-manager.hpp"
+#include <cmath>
 
 bool wayfire_grab_interface_t::grab()
 {
@@ -15,12 +15,15 @@ bool wayfire_grab_interface_t::grab()
 
     /* unset modifiers, otherwise clients may not receive
      * the release event for them, as the release usually happens in a grab */
-    auto kbd = weston_seat_get_keyboard(core->get_current_seat());
-    if (kbd)
+//    auto kbd = weston_seat_get_keyboard(core->get_current_seat());
+ //   if (kbd)
     {
+        // TODO: check how wlr handles grabs
+        /*
         weston_keyboard_send_modifiers(kbd,
                                        wl_display_get_serial(core->ec->wl_display),
                                        0, 0, 0, 0);
+                                       */
     }
 
     return core->input->grab_input(this);

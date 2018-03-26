@@ -1,24 +1,32 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
-#include <compositor.h>
+extern "C"
+{
+#include <wlr/types/wlr_keyboard.h>
+#include <wlr/types/wlr_pointer.h>
+#include <wlr/types/wlr_touch.h>
+}
+
 #include <functional>
 #include <memory>
 
-using std::string;
-
 /* when creating a signal there should be the definition of the derived class */
-struct signal_data {
-};
+struct signal_data { };
 using signal_callback_t = std::function<void(signal_data*)>;
 
 /* effect hooks are called after main rendering */
 using effect_hook_t = std::function<void()>;
 
+#define MODIFIER_CTRL  (1 << 0)
+#define MODIFIER_ALT   (1 << 1)
+#define MODIFIER_SUPER (1 << 2)
+#define MODIFIER_SHIFT (1 << 3)
+
 struct wayfire_touch_gesture;
-using key_callback = std::function<void(weston_keyboard*, uint32_t)>;
-using button_callback = std::function<void(weston_pointer*, uint32_t)>;
-using touch_callback = std::function<void(weston_touch*, wl_fixed_t, wl_fixed_t)>;
+using key_callback = std::function<void(wlr_keyboard*, uint32_t)>;
+using button_callback = std::function<void(wlr_pointer*, uint32_t)>;
+using touch_callback = std::function<void(wlr_touch*, wl_fixed_t, wl_fixed_t)>;
 using touch_gesture_callback = std::function<void(wayfire_touch_gesture*)>;
 
 enum wayfire_gesture_type {
@@ -35,7 +43,8 @@ enum wayfire_gesture_type {
 #define GESTURE_DIRECTION_IN (1 << 4)
 #define GESTURE_DIRECTION_OUT (1 << 5)
 
-struct wayfire_touch_gesture {
+struct wayfire_touch_gesture
+{
     wayfire_gesture_type type;
     uint32_t direction;
     int finger_count;
@@ -43,7 +52,7 @@ struct wayfire_touch_gesture {
 
 class wayfire_output;
 class wayfire_config;
-using owner_t = string;
+using owner_t = std::string;
 
 /* In the current model, plugins can add as much keybindings as they want
  * and receive events for them. However, some plugins cannot be active at
@@ -92,20 +101,20 @@ struct wayfire_grab_interface_t {
 
     struct {
         struct {
-            std::function<void(weston_pointer*,weston_pointer_axis_event*)> axis;
-            std::function<void(weston_pointer*,uint32_t, uint32_t)> button; // button, state
-            std::function<void(weston_pointer*,weston_pointer_motion_event*)> motion;
+            std::function<void(wlr_pointer*,wlr_event_pointer_axis*)> axis;
+            std::function<void(wlr_pointer*,uint32_t, uint32_t)> button; // button, state
+            std::function<void(wlr_pointer*)> motion;
         } pointer;
 
         struct {
-            std::function<void(weston_keyboard*,uint32_t,uint32_t)> key; // button, state
-            std::function<void(weston_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t)> mod; // depressed, locks, latched, group
+            std::function<void(wlr_keyboard*,uint32_t,uint32_t)> key; // button, state
+            std::function<void(wlr_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t)> mod; // depressed, locks, latched, group
         } keyboard;
 
         struct {
-            std::function<void(weston_touch*, int32_t, wl_fixed_t, wl_fixed_t)> down;
-            std::function<void(weston_touch*, int32_t)> up;
-            std::function<void(weston_touch*, int32_t, wl_fixed_t, wl_fixed_t)> motion;
+            std::function<void(wlr_touch*, int32_t, wl_fixed_t, wl_fixed_t)> down;
+            std::function<void(wlr_touch*, int32_t)> up;
+            std::function<void(wlr_touch*, int32_t, wl_fixed_t, wl_fixed_t)> motion;
         } touch;
 
         std::function<void()> cancel; // called when we must stop current grab

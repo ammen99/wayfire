@@ -10,15 +10,17 @@
 
 #include <linux/input.h>
 
+extern "C"
+{
+#include <wlr/render/wlr_renderer.h>
+}
+
 #include "wm.hpp"
 
 #include <sstream>
 #include <memory>
 #include <dlfcn.h>
 #include <algorithm>
-
-#include <libweston-desktop.h>
-#include <gl-renderer-api.h>
 
 #include <cstring>
 #include <config.hpp>
@@ -135,35 +137,28 @@ struct plugin_manager
 
 /* End plugin_manager */
 
-const weston_gl_renderer_api *render_manager::renderer_api = nullptr;
-
 /* Start render_manager */
+
+void frame_cb (wl_listener*, void *data)
+{
+    auto damage = static_cast<wlr_output_damage*>(data);
+    assert(damage);
+
+    auto output = core->get_output(damage->output);
+    assert(output);
+    output->render->paint();
+}
+
 render_manager::render_manager(wayfire_output *o)
 {
     output = o;
-
     pixman_region32_init(&frame_damage);
-    pixman_region32_init_rect(&single_pixel, output->handle->x, output->handle->y, 1, 1);
+    damage_manager = wlr_output_damage_create(output->handle);
 
-    view_moved_cb = [=] (signal_data *data)
-    {
-        auto conv = static_cast<view_geometry_changed_signal*> (data);
-        assert(conv);
+    frame_listener.notify = frame_cb;
+    wl_signal_add(&damage_manager->events.frame, &frame_listener);
 
-        if (fdamage_track_enabled && !conv->view->is_special)
-            update_full_damage_tracking_view(conv->view);
-    };
-    output->connect_signal("view-geometry-changed", &view_moved_cb);
-
-    viewport_changed_cb = [=] (signal_data *data)
-    {
-        if (fdamage_track_enabled)
-        {
-            fdamage_track_enabled = false;
-            update_full_damage_tracking();
-        }
-    };
-    output->connect_signal("viewport-changed", &viewport_changed_cb);
+    schedule_redraw();
 }
 
 void render_manager::load_context()
@@ -186,15 +181,15 @@ render_manager::~render_manager()
 {
     if (idle_redraw_source)
         wl_event_source_remove(idle_redraw_source);
-    if (full_repaint_source)
-        wl_event_source_remove(full_repaint_source);
 
     release_context();
     pixman_region32_fini(&frame_damage);
-    pixman_region32_fini(&single_pixel);
+    wlr_output_damage_destroy(damage_manager);
+}
 
-    output->disconnect_signal("view-geometry-changed", &view_moved_cb);
-    output->disconnect_signal("viewport-changed", &viewport_changed_cb);
+void render_manager::damage(wlr_box box)
+{
+    wlr_output_damage_add_box(damage_manager, &box);
 }
 
 void redraw_idle_cb(void *data)
@@ -202,7 +197,7 @@ void redraw_idle_cb(void *data)
     wayfire_output *output = (wayfire_output*) data;
     assert(output);
 
-    render_manager::renderer_api->schedule_repaint(output->handle);
+    wlr_output_schedule_frame(output->handle);
     output->render->idle_redraw_source = NULL;
 }
 
@@ -222,93 +217,10 @@ void render_manager::auto_redraw(bool redraw)
 
 void render_manager::schedule_redraw()
 {
-    auto loop = wl_display_get_event_loop(core->ec->wl_display);
-
     if (idle_redraw_source == NULL)
-        idle_redraw_source = wl_event_loop_add_idle(loop, redraw_idle_cb, output);
+        idle_redraw_source = wl_event_loop_add_idle(core->ev_loop, redraw_idle_cb, output);
 }
 
-struct wf_fdamage_track_cdata : public wf_custom_view_data
-{
-    weston_transform transform;
-};
-
-void render_manager::update_full_damage_tracking()
-{
-    if (fdamage_track_enabled)
-        return;
-
-    fdamage_track_enabled = true;
-    output->workspace->for_each_view([=] (wayfire_view view)
-    {
-        update_full_damage_tracking_view(view);
-    });
-}
-
-void render_manager::update_full_damage_tracking_view(wayfire_view view)
-{
-    GetTuple(vx, vy, output->workspace->get_current_workspace());
-    GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
-    auto og = output->get_full_geometry();
-
-    wf_fdamage_track_cdata *data;
-    const std::string dname = "__fdamage_track";
-
-    auto it = view->custom_data.find(dname);
-    if (it == view->custom_data.end())
-    {
-        data = new wf_fdamage_track_cdata;
-        view->custom_data[dname] = data;
-
-        weston_matrix_init(&data->transform.matrix);
-        wl_list_insert(&view->handle->geometry.transformation_list, &data->transform.link);
-    } else
-    {
-        data = static_cast<wf_fdamage_track_cdata*> (it->second);
-    }
-
-    assert(data);
-    weston_matrix_init(&data->transform.matrix);
-    weston_matrix_scale(&data->transform.matrix, 1. / vw, 1. / vh, 1.0);
-
-    int dx = vx * og.width;
-    int dy = vy * og.height;
-    weston_matrix_translate(&data->transform.matrix, dx, dy, 0);
-
-    /* Transform the view's coordinates in a coordinate space where the (0, 0)
-     * is actually the outputs top left workspacea */
-    int rx = view->geometry.x + dx - og.x - view->ds_geometry.x;
-    int ry = view->geometry.y + dy - og.y - view->ds_geometry.y;
-    int tx = rx / vw;
-    int ty = ry / vh;
-
-    weston_matrix_translate(&data->transform.matrix, tx - rx, ty - ry, 0);
-    weston_view_geometry_dirty(view->handle);
-}
-
-void render_manager::disable_full_damage_tracking()
-{
-    if (!fdamage_track_enabled)
-        return;
-    fdamage_track_enabled = false;
-
-    const std::string dname = "__fdamage_track";
-    output->workspace->for_each_view([&] (wayfire_view view)
-    {
-        auto it = view->custom_data.find(dname);
-        if (it != view->custom_data.end())
-        {
-            auto data = static_cast<wf_fdamage_track_cdata*> (it->second);
-            assert(data);
-
-            wl_list_remove(&data->transform.link);
-            weston_view_geometry_dirty(view->handle);
-
-            delete data;
-            view->custom_data.erase(it);
-        }
-    });
-}
 
 void render_manager::get_ws_damage(std::tuple<int, int> ws, pixman_region32_t *out_damage)
 {
@@ -352,10 +264,6 @@ void render_manager::get_ws_damage(std::tuple<int, int> ws, pixman_region32_t *o
 void render_manager::reset_renderer()
 {
     renderer = nullptr;
-    if (!streams_running)
-        disable_full_damage_tracking();
-
-    dirty_renderer = true;
 }
 
 void render_manager::set_renderer(render_hook_t rh)
@@ -386,62 +294,43 @@ void render_manager::render_panels()
     }
 }
 
-bool render_manager::paint(pixman_region32_t *damage)
+void render_manager::paint()
 {
+    bool needs_swap;
+    pixman_region32_clear(&frame_damage);
+    bool result = wlr_output_damage_make_current(damage_manager, &needs_swap, &frame_damage);
+    /* TODO: what does result mean??? */
+    result = false;
+
+    auto rr = wlr_backend_get_renderer(core->backend);
+    wlr_renderer_begin(rr, output->handle->width, output->handle->height);
     if (dirty_context)
         load_context();
 
-    if (streams_running || renderer)
-    {
-        pixman_region32_copy(&frame_damage, damage);
-        pixman_region32_subtract(&frame_damage, &frame_damage, &single_pixel);
-        update_full_damage_tracking();
-    }
+    wlr_renderer_scissor(rr, NULL);
 
+    transformation_renderer();
+    wlr_renderer_end(rr);
+    wlr_output_damage_swap_buffers(damage_manager, NULL, NULL);
+
+    /*
+    OpenGL::bind_context(ctx);
     if (renderer)
     {
-        /* this is needed so that the buffers can be swapped appropriately
-         * and that screen recording can track the damage */
-        pixman_region32_union(damage, damage, &output->handle->region);
-
-        frame_was_custom_rendered = 1;
         OpenGL::bind_context(ctx);
         renderer();
-        return true;
-    } else {
-        frame_was_custom_rendered = 0;
-        return false;
-    }
-}
-
-void idle_full_redraw_cb(void *data)
-{
-    auto output = (wayfire_output*) data;
-
-    weston_output_damage(output->handle);
-    output->render->full_repaint_source = NULL;
+    }  else {
+    } */
 }
 
 void render_manager::post_paint()
 {
     run_effects();
-    if (frame_was_custom_rendered && draw_overlay_panel)
+    if (!renderer || draw_overlay_panel)
         render_panels();
 
     if (constant_redraw)
         schedule_redraw();
-
-    if (dirty_renderer)
-    {
-        if (full_repaint_source == NULL)
-        {
-            auto loop = wl_display_get_event_loop(core->ec->wl_display);
-            full_repaint_source = wl_event_loop_add_idle(loop,
-                                                         idle_full_redraw_cb, output);
-        }
-
-        dirty_renderer = false;
-    }
 }
 
 void render_manager::run_effects()
@@ -459,7 +348,10 @@ void render_manager::transformation_renderer()
     auto views = output->workspace->get_renderable_views_on_workspace(
             output->workspace->get_current_workspace());
 
+    wlr_output_set_fullscreen_surface(output->handle, NULL);
+
     OpenGL::use_device_viewport();
+    GL_CALL(glClearColor(1, 0, 0, 1));
     GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 
     auto it = views.rbegin();
@@ -558,7 +450,6 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
 
 void render_manager::workspace_stream_start(wf_workspace_stream *stream)
 {
-    streams_running++;
     stream->running = true;
     stream->scale_x = stream->scale_y = 1;
 
@@ -670,17 +561,19 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
             dv.damage = new pixman_region32_t;
             if (dv.view->is_special)
             {
+                /* TODO: check ds_geometry */
                 /* make background's damage be at the target viewport */
                 pixman_region32_init_rect(dv.damage,
-                    dv.view->geometry.x - dv.view->ds_geometry.x + (dx - g.x),
-                    dv.view->geometry.y - dv.view->ds_geometry.y + (dy - g.y),
-                    dv.view->surface->width, dv.view->surface->height);
+                    dv.view->geometry.x + (dx - g.x),
+                    dv.view->geometry.y + (dy - g.y),
+                    dv.view->surface->current->width,
+                    dv.view->surface->current->height);
             } else
             {
                 pixman_region32_init_rect(dv.damage,
-                        dv.view->geometry.x - dv.view->ds_geometry.x,
-                        dv.view->geometry.y - dv.view->ds_geometry.y,
-                        dv.view->surface->width, dv.view->surface->height);
+                        dv.view->geometry.x,
+                        dv.view->geometry.y,
+                        dv.view->surface->current->width, dv.view->surface->current->height);
             }
 
             pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
@@ -689,7 +582,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
                 /* If we are processing background, then this is not correct, as its
                  * transform.opaque isn't positioned properly. But as
                  * background is the last in the list, we don' care */
-                pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->handle->transform.opaque);
+                pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->surface->current->opaque);
             } else {
                 pixman_region32_fini(dv.damage);
                 delete dv.damage;
@@ -741,11 +634,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
 void render_manager::workspace_stream_stop(wf_workspace_stream *stream)
 {
-    streams_running--;
     stream->running = false;
-
-    if (!streams_running && !renderer)
-        disable_full_damage_tracking();
 }
 
 /* End render_manager */
@@ -786,18 +675,22 @@ wayfire_output* wl_output_to_wayfire_output(uint32_t output)
 
     wayfire_output *result = nullptr;
     core->for_each_output([output, &result] (wayfire_output *wo) {
-        if (wo->handle->id == output)
+        if (wo->id == (int)output)
             result = wo;
     });
 
     return result;
 }
 
+wayfire_view wl_surface_to_wayfire_view(wl_resource *surface)
+{
+    return nullptr;
+}
+
 void shell_add_background(struct wl_client *client, struct wl_resource *resource,
         uint32_t output, struct wl_resource *surface, int32_t x, int32_t y)
 {
-    weston_surface *wsurf = (weston_surface*) wl_resource_get_user_data(surface);
-    wayfire_view view = (wsurf ? core->find_view(wsurf) : nullptr);
+    auto view = wl_surface_to_wayfire_view(surface);
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo) wo = view ? view->output : nullptr;
 
@@ -813,13 +706,12 @@ void shell_add_background(struct wl_client *client, struct wl_resource *resource
 void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
         uint32_t output, struct wl_resource *surface)
 {
-    weston_surface *wsurf = (weston_surface*) wl_resource_get_user_data(surface);
-    wayfire_view view = (wsurf ? core->find_view(wsurf) : nullptr);
+    auto view = wl_surface_to_wayfire_view(surface);
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo) wo = view ? view->output : nullptr;
 
 
-    if (!wo || !wsurf) {
+    if (!wo || !view) {
         errio << "shell_add_panel called with invalid surface or output" << std::endl;
         return;
     }
@@ -831,8 +723,7 @@ void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
 void shell_configure_panel(struct wl_client *client, struct wl_resource *resource,
         uint32_t output, struct wl_resource *surface, int32_t x, int32_t y)
 {
-    weston_surface *wsurf = (weston_surface*) wl_resource_get_user_data(surface);
-    wayfire_view view = (wsurf ? core->find_view(wsurf) : nullptr);
+    auto view = wl_surface_to_wayfire_view(surface);
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo) wo = view ? view->output : nullptr;
 
@@ -861,6 +752,7 @@ void shell_reserve(struct wl_client *client, struct wl_resource *resource,
 void shell_set_color_gamma(wl_client *client, wl_resource *res,
         uint32_t output, wl_array *r, wl_array *g, wl_array *b)
 {
+    /*
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo || !wo->handle->set_gamma) {
         errio << "shell_set_gamma called with invalid/unsupported output" << std::endl;
@@ -878,7 +770,7 @@ void shell_set_color_gamma(wl_client *client, wl_resource *res,
 #define ushort unsigned short
     wo->handle->set_gamma(wo->handle, size, (ushort*)r->data, (ushort*)g->data, (ushort*)b->data);
 #undef ushort
-#endif
+#endif */
 }
 
 void shell_output_fade_in_start(wl_client *client, wl_resource *res, uint32_t output)
@@ -902,18 +794,12 @@ const struct wayfire_shell_interface shell_interface_impl {
     .output_fade_in_start = shell_output_fade_in_start
 };
 
-wayfire_output::wayfire_output(weston_output *handle, wayfire_config *c)
+wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
 {
     this->handle = handle;
 
     render = new render_manager(this);
     plugin = new plugin_manager(this, c);
-
-    weston_output_damage(handle);
-    weston_output_schedule_repaint(handle);
-
-    if (handle->set_dpms && c->get_section("core")->get_int("dpms_enabled", 1))
-    	handle->set_dpms(handle, WESTON_DPMS_ON);
 }
 
 workspace_manager::~workspace_manager()
@@ -928,14 +814,15 @@ wayfire_output::~wayfire_output()
     delete render;
 }
 
-weston_geometry wayfire_output::get_full_geometry()
+wf_geometry wayfire_output::get_full_geometry()
 {
-    return {handle->x, handle->y,
+    return {handle->lx, handle->ly,
             handle->width, handle->height};
 }
 
 void wayfire_output::set_transform(wl_output_transform new_tr)
 {
+    /*
     int old_w = handle->width;
     int old_h = handle->height;
     weston_output_set_transform(handle, new_tr);
@@ -972,7 +859,7 @@ void wayfire_output::set_transform(wl_output_transform new_tr)
             view->set_geometry(px * handle->width, py * handle->height,
 			    pw * handle->width, ph * handle->height);
         }
-    });
+    }); */
 }
 
 wl_output_transform wayfire_output::get_transform()
@@ -987,6 +874,7 @@ std::tuple<int, int> wayfire_output::get_screen_size()
 
 void wayfire_output::ensure_pointer()
 {
+    /*
     auto ptr = weston_seat_get_pointer(core->get_current_seat());
     if (!ptr) return;
 
@@ -1003,7 +891,7 @@ void wayfire_output::ensure_pointer()
         ev.y = wl_fixed_to_double(cy);
 
         weston_pointer_move(ptr, &ev);
-    }
+    } */
 }
 
 void wayfire_output::activate()
@@ -1036,7 +924,7 @@ void wayfire_output::detach_view(wayfire_view v)
 
     auto views = workspace->get_views_on_workspace(workspace->get_current_workspace());
     for (auto wview : views) {
-        if (wview->handle != v->handle && wview->is_mapped && !wview->destroyed) {
+        if (wview != v && wview->is_mapped && !wview->destroyed) {
             next = wview;
             break;
         }
@@ -1058,14 +946,9 @@ void wayfire_output::detach_view(wayfire_view v)
 void wayfire_output::bring_to_front(wayfire_view v) {
     assert(v);
 
-    weston_view_geometry_dirty(v->handle);
-    weston_layer_entry_remove(&v->handle->layer_link);
-
+    v->damage();
     workspace->view_bring_to_front(v);
-
-    weston_view_geometry_dirty(v->handle);
-    weston_surface_damage(v->surface);
-    weston_desktop_surface_propagate_layer(v->desktop_surface);
+    v->damage();
 }
 
 void wayfire_output::set_active_view(wayfire_view v)
@@ -1074,17 +957,29 @@ void wayfire_output::set_active_view(wayfire_view v)
         return;
 
     if (active_view && !active_view->destroyed)
-        weston_desktop_surface_set_activated(active_view->desktop_surface, false);
+        active_view->activate(false);
 
     active_view = v;
-    if (active_view) {
-        weston_view_activate(v->handle, core->get_current_seat(),
-                WESTON_ACTIVATE_FLAG_CLICKED | WESTON_ACTIVATE_FLAG_CONFIGURE);
-        weston_desktop_surface_set_activated(v->desktop_surface, true);
+    if (active_view)
+        active_view->activate(true);
+}
+
+static void set_keyboard_focus(wlr_seat *seat, wlr_surface *surface)
+{
+    auto kbd = wlr_seat_get_keyboard(seat);
+    if (kbd != NULL) {
+        debug << "set keyboard enter" << std::endl;
+        wlr_seat_keyboard_notify_enter(seat, surface,
+                                       kbd->keycodes, kbd->num_keycodes,
+                                       &kbd->modifiers);                                                                                                            
+    } else
+    {
+        debug << "set keyboard enter (nil)" << std::endl;
+        wlr_seat_keyboard_notify_enter(seat, surface, NULL, 0, NULL);
     }
 }
 
-void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
+void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
 {
     if (seat == nullptr)
         seat = core->get_current_seat();
@@ -1092,11 +987,12 @@ void wayfire_output::focus_view(wayfire_view v, weston_seat *seat)
     set_active_view(v);
 
     if (v) {
-        debug << "output: " << handle->id << " focus: " << v->desktop_surface << std::endl;
+        debug << "output: " << handle->name << " focus: " << v->surface << std::endl;
         bring_to_front(v);
+        set_keyboard_focus(seat, v->surface);
     } else {
-        debug << "output: " << handle->id << " focus: 0" << std::endl;
-        weston_seat_set_keyboard_focus(seat, NULL);
+        debug << "output: " << handle->name << " focus: 0" << std::endl;
+        set_keyboard_focus(seat, NULL);
     }
 
     focus_view_signal data;
@@ -1142,7 +1038,7 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner, bool lower_fs
 
     if (active_plugins.find(owner) != active_plugins.end())
     {
-        debug << "output: " << handle->id << " activating plugin: " << owner->name << std::endl;
+        debug << "output: " << handle->name << " activating plugin: " << owner->name << std::endl;
         active_plugins.insert(owner);
         return true;
     }
@@ -1161,7 +1057,7 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner, bool lower_fs
         emit_signal("_activation_request", (signal_data*)1);
 
     active_plugins.insert(owner);
-    debug << "output: " << handle->id << " activating plugin: " << owner->name << std::endl;
+    debug << "output: " << handle->name << " activating plugin: " << owner->name << std::endl;
     return true;
 }
 
@@ -1172,7 +1068,7 @@ bool wayfire_output::deactivate_plugin(wayfire_grab_interface owner)
         return true;
 
     active_plugins.erase(it);
-    debug << "output: " << handle->id << " deactivating plugin: " << owner->name << std::endl;
+    debug << "output: " << handle->name << " deactivating plugin: " << owner->name << std::endl;
 
     if (active_plugins.count(owner) == 0)
     {
@@ -1209,12 +1105,12 @@ wayfire_grab_interface wayfire_output::get_input_grab_interface()
 
 /* simple wrappers for core->input, as it isn't exposed to plugins */
 
-weston_binding* wayfire_output::add_key(uint32_t mod, uint32_t key, key_callback* callback)
+int wayfire_output::add_key(uint32_t mod, uint32_t key, key_callback* callback)
 {
     return core->input->add_key(mod, key, callback, this);
 }
 
-weston_binding* wayfire_output::add_button(uint32_t mod, uint32_t button, button_callback* callback)
+int wayfire_output::add_button(uint32_t mod, uint32_t button, button_callback* callback)
 {
     return core->input->add_button(mod, button, callback, this);
 }

@@ -5,13 +5,18 @@
 #include "view.hpp"
 #include "workspace-manager.hpp"
 #include "render-manager.hpp"
+#include "desktop-api.hpp"
 
+#include <algorithm>
 #include <glm/glm.hpp>
 #include "signal-definitions.hpp"
 
-#include <xwayland-api.h>
-#include <libweston-desktop.h>
-#include <gl-renderer-api.h>
+extern "C"
+{
+#include <wlr/types/wlr_xdg_shell_v6.h>
+#include <wlr/render/wlr_renderer.h>
+#include <wlr/types/wlr_matrix.h>
+}
 
 /* misc definitions */
 
@@ -26,17 +31,17 @@ glm::mat4 wayfire_view_transform::calculate_total_transform()
            (global_rotation * rotation) * (global_scale * scale);
 }
 
-bool operator == (const weston_geometry& a, const weston_geometry& b)
+bool operator == (const wf_geometry& a, const wf_geometry& b)
 {
     return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
 }
 
-bool operator != (const weston_geometry& a, const weston_geometry& b)
+bool operator != (const wf_geometry& a, const wf_geometry& b)
 {
     return !(a == b);
 }
 
-bool point_inside(wayfire_point point, weston_geometry rect)
+bool point_inside(wf_point point, wf_geometry rect)
 {
     if(point.x < rect.x || point.y < rect.y)
         return false;
@@ -50,7 +55,7 @@ bool point_inside(wayfire_point point, weston_geometry rect)
     return true;
 }
 
-bool rect_intersect(weston_geometry screen, weston_geometry win)
+bool rect_intersect(wf_geometry screen, wf_geometry win)
 {
     if (win.x + (int32_t)win.width <= screen.x ||
         win.y + (int32_t)win.height <= screen.y)
@@ -63,47 +68,178 @@ bool rect_intersect(weston_geometry screen, weston_geometry win)
 }
 
 
-const weston_xwayland_surface_api *xwayland_surface_api = nullptr;
 
-wayfire_view_t::wayfire_view_t(weston_desktop_surface *ds)
+/*
+
+void desktop_surface_added(weston_desktop_surface *desktop_surface, void *shell)
 {
-    output  = core->get_active_output();
-    handle = weston_desktop_surface_create_view(ds);
+    debug << "desktop_surface_added " << desktop_surface << std::endl;
+    core->add_view(desktop_surface);
+}
 
-    if (!handle)
+void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
+{
+    debug << "desktop_surface_removed " << surface << std::endl;
+
+    auto view = core->find_view(surface);
+    weston_desktop_surface_unlink_view(view->handle);
+
+    pixman_region32_fini(&view->surface->pending.input);
+    pixman_region32_init(&view->surface->pending.input);
+    pixman_region32_fini(&view->surface->input);
+    pixman_region32_init(&view->surface->input);
+
+    view->destroyed = true;
+
+    if (view->output)
     {
-        errio << "Failed to allocate handle for desktop surface\n"<< std::endl;
+        auto sig_data = destroy_view_signal{view};
+        view->output->emit_signal("destroy-view", &sig_data);
+
+        if (view->parent)
+        {
+            auto it = std::find(view->parent->children.begin(), view->parent->children.end(), view);
+            assert(it != view->parent->children.end());
+            view->parent->children.erase(it);
+        }
     }
 
-    weston_desktop_surface_set_user_data(ds, NULL);
-    weston_desktop_surface_set_activated(ds, true);
+    core->erase_view(view, view->keep_count <= 0);
+}
 
-    desktop_surface = ds;
-    ds_geometry = {0, 0, 0, 0};
-    surface = weston_desktop_surface_get_surface(ds);
+void desktop_surface_move(weston_desktop_surface *ds, weston_seat *seat,
+        uint32_t serial, void *shell)
+{
+    auto view = core->find_view(ds);
 
-    geometry.width = surface->width;
-    geometry.height = surface->height;
+    auto main_surface = weston_surface_get_main_surface(view->surface);
+    if (main_surface == view->surface) {
+        move_request_signal req;
+        req.view = core->find_view(main_surface);
+        req.serial = serial;
+        view->output->emit_signal("move-request", &req);
+    }
+}
+
+void desktop_surface_resize(weston_desktop_surface *ds, weston_seat *seat,
+        uint32_t serial, weston_desktop_surface_edge edges, void *shell)
+{
+    auto view = core->find_view(ds);
+
+    auto main_surface = weston_surface_get_main_surface(view->surface);
+    if (main_surface == view->surface) {
+        resize_request_signal req;
+        req.view = core->find_view(main_surface);
+        req.edges = edges;
+        req.serial = serial;
+        view->output->emit_signal("resize-request", &req);
+    }
+}
+
+void desktop_surface_maximized_requested(weston_desktop_surface *ds,
+        bool maximized, void *shell)
+{
+    auto view = core->find_view(ds);
+    if (!view || view->maximized == maximized)
+        return;
+
+    view_maximized_signal data;
+    data.view = view;
+    data.state = maximized;
+
+    if (view->is_mapped) {
+        view->output->emit_signal("view-maximized-request", &data);
+    } else if (maximized) {
+        view->set_geometry(view->output->workspace->get_workarea());
+        view->output->emit_signal("view-maximized", &data);
+    }
+
+    view->set_maximized(maximized);
+}
+
+void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
+        bool full, weston_output *output, void *shell)
+{
+    auto view = core->find_view(ds);
+    if (!view || view->fullscreen == full)
+        return;
+
+    auto wo = (output ? core->get_output(output) : view->output);
+    assert(wo);
+
+    if (view->output != wo)
+    {
+        auto pg = view->output->get_full_geometry();
+        auto ng = wo->get_full_geometry();
+
+        core->move_view_to_output(view, wo);
+        view->move(view->geometry.x + ng.x - pg.x, view->geometry.y + ng.y - pg.y);
+    }
+
+    view_fullscreen_signal data;
+    data.view = view;
+    data.state = full;
+
+    if (view->is_mapped) {
+        wo->emit_signal("view-fullscreen-request", &data);
+    } else if (full) {
+        view->set_geometry(view->output->get_full_geometry());
+        view->output->emit_signal("view-fullscreen", &data);
+    }
+
+    view->set_fullscreen(full);
+}
+
+void desktop_surface_set_parent(weston_desktop_surface *ds,
+                                weston_desktop_surface *parent_ds,
+                                void *data)
+{
+    auto view = core->find_view(ds);
+    auto parent = core->find_view(parent_ds);
+
+    if (!view || !parent)
+        return;
+
+    view->parent = parent;
+    parent->children.push_back(view);
+
+    view_set_parent_signal sdata; sdata.view = view;
+    view->output->emit_signal("view-set-parent", &sdata);
+} */
+
+void committed_cb(wl_listener*, void *data)
+{
+    debug << "hit commit " << std::endl;
+    auto view = core->find_view((wlr_surface*) data);
+    view->commit();
+}
+
+wayfire_view_t::wayfire_view_t(wlr_surface *surf)
+{
+    output  = core->get_active_output();
+    output->render->schedule_redraw();
+    surface = surf;
+
+    geometry.x = geometry.y = 0;
+    geometry.width = surface->current->width;
+    geometry.height = surface->current->height;
 
     transform.color = glm::vec4(1, 1, 1, 1);
 
-    if (!xwayland_surface_api)
-        xwayland_surface_api = weston_xwayland_surface_get_api(core->ec);
+    committed.notify = committed_cb;
+    wl_signal_add(&surface->events.commit, &committed);
 }
 
 wayfire_view_t::~wayfire_view_t()
 {
-    if (source_resize_plus)
-        wl_event_source_remove(source_resize_plus);
-
-    if (source_resize_minus)
-        wl_event_source_remove(source_resize_minus);
-
     for (auto& kv : custom_data)
         delete kv.second;
 }
 
-#define Mod(x,m) (((x)%(m)+(m))%(m))
+wayfire_view wayfire_view_t::self()
+{
+    return core->find_view(surface);
+}
 
 // TODO: implement is_visible
 bool wayfire_view_t::is_visible()
@@ -111,86 +247,26 @@ bool wayfire_view_t::is_visible()
     return true;
 }
 
-void idle_resize_minus(void *data)
-{
-    auto view = static_cast<wayfire_view_t*> (data);
-    assert(view);
-
-    if (view->desktop_surface && !view->destroyed)
-    {
-        weston_desktop_surface_set_size(view->desktop_surface,
-                                        view->geometry.width, view->geometry.height);
-
-    }
-
-    view->source_resize_minus = NULL;
-}
-
-void idle_resize_plus(void *data)
-{
-    auto view = static_cast<wayfire_view_t*> (data);
-    assert(view);
-
-    if (view->desktop_surface && !view->destroyed && !view->source_resize_minus)
-    {
-        weston_desktop_surface_set_size(view->desktop_surface,
-                                        view->geometry.width - 1, view->geometry.height);
-
-        auto loop = wl_display_get_event_loop(core->ec->wl_display);
-        view->source_resize_minus = wl_event_loop_add_idle(loop,
-                                                           idle_resize_minus,
-                                                           data);
-    }
-
-    view->source_resize_plus = NULL;
-}
-
-/* To properly position override-redirect windows (such as menus),
- * the xwayland apps need to know their position on screen. However, due
- * to the way weston's window-manager works, the app receives such events
- * only when it is resized. That's why we force a resize at the end
- * of each continuous move(to avoid unnecessary resizes at each coordinate change */
-void wayfire_view_t::force_update_xwayland_position()
-{
-    if (!source_resize_plus && !source_resize_minus)
-    {
-        auto loop = wl_display_get_event_loop(core->ec->wl_display);
-        source_resize_plus = wl_event_loop_add_idle(loop,
-                                                    idle_resize_plus, this);
-    }
-}
-
 void wayfire_view_t::set_moving(bool moving)
 {
     in_continuous_move += moving ? 1 : -1;
-    if (!moving && xwayland_surface_api &&
-        xwayland_surface_api->is_xwayland_surface(surface))
-        force_update_xwayland_position();
 }
 
 void wayfire_view_t::set_resizing(bool resizing)
 {
     in_continuous_resize += resizing ? 1 : -1;
-    weston_desktop_surface_set_resizing(desktop_surface, resizing);
 }
-
 
 void wayfire_view_t::move(int x, int y, bool send_signal)
 {
     view_geometry_changed_signal data;
-    data.view = core->find_view(handle);
+    data.view = core->find_view(surface);
     data.old_geometry = geometry;
 
+    damage();
     geometry.x = x;
     geometry.y = y;
-    weston_view_set_position(handle, x - ds_geometry.x, y - ds_geometry.y);
-
-    if (xwayland_surface_api && xwayland_surface_api->is_xwayland_surface(surface))
-    {
-        xwayland_surface_api->send_position(surface, x, y);
-        if (!in_continuous_move)
-            force_update_xwayland_position();
-    }
+    damage();
 
     if (send_signal)
         output->emit_signal("view-geometry-changed", &data);
@@ -199,126 +275,86 @@ void wayfire_view_t::move(int x, int y, bool send_signal)
 void wayfire_view_t::resize(int w, int h, bool send_signal)
 {
     view_geometry_changed_signal data;
-    data.view = core->find_view(handle);
+    data.view = core->find_view(surface);
     data.old_geometry = geometry;
 
-    weston_desktop_surface_set_size(desktop_surface, w, h);
+    damage();
     geometry.width = w;
     geometry.height = h;
+    damage();
 
     if (send_signal)
         output->emit_signal("view-geometry-changed", &data);
 }
 
-void wayfire_view_t::set_geometry(weston_geometry g)
+void wayfire_view_t::set_geometry(wf_geometry g)
 {
     move(g.x, g.y, false);
     resize(g.width, g.height);
 }
 
-void wayfire_view_t::set_geometry(int x, int y, int w, int h)
-{
-    move(x, y, false);
-    resize(w, h);
-}
-
 void wayfire_view_t::set_maximized(bool maxim)
 {
     maximized = maxim;
-    weston_desktop_surface_set_maximized(desktop_surface, maximized);
 }
 
 void wayfire_view_t::set_fullscreen(bool full)
 {
     fullscreen = full;
-    weston_desktop_surface_set_fullscreen(desktop_surface, fullscreen);
 }
 
-void wayfire_view_t::map(int sx, int sy)
+void wayfire_view_t::set_parent(wayfire_view parent)
 {
-    if (!weston_surface_is_mapped(surface))
+    if (this->parent)
     {
-        /* special views are panels/backgrounds, workspace_manager handles their position */
+        auto it = std::remove(this->parent->children.begin(), this->parent->children.end(), self());
+        this->parent->children.erase(it);
+    }
 
-        if (!is_special)
-        {
-            if (xwayland.is_xorg)
-            {
-                sx = xwayland.x;
-                sy = xwayland.y;
-            } else
-            {
-                sx = sy = 0;
-            }
+    this->parent = parent;
+    if (parent)
+    {
+        auto it = std::find(parent->children.begin(), parent->children.end(), self());
+        if (it == parent->children.end())
+            parent->children.push_back(self());
+    }
+}
 
-            ds_geometry = weston_desktop_surface_get_geometry(desktop_surface);
-            geometry.width = ds_geometry.width;
-            geometry.height = ds_geometry.height;
-
-            auto workarea = output->workspace->get_workarea();
-            if (parent)
-            {
-                if (parent->is_mapped)
-                {
-                    sx += parent->geometry.x + (parent->geometry.width  - geometry.width) / 2;
-                    sy += parent->geometry.y + (parent->geometry.height - geometry.height) / 2;
-                } else
-                {
-                    /* if we have a parent which still isn't mapped, we cannot determine
-                     * the view's position, so we center it on the screen */
-                    sx += workarea.width / 2 - geometry.width / 2;
-                    sy += workarea.height/ 2 - geometry.height/ 2;
-                }
-            } else
-            {
-                sx += workarea.x;
-                sy += workarea.y;
-            }
-
-            move(sx, sy);
-
-            geometry.x = sx;
-            geometry.y = sy;
-        }
-
-        weston_view_update_transform(handle);
-        handle->is_mapped  = true;
-        surface->is_mapped = true;
+void wayfire_view_t::commit()
+{
+    debug << "commit ??" << std::endl;
+    if (!is_mapped)
+    {
         is_mapped = true;
 
-        auto sig_data = create_view_signal{core->find_view(handle)};
+        auto sig_data = create_view_signal{self()};
         output->emit_signal("create-view", &sig_data);
 
         if (!is_special)
         {
-            output->focus_view(core->find_view(handle));
+            output->focus_view(self());
 
+            /* TODO: check mods
             auto seat = core->get_current_seat();
             auto kbd = seat ? weston_seat_get_keyboard(seat) : NULL;
 
             if (kbd)
             {
-                /* we send zero depressed modifiers, because some modifiers are
+                 we send zero depressed modifiers, because some modifiers are
                  * stuck when opening a window(for example if the app was opened while some plugin
-                 * was working or similar) */
+                 * was working or similar)
                 weston_keyboard_send_modifiers(kbd, wl_display_next_serial(core->ec->wl_display),
                                                0, kbd->modifiers.mods_latched,
                                                kbd->modifiers.mods_locked, kbd->modifiers.group);
-            }
+            } */
         }
 
         return;
     }
+    geometry.width = surface->current->width;
+    geometry.height = surface->current->height;
 
-    auto new_ds_g = weston_desktop_surface_get_geometry(desktop_surface);
-    if (new_ds_g.x != ds_geometry.x || new_ds_g.y != ds_geometry.y) {
-        ds_geometry = new_ds_g;
-        move(geometry.x, geometry.y);
-    }
-
-    geometry.width = new_ds_g.width;
-    geometry.height = new_ds_g.height;
-
+    /* TODO: what do we do? 
     auto full  = weston_desktop_surface_get_fullscreen(desktop_surface),
          maxim = weston_desktop_surface_get_maximized(desktop_surface);
 
@@ -338,10 +374,53 @@ void wayfire_view_t::map(int sx, int sy)
 
         output->emit_signal("view-maximized-request", &data);
         set_maximized(maximized);
-    }
+    } */
 }
 
-static void render_surface(weston_surface *surface, pixman_region32_t *damage,
+void wayfire_view_t::damage()
+{
+    output->render->damage(geometry);
+}
+
+/* xdg_shell_v6 implementation */
+class wayfire_xdg6_view : public wayfire_view_t
+{
+    wlr_xdg_surface_v6 *v6_surface;
+    public:
+    wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
+        : wayfire_view_t (s->surface), v6_surface(s)
+    {
+        debug << "New xdg6 surface: \n";// << v6_surface->title << " app-id: " << v6_surface->app_id << std::endl;
+
+        wlr_xdg_surface_v6_ping(s);
+    }
+
+    bool is_toplevel()
+    { return v6_surface->role == WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL; }
+
+    void activate(bool act)
+    { wlr_xdg_toplevel_v6_set_activated(v6_surface, act); }
+
+    void resize(int w, int h, bool send)
+    {
+        wayfire_view_t::resize(w, h, send);
+        wlr_xdg_toplevel_v6_set_size(v6_surface, w, h);
+    }
+};
+
+void notify_v6_created(wl_listener*, void *data)
+{ core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data)); }
+
+void init_desktop_apis()
+{
+    core->api = new desktop_apis_t;
+
+    core->api->v6_created.notify = notify_v6_created;
+    core->api->v6 = wlr_xdg_shell_v6_create(core->display);
+    wl_signal_add(&core->api->v6->events.new_surface, &core->api->v6_created);
+}
+
+static void render_surface(wlr_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4, glm::vec4, uint32_t bits);
 
 /* TODO: use bits */
@@ -361,7 +440,7 @@ void wayfire_view_t::simple_render(uint32_t bits, pixman_region32_t *damage)
     pixman_region32_translate(damage, -og.x, -og.y);
 
     render_surface(surface, damage,
-            geometry.x - ds_geometry.x - og.x, geometry.y - ds_geometry.y - og.y,
+            geometry.x - og.x, geometry.y - og.y,
             transform.calculate_total_transform(), transform.color, bits);
 
     pixman_region32_translate(damage, og.x, og.y);
@@ -372,7 +451,21 @@ void wayfire_view_t::simple_render(uint32_t bits, pixman_region32_t *damage)
 
 void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
 {
+    auto rr = wlr_backend_get_renderer(core->backend);
+
+    float matrix[16];
+    wlr_matrix_project_box(matrix, &geometry,
+                           surface->current->transform, 0, output->handle->transform_matrix);
+    wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
+
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+    wlr_surface_send_frame_done(surface, &now);
+
+    return;
+
     simple_render(bits, damage);
+
 
     std::vector<effect_hook_t*> hooks_to_run;
     for (auto hook : effects)
@@ -393,7 +486,7 @@ static inline void render_surface_box(GLuint tex[3], int n_tex, const pixman_box
         1.0f * (subbox.y2 - surface_box.y1) / (surface_box.y2 - surface_box.y1),
     };
 
-    weston_geometry geometry =
+    wf_geometry geometry =
     {
         subbox.x1, subbox.y1,
         subbox.x2 - subbox.x1, subbox.y2 - subbox.y1
@@ -406,16 +499,12 @@ static inline void render_surface_box(GLuint tex[3], int n_tex, const pixman_box
     }
 }
 
-static void render_surface(weston_surface *surface, pixman_region32_t *damage,
+static void render_surface(wlr_surface *surface, pixman_region32_t *damage,
         int x, int y, glm::mat4 transform, glm::vec4 color, uint32_t bits)
+
 {
-    if (!surface->is_mapped || !surface->renderer_state ||
-            surface->width * surface->height == 0)
-        return;
-
-    if (!render_manager::renderer_api)
-	return;
-
+    /* TODO: update damage */
+    /*
     pixman_region32_t damaged_region;
     pixman_region32_init_rect(&damaged_region, x, y,
             surface->width, surface->height);
@@ -446,5 +535,5 @@ static void render_surface(weston_surface *surface, pixman_region32_t *damage,
                         transform, color, bits);
             }
         }
-    }
+    } */
 }

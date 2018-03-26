@@ -12,7 +12,7 @@ class wf_fire_effect : public animation_base
     fire_particle_system *ps;
     wayfire_view w;
 
-    weston_geometry last_geometry;
+    wf_geometry last_geometry;
 
     int progress = 0, effect_cycles;
     bool burnout;

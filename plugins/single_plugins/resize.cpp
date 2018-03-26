@@ -16,7 +16,7 @@ class wayfire_resize : public wayfire_plugin_t {
     wayfire_view view;
 
     int initial_x, initial_y;
-    weston_geometry initial_geometry;
+    wf_geometry initial_geometry;
 
     uint32_t edges;
     public:

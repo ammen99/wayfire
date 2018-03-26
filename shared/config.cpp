@@ -4,8 +4,7 @@
 #include <fstream>
 #include <libevdev/libevdev.h>
 #include <linux/input.h>
-
-#include <compositor.h>
+#include "plugin.hpp"
 
 #include <config.h>
 

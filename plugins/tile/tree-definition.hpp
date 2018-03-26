@@ -25,7 +25,7 @@ struct wf_tile_view_data : public wf_custom_view_data
     wf_tree_node *node;
 };
 
-void view_fit_to_box(wayfire_view view, weston_geometry box)
+void view_fit_to_box(wayfire_view view, wf_geometry box)
 {
     GetTuple(vx, vy, view->output->workspace->get_current_workspace());
     GetTuple(sw, sh, view->output->get_screen_size());
@@ -40,13 +40,13 @@ struct wf_tree_node
     /* view in this tree node. non-null only on leaf nodes */
     wayfire_view view = nullptr;
 
-    weston_geometry box;
+    wf_geometry box;
     wf_split_type split_type;
 
     wf_tree_node *parent = nullptr;
     std::vector<wf_tree_node*> children;
 
-    void set_geometry(weston_geometry tbox)
+    void set_geometry(wf_geometry tbox)
     {
         box = tbox;
         recalculate_children_boxes();

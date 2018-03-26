@@ -13,8 +13,6 @@
 
 #include <cstring>
 #include <assert.h>
-#include <libinput.h>
-
 wl_listener output_pending_listener;
 void set_output_pending_handler(weston_compositor *ec, wl_notify_func_t handler)
 {
@@ -22,49 +20,7 @@ void set_output_pending_handler(weston_compositor *ec, wl_notify_func_t handler)
     wl_signal_add(&ec->output_pending_signal, &output_pending_listener);
 }
 
-/* TODO: possibly add more input options which aren't available right now */
-namespace device_config
-{
-    bool touchpad_tap_enabled;
-    bool touchpad_dwl_enabled;
-    bool touchpad_natural_scroll_enabled;
 
-    std::string drm_device;
-
-    wayfire_config *config;
-
-    void load(wayfire_config *conf)
-    {
-        config = conf;
-
-        auto section = config->get_section("input");
-        touchpad_tap_enabled = section->get_int("tap_to_click", 1);
-        touchpad_dwl_enabled = section->get_int("disable_while_typing", 1);
-        touchpad_natural_scroll_enabled = section->get_int("natural_scroll", 0);
-
-        drm_device = config->get_section("core")->get_string("drm_device", "default");
-    }
-}
-
-void configure_input_device(weston_compositor *ec, libinput_device *device)
-{
-    /* we are configuring a touchpad */
-    if (libinput_device_config_tap_get_finger_count(device) > 0)
-    {
-        libinput_device_config_tap_set_enabled(device,
-                device_config::touchpad_tap_enabled ?
-                    LIBINPUT_CONFIG_TAP_ENABLED : LIBINPUT_CONFIG_TAP_DISABLED);
-        libinput_device_config_dwt_set_enabled(device,
-                device_config::touchpad_dwl_enabled ?
-                LIBINPUT_CONFIG_DWT_ENABLED : LIBINPUT_CONFIG_DWT_DISABLED);
-
-        if (libinput_device_config_scroll_has_natural_scroll(device) > 0)
-        {
-            libinput_device_config_scroll_set_natural_scroll_enabled(device,
-                    device_config::touchpad_natural_scroll_enabled);
-        }
-    }
-}
 
 bool backend_loaded = false;
 std::vector<weston_output*> pending_outputs;

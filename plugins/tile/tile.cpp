@@ -154,7 +154,7 @@ namespace wf_tiling
     {
         wf_tree_node *node;
 
-        inline weston_geometry get_selected_box()
+        inline wf_geometry get_selected_box()
         {
             return node->box;
         }

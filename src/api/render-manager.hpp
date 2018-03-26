@@ -2,15 +2,20 @@
 #define RENDER_MANAGER_HPP
 
 #include "plugin.hpp"
+
+extern "C"
+{
+#include <wlr/types/wlr_output_damage.h>
+}
+
 #include <vector>
+#include <pixman.h>
 
 
 namespace OpenGL { struct context_t; }
 
 class wayfire_view_t;
 using wayfire_view = std::shared_ptr<wayfire_view_t>;
-
-struct weston_gl_renderer_api;
 
 /* Workspace streams are used if you need to continuously render a workspace
  * to a texture, for example if you call texture_from_viewport at every frame */
@@ -25,38 +30,31 @@ struct wf_workspace_stream
 
 class render_manager
 {
-    private:
-        friend bool custom_renderer_cb(weston_output *o, pixman_region32_t *damage);
-        friend void post_render_cb(weston_output *o);
-        friend void redraw_idle_cb(void *data);
-        friend void idle_full_redraw_cb(void *data);
 
+    friend void redraw_idle_cb(void *data);
+    friend void frame_cb (wl_listener*, void *data);
+
+    private:
         wayfire_output *output;
+        wl_event_source *idle_redraw_source = NULL;
+
+        wlr_output_damage *damage_manager;
+        wl_listener frame_listener;
 
         bool dirty_context = true;
         void load_context();
         void release_context();
 
         bool draw_overlay_panel = true;
-        pixman_region32_t frame_damage, single_pixel;
 
-        int streams_running = 0;
-
-        signal_callback_t view_moved_cb, viewport_changed_cb;
-        bool fdamage_track_enabled = false;
-
-        void update_full_damage_tracking_view(wayfire_view view);
-        void update_full_damage_tracking();
-        void disable_full_damage_tracking();
+        pixman_region32_t frame_damage;
         void get_ws_damage(std::tuple<int, int> ws, pixman_region32_t *out_damage);
-
         std::vector<effect_hook_t*> output_effects;
+
         int constant_redraw = 0;
-        bool frame_was_custom_rendered = false, dirty_renderer = false;
-        wl_event_source *idle_redraw_source = NULL, *full_repaint_source = NULL;
         render_hook_t renderer;
 
-        bool paint(pixman_region32_t *damage);
+        void paint();
         void post_paint();
 
         void transformation_renderer();
@@ -65,7 +63,6 @@ class render_manager
 
     public:
         OpenGL::context_t *ctx;
-        static const weston_gl_renderer_api *renderer_api;
 
         render_manager(wayfire_output *o);
         ~render_manager();
@@ -81,6 +78,8 @@ class render_manager
 
         void add_output_effect(effect_hook_t*, wayfire_view v = nullptr);
         void rem_effect(const effect_hook_t*, wayfire_view v = nullptr);
+
+        void damage(wlr_box box);
 
         /* this function renders a viewport and
          * saves the image in texture which is returned */

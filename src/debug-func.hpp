@@ -1,9 +1,15 @@
-#include "debug.hpp"
 #include <signal.h>
 #include <execinfo.h>
 #include <cxxabi.h>
 #include <iostream>
-#include "core.hpp"
+
+extern "C"
+{
+#include <wlr/util/log.h>
+}
+
+#include "api/debug.hpp"
+#include "api/core.hpp"
 
 #define max_frames 100
 
@@ -62,37 +68,27 @@ void print_trace()
     exit(-1);
 }
 
-
-extern weston_compositor *crash_compositor;
-
 void signalHandle(int sig) {
     errio << "Crash detected!" << std::endl;
     print_trace();
     raise(SIGTRAP);
 }
 
-int vlog(const char *fmt, va_list ap)
+void vlog(log_importance_t log, const char *fmt, va_list ap)
 {
     char buf[4096];
 	vsnprintf(buf, 4095, fmt, ap);
-    wf_debug::logfile << "[weston] " << buf;
-    wf_debug::logfile.flush();
-	return 0;
-}
+    if (log == L_ERROR)
+    {
+        wf_debug::logfile << "[EE]";
+    } else if (log == L_INFO)
+    {
+        wf_debug::logfile << "[II]";
+    } else if (log == L_DEBUG)
+    {
+        wf_debug::logfile << "[DD]";
+    }
 
-int vlog_continue(const char *fmt, va_list argp)
-{
-    char buf[4096];
-	vsnprintf(buf, 4095, fmt, argp);
-    wf_debug::logfile << buf;
-    wf_debug::logfile.flush();
-    return 0;
-}
-
-void wayland_log_handler(const char *fmt, va_list arg)
-{
-    char buf[4096];
-	vsnprintf(buf, 4095, fmt, arg);
-    wf_debug::logfile << "[wayland] " << buf;
+    wf_debug::logfile << "[wlroots] " << buf << std::endl;
     wf_debug::logfile.flush();
 }

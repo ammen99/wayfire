@@ -141,7 +141,6 @@ binding_win_down = <super> <shift> KEY_DOWN
 # bl/tl/tr/br = "bottom left" = bottom-left quarter of the screen
 [grid]
 duration = 300
-std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
 slot_bl = <ctrl> <alt> KEY_KP1
 slot_b  = <ctrl> <alt> KEY_KP2
 slot_br = <ctrl> <alt> KEY_KP3

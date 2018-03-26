@@ -4,7 +4,7 @@
 #include <memory>
 #include <functional>
 #include <vector>
-#include <compositor.h>
+#include <view.hpp>
 #include "../../proto/wayfire-shell-server.h"
 
 class wayfire_view_t;
@@ -77,7 +77,7 @@ class workspace_manager
 
         /* returns the available area for views, it is basically
          * the output geometry minus the area reserved for panels */
-        virtual weston_geometry get_workarea() = 0;
+        virtual wf_geometry get_workarea() = 0;
 
         virtual ~workspace_manager();
 };

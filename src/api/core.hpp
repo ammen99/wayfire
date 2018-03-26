@@ -6,10 +6,16 @@
 #include <vector>
 #include <map>
 
-#include <compositor.h>
+extern "C"
+{
+#include <wlr/backend.h>
+#include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_output_layout.h>
+#include <wlr/types/wlr_compositor.h>
+#include <wayland-server.h>
+}
 
-struct weston_desktop_surface;
-
+struct desktop_apis_t;
 class input_manager;
 class wayfire_config;
 class wayfire_output;
@@ -25,11 +31,11 @@ class wayfire_core
 
         wayfire_config *config;
 
-        std::vector<weston_output*> pending_outputs;
-
         wayfire_output *active_output;
-        std::map<uint32_t, wayfire_output *> outputs;
-        std::map<weston_view *, wayfire_view> views;
+
+        std::vector<wlr_output*> pending_outputs;
+        std::map<wlr_output*, wayfire_output*> outputs;
+        std::map<wlr_surface*, wayfire_view> views;
 
         void configure(wayfire_config *config);
 
@@ -39,37 +45,40 @@ class wayfire_core
 
         std::vector<wl_resource*> shell_clients;
 
+        desktop_apis_t *api;
+
+        wl_display *display;
+        wl_event_loop *ev_loop;
+        wlr_backend *backend;
+        wlr_renderer *renderer;
+        wlr_output_layout *output_layout;
+        wlr_compositor *compositor;
+
 
         std::string wayland_display, xwayland_display;
 
         input_manager *input;
 
-        weston_compositor *ec;
-        void init(weston_compositor *ec, wayfire_config *config);
+        void init(wayfire_config *config);
         void wake();
         void sleep();
         void refocus_active_output_active_view();
 
-        void setup_renderer();
+        wlr_seat *get_current_seat();
 
-        weston_seat *get_current_seat();
-
-        void add_view(weston_desktop_surface *);
-        wayfire_view find_view(weston_view *);
-        wayfire_view find_view(weston_desktop_surface *);
-        wayfire_view find_view(weston_surface *);
+        void add_view(wayfire_view view);
+        wayfire_view find_view(wlr_surface *);
 
         /* completely destroy a view */
-        void erase_view(wayfire_view view, bool destroy_libweston_view = false);
+        void erase_view(wayfire_view view);
 
         /* brings the view to the top
          * and also focuses its output */
-        void focus_view(wayfire_view win, weston_seat *seat);
-        void close_view(wayfire_view win);
+        void focus_view(wayfire_view win, wlr_seat *seat);
         void move_view_to_output(wayfire_view v, wayfire_output *new_output);
 
-        void add_output(weston_output *output);
-        wayfire_output *get_output(weston_output *output);
+        void add_output(wlr_output *output);
+        wayfire_output *get_output(wlr_output *output);
 
         void focus_output(wayfire_output *o);
         void remove_output(wayfire_output *o);
@@ -87,8 +96,6 @@ class wayfire_core
 
         std::string shadersrc, plugin_path, plugins;
         bool run_panel;
-
-        weston_compositor_backend backend;
 };
 
 extern wayfire_core *core;

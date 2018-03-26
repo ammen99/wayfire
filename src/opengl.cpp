@@ -1,9 +1,7 @@
 #include "opengl.hpp"
-#include <compositor.h>
 #include "debug.hpp"
 #include "output.hpp"
 #include "render-manager.hpp"
-#include <gl-renderer-api.h>
 
 namespace {
     OpenGL::context_t *bound;
@@ -170,9 +168,9 @@ namespace OpenGL {
         bound->height = ctx->output->handle->height;
     }
 
-    weston_geometry get_device_viewport()
+    wf_geometry get_device_viewport()
     {
-        return render_manager::renderer_api->get_output_gl_viewport(bound->output->handle);
+        return {0, 0, bound->width, bound->height};
     }
 
     void use_device_viewport()
@@ -186,7 +184,7 @@ namespace OpenGL {
         delete ctx;
     }
 
-    void render_texture(GLuint tex, const weston_geometry& g,
+    void render_texture(GLuint tex, const wf_geometry& g,
             const texture_geometry& texg, uint32_t bits)
     {
         if ((bits & DONT_RELOAD_PROGRAM) == 0)
@@ -259,7 +257,7 @@ namespace OpenGL {
         GL_CALL(glDisableVertexAttribArray(bound->uvPosition));
     }
 
-    void render_transformed_texture(GLuint tex, const weston_geometry& g,
+    void render_transformed_texture(GLuint tex, const wf_geometry& g,
             const texture_geometry& texg, glm::mat4 model,
             glm::vec4 color, uint32_t bits)
     {

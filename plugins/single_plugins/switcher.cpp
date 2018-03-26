@@ -384,7 +384,7 @@ class view_switcher : public wayfire_plugin_t
         int cx = sw / 2;
         int cy = sh / 2;
 
-        weston_geometry compositor_geometry = v->geometry;
+        wf_geometry compositor_geometry = v->geometry;
         v->geometry.x = cx - compositor_geometry.width / 2;
         v->geometry.y = cy - compositor_geometry.height / 2;
 

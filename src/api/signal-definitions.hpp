@@ -31,7 +31,7 @@ struct focus_view_signal : public signal_data
 struct view_geometry_changed_signal : public signal_data
 {
     wayfire_view view;
-    weston_geometry old_geometry;
+    wf_geometry old_geometry;
 };
 
 /* The view_maximized_signal and view_fullscreen_signals are
