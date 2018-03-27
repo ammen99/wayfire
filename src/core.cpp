@@ -468,6 +468,12 @@ void handle_pointer_motion_cb(wl_listener*, void *data)
     core->input->handle_pointer_motion(ev->device->pointer, ev);
 }
 
+void handle_pointer_motion_absolute_cb(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_event_pointer_motion_absolute*> (data);
+    core->input->handle_pointer_motion_absolute(ev->device->pointer, ev);
+}
+
 void handle_keyboard_key_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_keyboard_key*> (data);
@@ -492,8 +498,7 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
     bool handled = false;
 
-    std::cout << "got key" << key << " " << KEY_ESC << std::endl;
-    if (key == KEY_ESC)
+    if (key == KEY_KP0)
         std::exit(0);
 
     return handled;
@@ -503,30 +508,53 @@ void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uin
 {
 }
 
-void input_manager::handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_motion *ev)
+void input_manager::update_cursor_position(uint32_t time_msec)
 {
-    wlr_cursor_move(cursor, ev->device, ev->delta_x, ev->delta_y);
-
+    /* TODO: focus only on click, as this way we cannot do anything in move plugin */
     auto output = core->get_output_at(cursor->x, cursor->y);
+    if (!output) return;
     assert(output);
 
     core->focus_output(output);
 
+    if (input_grabbed())
+        return;
 
-    if (!input_grabbed())
+    auto view = output->get_view_at_point(cursor->x, cursor->y);
+    if (view && view->is_mapped)
     {
-
-        auto view = output->get_view_at_point(cursor->x, cursor->y);
-        if (view->is_mapped)
-        {
-            output->focus_view(view);
-            wlr_seat_pointer_notify_enter(seat, view->surface, cursor->x, cursor->y);
-        }
-
-        wlr_seat_pointer_notify_motion(core->input->seat,
-                                       ev->time_msec, ev->delta_x, ev->delta_y);
+        output->focus_view(view);
+        wlr_seat_pointer_notify_enter(seat, view->surface, cursor->x, cursor->y);
+        wlr_seat_pointer_notify_motion(core->input->seat, time_msec, cursor->x, cursor->y);
     }
+
 }
+
+void input_manager::handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_motion *ev)
+{
+
+    std::cout << "handle pointer motion!!!" << std::endl;
+    wlr_cursor_move(cursor, ev->device, ev->delta_x, ev->delta_y);
+
+    std::cout << "cursor is now at " << cursor->x << " " << cursor->y << std::endl;
+
+    update_cursor_position(ev->time_msec);
+}
+
+void input_manager::handle_pointer_motion_absolute(wlr_pointer *ptr, wlr_event_pointer_motion_absolute *ev)
+{
+
+    std::cout << "handle pointer motion!!!" << std::endl;
+    wlr_cursor_warp_absolute(cursor, ev->device,
+                             ev->x_mm / ev->width_mm,
+                             ev->y_mm / ev->height_mm);
+
+    std::cout << ev->x_mm << " " << ev->width_mm << " " << ev->y_mm << " " << ev->height_mm << std::endl;
+
+    std::cout << "cursor is now at " << cursor->x << " " << cursor->y << std::endl;
+    update_cursor_position(ev->time_msec);;
+}
+
 
 bool input_manager::is_touch_enabled()
 {
@@ -619,15 +647,21 @@ void input_manager::setup_keyboard(wlr_input_device *dev)
 
 void input_manager::handle_new_input(wlr_input_device *dev)
 {
-    if (!seat)
+    if (!cursor)
         create_seat();
+
+    debug << "handle new input: " << dev->name << std::endl;
 
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
         setup_keyboard(dev);
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
     {
+        debug << "use as pointer" << std::endl;
         wlr_cursor_attach_input_device(cursor, dev);
+   //     wlr_cursor_map_input_to_output(cursor, dev, core->get_active_output()->handle);
+      //  wlr_cursor_map_input_to_region(cursor, dev, NULL);
+
         pointer_count++;
     }
 
@@ -642,9 +676,11 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
 void input_manager::create_seat()
 {
-    seat = wlr_seat_create(core->display, "default");
     cursor = wlr_cursor_create();
+
     wlr_cursor_attach_output_layout(cursor, core->output_layout);
+    wlr_cursor_map_to_output(cursor, NULL);
+    wlr_cursor_warp(cursor, NULL, cursor->x, cursor->y);
 
     xcursor = wlr_xcursor_manager_create(NULL, 32);
     wlr_xcursor_manager_load(xcursor, 1);
@@ -652,19 +688,23 @@ void input_manager::create_seat()
     wlr_xcursor_manager_set_cursor_image(xcursor, "left_ptr", cursor);
   //  wlr_cursor_warp(cursor, NULL, cursor->x, cursor->y);
 
+    debug << "create seat, add events" << std::endl;
     wl_signal_add(&cursor->events.button, &button);
     wl_signal_add(&cursor->events.motion, &motion);
+    wl_signal_add(&cursor->events.motion_absolute, &motion_absolute);
 }
 
 input_manager::input_manager()
 {
     input_device_created.notify = handle_new_input_cb;
+    seat = wlr_seat_create(core->display, "default");
     wl_signal_add(&core->backend->events.new_input,
                   &input_device_created);
 
     key.notify    = handle_keyboard_key_cb;
     button.notify = handle_pointer_button_cb;
     motion.notify = handle_pointer_motion_cb;
+    motion_absolute.notify = handle_pointer_motion_absolute_cb;
 
     /*
     if (is_touch_enabled())
@@ -1026,11 +1066,14 @@ void bind_desktop_shell(wl_client *client, void *data, uint32_t version, uint32_
 void wayfire_core::init(wayfire_config *conf)
 {
     configure(conf);
+
+    data_device_manager = wlr_data_device_manager_create(display);
     wl_display_init_shm(core->display);
+
     output_layout = wlr_output_layout_create();
-    core->compositor = wlr_compositor_create(core->display,
-                                             wlr_backend_get_renderer(core->backend));
+    core->compositor = wlr_compositor_create(display, wlr_backend_get_renderer(backend));
     init_desktop_apis();
+    input = new input_manager();
 
 #if BUILD_WITH_IMAGEIO
     image_io::init();
@@ -1041,7 +1084,6 @@ void wayfire_core::init(wayfire_config *conf)
         errio << "Failed to create wayfire_shell interface" << std::endl;
     }
 
-    input = new input_manager();
 }
 
 void refocus_idle_cb(void *data)

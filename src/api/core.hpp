@@ -12,6 +12,7 @@ extern "C"
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_output_layout.h>
 #include <wlr/types/wlr_compositor.h>
+#include <wlr/types/wlr_data_device.h>
 #include <wayland-server.h>
 }
 
@@ -53,6 +54,7 @@ class wayfire_core
         wlr_renderer *renderer;
         wlr_output_layout *output_layout;
         wlr_compositor *compositor;
+        wlr_data_device_manager *data_device_manager;
 
 
         std::string wayland_display, xwayland_display;
