@@ -57,9 +57,6 @@ class input_manager
 
         bool is_touch_enabled();
 
-        wlr_cursor *cursor = NULL;
-        wlr_xcursor_manager *xcursor;
-
         void create_seat();
         void setup_keyboard(wlr_input_device *dev);
         void handle_new_input(wlr_input_device *dev);
@@ -69,7 +66,10 @@ class input_manager
     public:
         input_manager();
         wlr_seat *seat = nullptr;
+        wlr_cursor *cursor = NULL;
+        wlr_xcursor_manager *xcursor;
 
+ 
         int pointer_count = 0, keyboard_count = 0, touch_count = 0;
         void update_capabilities();
 

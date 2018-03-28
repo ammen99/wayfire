@@ -67,6 +67,7 @@ class wayfire_core
         void refocus_active_output_active_view();
 
         wlr_seat *get_current_seat();
+        void set_default_cursor();
 
         void add_view(wayfire_view view);
         wayfire_view find_view(wlr_surface *);

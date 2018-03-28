@@ -799,6 +799,7 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
     this->handle = handle;
 
     wlr_output_layout_add_auto(core->output_layout, handle);
+    core->set_default_cursor();
 
     render = new render_manager(this);
     plugin = new plugin_manager(this, c);

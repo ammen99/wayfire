@@ -1126,6 +1126,11 @@ static void output_destroyed_callback(wl_listener *, void *data)
     core->remove_output(core->get_output((wlr_output*) data));
 }
 
+void wayfire_core::set_default_cursor()
+{
+    wlr_xcursor_manager_set_cursor_image(input->xcursor, "left_ptr", input->cursor);
+}
+
 static int _last_output_id = 0;
 void wayfire_core::add_output(wlr_output *output)
 {
