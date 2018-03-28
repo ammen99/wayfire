@@ -58,7 +58,7 @@ class wayfire_view_t
         void force_update_xwayland_position();
         int in_continuous_move = 0, in_continuous_resize = 0;
 
-        wl_listener committed;
+        wl_listener committed, destroy;
         inline wayfire_view self();
     public:
 
@@ -83,6 +83,7 @@ class wayfire_view_t
         virtual void activate(bool active) {};
         virtual void close() {};
         virtual void set_parent(wayfire_view parent);
+        virtual bool is_toplevel() { return true; }
 
         virtual void set_geometry(wf_geometry g);
         virtual void set_resizing(bool resizing);

@@ -262,7 +262,7 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 
     std::vector<wayfire_view> ret;
     for_each_view([&ret, g] (wayfire_view view) {
-        if (rect_intersect(g, view->geometry)) {
+        if (rect_intersect(g, view->geometry) && view->is_toplevel()) {
             ret.push_back(view);
         }
     });

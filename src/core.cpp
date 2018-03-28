@@ -477,21 +477,15 @@ void handle_pointer_motion_absolute_cb(wl_listener*, void *data)
 void handle_keyboard_key_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_keyboard_key*> (data);
-    std::cout << "got key " << ev << std::endl;
-
     if (!core->input->handle_keyboard_key(ev->keycode, ev->state))
     {
-        std::cout << "must send" << std::endl;
-        auto v = core->get_active_output()->get_top_view();
-        if (v)
-        {
-            v->output->focus_view(nullptr);
-            std::cout << "focus it" << std::endl;
-            v->output->focus_view(v);
-        }
         wlr_seat_keyboard_notify_key(core->input->seat, ev->time_msec,
                                      ev->keycode, ev->state);
     }
+}
+
+void handle_keyboard_mod_cb(wl_listener*, void* data)
+{
 }
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)

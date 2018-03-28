@@ -209,9 +209,17 @@ void desktop_surface_set_parent(weston_desktop_surface *ds,
 
 void committed_cb(wl_listener*, void *data)
 {
-    debug << "hit commit " << std::endl;
     auto view = core->find_view((wlr_surface*) data);
     view->commit();
+}
+
+// TODO: do better
+void destroyed_cb(wl_listener*, void *data)
+{
+    auto view = core->find_view((wlr_surface*) data);
+
+    view->output->detach_view(view);
+    core->erase_view(view);
 }
 
 wayfire_view_t::wayfire_view_t(wlr_surface *surf)
@@ -228,6 +236,9 @@ wayfire_view_t::wayfire_view_t(wlr_surface *surf)
 
     committed.notify = committed_cb;
     wl_signal_add(&surface->events.commit, &committed);
+
+    destroy.notify = destroyed_cb;
+    wl_signal_add(&surface->events.destroy, &destroy);
 }
 
 wayfire_view_t::~wayfire_view_t()
@@ -354,7 +365,7 @@ void wayfire_view_t::commit()
     geometry.width = surface->current->width;
     geometry.height = surface->current->height;
 
-    /* TODO: what do we do? 
+    /* TODO: do this check in constructors
     auto full  = weston_desktop_surface_get_fullscreen(desktop_surface),
          maxim = weston_desktop_surface_get_maximized(desktop_surface);
 
@@ -382,7 +393,17 @@ void wayfire_view_t::damage()
     output->render->damage(geometry);
 }
 
+#define toplevel_op_check \
+    if(!is_toplevel())\
+    { \
+        errio << "view.cpp(" << __LINE__ << "): attempting to " << __func__ << " a non-toplevel view" << std::endl; \
+        return; \
+    }
+
+#define fmt_nonull(x) ((x) ?: ("nil"))
+
 /* xdg_shell_v6 implementation */
+/* TODO: map/unmap */
 class wayfire_xdg6_view : public wayfire_view_t
 {
     wlr_xdg_surface_v6 *v6_surface;
@@ -390,26 +411,49 @@ class wayfire_xdg6_view : public wayfire_view_t
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
         : wayfire_view_t (s->surface), v6_surface(s)
     {
-        debug << "New xdg6 surface: \n";// << v6_surface->title << " app-id: " << v6_surface->app_id << std::endl;
-
+        debug << "New xdg6 surface: " << fmt_nonull(v6_surface->title)
+                       << " app-id: " << fmt_nonull(v6_surface->app_id) << std::endl;
         wlr_xdg_surface_v6_ping(s);
     }
 
     bool is_toplevel()
-    { return v6_surface->role == WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL; }
+    {
+        return v6_surface->role == WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL;
+    }
 
     void activate(bool act)
-    { wlr_xdg_toplevel_v6_set_activated(v6_surface, act); }
+    {
+        toplevel_op_check;
+        wlr_xdg_toplevel_v6_set_activated(v6_surface, act);
+    }
+
+    void set_maximized(bool max)
+    {
+        toplevel_op_check;
+        this->maximized = max;
+        wlr_xdg_toplevel_v6_set_maximized(v6_surface, max);
+    }
+
+    void set_fullscreen(bool full)
+    {
+        toplevel_op_check;
+        this->fullscreen = full;
+        wlr_xdg_toplevel_v6_set_fullscreen(v6_surface, full);
+    }
 
     void resize(int w, int h, bool send)
     {
+        toplevel_op_check;
+
         wayfire_view_t::resize(w, h, send);
         wlr_xdg_toplevel_v6_set_size(v6_surface, w, h);
     }
 };
 
 void notify_v6_created(wl_listener*, void *data)
-{ core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data)); }
+{
+    core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data));
+}
 
 void init_desktop_apis()
 {
