@@ -6,6 +6,7 @@ extern "C"
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_touch.h>
+#include <wlr/types/wlr_cursor.h>
 }
 
 #include <functional>
@@ -24,8 +25,8 @@ using effect_hook_t = std::function<void()>;
 #define MODIFIER_SHIFT (1 << 3)
 
 struct wayfire_touch_gesture;
-using key_callback = std::function<void(wlr_keyboard*, uint32_t)>;
-using button_callback = std::function<void(wlr_pointer*, uint32_t)>;
+using key_callback = std::function<void(uint32_t)>;
+using button_callback = std::function<void(wlr_cursor*, uint32_t)>;
 using touch_callback = std::function<void(wlr_touch*, wl_fixed_t, wl_fixed_t)>;
 using touch_gesture_callback = std::function<void(wayfire_touch_gesture*)>;
 
@@ -101,14 +102,14 @@ struct wayfire_grab_interface_t {
 
     struct {
         struct {
-            std::function<void(wlr_pointer*,wlr_event_pointer_axis*)> axis;
-            std::function<void(wlr_pointer*,uint32_t, uint32_t)> button; // button, state
-            std::function<void(wlr_pointer*)> motion;
+            std::function<void(wlr_event_pointer_axis*)> axis;
+            std::function<void(uint32_t, uint32_t, int32_t, int32_t)> button; // button, state, cursor x / y
+            std::function<void(int32_t x, int32_t y)> motion;
         } pointer;
 
         struct {
-            std::function<void(wlr_keyboard*,uint32_t,uint32_t)> key; // button, state
-            std::function<void(wlr_keyboard*,uint32_t,uint32_t,uint32_t,uint32_t)> mod; // depressed, locks, latched, group
+            std::function<void(uint32_t,uint32_t)> key; // button, state
+            std::function<void(uint32_t,uint32_t)> mod; // modifier, state
         } keyboard;
 
         struct {

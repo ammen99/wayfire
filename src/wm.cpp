@@ -9,18 +9,20 @@
 
 void wayfire_exit::init(wayfire_config*)
 {
-    key = [](wlr_keyboard *kbd, uint32_t key) {
+    key = [](uint32_t key)
+    {
         wl_display_terminate(core->display);
     };
 
-    output->add_key(MODIFIER_SUPER | MODIFIER_SHIFT, KEY_ESC,       &key);
+    output->add_key(MODIFIER_SUPER, KEY_Z,       &key);
     output->add_key(MODIFIER_ALT   | MODIFIER_CTRL,  KEY_BACKSPACE, &key);
 }
 
 void wayfire_close::init(wayfire_config *config)
 {
     auto key = config->get_section("core")->get_key("view_close", {MODIFIER_SUPER, KEY_Q});
-    callback = [=] (wlr_keyboard *kbd, uint32_t key) {
+    callback = [=] (uint32_t key)
+    {
         auto view = output->get_top_view();
         if (view) view->close();
     };

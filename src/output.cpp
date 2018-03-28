@@ -313,6 +313,9 @@ void render_manager::paint()
     wlr_renderer_end(rr);
     wlr_output_damage_swap_buffers(damage_manager, NULL, NULL);
 
+    auto_redraw(true);
+    post_paint();
+
     /*
     OpenGL::bind_context(ctx);
     if (renderer)

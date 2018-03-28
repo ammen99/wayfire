@@ -450,6 +450,25 @@ void input_manager::check_touch_bindings(weston_touch* touch, wl_fixed_t sx, wl_
 }
 */
 
+struct wf_callback
+{
+    int id;
+    wayfire_output *output;
+    uint32_t mod;
+};
+
+struct key_callback_data : wf_callback
+{
+    key_callback *call;
+    uint32_t key;
+};
+
+struct button_callback_data : wf_callback
+{
+    button_callback *call;
+    uint32_t button;
+};
+
 /* TODO: inhibit idle */
 void handle_pointer_button_cb(wl_listener*, void *data)
 {
@@ -484,18 +503,81 @@ void handle_keyboard_key_cb(wl_listener*, void *data)
     }
 }
 
+static uint32_t mod_from_key(uint32_t key)
+{
+    if (key == KEY_LEFTALT || key == KEY_RIGHTALT)
+        return MODIFIER_ALT;
+    if (key == KEY_LEFTCTRL || key == KEY_RIGHTCTRL)
+        return MODIFIER_CTRL;
+    if (key == KEY_LEFTSHIFT || key == KEY_RIGHTSHIFT)
+        return MODIFIER_SHIFT;
+    if (key == KEY_LEFTMETA || key == KEY_RIGHTMETA)
+        return MODIFIER_SUPER;
+
+    return 0;
+}
+
 void handle_keyboard_mod_cb(wl_listener*, void* data)
 {
+    auto kbd = static_cast<wlr_keyboard*> (data);
+    if (!core->input->input_grabbed())
+        wlr_seat_keyboard_send_modifiers(core->input->seat, &kbd->modifiers);
 }
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
-    bool handled = false;
-
     if (key == KEY_KP0)
         std::exit(0);
 
-    return handled;
+    auto mod = mod_from_key(key);
+    if (mod) return handle_keyboard_mod(mod, state);
+
+    if (state == WLR_KEY_PRESSED)
+    {
+        std::vector<key_callback*> callbacks;
+
+        auto mod_state = get_modifiers();
+
+        std::cout << "modifier at: " << mod_state << std::endl;
+        for (auto& pair : key_bindings)
+        {
+            auto& binding = pair.second;
+            std::cout << "got binding " << binding->mod << " " << binding->key << std::endl;
+
+            if (binding->output == core->get_active_output() &&
+                mod_state == binding->mod && key == binding->key)
+                callbacks.push_back(binding->call);
+        }
+
+        for (auto call : callbacks)
+            (*call) (key);
+
+        return callbacks.size();
+    }
+
+    if (active_grab)
+    {
+        if (active_grab->callbacks.keyboard.key)
+            active_grab->callbacks.keyboard.key(key, state);
+        return true;
+    }
+
+    return false;
+}
+
+bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
+{
+    mods_count[modifier] += (state == WLR_KEY_PRESSED ? 1 : -1);
+
+    std::cout << "mod state: " << get_modifiers() << std::endl;
+    if (active_grab)
+    {
+        if (active_grab->callbacks.keyboard.mod)
+            active_grab->callbacks.keyboard.mod(modifier, state);
+        return true;
+    }
+
+    return false;
 }
 
 void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uint32_t state)
@@ -526,26 +608,15 @@ void input_manager::update_cursor_position(uint32_t time_msec)
 
 void input_manager::handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_motion *ev)
 {
-
-    std::cout << "handle pointer motion!!!" << std::endl;
     wlr_cursor_move(cursor, ev->device, ev->delta_x, ev->delta_y);
-
-    std::cout << "cursor is now at " << cursor->x << " " << cursor->y << std::endl;
-
     update_cursor_position(ev->time_msec);
 }
 
 void input_manager::handle_pointer_motion_absolute(wlr_pointer *ptr, wlr_event_pointer_motion_absolute *ev)
 {
-
-    std::cout << "handle pointer motion!!!" << std::endl;
     wlr_cursor_warp_absolute(cursor, ev->device,
                              ev->x_mm / ev->width_mm,
                              ev->y_mm / ev->height_mm);
-
-    std::cout << ev->x_mm << " " << ev->width_mm << " " << ev->y_mm << " " << ev->height_mm << std::endl;
-
-    std::cout << "cursor is now at " << cursor->x << " " << cursor->y << std::endl;
     update_cursor_position(ev->time_msec);;
 }
 
@@ -634,6 +705,7 @@ void input_manager::setup_keyboard(wlr_input_device *dev)
     wlr_keyboard_set_repeat_info(dev->keyboard, 40, 400);
 
     wl_signal_add(&dev->keyboard->events.key, &key);
+    wl_signal_add(&dev->keyboard->events.modifiers, &modifier);
     wlr_seat_set_keyboard(seat, dev);
 
     keyboard_count++;
@@ -651,11 +723,7 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
     {
-        debug << "use as pointer" << std::endl;
         wlr_cursor_attach_input_device(cursor, dev);
-   //     wlr_cursor_map_input_to_output(cursor, dev, core->get_active_output()->handle);
-      //  wlr_cursor_map_input_to_region(cursor, dev, NULL);
-
         pointer_count++;
     }
 
@@ -679,7 +747,7 @@ void input_manager::create_seat()
     xcursor = wlr_xcursor_manager_create(NULL, 32);
     wlr_xcursor_manager_load(xcursor, 1);
 
-    wlr_xcursor_manager_set_cursor_image(xcursor, "left_ptr", cursor);
+    core->set_default_cursor();
   //  wlr_cursor_warp(cursor, NULL, cursor->x, cursor->y);
 
     debug << "create seat, add events" << std::endl;
@@ -695,9 +763,10 @@ input_manager::input_manager()
     wl_signal_add(&core->backend->events.new_input,
                   &input_device_created);
 
-    key.notify    = handle_keyboard_key_cb;
-    button.notify = handle_pointer_button_cb;
-    motion.notify = handle_pointer_motion_cb;
+    key.notify             = handle_keyboard_key_cb;
+    modifier.notify        = handle_keyboard_mod_cb;
+    button.notify          = handle_pointer_button_cb;
+    motion.notify          = handle_pointer_motion_cb;
     motion_absolute.notify = handle_pointer_motion_absolute_cb;
 
     /*
@@ -718,6 +787,16 @@ input_manager::input_manager()
     session_listener.notify = session_signal_handler;
     wl_signal_add(&core->ec->session_signal, &session_listener);
     */
+}
+
+uint32_t input_manager::get_modifiers()
+{
+    uint32_t result = 0;
+    for (int i = 0; i < 4; i++)
+        if (mods_count[(1 << i)] > 0)
+            result |= (1 << i);
+
+    return result;
 }
 
 // TODO: set pointer, reset mods, grab gr */
@@ -798,24 +877,6 @@ void input_manager::toggle_session()
     }
 
 }
-
-struct wf_callback
-{
-    int id;
-    wayfire_output *output;
-};
-
-struct key_callback_data : wf_callback
-{
-    key_callback *call;
-};
-
-struct button_callback_data : wf_callback
-{
-    button_callback *call;
-};
-
-#define check_binding(b) (b->output == core->get_active_output())
 static int _last_id = 0;
 
 int input_manager::add_key(uint32_t mod, uint32_t key,
@@ -824,6 +885,8 @@ int input_manager::add_key(uint32_t mod, uint32_t key,
     auto kcd = new key_callback_data;
     kcd->call = call;
     kcd->output = output;
+    kcd->mod = mod;
+    kcd->key = key;
     kcd->id = ++_last_id;
 
     key_bindings[_last_id] = kcd;
@@ -858,12 +921,14 @@ void input_manager::rem_key(key_callback *cb)
 int input_manager::add_button(uint32_t mod, uint32_t button,
                                 button_callback *call, wayfire_output *output)
 {
-    auto kcd = new button_callback_data;
-    kcd->call = call;
-    kcd->output = output;
-    kcd->id = ++_last_id;
+    auto bcd = new button_callback_data;
+    bcd->call = call;
+    bcd->output = output;
+    bcd->mod = mod;
+    bcd->button = button;
+    bcd->id = ++_last_id;
 
-    button_bindings[_last_id] = kcd;
+    button_bindings[_last_id] = bcd;
     return _last_id;
 }
 
@@ -1122,7 +1187,8 @@ static void output_destroyed_callback(wl_listener *, void *data)
 
 void wayfire_core::set_default_cursor()
 {
-    wlr_xcursor_manager_set_cursor_image(input->xcursor, "left_ptr", input->cursor);
+    if (input->cursor)
+        wlr_xcursor_manager_set_cursor_image(input->xcursor, "left_ptr", input->cursor);
 }
 
 static int _last_output_id = 0;

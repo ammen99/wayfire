@@ -50,6 +50,7 @@ class input_manager
             wayfire_output *output;
         };
 
+        std::map<int, int> mods_count;
         std::map<int, wf_gesture_listener> gesture_listeners;
         std::map<int, touch_listener> touch_listeners;
         std::map<int, key_callback_data*> key_bindings;
@@ -69,7 +70,6 @@ class input_manager
         wlr_cursor *cursor = NULL;
         wlr_xcursor_manager *xcursor;
 
- 
         int pointer_count = 0, keyboard_count = 0, touch_count = 0;
         void update_capabilities();
 
@@ -79,6 +79,7 @@ class input_manager
         bool input_grabbed();
 
         void toggle_session();
+        uint32_t get_modifiers();
 
         void free_output_bindings(wayfire_output *output);
 
@@ -88,8 +89,7 @@ class input_manager
         void handle_pointer_button(wlr_pointer *ptr, uint32_t button, uint32_t state);
 
         bool handle_keyboard_key(uint32_t key, uint32_t state);
-        bool handle_keyboard_mod(uint32_t depressed, uint32_t locked,
-                                 uint32_t latched, uint32_t group);
+        bool handle_keyboard_mod(uint32_t key, uint32_t state);
 
         bool handle_touch_down  (wlr_touch*, int32_t, wl_fixed_t, wl_fixed_t);
         bool handle_touch_up    (wlr_touch*, int32_t);

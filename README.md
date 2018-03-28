@@ -1,4 +1,7 @@
 # Wayfire
+
+**This is the wlroots branch, it doesn't work yet, try the master branch if you want to try Wayfire**
+
 # Introduction
 
 [![Join the chat at https://gitter.im/Wayfire-WM/Lobby](https://badges.gitter.im/Wayfire-WM/Lobby.svg)](https://gitter.im/Wayfire-WM/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
