@@ -475,10 +475,8 @@ void handle_pointer_button_cb(wl_listener*, void *data)
     auto ev = static_cast<wlr_event_pointer_button*> (data);
     core->input->handle_pointer_button(ev->device->pointer,
                                             ev->button, ev->state);
-    {
         wlr_seat_pointer_notify_button(core->input->seat, ev->time_msec,
                                        ev->button, ev->state);
-    }
 }
 
 void handle_pointer_motion_cb(wl_listener*, void *data)
@@ -535,12 +533,9 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 
         auto mod_state = get_modifiers();
 
-        std::cout << "modifier at: " << mod_state << std::endl;
         for (auto& pair : key_bindings)
         {
             auto& binding = pair.second;
-            std::cout << "got binding " << binding->mod << " " << binding->key << std::endl;
-
             if (binding->output == core->get_active_output() &&
                 mod_state == binding->mod && key == binding->key)
                 callbacks.push_back(binding->call);
@@ -580,6 +575,30 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 
 void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uint32_t state)
 {
+    std::cout << "pressed shit\n" << std::endl;
+    if (state == WLR_BUTTON_PRESSED)
+    {
+        std::vector<button_callback*> callbacks;
+
+        auto mod_state = get_modifiers();
+
+        std::cout << "get pressed, mods: " << mod_state << std::endl;
+
+        for (auto& pair : button_bindings)
+        {
+            auto& binding = pair.second;
+            std::cout << mod_state << " " << binding->mod << " " << button << " " << binding->button << std::endl;
+            if (binding->output == core->get_active_output() &&
+                mod_state == binding->mod && button == binding->button)
+                callbacks.push_back(binding->call);
+        }
+
+        for (auto call : callbacks)
+            (*call) (cursor->x, cursor->y, button);
+    }
+
+    if (active_grab && active_grab->callbacks.pointer.button)
+        active_grab->callbacks.pointer.button(button, state, cursor->x, cursor->y);
 }
 
 void input_manager::update_cursor_position(uint32_t time_msec)
@@ -592,7 +611,11 @@ void input_manager::update_cursor_position(uint32_t time_msec)
     core->focus_output(output);
 
     if (input_grabbed())
+    {
+        if (active_grab->callbacks.pointer.motion)
+            active_grab->callbacks.pointer.motion(cursor->x, cursor->y);
         return;
+    }
 
     auto view = output->get_view_at_point(cursor->x, cursor->y);
     if (view && view->is_mapped)
