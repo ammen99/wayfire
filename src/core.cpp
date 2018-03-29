@@ -526,9 +526,6 @@ void handle_keyboard_mod_cb(wl_listener*, void* data)
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
-    if (key == KEY_KP0)
-        std::exit(0);
-
     auto mod = mod_from_key(key);
     if (mod) return handle_keyboard_mod(mod, state);
 
@@ -570,6 +567,7 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
     mods_count[modifier] += (state == WLR_KEY_PRESSED ? 1 : -1);
 
     std::cout << "mod state: " << get_modifiers() << std::endl;
+
     if (active_grab)
     {
         if (active_grab->callbacks.keyboard.mod)

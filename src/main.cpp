@@ -34,10 +34,10 @@ int main(int argc, char *argv[])
 {
     if (argc > 1) {
         wf_debug::logfile.open(argv[1]);
-        wlr_log_init(L_DEBUG, vlog);
+        wlr_log_init(L_DEBUG, NULL);
     } else {
         wf_debug::logfile.open("/dev/null");
-        wlr_log_init(L_ERROR, vlog);
+        wlr_log_init(L_ERROR, NULL);
     }
 
     signal(SIGINT, signalHandle);

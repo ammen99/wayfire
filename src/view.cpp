@@ -260,6 +260,12 @@ bool wayfire_view_t::is_visible()
     return true;
 }
 
+void wayfire_view_t::update_size()
+{
+    geometry.width = surface->current ? surface->current->width  : 0;
+    geometry.height = surface->current? surface->current->height : 0;
+}
+
 void wayfire_view_t::set_moving(bool moving)
 {
     in_continuous_move += moving ? 1 : -1;
@@ -333,39 +339,42 @@ void wayfire_view_t::set_parent(wayfire_view parent)
     }
 }
 
+void wayfire_view_t::map()
+{
+    if (is_mapped)
+        errio << "Mapping an already mapped surface!" << std::endl;
+
+    is_mapped = true;
+
+    auto sig_data = create_view_signal{self()};
+    output->emit_signal("create-view", &sig_data);
+
+    if (!is_special)
+    {
+        output->focus_view(self());
+
+        /* TODO: check mods
+           auto seat = core->get_current_seat();
+           auto kbd = seat ? weston_seat_get_keyboard(seat) : NULL;
+
+           if (kbd)
+           {
+           we send zero depressed modifiers, because some modifiers are
+         * stuck when opening a window(for example if the app was opened while some plugin
+         * was working or similar)
+         weston_keyboard_send_modifiers(kbd, wl_display_next_serial(core->ec->wl_display),
+         0, kbd->modifiers.mods_latched,
+         kbd->modifiers.mods_locked, kbd->modifiers.group);
+         } */
+    }
+
+    return;
+}
+
 void wayfire_view_t::commit()
 {
     debug << "commit ??" << std::endl;
-    if (!is_mapped)
-    {
-        is_mapped = true;
-
-        auto sig_data = create_view_signal{self()};
-        output->emit_signal("create-view", &sig_data);
-
-        if (!is_special)
-        {
-            output->focus_view(self());
-
-            /* TODO: check mods
-            auto seat = core->get_current_seat();
-            auto kbd = seat ? weston_seat_get_keyboard(seat) : NULL;
-
-            if (kbd)
-            {
-                 we send zero depressed modifiers, because some modifiers are
-                 * stuck when opening a window(for example if the app was opened while some plugin
-                 * was working or similar)
-                weston_keyboard_send_modifiers(kbd, wl_display_next_serial(core->ec->wl_display),
-                                               0, kbd->modifiers.mods_latched,
-                                               kbd->modifiers.mods_locked, kbd->modifiers.group);
-            } */
-        }
-
-        return;
-    }
-    geometry.width = surface->current->width;
-    geometry.height = surface->current->height;
+    update_size();
 
     /* TODO: do this check in constructors
     auto full  = weston_desktop_surface_get_fullscreen(desktop_surface),
@@ -406,21 +415,60 @@ void wayfire_view_t::damage()
 
 /* xdg_shell_v6 implementation */
 /* TODO: map/unmap */
+
+static void handle_v6_map(wl_listener*, void *data)
+{
+    auto surface = static_cast<wlr_xdg_surface_v6*> (data);
+    auto view = core->find_view(surface->surface);
+
+    assert(view);
+
+    view->map();
+}
+
 class wayfire_xdg6_view : public wayfire_view_t
 {
     wlr_xdg_surface_v6 *v6_surface;
+    wl_listener map;
+
     public:
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
         : wayfire_view_t (s->surface), v6_surface(s)
     {
         debug << "New xdg6 surface: " << fmt_nonull(v6_surface->toplevel->title)
                        << " app-id: " << fmt_nonull(v6_surface->toplevel->app_id) << std::endl;
+
+        map.notify = handle_v6_map;
+
         wlr_xdg_surface_v6_ping(s);
+        wl_signal_add(&v6_surface->events.map, &map);
     }
 
     bool is_toplevel()
     {
         return v6_surface->role == WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL;
+    }
+
+    wf_geometry get_output_geometry()
+    {
+        return {
+            geometry.x - v6_surface->geometry.x,
+            geometry.y - v6_surface->geometry.y,
+            surface->current ? surface->current->width : 0,
+            surface->current ? surface->current->height : 0
+        };
+    }
+
+    void update_size()
+    {
+        if (v6_surface->geometry.width > 0 && v6_surface->geometry.height > 0)
+        {
+            geometry.width = v6_surface->geometry.width;
+            geometry.height = v6_surface->geometry.height;
+        } else
+        {
+            wayfire_view_t::update_size();
+        }
     }
 
     void activate(bool act)
@@ -497,10 +545,13 @@ void wayfire_view_t::simple_render(uint32_t bits, pixman_region32_t *damage)
 
 void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
 {
+    if (!surface->texture)
+        return;
     auto rr = wlr_backend_get_renderer(core->backend);
 
-    float matrix[16];
-    wlr_matrix_project_box(matrix, &geometry,
+    float matrix[9];
+    auto g = get_output_geometry();
+    wlr_matrix_project_box(matrix, &g,
                            surface->current->transform, 0, output->handle->transform_matrix);
     wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
 

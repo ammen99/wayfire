@@ -59,7 +59,10 @@ class wayfire_view_t
         int in_continuous_move = 0, in_continuous_resize = 0;
 
         wl_listener committed, destroy;
+
         inline wayfire_view self();
+        virtual void update_size();
+
     public:
 
         wayfire_view parent = nullptr;
@@ -82,8 +85,13 @@ class wayfire_view_t
         virtual void resize(int w, int h, bool send_signal = true);
         virtual void activate(bool active) {};
         virtual void close() {};
+
         virtual void set_parent(wayfire_view parent);
         virtual bool is_toplevel() { return true; }
+
+        /* return geometry together with shadows, etc.
+         * view->geometry contains "WM" geometry */
+        virtual wf_geometry get_output_geometry() { return geometry; };
 
         virtual void set_geometry(wf_geometry g);
         virtual void set_resizing(bool resizing);
@@ -99,7 +107,9 @@ class wayfire_view_t
         bool is_visible();
 
         bool is_mapped = false;
+
         virtual void commit();
+        virtual void map();
         virtual void damage();
 
         /* Used to specify that this view has been destroyed.
