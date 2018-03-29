@@ -72,6 +72,7 @@ class wayfire_core
 
         wlr_seat *get_current_seat();
         void set_default_cursor();
+        std::tuple<int, int> get_cursor_position();
 
         void add_view(wayfire_view view);
         wayfire_view find_view(wlr_surface *);

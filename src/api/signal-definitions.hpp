@@ -4,43 +4,32 @@
 #include "output.hpp"
 #include "../../proto/wayfire-shell-server.h"
 
-struct create_view_signal : public signal_data
-{
-    wayfire_view created_view;
-
-    create_view_signal(wayfire_view view) {
-        created_view = view;
-    }
-};
-
-struct destroy_view_signal : public signal_data
-{
-    wayfire_view destroyed_view;
-
-    destroy_view_signal(wayfire_view view) {
-        destroyed_view = view;
-    }
-};
-
-struct focus_view_signal : public signal_data
-{
-    wayfire_view focus;
-};
-
-/* sent when the view geometry changes(it's as libweston sees geometry, not just changes to view->geometry) */
-struct view_geometry_changed_signal : public signal_data
+/* signal definitions */
+/* convenience functions are provided to get some basic info from the signal */
+struct _view_signal : public signal_data
 {
     wayfire_view view;
+};
+wayfire_view get_signaled_view(signal_data *data);
+
+using create_view_signal     = _view_signal;
+using destroy_view_signal    = _view_signal;
+using focus_view_signal      = _view_signal;
+using view_set_parent_signal = _view_signal;
+using move_request_signal    = _view_signal;
+using resize_request_signal  = _view_signal;
+
+/* sent when the view geometry changes */
+struct view_geometry_changed_signal : public _view_signal
+{
     wf_geometry old_geometry;
 };
 
-/* The view_maximized_signal and view_fullscreen_signals are
- * used for both those requests and when these have been applied */
-struct view_maximized_signal : public signal_data
+struct _view_state_signal : public _view_signal
 {
-    wayfire_view view;
     bool state;
 };
+bool get_signaled_state(signal_data *data);
 
 /* the view-fullscreen-request signal is sent on two ocassions:
  * 1. The app requests to be fullscreened
@@ -49,12 +38,10 @@ struct view_maximized_signal : public signal_data
  * in the following way: when in case 1. then view->fullscreen != signal_data->state,
  * i.e the state hasn't been applied already. However, when some plugin etc.
  * wants to use this signal, then it should apply the state in advance */
-using view_fullscreen_signal = view_maximized_signal;
+using view_maximized_signal = _view_state_signal;
+using view_fullscreen_signal = _view_state_signal;
 
-struct view_set_parent_signal : public signal_data
-{
-    wayfire_view view;
-};
+
 
 /* same as both change_viewport_request and change_viewport_notify */
 struct change_viewport_signal : public signal_data
@@ -64,18 +51,6 @@ struct change_viewport_signal : public signal_data
 };
 using change_viewport_notify = change_viewport_signal;
 
-struct move_request_signal : public signal_data
-{
-    wayfire_view view;
-    uint32_t serial;
-};
-
-struct resize_request_signal : public signal_data
-{
-    wayfire_view view;
-    uint32_t edges;
-    uint32_t serial;
-};
 
 /* sent when the workspace implementation actually reserves the workarea */
 struct reserved_workarea_signal : public signal_data

@@ -306,6 +306,15 @@ void wayfire_view_t::resize(int w, int h, bool send_signal)
         output->emit_signal("view-geometry-changed", &data);
 }
 
+bool wayfire_view_t::map_input_coordinates(int cx, int cy, int& sx, int& sy)
+{
+    auto real_geometry = get_output_geometry();
+    sx = cx - real_geometry.x;
+    sy = cy - real_geometry.y;
+
+    return point_inside({cx, cy}, real_geometry);
+}
+
 void wayfire_view_t::set_geometry(wf_geometry g)
 {
     move(g.x, g.y, false);
@@ -346,8 +355,10 @@ void wayfire_view_t::map()
 
     is_mapped = true;
 
-    auto sig_data = create_view_signal{self()};
-    output->emit_signal("create-view", &sig_data);
+    /* TODO: consider not emitting a create-view for special surfaces */
+    create_view_signal data;
+    data.view = self();
+    output->emit_signal("create-view", &data);
 
     if (!is_special)
     {
@@ -413,8 +424,15 @@ void wayfire_view_t::damage()
 
 #define fmt_nonull(x) ((x) ?: ("nil"))
 
+static inline void handle_move_request(wayfire_view view)
+{
+    move_request_signal data;
+    data.view = view;
+    view->output->emit_signal("move-request", &data);
+}
+
 /* xdg_shell_v6 implementation */
-/* TODO: map/unmap */
+/* TODO: unmap, popups */
 
 static void handle_v6_map(wl_listener*, void *data)
 {
@@ -426,10 +444,17 @@ static void handle_v6_map(wl_listener*, void *data)
     view->map();
 }
 
+static void handle_v6_request_move(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_xdg_toplevel_v6_move_event*> (data);
+    auto view = core->find_view(ev->surface->surface);
+    handle_move_request(view);
+}
+
 class wayfire_xdg6_view : public wayfire_view_t
 {
     wlr_xdg_surface_v6 *v6_surface;
-    wl_listener map;
+    wl_listener map, request_move;
 
     public:
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
@@ -439,9 +464,12 @@ class wayfire_xdg6_view : public wayfire_view_t
                        << " app-id: " << fmt_nonull(v6_surface->toplevel->app_id) << std::endl;
 
         map.notify = handle_v6_map;
+        request_move.notify = handle_v6_request_move;
 
         wlr_xdg_surface_v6_ping(s);
+
         wl_signal_add(&v6_surface->events.map, &map);
+        wl_signal_add(&v6_surface->toplevel->events.request_move, &request_move);
     }
 
     bool is_toplevel()

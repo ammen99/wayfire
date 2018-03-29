@@ -1,6 +1,8 @@
 #include "core.hpp"
 #include "output.hpp"
 #include "input-manager.hpp"
+#include "signal-definitions.hpp"
+#include "debug.hpp"
 #include <cmath>
 
 bool wayfire_grab_interface_t::grab()
@@ -44,6 +46,33 @@ bool wayfire_grab_interface_t::is_grabbed()
 }
 
 void wayfire_plugin_t::fini() {}
+
+wayfire_view get_signaled_view(signal_data *data)
+{
+    auto conv = static_cast<_view_signal*> (data);
+    if (!conv || !conv->view)
+    {
+        errio << "Got a bad _view_signal" << std::endl;
+        return nullptr;
+    }
+
+    return conv->view;
+}
+
+bool get_signaled_state(signal_data *data)
+{
+    auto conv = static_cast<_view_state_signal*> (data);
+
+    if (!conv || !conv->view)
+    {
+        errio << "Got a bad _view_state_signal" << std::endl;
+        return false;
+    }
+
+    return conv->state;
+}
+
+
 
 const float MPI = 3.1415926535;
 

@@ -93,6 +93,11 @@ class wayfire_view_t
          * view->geometry contains "WM" geometry */
         virtual wf_geometry get_output_geometry() { return geometry; };
 
+        /* map from global to surface local coordinates
+         * returns false iff cursor is outside of the view, but sx and sy should be still set
+         * TODO: it should be overwritable by plugins which deform the view */
+        virtual bool map_input_coordinates(int cursor_x, int cursor_y, int &sx, int &sy);
+
         virtual void set_geometry(wf_geometry g);
         virtual void set_resizing(bool resizing);
         virtual void set_moving(bool moving);

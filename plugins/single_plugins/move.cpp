@@ -99,10 +99,7 @@ class wayfire_move : public wayfire_plugin_t
 
             view_destroyed = [=] (signal_data* data)
             {
-                auto conv = static_cast<destroy_view_signal*> (data);
-                assert(conv);
-
-                if (conv->destroyed_view == view)
+                if (get_signaled_view(data) == view)
                 {
                     view = nullptr;
                     input_pressed(WLR_BUTTON_RELEASED);
@@ -114,29 +111,18 @@ class wayfire_move : public wayfire_plugin_t
 
         void move_requested(signal_data *data)
         {
-            // TODO: check move request
-            /*
-            auto converted = static_cast<move_request_signal*> (data);
-
-            if(converted && converted->view) {
-                auto seat = core->get_current_seat();
-
-                auto ptr = weston_seat_get_pointer(seat);
-                auto touch = weston_seat_get_touch(seat);
-
-                if (ptr && ptr->grab_serial == converted->serial) {
-                    is_using_touch = false;
-                    initiate(converted->view, ptr->x, ptr->y);
-                } else if (touch && touch->grab_serial == converted->serial) {
-                    is_using_touch = true;
-                    initiate(converted->view, touch->grab_x, touch->grab_y);
-                }
-            } */
+            // TODO: Implement touch movement
+            auto view = get_signaled_view(data);
+            if (view)
+            {
+                is_using_touch = false;
+                GetTuple(x, y, core->get_cursor_position());
+                initiate(view, x, y);
+            }
         }
 
         void initiate(wayfire_view view, int sx, int sy)
         {
-            std::cout << "initiate" << std::endl;
             if (view->destroyed)
                 return;
 
@@ -145,7 +131,6 @@ class wayfire_move : public wayfire_plugin_t
                         view_movable(view))
                 return;
 
-            std::cout << "midman" << std::endl;
             if (!output->activate_plugin(grab_interface))
                 return;
 
@@ -153,8 +138,6 @@ class wayfire_move : public wayfire_plugin_t
                 output->deactivate_plugin(grab_interface);
                 return;
             }
-
-            std::cout << "reached this\n" << std::endl;
 
             prev_x = sx;
             prev_y = sy;

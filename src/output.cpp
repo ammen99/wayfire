@@ -926,14 +926,16 @@ void wayfire_output::attach_view(wayfire_view v)
     v->output = this;
     workspace->view_bring_to_front(v);
 
-    auto sig_data = create_view_signal{v};
-    emit_signal("attach-view", &sig_data);
+    _view_signal data;
+    data.view = v;
+    emit_signal("attach-view", &data);
 }
 
 void wayfire_output::detach_view(wayfire_view v)
 {
-    auto sig_data = destroy_view_signal{v};
-    emit_signal("detach-view", &sig_data);
+    _view_signal data;
+    data.view = v;
+    emit_signal("detach-view", &data);
 
     if (v->keep_count <= 0)
         workspace->view_removed(v);
@@ -1014,7 +1016,7 @@ void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
     }
 
     focus_view_signal data;
-    data.focus = v;
+    data.view = v;
     emit_signal("focus-view", &data);
 }
 

@@ -621,8 +621,12 @@ void input_manager::update_cursor_position(uint32_t time_msec)
     if (view && view->is_mapped)
     {
         output->focus_view(view);
-        wlr_seat_pointer_notify_enter(seat, view->surface, cursor->x, cursor->y);
-        wlr_seat_pointer_notify_motion(core->input->seat, time_msec, cursor->x, cursor->y);
+
+        int sx, sy;
+        view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
+
+        wlr_seat_pointer_notify_enter(seat, view->surface, sx, sy);
+        wlr_seat_pointer_notify_motion(core->input->seat, time_msec, sx, sy);
     }
 
 }
@@ -1208,6 +1212,14 @@ void wayfire_core::set_default_cursor()
 {
     if (input->cursor)
         wlr_xcursor_manager_set_cursor_image(input->xcursor, "left_ptr", input->cursor);
+}
+
+std::tuple<int, int> wayfire_core::get_cursor_position()
+{
+    if (input->cursor)
+        return std::tuple<int, int> (input->cursor->x, input->cursor->y);
+    else
+        return std::tuple<int, int> (0, 0);
 }
 
 static int _last_output_id = 0;

@@ -92,13 +92,12 @@ void wayfire_handle_focus_parent::init(wayfire_config*)
 {
     focus_event = [&] (signal_data *data)
     {
-        auto conv = static_cast<focus_view_signal*> (data);
-        assert(conv);
-        if (!conv->focus || intercept_recursion)
+        auto view = get_signaled_view(data);
+        if (!view || intercept_recursion)
             return;
 
 
-        auto to_focus = conv->focus;
+        auto to_focus = view;
         while(to_focus->parent)
             to_focus = to_focus->parent;
 
