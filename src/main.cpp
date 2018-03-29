@@ -80,13 +80,24 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    setenv("_WAYLAND_DISPLAY", server_name, 1);
+
     core->wayland_display = server_name;
 
     output_created.notify = output_created_cb;
     wl_signal_add(&core->backend->events.new_output, &output_created);
-    wlr_backend_start(core->backend);
+
+    if (!wlr_backend_start(core->backend))
+    {
+        errio << "failed to start backend" << std::endl;
+        wlr_backend_destroy(core->backend);
+        wl_display_destroy(core->display);
+
+        return -1;
+    }
+
     debug << "running at server " << server_name << std::endl;
-    setenv("WAYLAND_SERVER", server_name, 1);
+    setenv("WAYLAND_DISPLAY", server_name, 1);
 
 //    load_xwayland(ec);
 

@@ -11,7 +11,7 @@
 
 class wayfire_command : public wayfire_plugin_t
 {
-    std::vector<key_callback> v;
+    std::vector<key_callback> cmds;
 
     public:
     void init(wayfire_config *config)
@@ -31,7 +31,7 @@ class wayfire_command : public wayfire_plugin_t
             }
         }
 
-        v.resize(commands.size());
+        cmds.resize(commands.size());
         int i = 0;
 
         for (auto num : commands)
@@ -45,21 +45,15 @@ class wayfire_command : public wayfire_plugin_t
             if (key.keyval == 0 || command == "")
                 continue;
 
-            v[i++] = [=] (weston_keyboard* kbd, uint32_t key) {
-                core->run(comvalue.c_str());
-            };
-
-            output->add_key((weston_keyboard_modifier)key.mod, key.keyval, &v[i - 1]);
+            cmds[i++] = [=] (uint32_t key) { core->run(comvalue.c_str()); };
+            output->add_key(key.mod, key.keyval, &cmds[i - 1]);
         }
 
         if (commands.empty())
         {
-            v.resize(1);
-            v[0] = [] (weston_keyboard *, uint32_t)
-            {
-                core->run("weston-terminal");
-            };
-            output->add_key(MODIFIER_ALT, KEY_ENTER, &v.back());
+            cmds.resize(1);
+            cmds[0] = [] (uint32_t) { core->run("weston-terminal"); };
+            output->add_key(MODIFIER_ALT, KEY_ENTER, &cmds.back());
         }
     }
 };

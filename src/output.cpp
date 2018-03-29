@@ -12,7 +12,10 @@
 
 extern "C"
 {
+    /* wlr uses some c99 extensions, we "disable" the static keyword to workaround */
+#define static
 #include <wlr/render/wlr_renderer.h>
+#undef static
 }
 
 #include "wm.hpp"
@@ -155,6 +158,7 @@ render_manager::render_manager(wayfire_output *o)
     pixman_region32_init(&frame_damage);
     damage_manager = wlr_output_damage_create(output->handle);
 
+    debug << "add frame listener" << std::endl;
     frame_listener.notify = frame_cb;
     wl_signal_add(&damage_manager->events.frame, &frame_listener);
 
@@ -296,6 +300,7 @@ void render_manager::render_panels()
 
 void render_manager::paint()
 {
+    debug << "repaint" << std::endl;
     bool needs_swap;
     pixman_region32_clear(&frame_damage);
     bool result = wlr_output_damage_make_current(damage_manager, &needs_swap, &frame_damage);
@@ -800,6 +805,13 @@ const struct wayfire_shell_interface shell_interface_impl {
 wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
 {
     this->handle = handle;
+
+    if (wl_list_length(&handle->modes) > 0)
+    {
+        struct wlr_output_mode *mode =                                                                                                      
+            wl_container_of((&handle->modes)->prev, mode, link);
+        wlr_output_set_mode(handle, mode);
+    }
 
     wlr_output_layout_add_auto(core->output_layout, handle);
     core->set_default_cursor();

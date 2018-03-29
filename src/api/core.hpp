@@ -11,7 +11,11 @@ extern "C"
 #include <wlr/backend.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_output_layout.h>
+
+#define static
 #include <wlr/types/wlr_compositor.h>
+#undef static
+
 #include <wlr/types/wlr_data_device.h>
 #include <wayland-server.h>
 }

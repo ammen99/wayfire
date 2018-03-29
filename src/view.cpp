@@ -14,8 +14,10 @@
 extern "C"
 {
 #include <wlr/types/wlr_xdg_shell_v6.h>
+#define static
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_matrix.h>
+#undef static
 }
 
 /* misc definitions */
@@ -411,8 +413,8 @@ class wayfire_xdg6_view : public wayfire_view_t
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
         : wayfire_view_t (s->surface), v6_surface(s)
     {
-        debug << "New xdg6 surface: " << fmt_nonull(v6_surface->title)
-                       << " app-id: " << fmt_nonull(v6_surface->app_id) << std::endl;
+        debug << "New xdg6 surface: " << fmt_nonull(v6_surface->toplevel->title)
+                       << " app-id: " << fmt_nonull(v6_surface->toplevel->app_id) << std::endl;
         wlr_xdg_surface_v6_ping(s);
     }
 

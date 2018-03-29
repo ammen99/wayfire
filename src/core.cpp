@@ -614,9 +614,7 @@ void input_manager::handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_mo
 
 void input_manager::handle_pointer_motion_absolute(wlr_pointer *ptr, wlr_event_pointer_motion_absolute *ev)
 {
-    wlr_cursor_warp_absolute(cursor, ev->device,
-                             ev->x_mm / ev->width_mm,
-                             ev->y_mm / ev->height_mm);
+    wlr_cursor_warp_absolute(cursor, ev->device, ev->x, ev->y);
     update_cursor_position(ev->time_msec);;
 }
 
@@ -1192,6 +1190,7 @@ void wayfire_core::set_default_cursor()
 }
 
 static int _last_output_id = 0;
+/* TODO: remove pending_outputs, they are no longer necessary */
 void wayfire_core::add_output(wlr_output *output)
 {
     debug << "Adding output " << output->name<< std::endl;
