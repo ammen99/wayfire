@@ -431,6 +431,13 @@ static inline void handle_move_request(wayfire_view view)
     view->output->emit_signal("move-request", &data);
 }
 
+static inline void handle_resize_request(wayfire_view view)
+{
+    resize_request_signal data;
+    data.view = view;
+    view->output->emit_signal("resize-request", &data);
+}
+
 /* xdg_shell_v6 implementation */
 /* TODO: unmap, popups */
 
@@ -449,6 +456,13 @@ static void handle_v6_request_move(wl_listener*, void *data)
     auto ev = static_cast<wlr_xdg_toplevel_v6_move_event*> (data);
     auto view = core->find_view(ev->surface->surface);
     handle_move_request(view);
+}
+
+static void handle_v6_request_resize(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_xdg_toplevel_v6_resize_event*> (data);
+    auto view = core->find_view(ev->surface->surface);
+    handle_resize_request(view);
 }
 
 class wayfire_xdg6_view : public wayfire_view_t

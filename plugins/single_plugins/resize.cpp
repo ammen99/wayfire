@@ -3,7 +3,6 @@
 #include <core.hpp>
 #include <workspace-manager.hpp>
 #include <linux/input.h>
-#include <libweston-desktop.h>
 #include <signal-definitions.hpp>
 #include "../../shared/config.hpp"
 
@@ -25,40 +24,45 @@ class wayfire_resize : public wayfire_plugin_t {
         grab_interface->name = "resize";
         grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY;
 
-        auto button = config->get_section("resize")->get_button("initiate",
+        auto button = config->get_section("resize")->get_button("activate",
                 {MODIFIER_SUPER, BTN_LEFT});
         if (button.button == 0)
             return;
 
-        activate_binding = [=] (weston_pointer* ptr, uint32_t)
+        activate_binding = [=] (uint32_t)
         {
-            initiate(core->find_view(ptr->focus), ptr->x, ptr->y);
+            GetTuple(x, y, core->get_cursor_position());
+            auto view = output->get_view_at_point(x, y);
+            if (view) initiate(view, x, y);
         };
 
+        /*
         touch_activate_binding = [=] (weston_touch* touch,
                 wl_fixed_t sx, wl_fixed_t sy)
         {
             initiate(core->find_view(touch->focus), sx, sy);
         };
+        */
 
 
         output->add_button(button.mod, button.button, &activate_binding);
         output->add_touch(button.mod, &touch_activate_binding);
 
-        grab_interface->callbacks.pointer.button = [=] (weston_pointer*,
-                uint32_t b, uint32_t s)
+        grab_interface->callbacks.pointer.button = [=] (uint32_t b, uint32_t s)
         {
             if (b != button.button)
                 return;
 
             input_pressed(s);
         };
-        grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
-                weston_pointer_motion_event*)
+
+        grab_interface->callbacks.pointer.motion = [=] ()
         {
-            input_motion(ptr->x, ptr->y);
+            GetTuple(x, y, core->get_cursor_position());
+            input_motion(x, y);
         };
 
+        /*
         grab_interface->callbacks.touch.up = [=] (weston_touch *, int32_t id)
         {
             if (id == 0)
@@ -70,7 +74,7 @@ class wayfire_resize : public wayfire_plugin_t {
         {
             if (id == 0)
                 input_motion(sx, sy);
-        };
+        }; */
 
         using namespace std::placeholders;
         resize_request = std::bind(std::mem_fn(&wayfire_resize::resize_requested),
@@ -79,40 +83,29 @@ class wayfire_resize : public wayfire_plugin_t {
 
         view_destroyed = [=] (signal_data* data)
         {
-            auto conv = static_cast<destroy_view_signal*> (data);
-            assert(conv);
-
-            if (conv->destroyed_view == view)
+            if (get_signaled_view(data) == view)
             {
                 view = nullptr;
                 input_pressed(WL_POINTER_BUTTON_STATE_RELEASED);
+
             }
         };
+
         output->connect_signal("detach-view", &view_destroyed);
         output->connect_signal("destroy-view", &view_destroyed);
     }
 
     void resize_requested(signal_data *data)
     {
-        auto converted = static_cast<resize_request_signal*> (data);
-        if (converted) {
-            auto seat = core->get_current_seat();
-
-            auto ptr = weston_seat_get_pointer(seat);
-            auto touch = weston_seat_get_touch(seat);
-
-            if (ptr && ptr->grab_serial == converted->serial) {
-                initiate(converted->view, ptr->grab_x, ptr->grab_y,
-                        converted->edges);
-            } else if (touch && touch->grab_serial == converted->serial) {
-                initiate(converted->view, touch->grab_x, touch->grab_y,
-                        converted->edges);
-            }
+        auto view = get_signaled_view(data);
+        if (view)
+        {
+            GetTuple(x, y, core->get_cursor_position());
+            initiate(view, x, y);
         }
     }
 
-    void initiate(wayfire_view view, wl_fixed_t sx, wl_fixed_t sy,
-            uint32_t forced_edges = 0)
+    void initiate(wayfire_view view, int sx, int sy, uint32_t forced_edges = 0)
     {
         if (!view || view->is_special || view->destroyed)
             return;
@@ -129,8 +122,8 @@ class wayfire_resize : public wayfire_plugin_t {
             return;
         }
 
-        initial_x = wl_fixed_to_int(sx);
-        initial_y = wl_fixed_to_int(sy);
+        initial_x = sx;
+        initial_y = sy;
         initial_geometry = view->geometry;
 
         if (forced_edges == 0) {
@@ -181,15 +174,12 @@ class wayfire_resize : public wayfire_plugin_t {
         }
     }
 
-    void input_motion(wl_fixed_t sx, wl_fixed_t sy)
+    void input_motion(int sx, int sy)
     {
         auto newg = initial_geometry;
 
-        int current_x = wl_fixed_to_int(sx);
-        int current_y = wl_fixed_to_int(sy);
-
-        int dx = current_x - initial_x;
-        int dy = current_y - initial_y;
+        int dx = sx - initial_x;
+        int dy = sy - initial_y;
 
         if (edges & WL_SHELL_SURFACE_RESIZE_LEFT) {
             newg.x += dx;
@@ -205,6 +195,7 @@ class wayfire_resize : public wayfire_plugin_t {
             newg.height += dy;
         }
 
+        /* TODO: add view::get_max/min size
         auto max_size = weston_desktop_surface_get_max_size(view->desktop_surface);
         auto min_size = weston_desktop_surface_get_min_size(view->desktop_surface);
 
@@ -218,7 +209,10 @@ class wayfire_resize : public wayfire_plugin_t {
         if (max_size.height > 0)
             newg.height = std::min(max_size.height, newg.height);
         newg.height = std::max(min_size.height, newg.height);
+        */
 
+        newg.height = std::max(newg.height, 10);
+        newg.width  = std::max(newg.width,  10);
         view->set_geometry(newg);
     }
 };

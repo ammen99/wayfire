@@ -34,14 +34,13 @@ class wayfire_move : public wayfire_plugin_t
             if (button.button == 0)
                 return;
 
-            activate_binding = [=] (int32_t x, int32_t y, uint32_t)
+            activate_binding = [=] (uint32_t)
             {
-                std::cout << "activate binding called" << std::endl;
+                GetTuple(x, y, core->get_cursor_position());
                 is_using_touch = false;
                 auto view = output->get_view_at_point(x, y);
                 if (!view || view->is_special)
                     return;
-                std::cout << "found a good view" << std::endl;
                 this->initiate(view, x, y);
             };
 
@@ -65,8 +64,7 @@ class wayfire_move : public wayfire_plugin_t
 
             using namespace std::placeholders;
             grab_interface->callbacks.pointer.button =
-                [=] (uint32_t b, uint32_t state,
-                     int32_t x, int32_t y)
+                [=] (uint32_t b, uint32_t state)
                 {
                     if (b != button.button)
                         return;
@@ -75,9 +73,9 @@ class wayfire_move : public wayfire_plugin_t
                     input_pressed(state);
                 };
 
-            grab_interface->callbacks.pointer.motion = [=] (int32_t x, int32_t y)
+            grab_interface->callbacks.pointer.motion = [=] ()
             {
-                input_motion(x, y);
+                input_motion();
             };
 
             /*
@@ -214,8 +212,10 @@ class wayfire_move : public wayfire_plugin_t
                 return 0;
         }
 
-        void input_motion(int x, int y)
+        void input_motion()
         {
+            GetTuple(x, y, core->get_cursor_position());
+
             view->move(view->geometry.x + x - prev_x,
                     view->geometry.y + y - prev_y);
             prev_x = x;

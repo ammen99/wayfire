@@ -124,7 +124,7 @@ struct wf_gesture_recognizer {
         if (gesture_emitted)
             return;
 
-        /* first case - consider swipe, we go through each
+         first case - consider swipe, we go through each
          * of the directions and check whether such swipe has occured 
 
         bool is_left_swipe = true, is_right_swipe = true,
@@ -192,7 +192,7 @@ struct wf_gesture_recognizer {
             return;
         }
 
-        /* second case - this has been a pinch 
+        second case - this has been a pinch 
 
         int cx = 0, cy = 0;
         for (auto f : current) {
@@ -260,7 +260,7 @@ struct wf_gesture_recognizer {
                     wl_fixed_from_int(sx), wl_fixed_from_int(sy));
         }
 
-        /* while checking for touch grabs, some plugin might have started the grab,
+        while checking for touch grabs, some plugin might have started the grab,
          * so check again 
         if (in_grab && send_to_client)
         {
@@ -287,7 +287,7 @@ struct wf_gesture_recognizer {
 
     void unregister_touch(int id)
     {
-        /* shouldn't happen, but just in case 
+        shouldn't happen, but just in case 
         if (!current.count(id))
             return;
 
@@ -355,7 +355,7 @@ struct wf_gesture_recognizer {
 }; */
 
 /* these simply call the corresponding input_manager functions,
- * you can think of them as wrappers for use of libweston 
+ * you can think of them as wrappers for use of libweston
 void touch_grab_down(weston_touch_grab *grab, const timespec* time, int id,
         wl_fixed_t sx, wl_fixed_t sy)
 {
@@ -381,7 +381,7 @@ static const weston_touch_grab_interface touch_grab_interface = {
     touch_grab_frame, touch_grab_cancel
 };
 
-/* called upon the corresponding event, we actually just call the gesture
+ called upon the corresponding event, we actually just call the gesture
  * recognizer functions, they will send the touch event to the client
  * or to plugin callbacks, or emit a gesture 
 void input_manager::propagate_touch_down(weston_touch* touch, const timespec* time,
@@ -412,7 +412,7 @@ void input_manager::propagate_touch_motion(weston_touch* touch, const timespec* 
 }
 
 
-/* grab_send_touch_down/up/motion() are called from the gesture recognizer
+ grab_send_touch_down/up/motion() are called from the gesture recognizer
  * in case they should be processed by plugin grabs 
 void input_manager::grab_send_touch_down(weston_touch* touch, int32_t id,
         wl_fixed_t sx, wl_fixed_t sy)
@@ -594,11 +594,11 @@ void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uin
         }
 
         for (auto call : callbacks)
-            (*call) (cursor->x, cursor->y, button);
+            (*call) (button);
     }
 
     if (active_grab && active_grab->callbacks.pointer.button)
-        active_grab->callbacks.pointer.button(button, state, cursor->x, cursor->y);
+        active_grab->callbacks.pointer.button(button, state);
 }
 
 void input_manager::update_cursor_position(uint32_t time_msec)
@@ -613,15 +613,13 @@ void input_manager::update_cursor_position(uint32_t time_msec)
     if (input_grabbed())
     {
         if (active_grab->callbacks.pointer.motion)
-            active_grab->callbacks.pointer.motion(cursor->x, cursor->y);
+            active_grab->callbacks.pointer.motion();
         return;
     }
 
     auto view = output->get_view_at_point(cursor->x, cursor->y);
     if (view && view->is_mapped)
     {
-        output->focus_view(view);
-
         int sx, sy;
         view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
 
@@ -677,6 +675,7 @@ void configure_input_device(libinput_device *device)
 {
     assert(device);
     /* we are configuring a touchpad */
+    debug << "configure libinput device" << std::endl;
     if (libinput_device_config_tap_get_finger_count(device) > 0)
     {
         libinput_device_config_tap_set_enabled(device,
@@ -1148,6 +1147,7 @@ void bind_desktop_shell(wl_client *client, void *data, uint32_t version, uint32_
 void wayfire_core::init(wayfire_config *conf)
 {
     configure(conf);
+    device_config::load(conf);
 
     data_device_manager = wlr_data_device_manager_create(display);
     wl_display_init_shm(core->display);

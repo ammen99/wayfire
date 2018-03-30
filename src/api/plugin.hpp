@@ -26,7 +26,7 @@ using effect_hook_t = std::function<void()>;
 
 struct wayfire_touch_gesture;
 using key_callback = std::function<void(uint32_t)>;
-using button_callback = std::function<void(int32_t, int32_t, uint32_t)>;
+using button_callback = std::function<void(uint32_t)>;
 using touch_callback = std::function<void(wlr_touch*, wl_fixed_t, wl_fixed_t)>;
 using touch_gesture_callback = std::function<void(wayfire_touch_gesture*)>;
 
@@ -103,8 +103,8 @@ struct wayfire_grab_interface_t {
     struct {
         struct {
             std::function<void(wlr_event_pointer_axis*)> axis;
-            std::function<void(uint32_t, uint32_t, int32_t, int32_t)> button; // button, state, cursor x / y
-            std::function<void(int32_t x, int32_t y)> motion;
+            std::function<void(uint32_t, uint32_t)> button; // button, state
+            std::function<void()> motion;
         } pointer;
 
         struct {
