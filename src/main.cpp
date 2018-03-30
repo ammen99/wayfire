@@ -14,8 +14,6 @@ extern "C"
 
 #include "api/core.hpp"
 
-std::ofstream wf_debug::logfile;
-
 static wl_listener output_created;
 void output_created_cb (wl_listener*, void *data)
 {
@@ -32,13 +30,14 @@ void compositor_sleep_cb (wl_listener*, void*)
 
 int main(int argc, char *argv[])
 {
-    if (argc > 1) {
-        wf_debug::logfile.open(argv[1]);
-        wlr_log_init(L_DEBUG, NULL);
-    } else {
-        wf_debug::logfile.open("/dev/null");
-        wlr_log_init(L_ERROR, NULL);
-    }
+
+#if WAYFIRE_DEBUG_ENABLED
+    wlr_log_init(L_DEBUG, NULL);
+#else
+    wlr_log_init(L_ERROR, NULL);
+#endif
+
+    log_info("Initializing wayfire");
 
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
@@ -51,7 +50,6 @@ int main(int argc, char *argv[])
     core->ev_loop  = wl_display_get_event_loop(core->display);
     core->backend  = wlr_backend_autocreate(core->display);
     core->renderer = wlr_backend_get_renderer(core->backend);
-    info << "first setup ready" << std::endl;
 
     /*
     auto ec = weston_compositor_create(display, NULL);
@@ -62,9 +60,10 @@ int main(int argc, char *argv[])
     */
 
     std::string home_dir = secure_getenv("HOME");
-    debug << "Using home directory: " << home_dir << std::endl;
+    auto config_file = home_dir + "/.config/wayfire.ini";
 
-    wayfire_config *config = new wayfire_config(home_dir + "/.config/wayfire.ini", -1);
+    log_debug("config file: %s", config_file.c_str());
+    wayfire_config *config = new wayfire_config(config_file, -1);
     /*
     ec->repaint_msec = config->get_section("core")->get_int("repaint_msec", 16);
     ec->idle_time = config->get_section("core")->get_int("idle_time", 300);
@@ -75,8 +74,9 @@ int main(int argc, char *argv[])
     core->init(config);
 
     auto server_name = wl_display_add_socket_auto(core->display);
-    if (!server_name) {
-        errio << "Failed to create listening server, bailing out" << std::endl;
+    if (!server_name)
+    {
+        log_error("failed to create wayland, socket, exiting");
         return -1;
     }
 
@@ -89,14 +89,14 @@ int main(int argc, char *argv[])
 
     if (!wlr_backend_start(core->backend))
     {
-        errio << "failed to start backend" << std::endl;
+        log_error("failed to initialize backend, exiting");
         wlr_backend_destroy(core->backend);
         wl_display_destroy(core->display);
 
         return -1;
     }
 
-    debug << "running at server " << server_name << std::endl;
+    log_info ("runnign at server %s", server_name);
     setenv("WAYLAND_DISPLAY", server_name, 1);
 
 //    load_xwayland(ec);

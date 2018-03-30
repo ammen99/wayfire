@@ -80,21 +80,19 @@ struct plugin_manager
         void *handle = dlopen(path.c_str(), RTLD_NOW);
         if(handle == NULL)
         {
-            errio << "Can't load plugin " << path << std::endl;
-            errio << "\t" << dlerror() << std::endl;
+            log_error("error loading plugin: %s", dlerror());
             return nullptr;
         }
 
-        debug << "Loading plugin " << path << std::endl;
 
         auto initptr = dlsym(handle, "newInstance");
         if(initptr == NULL)
         {
-            errio << "Missing function newInstance in file " << path << std::endl;
-            errio << dlerror();
+            log_error("%s: missing newInstance(). %s", path.c_str(), dlerror());
             return nullptr;
         }
 
+        log_debug("loading plugin %s", path.c_str());
         get_plugin_instance_t init = union_cast<void*, get_plugin_instance_t> (initptr);
         *h = handle;
         return wayfire_plugin(init());
@@ -158,7 +156,6 @@ render_manager::render_manager(wayfire_output *o)
     pixman_region32_init(&frame_damage);
     damage_manager = wlr_output_damage_create(output->handle);
 
-    debug << "add frame listener" << std::endl;
     frame_listener.notify = frame_cb;
     wl_signal_add(&damage_manager->events.frame, &frame_listener);
 
@@ -300,7 +297,6 @@ void render_manager::render_panels()
 
 void render_manager::paint()
 {
-    debug << "repaint" << std::endl;
     bool needs_swap;
     pixman_region32_clear(&frame_damage);
     bool result = wlr_output_damage_make_current(damage_manager, &needs_swap, &frame_damage);
@@ -702,12 +698,13 @@ void shell_add_background(struct wl_client *client, struct wl_resource *resource
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo) wo = view ? view->output : nullptr;
 
-     if (!wo || !view) {
-        errio << "shell_add_background called with invalid surface or output" << std::endl;
+    if (!wo || !view)
+    {
+        log_error("shell_add_background called with invalid surface or output");
         return;
     }
 
-    debug << "wf_shell: add_background" << std::endl;
+    log_debug("wf_shell: add_background");
     wo->workspace->add_background(view, x, y);
 }
 
@@ -720,11 +717,11 @@ void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
 
 
     if (!wo || !view) {
-        errio << "shell_add_panel called with invalid surface or output" << std::endl;
+        log_error("shell_add_panel called with invalid surface or output");
         return;
     }
 
-    debug << "wf_shell: add_panel" << std::endl;
+    log_debug("wf_shell: add_panel");
     wo->workspace->add_panel(view);
 }
 
@@ -736,7 +733,7 @@ void shell_configure_panel(struct wl_client *client, struct wl_resource *resourc
     if (!wo) wo = view ? view->output : nullptr;
 
     if (!wo || !view) {
-        errio << "shell_configure_panel called with invalid surface or output" << std::endl;
+        log_error("shell_configure_panel called with invalid surface or output");
         return;
     }
 
@@ -749,11 +746,11 @@ void shell_reserve(struct wl_client *client, struct wl_resource *resource,
     auto wo = wl_output_to_wayfire_output(output);
 
     if (!wo) {
-        errio << "shell_reserve called with invalid output" << std::endl;
+        log_error("shell_reserve called with invalid output");
         return;
     }
 
-    debug << "wf_shell: reserve" << std::endl;
+    log_debug("wf_shell: reserve width:%d height: %d", width, height);
     wo->workspace->reserve_workarea((wayfire_shell_panel_position)side, width, height);
 }
 
@@ -786,7 +783,7 @@ void shell_output_fade_in_start(wl_client *client, wl_resource *res, uint32_t ou
     auto wo = wl_output_to_wayfire_output(output);
     if (!wo)
     {
-        errio << "output_fade_in with wrong output!" << std::endl;
+        log_error("output_fade_in_start called for wrong output!");
         return;
     }
 
@@ -988,13 +985,11 @@ static void set_keyboard_focus(wlr_seat *seat, wlr_surface *surface)
 {
     auto kbd = wlr_seat_get_keyboard(seat);
     if (kbd != NULL) {
-        debug << "set keyboard enter" << std::endl;
         wlr_seat_keyboard_notify_enter(seat, surface,
                                        kbd->keycodes, kbd->num_keycodes,
                                        &kbd->modifiers);                                                                                                            
     } else
     {
-        debug << "set keyboard enter (nil)" << std::endl;
         wlr_seat_keyboard_notify_enter(seat, surface, NULL, 0, NULL);
     }
 }
@@ -1007,11 +1002,11 @@ void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
     set_active_view(v);
 
     if (v) {
-        debug << "output: " << handle->name << " focus: " << v->surface << std::endl;
+        log_debug("output %s focus: %p", handle->name, v->surface);
         bring_to_front(v);
         set_keyboard_focus(seat, v->surface);
     } else {
-        debug << "output: " << handle->name << " focus: 0" << std::endl;
+        log_debug("output %s focus: (null)", handle->name);
         set_keyboard_focus(seat, NULL);
     }
 
@@ -1058,7 +1053,7 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner, bool lower_fs
 
     if (active_plugins.find(owner) != active_plugins.end())
     {
-        debug << "output: " << handle->name << " activating plugin: " << owner->name << std::endl;
+        log_debug("output %s: activate plugin %s again", handle->name, owner->name.c_str());
         active_plugins.insert(owner);
         return true;
     }
@@ -1077,7 +1072,7 @@ bool wayfire_output::activate_plugin(wayfire_grab_interface owner, bool lower_fs
         emit_signal("_activation_request", (signal_data*)1);
 
     active_plugins.insert(owner);
-    debug << "output: " << handle->name << " activating plugin: " << owner->name << std::endl;
+    log_debug("output %s: activate plugin %s", handle->name, owner->name.c_str());
     return true;
 }
 
@@ -1088,7 +1083,7 @@ bool wayfire_output::deactivate_plugin(wayfire_grab_interface owner)
         return true;
 
     active_plugins.erase(it);
-    debug << "output: " << handle->name << " deactivating plugin: " << owner->name << std::endl;
+    log_debug("output %s: deactivate plugin %s", handle->name, owner->name.c_str());
 
     if (active_plugins.count(owner) == 0)
     {

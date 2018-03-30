@@ -1,5 +1,4 @@
 #include <output.hpp>
-#include <iostream>
 #include <core.hpp>
 #include <view.hpp>
 #include <workspace-manager.hpp>
@@ -34,9 +33,8 @@ class wayfire_move : public wayfire_plugin_t
             if (button.button == 0)
                 return;
 
-            activate_binding = [=] (uint32_t)
+            activate_binding = [=] (uint32_t, int x, int y)
             {
-                GetTuple(x, y, core->get_cursor_position());
                 is_using_touch = false;
                 auto view = output->get_view_at_point(x, y);
                 if (!view || view->is_special)
@@ -73,9 +71,9 @@ class wayfire_move : public wayfire_plugin_t
                     input_pressed(state);
                 };
 
-            grab_interface->callbacks.pointer.motion = [=] ()
+            grab_interface->callbacks.pointer.motion = [=] (int x, int y)
             {
-                input_motion();
+                input_motion(x, y);
             };
 
             /*
@@ -212,16 +210,12 @@ class wayfire_move : public wayfire_plugin_t
                 return 0;
         }
 
-        void input_motion()
+        void input_motion(int x, int y)
         {
-            GetTuple(x, y, core->get_cursor_position());
-
             view->move(view->geometry.x + x - prev_x,
                     view->geometry.y + y - prev_y);
             prev_x = x;
             prev_y = y;
-
-            std::cout << "move it " << x << " " << y << std::endl;
 
 
             /* TODO: move to another place

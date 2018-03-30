@@ -351,7 +351,10 @@ void wayfire_view_t::set_parent(wayfire_view parent)
 void wayfire_view_t::map()
 {
     if (is_mapped)
-        errio << "Mapping an already mapped surface!" << std::endl;
+    {
+        log_error ("request to map %p twice!", surface);
+        return;
+    }
 
     is_mapped = true;
 
@@ -384,7 +387,6 @@ void wayfire_view_t::map()
 
 void wayfire_view_t::commit()
 {
-    debug << "commit ??" << std::endl;
     update_size();
 
     /* TODO: do this check in constructors
@@ -405,8 +407,6 @@ void wayfire_view_t::commit()
         data.view = core->find_view(handle);
         data.state = maximized;
 
-        output->emit_signal("view-maximized-request", &data);
-        set_maximized(maximized);
     } */
 }
 
@@ -418,11 +418,9 @@ void wayfire_view_t::damage()
 #define toplevel_op_check \
     if(!is_toplevel())\
     { \
-        errio << "view.cpp(" << __LINE__ << "): attempting to " << __func__ << " a non-toplevel view" << std::endl; \
+        log_error("view.cpp(%d): attempting to %s a non-toplevel view", __LINE__, __func__); \
         return; \
     }
-
-#define fmt_nonull(x) ((x) ?: ("nil"))
 
 static inline void handle_move_request(wayfire_view view)
 {
@@ -474,8 +472,9 @@ class wayfire_xdg6_view : public wayfire_view_t
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
         : wayfire_view_t (s->surface), v6_surface(s)
     {
-        debug << "New xdg6 surface: " << fmt_nonull(v6_surface->toplevel->title)
-                       << " app-id: " << fmt_nonull(v6_surface->toplevel->app_id) << std::endl;
+        log_info ("new xdg_shell_v6 surface: %s app-id: %s",
+                  nonull(v6_surface->toplevel->title),
+                  nonull(v6_surface->toplevel->app_id));
 
         map.notify = handle_v6_map;
         request_move.notify = handle_v6_request_move;

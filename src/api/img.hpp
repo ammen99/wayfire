@@ -3,6 +3,7 @@
 
 #include "debug.hpp"
 #include <GLES2/gl2.h>
+#include <string>
 
 #define ulong unsigned long
 

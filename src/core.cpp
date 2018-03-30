@@ -560,9 +560,6 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 {
     mods_count[modifier] += (state == WLR_KEY_PRESSED ? 1 : -1);
-
-    std::cout << "mod state: " << get_modifiers() << std::endl;
-
     if (active_grab)
     {
         if (active_grab->callbacks.keyboard.mod)
@@ -575,15 +572,11 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 
 void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uint32_t state)
 {
-    std::cout << "pressed shit\n" << std::endl;
     if (state == WLR_BUTTON_PRESSED)
     {
         std::vector<button_callback*> callbacks;
 
         auto mod_state = get_modifiers();
-
-        std::cout << "get pressed, mods: " << mod_state << std::endl;
-
         for (auto& pair : button_bindings)
         {
             auto& binding = pair.second;
@@ -594,7 +587,7 @@ void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uin
         }
 
         for (auto call : callbacks)
-            (*call) (button);
+            (*call) (button, cursor->x, cursor->y);
     }
 
     if (active_grab && active_grab->callbacks.pointer.button)
@@ -613,7 +606,7 @@ void input_manager::update_cursor_position(uint32_t time_msec)
     if (input_grabbed())
     {
         if (active_grab->callbacks.pointer.motion)
-            active_grab->callbacks.pointer.motion();
+            active_grab->callbacks.pointer.motion(cursor->x, cursor->y);
         return;
     }
 
@@ -675,7 +668,6 @@ void configure_input_device(libinput_device *device)
 {
     assert(device);
     /* we are configuring a touchpad */
-    debug << "configure libinput device" << std::endl;
     if (libinput_device_config_tap_get_finger_count(device) > 0)
     {
         libinput_device_config_tap_set_enabled(device,
@@ -738,8 +730,7 @@ void input_manager::handle_new_input(wlr_input_device *dev)
     if (!cursor)
         create_seat();
 
-    debug << "handle new input: " << dev->name << std::endl;
-
+    log_info("add new input: %s", dev->name);
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
         setup_keyboard(dev);
 
@@ -770,9 +761,7 @@ void input_manager::create_seat()
     wlr_xcursor_manager_load(xcursor, 1);
 
     core->set_default_cursor();
-  //  wlr_cursor_warp(cursor, NULL, cursor->x, cursor->y);
 
-    debug << "create seat, add events" << std::endl;
     wl_signal_add(&cursor->events.button, &button);
     wl_signal_add(&cursor->events.motion, &motion);
     wl_signal_add(&cursor->events.motion_absolute, &motion_absolute);
@@ -1163,7 +1152,7 @@ void wayfire_core::init(wayfire_config *conf)
 
     if (wl_global_create(display, &wayfire_shell_interface,
                          1, NULL, bind_desktop_shell) == NULL) {
-        errio << "Failed to create wayfire_shell interface" << std::endl;
+        log_error("Failed to create wayfire_shell interface");
     }
 
 }
@@ -1226,7 +1215,7 @@ static int _last_output_id = 0;
 /* TODO: remove pending_outputs, they are no longer necessary */
 void wayfire_core::add_output(wlr_output *output)
 {
-    debug << "Adding output " << output->name<< std::endl;
+    log_info("add new output: %s", output->name);
     if (outputs.find(output) != outputs.end())
         return;
 
@@ -1249,7 +1238,7 @@ void wayfire_core::add_output(wlr_output *output)
 
 void wayfire_core::remove_output(wayfire_output *output)
 {
-    debug << "removing output: " << output->handle->name << std::endl;
+    log_info("removing output: %s", output->handle->name);
 
     outputs.erase(output->handle);
     wl_list_remove(&output->destroy_listener.link);
@@ -1321,7 +1310,7 @@ void wayfire_core::focus_output(wayfire_output *wo)
 
     active_output = wo;
     if (wo)
-        debug << "focus output: " << wo->handle->name << std::endl;
+        log_debug("focus output: %s", wo->handle->name);
 
     /* invariant: input is grabbed only if the current output
      * has an input grab */

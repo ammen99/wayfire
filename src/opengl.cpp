@@ -1,3 +1,4 @@
+#include <fstream>
 #include "opengl.hpp"
 #include "debug.hpp"
 #include "output.hpp"
@@ -26,11 +27,12 @@ void gl_call(const char *func, uint32_t line, const char *glfunc) {
     if ((err = glGetError()) == GL_NO_ERROR)
         return;
 
-    debug << "gles: function " << func << " at line " << line << ": \n" << glfunc << " == " << gl_error_string(err) << "\n";
+    log_error("gles2: function %s in %s line %u: %s", glfunc, func, line, gl_error_string(glGetError()));
 }
 
-namespace OpenGL {
-    GLuint compile_shader(const char *src, GLuint type)
+namespace OpenGL
+{
+    GLuint compile_shader_from_file(const char *path, const char *src, GLuint type)
     {
         GLuint shader = GL_CALL(glCreateShader(type));
         GL_CALL(glShaderSource(shader, 1, &src, NULL));
@@ -41,29 +43,31 @@ namespace OpenGL {
         GL_CALL(glGetShaderiv(shader, GL_COMPILE_STATUS, &s));
         GL_CALL(glGetShaderInfoLog(shader, 10000, NULL, b1));
 
-        if ( s == GL_FALSE ) {
-
-            errio << "shader compilation failed!\n"
-                    "src: ***************************\n" <<
-                    src <<
-                    "********************************\n" <<
-                    b1 <<
-                    "********************************\n";
+        if (s == GL_FALSE)
+        {
+            log_error("Failed to load shader from %s\n; Errors:\n%s", path, b1);
             return -1;
         }
+
         return shader;
+    }
+
+    GLuint compile_shader(const char *src, GLuint type)
+    {
+        return compile_shader_from_file("internal", src, type);
     }
 
     GLuint load_shader(const char *path, GLuint type) {
 
         std::fstream file(path, std::ios::in);
-        if(!file.is_open()) {
-            errio << "Cannot open shader file " << path << ". Aborting\n";
+
+        if(!file.is_open())
+        {
+            log_error("cannot open shader file %s", path);
             std::exit(1);
         }
 
         std::string str, line;
-
         while(std::getline(file, line))
             str += line, str += '\n';
 
@@ -301,7 +305,7 @@ namespace OpenGL {
 
         auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
         if (status != GL_FRAMEBUFFER_COMPLETE)
-            errio << "Error in framebuffer!\n";
+            log_error("failed to initialize framebuffer");
     }
 
     GLuint duplicate_texture(GLuint tex, int w, int h)

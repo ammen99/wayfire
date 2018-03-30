@@ -166,8 +166,9 @@ namespace image_io {
         infot.err = jpeg_std_error(& err);
         jpeg_create_decompress(&infot);
 
-        if(!file) {
-            errio << "Error reading JPEG file" << FileName << std::endl;
+        if(!file)
+        {
+            log_error("failed to read JPEG file %s", FileName);
             return 0;
         }
 
@@ -201,7 +202,7 @@ namespace image_io {
     {
         int len = name.length();
         if (len < 4 || name[len - 4] != '.') {
-            errio << "load_from_file() called with file without extension or with invalid extension!\n";
+            log_error("load_from_file() called with file without extension or with invalid extension!");
             return -1;
         }
 
@@ -211,7 +212,7 @@ namespace image_io {
 
         auto it = loaders.find(ext);
         if (it == loaders.end()) {
-            errio << "load_from_file() called with unsupported extension " << ext << std::endl;
+            log_error("load_from_file() called with unsupported extension %s", ext.c_str());
             return -1;
         } else {
             return it->second(name.c_str(), w, h);
@@ -222,16 +223,18 @@ namespace image_io {
     {
         auto it = writers.find(type);
 
-        if (it == writers.end()) {
-            errio << "IMG: unsupported writer backend" << std::endl;
-        } else {
+        if (it == writers.end())
+        {
+            log_error("unsupported image_writer backend");
+        } else
+        {
             it->second(name.c_str(), pixels, w, h);
         }
     }
 
     void init()
     {
-        debug << "ImageIO init" << std::endl;
+        log_debug("init ImageIO");
         loaders["png"] = Loader(texture_from_png);
         loaders["jpg"] = Loader(texture_from_jpeg);
         writers["png"] = Writer(texture_to_png);

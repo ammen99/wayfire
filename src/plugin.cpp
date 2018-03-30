@@ -52,7 +52,7 @@ wayfire_view get_signaled_view(signal_data *data)
     auto conv = static_cast<_view_signal*> (data);
     if (!conv || !conv->view)
     {
-        errio << "Got a bad _view_signal" << std::endl;
+        log_error ("Got a bad _view_signal");
         return nullptr;
     }
 
@@ -65,7 +65,7 @@ bool get_signaled_state(signal_data *data)
 
     if (!conv || !conv->view)
     {
-        errio << "Got a bad _view_state_signal" << std::endl;
+        log_error ("Got a bad _view_state_signal");
         return false;
     }
 

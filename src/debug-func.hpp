@@ -15,13 +15,13 @@ extern "C"
 
 void print_trace()
 {
-    errio << "stack trace:\n";
+    log_error ("stack trace");
 
     void* addrlist[max_frames + 1];
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
     if (addrlen == 0) {
-        errio << "<empty, possibly corrupt>\n";
+        log_error("<empty, possibly corrupt>\n");
         return;
     }
 
@@ -53,12 +53,12 @@ void print_trace()
             char *ret = abi::__cxa_demangle(begin_name, funcname, &funcnamesize, &status);
             if(status == 0) {
                 funcname = ret;
-                errio << symbollist[i] << ":" << funcname << "+" << begin_offset << std::endl;
+                log_error("%s:%s+%s", nonull(symbollist[i]), nonull(funcname), nonull(begin_offset));
             } else {
-                errio << symbollist[i] << ":" << begin_name << "+" << begin_offset << std::endl;
+                log_error("%s:%s+%s", nonull(symbollist[i]), nonull(begin_name), nonull(begin_offset));
             }
         } else {
-            errio << symbollist[i] << std::endl;
+            log_error("%s", nonull(symbollist[i]));
         }
     }
 
@@ -69,26 +69,21 @@ void print_trace()
 }
 
 void signalHandle(int sig) {
-    errio << "Crash detected!" << std::endl;
+    log_error ("crash detected!");
     print_trace();
     raise(SIGTRAP);
 }
 
-void vlog(log_importance_t log, const char *fmt, va_list ap)
+/* from WLR source code */
+const char *wf_strip_path(const char *filepath)
 {
-    char buf[4096];
-	vsnprintf(buf, 4095, fmt, ap);
-    if (log == L_ERROR)
-    {
-        wf_debug::logfile << "[EE]";
-    } else if (log == L_INFO)
-    {
-        wf_debug::logfile << "[II]";
-    } else if (log == L_DEBUG)
-    {
-        wf_debug::logfile << "[DD]";
+    static int srclen = sizeof(WF_SRC_DIR);
+    if (strstr(filepath, WF_SRC_DIR) == filepath) {
+        filepath += srclen;
+    } else if (*filepath == '.') {
+        while (*filepath == '.' || *filepath == '/') {
+            ++filepath;
+        }
     }
-
-    wf_debug::logfile << "[wlroots] " << buf << std::endl;
-    wf_debug::logfile.flush();
-}
+    return filepath;
+}                                                                                                                                               

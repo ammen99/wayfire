@@ -1,28 +1,26 @@
 #ifndef DEBUG_HPP
 #define DEBUG_HPP
 
-#ifdef YCM
-#define private public
-#endif
-
 #include "config.h"
 
-#include <fstream>
-
-namespace wf_debug
+extern "C"
 {
-    extern std::ofstream logfile;
+#include  <wlr/util/log.h>
 }
 
+const char *wf_strip_path(const char *path);
+#define wf_log(verb, fmt, ...) \
+    _wlr_log(verb, "[%s:%d] " fmt, wf_strip_path(__FILE__), __LINE__, ##__VA_ARGS__)
+
+#define log_error(...) wf_log(L_ERROR, __VA_ARGS__)
+#define log_info(...)  wf_log(L_INFO,  __VA_ARGS__)
+
 #if WAYFIRE_DEBUG_ENABLED
-#define debug_output_if if(1)
+#define log_debug(...) wf_log(L_DEBUG, __VA_ARGS__)
 #else
-#define debug_output_if if(0)
+#define log_debug(...)
 #endif
 
-#define debug debug_output_if wf_debug::logfile << "[DD] "
-
-#define info  wf_debug::logfile  << "[II] "
-#define errio wf_debug::logfile  << "[EE] "
+#define nonull(x) ((x) ?: ("nil"))
 
 #endif

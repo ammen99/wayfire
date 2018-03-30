@@ -29,9 +29,8 @@ class wayfire_resize : public wayfire_plugin_t {
         if (button.button == 0)
             return;
 
-        activate_binding = [=] (uint32_t)
+        activate_binding = [=] (uint32_t, int x, int y)
         {
-            GetTuple(x, y, core->get_cursor_position());
             auto view = output->get_view_at_point(x, y);
             if (view) initiate(view, x, y);
         };
@@ -56,9 +55,8 @@ class wayfire_resize : public wayfire_plugin_t {
             input_pressed(s);
         };
 
-        grab_interface->callbacks.pointer.motion = [=] ()
+        grab_interface->callbacks.pointer.motion = [=] (int x, int y)
         {
-            GetTuple(x, y, core->get_cursor_position());
             input_motion(x, y);
         };
 
