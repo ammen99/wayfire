@@ -638,17 +638,15 @@ void input_manager::update_cursor_focus(wayfire_view focus, int x, int y)
     } else
     {
         wlr_seat_pointer_notify_enter(seat, NULL, x, y);
+        core->set_default_cursor();
     }
 }
 
 void input_manager::update_cursor_position(uint32_t time_msec)
 {
-    /* TODO: focus only on click, as this way we cannot do anything in move plugin */
     auto output = core->get_output_at(cursor->x, cursor->y);
     if (!output) return;
     assert(output);
-
-    core->focus_output(output);
 
     if (input_grabbed())
     {
@@ -698,8 +696,10 @@ void input_manager::handle_pointer_axis(wlr_event_pointer_axis *ev)
 
 void input_manager::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev)
 {
-    if (ev->seat_client->seat->pointer_state.focused_client == ev->seat_client && !input_grabbed())
+    if (ev->surface && ev->seat_client->seat->pointer_state.focused_client == ev->seat_client && !input_grabbed())
         wlr_cursor_set_surface(cursor, ev->surface, ev->hotspot_x, ev->hotspot_y);
+    else
+        core->set_default_cursor();
 }
 
 bool input_manager::is_touch_enabled()
