@@ -101,59 +101,7 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
     core->erase_view(view, view->keep_count <= 0);
 }
 
-void desktop_surface_maximized_requested(weston_desktop_surface *ds,
-        bool maximized, void *shell)
-{
-    auto view = core->find_view(ds);
-    if (!view || view->maximized == maximized)
-        return;
 
-    view_maximized_signal data;
-    data.view = view;
-    data.state = maximized;
-
-    if (view->is_mapped) {
-        view->output->emit_signal("view-maximized-request", &data);
-    } else if (maximized) {
-        view->set_geometry(view->output->workspace->get_workarea());
-        view->output->emit_signal("view-maximized", &data);
-    }
-
-    view->set_maximized(maximized);
-}
-
-void desktop_surface_fullscreen_requested(weston_desktop_surface *ds,
-        bool full, weston_output *output, void *shell)
-{
-    auto view = core->find_view(ds);
-    if (!view || view->fullscreen == full)
-        return;
-
-    auto wo = (output ? core->get_output(output) : view->output);
-    assert(wo);
-
-    if (view->output != wo)
-    {
-        auto pg = view->output->get_full_geometry();
-        auto ng = wo->get_full_geometry();
-
-        core->move_view_to_output(view, wo);
-        view->move(view->geometry.x + ng.x - pg.x, view->geometry.y + ng.y - pg.y);
-    }
-
-    view_fullscreen_signal data;
-    data.view = view;
-    data.state = full;
-
-    if (view->is_mapped) {
-        wo->emit_signal("view-fullscreen-request", &data);
-    } else if (full) {
-        view->set_geometry(view->output->get_full_geometry());
-        view->output->emit_signal("view-fullscreen", &data);
-    }
-
-    view->set_fullscreen(full);
-}
 
 void desktop_surface_set_parent(weston_desktop_surface *ds,
                                 weston_desktop_surface *parent_ds,
@@ -399,6 +347,57 @@ static inline void handle_resize_request(wayfire_view view)
     view->output->emit_signal("resize-request", &data);
 }
 
+static inline void handle_maximize_request(wayfire_view view, bool state)
+{
+    if (!view || view->maximized == state)
+        return;
+
+    view_maximized_signal data;
+    data.view = view;
+    data.state = state;
+
+    if (view->is_mapped)
+    {
+        view->output->emit_signal("view-maximized-request", &data);
+    } else if (state)
+    {
+        view->set_geometry(view->output->workspace->get_workarea());
+        view->output->emit_signal("view-maximized", &data);
+    }
+}
+
+void handle_fullscreen_request(wayfire_view view, wayfire_output *output, bool state)
+{
+    if (!view || view->fullscreen == state)
+        return;
+
+    auto wo = (output ? output : view->output);
+    wo = (wo ? wo : core->get_active_output());
+    assert(wo);
+
+    if (view->output != wo)
+    {
+        auto pg = view->output->get_full_geometry();
+        auto ng = wo->get_full_geometry();
+
+        core->move_view_to_output(view, wo);
+        view->move(view->geometry.x + ng.x - pg.x, view->geometry.y + ng.y - pg.y);
+    }
+
+    view_fullscreen_signal data;
+    data.view = view;
+    data.state = state;
+
+    if (view->is_mapped) {
+        wo->emit_signal("view-fullscreen-request", &data);
+    } else if (state) {
+        view->set_geometry(view->output->get_full_geometry());
+        view->output->emit_signal("view-fullscreen", &data);
+    }
+
+    view->set_fullscreen(state);
+}
+
 /* xdg_shell_v6 implementation */
 /* TODO: unmap, popups */
 
@@ -426,10 +425,27 @@ static void handle_v6_request_resize(wl_listener*, void *data)
     handle_resize_request(view);
 }
 
+static void handle_v6_request_maximized(wl_listener*, void *data)
+{
+    auto surf = static_cast<wlr_xdg_surface_v6*> (data);
+    auto view = core->find_view(surf->surface);
+    handle_maximize_request(view, surf->toplevel->client_pending.maximized);
+}
+
+static void handle_v6_request_fullscreen(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_xdg_toplevel_v6_set_fullscreen_event*> (data);
+    auto view = core->find_view(ev->surface->surface);
+    auto wo = core->get_output(ev->output);
+    handle_fullscreen_request(view, wo, ev->fullscreen);
+}
+
 class wayfire_xdg6_view : public wayfire_view_t
 {
     wlr_xdg_surface_v6 *v6_surface;
-    wl_listener map, request_move, request_resize;
+    wl_listener map,
+                request_move, request_resize,
+                request_maximize, request_fullscreen;
 
     public:
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
@@ -439,15 +455,19 @@ class wayfire_xdg6_view : public wayfire_view_t
                   nonull(v6_surface->toplevel->title),
                   nonull(v6_surface->toplevel->app_id));
 
-        map.notify = handle_v6_map;
-        request_move.notify = handle_v6_request_move;
-        request_resize.notify = handle_v6_request_resize;
+        map.notify                = handle_v6_map;
+        request_move.notify       = handle_v6_request_move;
+        request_resize.notify     = handle_v6_request_resize;
+        request_maximize.notify   = handle_v6_request_maximized;
+        request_fullscreen.notify = handle_v6_request_fullscreen;
 
         wlr_xdg_surface_v6_ping(s);
 
         wl_signal_add(&v6_surface->events.map, &map);
-        wl_signal_add(&v6_surface->toplevel->events.request_move, &request_move);
-        wl_signal_add(&v6_surface->toplevel->events.request_resize, &request_resize);
+        wl_signal_add(&v6_surface->toplevel->events.request_move,       &request_move);
+        wl_signal_add(&v6_surface->toplevel->events.request_resize,     &request_resize);
+        wl_signal_add(&v6_surface->toplevel->events.request_maximize,   &request_maximize);
+        wl_signal_add(&v6_surface->toplevel->events.request_fullscreen, &request_fullscreen);
     }
 
     bool is_toplevel()
@@ -537,10 +557,26 @@ static void handle_xwayland_request_configure(wl_listener*, void *data)
     view->set_geometry({ev->x, ev->y, ev->width, ev->height});
 }
 
+static void handle_xwayland_request_maximize(wl_listener*, void *data)
+{
+    auto surf = static_cast<wlr_xwayland_surface*> (data);
+    auto view = core->find_view(surf->surface);
+    handle_maximize_request(view, surf->maximized_horz && surf->maximized_vert);
+}
+
+static void handle_xwayland_request_fullscreen(wl_listener*, void *data)
+{
+    auto surf = static_cast<wlr_xwayland_surface*> (data);
+    auto view = core->find_view(surf->surface);
+    handle_fullscreen_request(view, view->output, surf->fullscreen);
+}
+
 class wayfire_xwayland_view : public wayfire_view_t
 {
     wlr_xwayland_surface *xw;
-    wl_listener configure, request_move, request_resize;
+    wl_listener configure,
+                request_move, request_resize,
+                request_maximize, request_fullscreen;
 
     public:
     wayfire_xwayland_view(wlr_xwayland_surface *xww)
@@ -548,13 +584,17 @@ class wayfire_xwayland_view : public wayfire_view_t
     {
         map();
 
-        configure.notify      = handle_xwayland_request_configure;
-        request_move.notify   = handle_xwayland_request_move;
-        request_resize.notify = handle_xwayland_request_resize;
+        configure.notify          = handle_xwayland_request_configure;
+        request_move.notify       = handle_xwayland_request_move;
+        request_resize.notify     = handle_xwayland_request_resize;
+        request_maximize.notify   = handle_xwayland_request_maximize;
+        request_fullscreen.notify = handle_xwayland_request_fullscreen;
 
-        wl_signal_add(&xw->events.request_move,      &request_move);
-        wl_signal_add(&xw->events.request_resize,    &request_resize);
-        wl_signal_add(&xw->events.request_configure, &configure);
+        wl_signal_add(&xw->events.request_move,       &request_move);
+        wl_signal_add(&xw->events.request_resize,     &request_resize);
+        wl_signal_add(&xw->events.request_maximize,   &request_maximize);
+        wl_signal_add(&xw->events.request_fullscreen, &request_fullscreen);
+        wl_signal_add(&xw->events.request_configure,  &configure);
     }
 
     void activate(bool active)
@@ -592,6 +632,7 @@ class wayfire_xwayland_view : public wayfire_view_t
     {
         wayfire_view_t::set_maximized(maxim);
         wlr_xwayland_surface_set_maximized(xw, maxim);
+
     }
 
     void set_fullscreen(bool full)

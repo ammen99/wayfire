@@ -530,7 +530,8 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
         return false;
     if (mods ^ (MODIFIER_ALT | MODIFIER_CTRL))
         return false;
-    if (key < KEY_F1 || key > KEY_F12)
+
+    if (key < KEY_F1 || key > KEY_F10)
         return false;
 
     int target_vt = key - KEY_F1 + 1;

@@ -9,8 +9,6 @@
 #include "../../shared/config.hpp"
 
 #include "snap_signal.hpp"
-#include <compositor.h>
-#include <libweston-desktop.h>
 
 /* TODO: add support for more than one window animation at a time */
 
@@ -32,7 +30,7 @@ class wayfire_grid : public wayfire_plugin_t {
     std::unordered_map<wayfire_view, wf_geometry> saved_view_geometry;
     signal_callback_t output_resized_cb, view_destroyed_cb;
 
-    std::vector<string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
+    std::vector<std::string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
     std::vector<wayfire_key> default_keys = {
         {0, 0},
         {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP1},
@@ -72,7 +70,7 @@ class wayfire_grid : public wayfire_plugin_t {
         for (int i = 1; i < 10; i++) {
             keys[i] = section->get_key("slot_" + slots[i], default_keys[i]);
 
-            bindings[i] = [=] (weston_keyboard *kbd, uint32_t key) {
+            bindings[i] = [=] (uint32_t key) {
                 auto view = output->get_top_view();
                 if (view && current_view.view == nullptr)
                     handle_key(view, i);
@@ -100,11 +98,8 @@ class wayfire_grid : public wayfire_plugin_t {
 
         view_destroyed_cb = [=] (signal_data *data)
         {
-            auto conv = static_cast<destroy_view_signal*> (data);
-            if (conv && conv->destroyed_view == current_view.view)
-            {
+            if (get_signaled_view(data) == current_view.view)
                 stop_animation();
-            }
         };
 
         output->connect_signal("destroy-view", &view_destroyed_cb);
@@ -165,8 +160,7 @@ class wayfire_grid : public wayfire_plugin_t {
                 current_view.target.width, current_step, total_steps);
         int ch = GetProgress(current_view.original.height,
                 current_view.target.height, current_step, total_steps);
-
-        current_view.view->set_geometry(cx, cy, cw, ch);
+        current_view.view->set_geometry({cx, cy, cw, ch});
 
         current_step++;
         if (current_step == total_steps)
@@ -207,9 +201,7 @@ class wayfire_grid : public wayfire_plugin_t {
             sig->name = "view-fullscreen";
         else
             sig->name = "view-maximized";
-
-        auto loop = wl_display_get_event_loop(core->ec->wl_display);
-        wl_event_loop_add_idle(loop, idle_send_signal, sig);
+        wl_event_loop_add_idle(core->ev_loop, idle_send_signal, sig);
     }
 
     void toggle_maximized(wayfire_view v, int &x, int &y, int &w, int &h,
@@ -286,7 +278,7 @@ class wayfire_grid : public wayfire_plugin_t {
 
         if (current_view.view || !start_animation(data->view, x, y, w, h))
         {
-            data->view->set_geometry(x, y, w, h);
+            data->view->set_geometry({x, y, w, h});
             check_send_signal(data->view, data->state, false);
             return;
         }
@@ -305,7 +297,7 @@ class wayfire_grid : public wayfire_plugin_t {
         if (current_view.view || data->view->fullscreen == data->state ||
             !start_animation(data->view, x, y, w, h))
         {
-            data->view->set_geometry(x, y, w, h);
+            data->view->set_geometry({x, y, w, h});
             check_send_signal(data->view, false, data->state);
             return;
         }
