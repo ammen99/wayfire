@@ -5,7 +5,7 @@
 #include <functional>
 #include <vector>
 #include <view.hpp>
-#include "../../proto/wayfire-shell-server.h"
+#include "wayfire-shell-server.h"
 
 class wayfire_view_t;
 using wayfire_view = std::shared_ptr<wayfire_view_t>;
