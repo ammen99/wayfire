@@ -20,9 +20,7 @@ std::string bg_path;
 void output_created_cb(void *data, wayfire_shell *wayfire_shell,
         uint32_t output, uint32_t width, uint32_t height)
 {
-    auto panel = (outputs[output].panel = new wayfire_panel(config));
-    panel->create_panel(output, width, height);
-
+    outputs[output].panel = new wayfire_panel(config, output, width, height);
     //wayfire_shell_output_fade_in_start(wayfire_shell, output);
 }
 
@@ -110,7 +108,9 @@ int main(int argc, char *argv[])
     if (!setup_wayland_connection())
         return -1;
 
-    wayfire_shell_add_listener(display.wfshell, &bg_shell_listener, 0);
+outputs[0].panel = new wayfire_panel(config, 0, 600, 100);
+
+    //wayfire_shell_add_listener(display.wfshell, &bg_shell_listener, 0);
 
     while(true) {
         if (wl_display_dispatch(display.wl_disp) < 0)

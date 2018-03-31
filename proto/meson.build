@@ -29,6 +29,7 @@ server_protocols = [
 ]
 
 client_protocols = [
+	[wl_protocol_dir, 'unstable/xdg-shell/xdg-shell-unstable-v6.xml'],
     'wayfire-shell.xml'
 ]
 

@@ -153,9 +153,9 @@ void delete_window(wayfire_window *window)
     if (current_pointer_window == window)
         current_pointer_window = nullptr;
 
-    wl_shell_surface_destroy (window->shell_surface);
-    wl_surface_destroy (window->surface);
-
+    zxdg_toplevel_v6_destroy(window->toplevel);
+    zxdg_surface_v6_destroy(window->xdg_surface);
+    wl_surface_destroy(window->surface);
     cairo_surface_destroy(window->cairo_surface);
 
     backend_delete_window(window);
@@ -181,14 +181,19 @@ const wl_output_listener output_listener =
     output_scale
 };
 
+void handle_zxdg_ping (void *, zxdg_shell_v6 *shell, uint32_t serial)
+{ zxdg_shell_v6_pong(shell, serial); }
+const zxdg_shell_v6_listener zxdg_listener = { handle_zxdg_ping };
+
 // listeners
 void registry_add_object(void *data, struct wl_registry *registry, uint32_t name,
         const char *interface, uint32_t version)
 {
     if (!strcmp(interface,"wl_compositor")) {
         display.compositor = (wl_compositor*) wl_registry_bind (registry, name, &wl_compositor_interface, std::min(version, 3u));
-    } else if (!strcmp(interface,"wl_shell")) {
-        display.shell = (wl_shell*) wl_registry_bind(registry, name, &wl_shell_interface, std::min(version, 2u));
+    } else if (!strcmp(interface,"zxdg_shell_v6")) {
+        display.zxdg_shell = (zxdg_shell_v6*) wl_registry_bind(registry, name, &zxdg_shell_v6_interface, std::min(version, 1u));
+        zxdg_shell_v6_add_listener(display.zxdg_shell, &zxdg_listener, NULL);
     /* make sure we use the first seat, as it is the one created by weston. Some plugins might
      * create their own seat, which we shouldn't use */
     } else if (strcmp(interface, wl_seat_interface.name) == 0 && display.seat == NULL) {
@@ -220,28 +225,6 @@ static struct wl_registry_listener registry_listener =
 {
     &registry_add_object,
     &registry_remove_object
-};
-
-void shell_surface_ping(void *data, struct wl_shell_surface *shell_surface, uint32_t serial)
-{
-	wl_shell_surface_pong(shell_surface, serial);
-}
-
-static void shell_surface_configure(void *data, struct wl_shell_surface *shell_surface, uint32_t edges,
-        int32_t width, int32_t height)
-{
-    ((wayfire_window*) data)->configured = true;
-}
-
-static void shell_surface_popup_done(void *data, struct wl_shell_surface *shell_surface)
-{
-}
-
-const struct wl_shell_surface_listener shell_surface_listener =
-{
-    &shell_surface_ping,
-    &shell_surface_configure,
-    &shell_surface_popup_done
 };
 
 wl_cursor *cursor;

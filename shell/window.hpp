@@ -2,6 +2,7 @@
 #define COMMON_HPP
 
 #include <wayland-client.h>
+#include "xdg-shell-unstable-v6-client-protocol.h"
 #include "wayfire-shell-client-protocol.h"
 #include <iostream>
 #include <functional>
@@ -15,7 +16,8 @@ extern struct wayfire_display
     wl_pointer *pointer;
     wl_seat *seat = NULL;
     wl_shm *shm;
-    wl_shell *shell;
+
+    zxdg_shell_v6 *zxdg_shell;
 
     wayfire_shell *wfshell;
     wayfire_virtual_keyboard *vkbd;
@@ -29,7 +31,8 @@ void finish_wayland_connection();
 struct wayfire_window
 {
 	wl_surface *surface;
-	wl_shell_surface *shell_surface;
+    zxdg_surface_v6 *xdg_surface;
+    zxdg_toplevel_v6 *toplevel;
 
     std::function<void(wl_pointer*, uint32_t, int x, int y)> pointer_enter;
     std::function<void()> pointer_leave;
@@ -46,6 +49,8 @@ struct wayfire_window
     cairo_surface_t *cairo_surface;
 
     bool configured = false;
+    std::function<void()> first_configure;
+
     bool has_pointer_focus = false;
 };
 
@@ -65,7 +70,9 @@ extern const struct wl_shell_surface_listener shell_surface_listener;
 bool setup_backend();
 void finish_backend();
 
-wayfire_window* create_window(uint32_t width, uint32_t height);
+/* Once we create the window, we should wait until we get a zxdg_configure event, afterwards we can draw/whatever */
+wayfire_window* create_window(uint32_t width, uint32_t height, std::function<void()> configured);
+
 void set_active_window(wayfire_window* window);
 void backend_delete_window(wayfire_window* window);
 void damage_commit_window(wayfire_window *window);

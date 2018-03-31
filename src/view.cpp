@@ -13,7 +13,6 @@
 
 extern "C"
 {
-#include <wlr/types/wlr_xdg_shell_v6.h>
 #define static
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_matrix.h>
@@ -261,6 +260,8 @@ void wayfire_view_t::set_parent(wayfire_view parent)
 
 void wayfire_view_t::map()
 {
+    log_info("mapping a view %d", is_special);
+    update_size();
     if (is_mapped)
     {
         log_error ("request to map %p twice!", surface);
@@ -323,7 +324,7 @@ void wayfire_view_t::commit()
 
 void wayfire_view_t::damage()
 {
-    output->render->damage(geometry);
+    output->render->damage(get_output_geometry());
 }
 
 #define toplevel_op_check \
@@ -518,6 +519,12 @@ class wayfire_xdg6_view : public wayfire_view_t
         wlr_xdg_toplevel_v6_set_fullscreen(v6_surface, full);
     }
 
+    void move(int w, int h, bool send)
+    {
+        wayfire_view_t::move(w, h, send);
+        log_info("got it with %p %d", surface->texture, v6_surface->configured);
+    }
+
     void resize(int w, int h, bool send)
     {
         toplevel_op_check;
@@ -648,8 +655,8 @@ void notify_xwayland_created(wl_listener *, void *data)
 {
     core->add_view(std::make_shared<wayfire_xwayland_view> ((wlr_xwayland_surface*) data));
 }
-
 /* end of xwayland implementation */
+
 void init_desktop_apis()
 {
     core->api = new desktop_apis_t;
@@ -702,6 +709,8 @@ void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
     auto g = get_output_geometry();
     wlr_matrix_project_box(matrix, &g,
                            surface->current->transform, 0, output->handle->transform_matrix);
+
+    log_info("render at %d %d %d %d %p", g.x, g.y, g.width, g.height, surface->texture);
     wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
 
 	struct timespec now;

@@ -33,12 +33,23 @@ static void load_misc_config(wayfire_config *config)
     battery_options::text_scale = section->get_double("battery_text_scale", 0.6);
 }
 
-wayfire_panel::wayfire_panel(wayfire_config *config)
+wayfire_panel::wayfire_panel(wayfire_config *config, uint32_t output, uint32_t w, uint32_t h)
 {
     this->config = config;
     load_misc_config(config);
 
+    display.scale = 1;
+    width = w * display.scale;
+    widget::font_size *= display.scale;
+
+    height = 1.3 * widget::font_size;
+
+    std::cout << "configured: " << width << " " << height << std::endl;
+
+    this->output = output;
     autohide = (bool) config->get_section("shell_panel")->get_int("autohide", 1);
+
+    window = create_window(width, height, [=] () {create_panel();});
 }
 
 void wayfire_panel::set_autohide(bool ah)
@@ -68,15 +79,8 @@ wayfire_panel::~wayfire_panel()
     delete_window(window);
 }
 
-void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _height)
+void wayfire_panel::create_panel()
 {
-    width = _width * display.scale;
-    widget::font_size *= display.scale;
-
-    height = 1.3 * widget::font_size;
-
-    this->output = output;
-
     setup_window();
     init_widgets();
     render_frame(true);
@@ -85,9 +89,8 @@ void wayfire_panel::create_panel(uint32_t output, uint32_t _width, uint32_t _hei
 int last_x, last_y;
 void wayfire_panel::setup_window()
 {
-    window = create_window(width, height);
-    window->set_scale(display.scale);
 
+    window->set_scale(display.scale);
     cr = cairo_create(window->cairo_surface);
 
     repaint_callback = nullptr;
@@ -146,11 +149,13 @@ void wayfire_panel::setup_window()
         }
     };
 
+    /*
     wayfire_shell_add_panel(display.wfshell, output, window->surface);
     if (!autohide)
         wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width / display.scale, height / display.scale);
 
     wayfire_shell_configure_panel(display.wfshell, output, window->surface, 0, -height);
+    */
 
     state = HIDDEN;
     animation.y = -height;
@@ -167,8 +172,11 @@ void wayfire_panel::resize(uint32_t w, uint32_t h)
     cairo_destroy(cr);
 
     delete_window(window);
-    setup_window();
+    window = create_window(w, h, [=] () {setup_window(); reinit_widgets_context();});
+}
 
+void wayfire_panel::reinit_widgets_context()
+{
     for_each_widget(w)
         w->cr = cairo_create(window->cairo_surface);
 
@@ -388,8 +396,10 @@ void wayfire_panel::render_frame(bool first_call)
             }
         }
 
+        /*
         wayfire_shell_configure_panel(display.wfshell, output,
-                window->surface, 0, animation.y);
+                                      window->surface, 0, animation.y);
+                                      */
     }
 
     bool should_swap = first_call;

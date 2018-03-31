@@ -689,7 +689,7 @@ wayfire_output* wl_output_to_wayfire_output(uint32_t output)
 
 wayfire_view wl_surface_to_wayfire_view(wl_resource *surface)
 {
-    return nullptr;
+    return core->find_view((wlr_surface*) wl_resource_get_user_data(surface));
 }
 
 void shell_add_background(struct wl_client *client, struct wl_resource *resource,
@@ -701,7 +701,7 @@ void shell_add_background(struct wl_client *client, struct wl_resource *resource
 
     if (!wo || !view)
     {
-        log_error("shell_add_background called with invalid surface or output");
+        log_error("shell_add_background called with invalid surface or output %p %p", wo, view.get());
         return;
     }
 

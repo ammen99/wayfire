@@ -246,7 +246,41 @@ cairo_surface_t * create_shm_surface_from_pool(void *none, rectangle *rectangle,
     return surface;
 }
 
-wayfire_window* create_window(uint32_t w, uint32_t h)
+static void xdg_surface_handle_configure(void *data,
+                                         struct zxdg_surface_v6 *zxdg_surface_v6,
+                                         uint32_t serial)
+{
+    zxdg_surface_v6_ack_configure(zxdg_surface_v6, serial);
+    auto window = (wayfire_window*) data;
+    if (!window->configured && window->first_configure)
+        window->first_configure();
+    window->configured = true;
+}
+
+static const struct zxdg_surface_v6_listener xdg_surface_listener = {
+    xdg_surface_handle_configure
+};
+
+
+static void
+xdg_toplevel_handle_configure(void *data, struct zxdg_toplevel_v6 *toplevel,
+                              int32_t width, int32_t height,
+                              struct wl_array *states)
+{
+}
+
+static void
+xdg_toplevel_handle_close(void *data, struct zxdg_toplevel_v6 *xdg_toplevel)
+{
+}
+
+static const struct zxdg_toplevel_v6_listener xdg_toplevel_listener = {
+        xdg_toplevel_handle_configure,
+        xdg_toplevel_handle_close,
+};
+
+
+wayfire_window* create_window(uint32_t w, uint32_t h, std::function<void()> conf)
 {
     shm_surface_data *data;
     shm_pool *pool;
@@ -261,19 +295,26 @@ wayfire_window* create_window(uint32_t w, uint32_t h)
 	window->surface = wl_compositor_create_surface(display.compositor);
     wl_surface_set_user_data(window->surface, window);
 
-	window->shell_surface = wl_shell_get_shell_surface(display.shell, window->surface);
-	wl_shell_surface_add_listener(window->shell_surface, &shell_surface_listener, window);
-	wl_shell_surface_set_toplevel(window->shell_surface);
+    window->first_configure = conf;
+    window->xdg_surface = zxdg_shell_v6_get_xdg_surface(display.zxdg_shell, window->surface);
+    zxdg_surface_v6_add_listener(window->xdg_surface, &xdg_surface_listener, window);
+    window->toplevel = zxdg_surface_v6_get_toplevel(window->xdg_surface);
+    zxdg_toplevel_v6_add_listener(window->toplevel, &xdg_toplevel_listener, NULL);
+    wl_surface_commit(window->surface);
 
     pool = shm_pool_create(display.shm, data_length_for_shm_surface(&window->rect));
     if (!pool)
+    {
+        std::cerr << "failed to init shm_pool" << std::endl;
         return NULL;
+    }
 
     window->cairo_surface =
         create_shm_surface_from_pool(display.shm, &window->rect, pool);
 
     if (!window->cairo_surface)
     {
+        std::cerr << "failed to create a cairo surface" << std::endl;
         shm_pool_destroy(pool);
         return NULL;
     }
@@ -300,7 +341,7 @@ void damage_commit_window(wayfire_window *w)
     auto window = static_cast<shm_window*> (w);
 
     wl_surface_attach(window->surface, get_buffer_from_cairo_surface(window->cairo_surface),0,0);
-    wl_surface_damage(window->surface, window->rect.x, 
+    wl_surface_damage(window->surface, window->rect.x,
             window->rect.y,
             window->rect.width,
             window->rect.height);

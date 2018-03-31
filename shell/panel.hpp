@@ -70,9 +70,9 @@ class wayfire_panel {
 
     public:
         wayfire_window *window;
-        wayfire_panel(wayfire_config *config);
+        wayfire_panel(wayfire_config *config, uint32_t output, uint32_t width, uint32_t height);
         ~wayfire_panel();
-        void create_panel(uint32_t output, uint32_t width, uint32_t height);
+        void create_panel();
         void render_frame(bool first_call = false);
         void set_autohide(bool ah);
 

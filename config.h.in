@@ -6,9 +6,7 @@
 #mesondefine BUILD_WITH_IMAGEIO
 #mesondefine WAYFIRE_DEBUG_ENABLED
 #mesondefine USE_GLES32
-
-// TODO: move HAS_PIXBUF to panel
-#mesondefine HAS_PIXBUF
+#mesondefine BUILD_WITH_PIXBUF
 
 
 #endif /* end of include guard: CONFIG_H */
