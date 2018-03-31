@@ -1,0 +1,2 @@
+option('enable_gles32', type: 'boolean', value: false, description: 'Enable usage of GLES 3.2')
+option('enable_debug_output', type: 'boolean', value: false, description: 'Enable debug messages')
