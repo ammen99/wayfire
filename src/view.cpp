@@ -582,6 +582,8 @@ class wayfire_xwayland_view : public wayfire_view_t
     wayfire_xwayland_view(wlr_xwayland_surface *xww)
         : wayfire_view_t(xww->surface), xw(xww)
     {
+        log_info("new xwayland surface %s class: %s instance: %s",
+                 nonull(xw->title), nonull(xw->class_t), nonull(xw->instance));
         map();
 
         configure.notify          = handle_xwayland_request_configure;
