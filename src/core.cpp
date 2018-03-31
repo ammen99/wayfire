@@ -594,6 +594,21 @@ void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uin
         active_grab->callbacks.pointer.button(button, state);
 }
 
+void input_manager::update_cursor_focus(wayfire_view focus, int x, int y)
+{
+    if (focus == cursor_focus)
+        return;
+
+    cursor_focus = focus;
+    if (focus && focus->surface)
+    {
+        wlr_seat_pointer_notify_enter(seat, focus->surface, x, y);
+    } else
+    {
+        wlr_seat_pointer_notify_enter(seat, NULL, x, y);
+    }
+}
+
 void input_manager::update_cursor_position(uint32_t time_msec)
 {
     /* TODO: focus only on click, as this way we cannot do anything in move plugin */
@@ -616,10 +631,12 @@ void input_manager::update_cursor_position(uint32_t time_msec)
         int sx, sy;
         view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
 
-        wlr_seat_pointer_notify_enter(seat, view->surface, sx, sy);
+        update_cursor_focus(view, sx, sy);
         wlr_seat_pointer_notify_motion(core->input->seat, time_msec, sx, sy);
+    } else
+    {
+        update_cursor_focus(nullptr, cursor->x, cursor->y);
     }
-
 }
 
 void input_manager::handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_motion *ev)
