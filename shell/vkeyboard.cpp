@@ -1,8 +1,7 @@
 #include <wayland-client.h>
 #include <cstring>
-#include "../shared/config.hpp"
+#include "config.hpp"
 #include "vkeyboard.hpp"
-#include "../proto/wayfire-shell-client.h"
 
 #define ABC_TOGGLE 0x12345678
 #define NUM_TOGGLE 0x87654321

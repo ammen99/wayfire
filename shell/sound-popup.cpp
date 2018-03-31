@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "window.hpp"
-#include "../proto/wayfire-shell-client.h"
 
 #include <asoundlib.h>
 

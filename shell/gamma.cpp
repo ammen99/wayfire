@@ -1,7 +1,6 @@
 #include "gamma.hpp"
 #include "window.hpp"
-#include "../proto/wayfire-shell-client.h"
-#include "../shared/config.hpp"
+#include "config.hpp"
 #include <assert.h>
 #include <functional>
 #include <thread>

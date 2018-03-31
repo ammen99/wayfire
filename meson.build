@@ -18,7 +18,7 @@ wayfire_api_inc  = include_directories('src/api')
 
 wayland_server = dependency('wayland-server')
 wayland_client = dependency('wayland-client')
-wayland_client = dependency('wayland-cursor')
+wayland_cursor = dependency('wayland-cursor')
 wayland_protos = dependency('wayland-protocols', version: '>=1.12')
 cairo          = dependency('cairo')
 egl            = dependency('egl')
@@ -28,13 +28,16 @@ glm            = dependency('glm')
 libevdev       = dependency('libevdev')
 freetype2      = dependency('freetype2')
 libinput       = dependency('libinput', version: '>=1.7.0')
-xkbcommon      = dependency('xkbcommon')
 pixman         = dependency('pixman-1')
+threads        = dependency('threads')
+xkbcommon      = dependency('xkbcommon')
 wlroots        = dependency('wlroots')
 
-alsa = dependency('alsa', required: false)
-png  = dependency('libpng', required: false)
-jpeg  = dependency('libjpeg', required: false)
+alsa   = dependency('alsa',           required: false)
+gdk    = dependency('gdk-2.0',        required: false)
+jpeg   = dependency('libjpeg',        required: false)
+pixbuf = dependency('gdk-pixbuf-2.0', required: false)
+png    = dependency('libpng',         required: false)
 
 conf_data = configuration_data()
 
@@ -54,6 +57,14 @@ if png.found() and jpeg.found()
   conf_data.set('BUILD_WITH_IMAGEIO', true)
 endif
 
+if gdk.found() and pixbuf.found()
+    conf_data.set('BUILD_WITH_PIXBUF', true)
+endif
+
+if alsa.found()
+    conf_data.set('BUILD_WITH_ALSA', true)
+endif
+
 configure_file(input: 'config.h.in',
                output: 'config.h',
                configuration: conf_data)
@@ -64,8 +75,8 @@ add_project_arguments(['-Wno-pedantic', '-Wno-unused-parameter'], language: 'cpp
 subdir('proto')
 subdir('shared')
 subdir('src')
-#subdir(shell)
 subdir('plugins')
+subdir('shell')
 
 install_subdir('shaders', install_dir: 'share/wayfire')
 
@@ -77,7 +88,7 @@ summary = [
 	'debug output: @0@'.format(conf_data.get('WAYFIRE_DEBUG_ENABLED', false)),
 	'     imageio: @0@'.format(conf_data.get('BUILD_WITH_IMAGEIO', false)),
 	'      gles32: @0@'.format(conf_data.get('USE_GLES32', false)),
-	'  gdk-pixbuf: @0@'.format(conf_data.get('BUILD_WITH_GDK', false)),
+	'  gdk-pixbuf: @0@'.format(conf_data.get('BUILD_WITH_PIXBUF', false)),
 	'        alsa: @0@'.format(conf_data.get('BUILD_WITH_ALSA', false)),
 	'----------------',
 	''

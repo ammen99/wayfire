@@ -5,8 +5,7 @@
 #include "panel.hpp"
 #include "widgets.hpp"
 #include "net.hpp"
-#include "../proto/wayfire-shell-client.h"
-#include "../shared/config.hpp"
+#include "config.hpp"
 
 void panel_redraw(void *data, wl_callback*, uint32_t)
 {

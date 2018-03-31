@@ -2,7 +2,7 @@
 #define COMMON_HPP
 
 #include <wayland-client.h>
-#include "../proto/wayfire-shell-client.h"
+#include "wayfire-shell-client-protocol.h"
 #include <iostream>
 #include <functional>
 #include <cairo.h>
