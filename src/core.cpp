@@ -29,7 +29,7 @@ extern "C"
 
 #include "signal-definitions.hpp"
 #include "../shared/config.hpp"
-#include "../proto/wayfire-shell-server.h"
+#include "wayfire-shell-protocol.h"
 
 
 /* Start input_manager */

@@ -2,7 +2,6 @@
 #define SIGNAL_DEFINITIONS_HPP
 
 #include "output.hpp"
-#include "wayfire-shell-protocol.h"
 
 /* signal definitions */
 /* convenience functions are provided to get some basic info from the signal */
@@ -55,7 +54,8 @@ using change_viewport_notify = change_viewport_signal;
 /* sent when the workspace implementation actually reserves the workarea */
 struct reserved_workarea_signal : public signal_data
 {
-    wayfire_shell_panel_position position;
+    /* enum from wayfire-shell */
+    uint32_t position;
     uint32_t width;
     uint32_t height;
 };

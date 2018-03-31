@@ -5,7 +5,6 @@
 #include <functional>
 #include <vector>
 #include <view.hpp>
-#include "wayfire-shell-protocol.h"
 
 class wayfire_view_t;
 using wayfire_view = std::shared_ptr<wayfire_view_t>;
@@ -71,7 +70,9 @@ class workspace_manager
         /* wayfire_shell implementation */
         virtual void add_background(wayfire_view background, int x, int y) = 0;
         virtual void add_panel(wayfire_view panel) = 0;
-        virtual void reserve_workarea(wayfire_shell_panel_position position,
+
+        /* position is an enum of wayfire-shell-protocol */
+        virtual void reserve_workarea(uint32_t position,
                 uint32_t width, uint32_t height) = 0;
         virtual void configure_panel(wayfire_view view, int x, int y) = 0;
 

@@ -7,6 +7,7 @@
 #include "input-manager.hpp"
 #include "render-manager.hpp"
 #include "workspace-manager.hpp"
+#include "wayfire-shell-protocol.h"
 
 #include <linux/input.h>
 

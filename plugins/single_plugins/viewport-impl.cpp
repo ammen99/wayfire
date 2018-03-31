@@ -1,5 +1,6 @@
 #include <config.hpp>
 #include <view.hpp>
+#include <debug.hpp>
 #include <output.hpp>
 #include <core.hpp>
 #include <workspace-manager.hpp>
@@ -8,7 +9,7 @@
 #include <pixman-1/pixman.h>
 #include <opengl.hpp>
 #include <list>
-#include "proto/wayfire-shell-server.h"
+#include "wayfire-shell-protocol.h"
 
 struct wf_default_workspace_implementation : wf_workspace_implementation
 {
@@ -72,7 +73,7 @@ class viewport_manager : public workspace_manager
 
         void add_background(wayfire_view background, int x, int y);
         void add_panel(wayfire_view panel);
-        void reserve_workarea(wayfire_shell_panel_position position,
+        void reserve_workarea(uint32_t position,
              uint32_t width, uint32_t height);
         void configure_panel(wayfire_view view, int x, int y);
 
@@ -350,7 +351,7 @@ void viewport_manager::add_panel(wayfire_view panel)
     panel_layer.push_front(panel);
 }
 
-void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
+void viewport_manager::reserve_workarea(uint32_t position,
         uint32_t width, uint32_t height)
 {
     GetTuple(sw, sh, output->get_screen_size());
@@ -371,6 +372,8 @@ void viewport_manager::reserve_workarea(wayfire_shell_panel_position position,
             workarea.bot_padding = height;
             width = sw;
             break;
+        default:
+            log_error("bad reserve_workarea!");
     }
 
     reserved_workarea_signal data;
