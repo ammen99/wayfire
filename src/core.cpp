@@ -452,6 +452,7 @@ void input_manager::check_touch_bindings(weston_touch* touch, wl_fixed_t sx, wl_
 }
 */
 
+/* TODO: reorganize input-manager code, perhaps move it to another file */
 struct wf_callback
 {
     int id;
@@ -522,6 +523,12 @@ void handle_keyboard_mod_cb(wl_listener*, void* data)
     auto kbd = static_cast<wlr_keyboard*> (data);
     if (!core->input->input_grabbed())
         wlr_seat_keyboard_send_modifiers(core->input->seat, &kbd->modifiers);
+}
+
+void handle_request_set_cursor(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_seat_pointer_request_set_cursor_event*> (data);
+    core->input->set_cursor(ev);
 }
 
 static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
@@ -671,6 +678,11 @@ void input_manager::handle_pointer_motion_absolute(wlr_pointer *ptr, wlr_event_p
     update_cursor_position(ev->time_msec);;
 }
 
+void input_manager::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev)
+{
+    if (ev->seat_client->seat->pointer_state.focused_client == ev->seat_client && !input_grabbed())
+        wlr_cursor_set_surface(cursor, ev->surface, ev->hotspot_x, ev->hotspot_y);
+}
 
 bool input_manager::is_touch_enabled()
 {
@@ -802,6 +814,7 @@ void input_manager::create_seat()
     wl_signal_add(&cursor->events.button, &button);
     wl_signal_add(&cursor->events.motion, &motion);
     wl_signal_add(&cursor->events.motion_absolute, &motion_absolute);
+    wl_signal_add(&seat->events.request_set_cursor, &request_set_cursor);
 }
 
 input_manager::input_manager()
@@ -811,11 +824,12 @@ input_manager::input_manager()
     wl_signal_add(&core->backend->events.new_input,
                   &input_device_created);
 
-    key.notify             = handle_keyboard_key_cb;
-    modifier.notify        = handle_keyboard_mod_cb;
-    button.notify          = handle_pointer_button_cb;
-    motion.notify          = handle_pointer_motion_cb;
-    motion_absolute.notify = handle_pointer_motion_absolute_cb;
+    key.notify                = handle_keyboard_key_cb;
+    modifier.notify           = handle_keyboard_mod_cb;
+    button.notify             = handle_pointer_button_cb;
+    motion.notify             = handle_pointer_motion_cb;
+    motion_absolute.notify    = handle_pointer_motion_absolute_cb;
+    request_set_cursor.notify = handle_request_set_cursor;
 
     /*
     if (is_touch_enabled())

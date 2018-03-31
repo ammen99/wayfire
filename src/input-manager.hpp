@@ -11,6 +11,7 @@
 extern "C"
 {
 #include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 }
 
@@ -31,6 +32,7 @@ class input_manager
         wl_listener input_device_created,
                     key, modifier,
                     button, motion, motion_absolute, axis,
+                    request_set_cursor,
                     touch_down, touch_up, touch_motion;
 
         wf_gesture_recognizer *gr;
@@ -75,7 +77,7 @@ class input_manager
 
         int pointer_count = 0, keyboard_count = 0, touch_count = 0;
         void update_capabilities();
-
+        void set_cursor(wlr_seat_pointer_request_set_cursor_event *ev);
 
         bool grab_input(wayfire_grab_interface);
         void ungrab_input();
