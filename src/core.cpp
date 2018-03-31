@@ -473,28 +473,33 @@ struct button_callback_data : wf_callback
 };
 
 /* TODO: inhibit idle */
-void handle_pointer_button_cb(wl_listener*, void *data)
+static void handle_pointer_button_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_pointer_button*> (data);
-    core->input->handle_pointer_button(ev->device->pointer,
-                                            ev->button, ev->state);
+    core->input->handle_pointer_button(ev->button, ev->state);
         wlr_seat_pointer_notify_button(core->input->seat, ev->time_msec,
                                        ev->button, ev->state);
 }
 
-void handle_pointer_motion_cb(wl_listener*, void *data)
+static void handle_pointer_motion_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_pointer_motion*> (data);
-    core->input->handle_pointer_motion(ev->device->pointer, ev);
+    core->input->handle_pointer_motion(ev);
 }
 
-void handle_pointer_motion_absolute_cb(wl_listener*, void *data)
+static void handle_pointer_motion_absolute_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_pointer_motion_absolute*> (data);
-    core->input->handle_pointer_motion_absolute(ev->device->pointer, ev);
+    core->input->handle_pointer_motion_absolute(ev);
 }
 
-void handle_keyboard_key_cb(wl_listener*, void *data)
+static void handle_pointer_axis_cb(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_event_pointer_axis*> (data);
+    core->input->handle_pointer_axis(ev);
+}
+
+static void handle_keyboard_key_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_keyboard_key*> (data);
     if (!core->input->handle_keyboard_key(ev->keycode, ev->state))
@@ -518,14 +523,14 @@ static uint32_t mod_from_key(uint32_t key)
     return 0;
 }
 
-void handle_keyboard_mod_cb(wl_listener*, void* data)
+static void handle_keyboard_mod_cb(wl_listener*, void* data)
 {
     auto kbd = static_cast<wlr_keyboard*> (data);
     if (!core->input->input_grabbed())
         wlr_seat_keyboard_send_modifiers(core->input->seat, &kbd->modifiers);
 }
 
-void handle_request_set_cursor(wl_listener*, void *data)
+static void handle_request_set_cursor(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_seat_pointer_request_set_cursor_event*> (data);
     core->input->set_cursor(ev);
@@ -598,7 +603,7 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
     return false;
 }
 
-void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uint32_t state)
+void input_manager::handle_pointer_button(uint32_t button, uint32_t state)
 {
     if (state == WLR_BUTTON_PRESSED)
     {
@@ -666,16 +671,29 @@ void input_manager::update_cursor_position(uint32_t time_msec)
     }
 }
 
-void input_manager::handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_motion *ev)
+void input_manager::handle_pointer_motion(wlr_event_pointer_motion *ev)
 {
     wlr_cursor_move(cursor, ev->device, ev->delta_x, ev->delta_y);
     update_cursor_position(ev->time_msec);
 }
 
-void input_manager::handle_pointer_motion_absolute(wlr_pointer *ptr, wlr_event_pointer_motion_absolute *ev)
+void input_manager::handle_pointer_motion_absolute(wlr_event_pointer_motion_absolute *ev)
 {
     wlr_cursor_warp_absolute(cursor, ev->device, ev->x, ev->y);
     update_cursor_position(ev->time_msec);;
+}
+
+void input_manager::handle_pointer_axis(wlr_event_pointer_axis *ev)
+{
+    if (active_grab)
+    {
+        if (active_grab->callbacks.pointer.axis)
+            active_grab->callbacks.pointer.axis(ev);
+
+        return;
+    }
+
+    wlr_seat_pointer_notify_axis(seat, ev->time_msec, ev->orientation, ev->delta);
 }
 
 void input_manager::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev)
@@ -814,6 +832,7 @@ void input_manager::create_seat()
     wl_signal_add(&cursor->events.button, &button);
     wl_signal_add(&cursor->events.motion, &motion);
     wl_signal_add(&cursor->events.motion_absolute, &motion_absolute);
+    wl_signal_add(&cursor->events.axis, &axis);
     wl_signal_add(&seat->events.request_set_cursor, &request_set_cursor);
 }
 
@@ -829,6 +848,7 @@ input_manager::input_manager()
     button.notify             = handle_pointer_button_cb;
     motion.notify             = handle_pointer_motion_cb;
     motion_absolute.notify    = handle_pointer_motion_absolute_cb;
+    axis.notify               = handle_pointer_axis_cb;
     request_set_cursor.notify = handle_request_set_cursor;
 
     /*

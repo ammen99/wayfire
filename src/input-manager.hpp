@@ -88,10 +88,10 @@ class input_manager
 
         void free_output_bindings(wayfire_output *output);
 
-        bool handle_pointer_axis  (wlr_pointer *ptr, wlr_event_pointer_axis *ev);
-        void handle_pointer_motion(wlr_pointer *ptr, wlr_event_pointer_motion *ev);
-        void handle_pointer_motion_absolute(wlr_pointer *ptr, wlr_event_pointer_motion_absolute *ev);
-        void handle_pointer_button(wlr_pointer *ptr, uint32_t button, uint32_t state);
+        void handle_pointer_axis  (wlr_event_pointer_axis *ev);
+        void handle_pointer_motion(wlr_event_pointer_motion *ev);
+        void handle_pointer_motion_absolute(wlr_event_pointer_motion_absolute *ev);
+        void handle_pointer_button(uint32_t button, uint32_t state);
 
         bool handle_keyboard_key(uint32_t key, uint32_t state);
         bool handle_keyboard_mod(uint32_t key, uint32_t state);
