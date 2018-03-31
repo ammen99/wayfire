@@ -2,7 +2,7 @@
 #define SIGNAL_DEFINITIONS_HPP
 
 #include "output.hpp"
-#include "../../proto/wayfire-shell-server.h"
+#include "wayfire-shell-server.h"
 
 /* signal definitions */
 /* convenience functions are provided to get some basic info from the signal */
