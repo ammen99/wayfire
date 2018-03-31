@@ -1,0 +1,1 @@
+subdir('single_plugins')

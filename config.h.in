@@ -1,13 +1,14 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"
-#define WF_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
-#cmakedefine01 BUILD_WITH_IMAGEIO
-#cmakedefine01 WAYFIRE_DEBUG_ENABLED
-#cmakedefine01 USE_GLES32
-#cmakedefine01 HAS_CAIRO_GL_H
-#cmakedefine01 HAS_PIXBUF
+#define INSTALL_PREFIX "@INSTALL_PREFIX@"
+#define WF_SRC_DIR "@WF_SRC_DIR@"
+#mesondefine BUILD_WITH_IMAGEIO
+#mesondefine WAYFIRE_DEBUG_ENABLED
+#mesondefine USE_GLES32
+
+// TODO: move HAS_PIXBUF to panel
+#mesondefine HAS_PIXBUF
 
 
 #endif /* end of include guard: CONFIG_H */

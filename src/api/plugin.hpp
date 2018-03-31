@@ -11,6 +11,7 @@ extern "C"
 
 #include <functional>
 #include <memory>
+#include "config.hpp"
 
 /* when creating a signal there should be the definition of the derived class */
 struct signal_data { };
@@ -18,11 +19,6 @@ using signal_callback_t = std::function<void(signal_data*)>;
 
 /* effect hooks are called after main rendering */
 using effect_hook_t = std::function<void()>;
-
-#define MODIFIER_CTRL  (1 << 0)
-#define MODIFIER_ALT   (1 << 1)
-#define MODIFIER_SUPER (1 << 2)
-#define MODIFIER_SHIFT (1 << 3)
 
 struct wayfire_touch_gesture;
 using key_callback = std::function<void(uint32_t)>;
@@ -134,11 +130,10 @@ class wayfire_plugin_t {
 
         /* should read configuration data, attach hooks / keybindings, etc */
         virtual void init(wayfire_config *config) = 0;
-
-        /* the fini() method should remove all hooks/buttons/keys
-         * and of course prepare the plugin for deletion, i.e
-         * fini() must act like destuctor */
         virtual void fini();
+
+        /* grab_interface is already freed in destructor, so you might want to use fini() */
+        virtual ~wayfire_plugin_t();
 
         /* used by the plugin loader, shouldn't be modified by plugins */
         bool dynamic = false;

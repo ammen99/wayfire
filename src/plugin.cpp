@@ -46,13 +46,14 @@ bool wayfire_grab_interface_t::is_grabbed()
 }
 
 void wayfire_plugin_t::fini() {}
+wayfire_plugin_t::~wayfire_plugin_t() {}
 
 wayfire_view get_signaled_view(signal_data *data)
 {
     auto conv = static_cast<_view_signal*> (data);
-    if (!conv || !conv->view)
+    if (!conv)
     {
-        log_error ("Got a bad _view_signal");
+        log_error("Got a bad _view_signal");
         return nullptr;
     }
 

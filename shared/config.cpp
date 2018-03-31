@@ -4,7 +4,6 @@
 #include <fstream>
 #include <libevdev/libevdev.h>
 #include <linux/input.h>
-#include "plugin.hpp"
 
 #include <config.h>
 
@@ -189,7 +188,7 @@ wayfire_config::wayfire_config(string name, int rr)
     std::ifstream file(name);
     string line;
 
-#if WAYFIRE_DEBUG_ENABLED
+#ifdef WAYFIRE_DEBUG_ENABLED
     out.open("/tmp/.wayfire_config_debug");
     out << "use config: " << name << std::endl;
 #endif
@@ -226,7 +225,7 @@ wayfire_config::wayfire_config(string name, int rr)
             value = trim(line.substr(i + 1, line.size() - i - 1));
             current_section->options[name] = value;
 
-#if WAYFIRE_DEBUG_ENABLED
+#ifdef WAYFIRE_DEBUG_ENABLED
             out << current_section->name << ": " << name << " = " << value << std::endl;
 #endif
         }

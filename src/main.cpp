@@ -31,7 +31,7 @@ void compositor_sleep_cb (wl_listener*, void*)
 int main(int argc, char *argv[])
 {
 
-#if WAYFIRE_DEBUG_ENABLED
+#ifdef WAYFIRE_DEBUG_ENABLED
     wlr_log_init(L_DEBUG, NULL);
 #else
     wlr_log_init(L_ERROR, NULL);

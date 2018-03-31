@@ -76,7 +76,7 @@ class wayfire_view_t
         std::map<std::string, wf_custom_view_data*> custom_data;
 
         wayfire_view_t(wlr_surface *surface);
-        ~wayfire_view_t();
+        virtual ~wayfire_view_t();
 
         wayfire_output *output;
         wf_geometry geometry;
