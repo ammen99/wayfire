@@ -69,15 +69,7 @@ bool rect_intersect(wf_geometry screen, wf_geometry win)
     return true;
 }
 
-
-
 /*
-
-void desktop_surface_added(weston_desktop_surface *desktop_surface, void *shell)
-{
-    debug << "desktop_surface_added " << desktop_surface << std::endl;
-    core->add_view(desktop_surface);
-}
 
 void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
 {
@@ -107,35 +99,6 @@ void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
     }
 
     core->erase_view(view, view->keep_count <= 0);
-}
-
-void desktop_surface_move(weston_desktop_surface *ds, weston_seat *seat,
-        uint32_t serial, void *shell)
-{
-    auto view = core->find_view(ds);
-
-    auto main_surface = weston_surface_get_main_surface(view->surface);
-    if (main_surface == view->surface) {
-        move_request_signal req;
-        req.view = core->find_view(main_surface);
-        req.serial = serial;
-        view->output->emit_signal("move-request", &req);
-    }
-}
-
-void desktop_surface_resize(weston_desktop_surface *ds, weston_seat *seat,
-        uint32_t serial, weston_desktop_surface_edge edges, void *shell)
-{
-    auto view = core->find_view(ds);
-
-    auto main_surface = weston_surface_get_main_surface(view->surface);
-    if (main_surface == view->surface) {
-        resize_request_signal req;
-        req.view = core->find_view(main_surface);
-        req.edges = edges;
-        req.serial = serial;
-        view->output->emit_signal("resize-request", &req);
-    }
 }
 
 void desktop_surface_maximized_requested(weston_desktop_surface *ds,
@@ -466,7 +429,7 @@ static void handle_v6_request_resize(wl_listener*, void *data)
 class wayfire_xdg6_view : public wayfire_view_t
 {
     wlr_xdg_surface_v6 *v6_surface;
-    wl_listener map, request_move;
+    wl_listener map, request_move, request_resize;
 
     public:
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
@@ -478,11 +441,13 @@ class wayfire_xdg6_view : public wayfire_view_t
 
         map.notify = handle_v6_map;
         request_move.notify = handle_v6_request_move;
+        request_resize.notify = handle_v6_request_resize;
 
         wlr_xdg_surface_v6_ping(s);
 
         wl_signal_add(&v6_surface->events.map, &map);
         wl_signal_add(&v6_surface->toplevel->events.request_move, &request_move);
+        wl_signal_add(&v6_surface->toplevel->events.request_resize, &request_resize);
     }
 
     bool is_toplevel()
@@ -515,20 +480,21 @@ class wayfire_xdg6_view : public wayfire_view_t
     void activate(bool act)
     {
         toplevel_op_check;
+        wayfire_view_t::activate(act);
         wlr_xdg_toplevel_v6_set_activated(v6_surface, act);
     }
 
     void set_maximized(bool max)
     {
         toplevel_op_check;
-        this->maximized = max;
+        wayfire_view_t::set_maximized(max);
         wlr_xdg_toplevel_v6_set_maximized(v6_surface, max);
     }
 
     void set_fullscreen(bool full)
     {
         toplevel_op_check;
-        this->fullscreen = full;
+        wayfire_view_t::set_fullscreen(full);
         wlr_xdg_toplevel_v6_set_fullscreen(v6_surface, full);
     }
 
@@ -546,6 +512,101 @@ void notify_v6_created(wl_listener*, void *data)
     core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data));
 }
 
+
+/* end of xdg_shell_v6 implementation */
+
+/* xwayland implementation */
+static void handle_xwayland_request_move(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_xwayland_move_event*> (data);
+    auto view = core->find_view(ev->surface->surface);
+    handle_move_request(view);
+}
+
+static void handle_xwayland_request_resize(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_xwayland_resize_event*> (data);
+    auto view = core->find_view(ev->surface->surface);
+    handle_resize_request(view);
+}
+
+static void handle_xwayland_request_configure(wl_listener*, void *data)
+{
+    auto ev = static_cast<wlr_xwayland_surface_configure_event*> (data);
+    auto view = core->find_view(ev->surface->surface);
+    view->set_geometry({ev->x, ev->y, ev->width, ev->height});
+}
+
+class wayfire_xwayland_view : public wayfire_view_t
+{
+    wlr_xwayland_surface *xw;
+    wl_listener configure, request_move, request_resize;
+
+    public:
+    wayfire_xwayland_view(wlr_xwayland_surface *xww)
+        : wayfire_view_t(xww->surface), xw(xww)
+    {
+        map();
+
+        configure.notify      = handle_xwayland_request_configure;
+        request_move.notify   = handle_xwayland_request_move;
+        request_resize.notify = handle_xwayland_request_resize;
+
+        wl_signal_add(&xw->events.request_move,      &request_move);
+        wl_signal_add(&xw->events.request_resize,    &request_resize);
+        wl_signal_add(&xw->events.request_configure, &configure);
+    }
+
+    void activate(bool active)
+    {
+        wayfire_view_t::activate(active);
+        wlr_xwayland_surface_activate(xw, active);
+    }
+
+    void move(int x, int y, bool s)
+    {
+        geometry.x = x;
+        geometry.y = y;
+        set_geometry(geometry);
+    }
+
+    void resize(int w, int h, bool s)
+    {
+        wayfire_view_t::resize(w, h, s);
+        wlr_xwayland_surface_configure(xw, geometry.x, geometry.y,
+                                       geometry.width, geometry.height);
+    }
+
+    void set_geometry(wf_geometry g)
+    {
+        this->geometry = g;
+        resize(geometry.width, geometry.height, true);
+    }
+
+    void close()
+    {
+        wlr_xwayland_surface_close(xw);
+    }
+
+    void set_maximized(bool maxim)
+    {
+        wayfire_view_t::set_maximized(maxim);
+        wlr_xwayland_surface_set_maximized(xw, maxim);
+    }
+
+    void set_fullscreen(bool full)
+    {
+        wayfire_view_t::set_fullscreen(full);
+        wlr_xwayland_surface_set_fullscreen(xw, full);
+    }
+};
+
+void notify_xwayland_created(wl_listener *, void *data)
+{
+    core->add_view(std::make_shared<wayfire_xwayland_view> ((wlr_xwayland_surface*) data));
+}
+
+/* end of xwayland implementation */
 void init_desktop_apis()
 {
     core->api = new desktop_apis_t;
@@ -553,6 +614,10 @@ void init_desktop_apis()
     core->api->v6_created.notify = notify_v6_created;
     core->api->v6 = wlr_xdg_shell_v6_create(core->display);
     wl_signal_add(&core->api->v6->events.new_surface, &core->api->v6_created);
+
+    core->api->xwayland_created.notify = notify_xwayland_created;
+    core->api->xwayland = wlr_xwayland_create(core->display, core->compositor);
+    wl_signal_add(&core->api->xwayland->events.new_surface, &core->api->xwayland_created);
 }
 
 static void render_surface(wlr_surface *surface, pixman_region32_t *damage,

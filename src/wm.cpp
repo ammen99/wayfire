@@ -33,27 +33,24 @@ void wayfire_close::init(wayfire_config *config)
 void wayfire_focus::init(wayfire_config *)
 {
     grab_interface->name = "_wf_focus";
-    grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+    grab_interface->abilities_mask = WF_ABILITY_GRAB_INPUT;
 
-    /*
-    callback = [=] (wlr_pointer *ptr, uint32_t button)
+    callback = [=] (uint32_t button, int x, int y)
     {
-        core->focus_output(core->get_output_at(
-                    wl_fixed_to_int(ptr->x), wl_fixed_to_int(ptr->y)));
+        auto output = core->get_output_at(x, y);
+        core->focus_output(output);
 
-        wayfire_view view;
-        if (!ptr->focus ||
-            !(view = core->find_view(weston_surface_get_main_surface(ptr->focus->surface))))
+        auto view = output->get_view_at_point(x, y);
+        if (!view || view->is_special || view->destroyed || !output->activate_plugin(grab_interface, false))
             return;
 
-        if (view->is_special || view->destroyed || !output->activate_plugin(grab_interface, false))
-            return;
         output->deactivate_plugin(grab_interface);
-        view->output->focus_view(view, ptr->seat);
+        view->output->focus_view(view);
     };
 
-    output->add_button((weston_keyboard_modifier)0, BTN_LEFT, &callback);
+    output->add_button(0, BTN_LEFT, &callback);
 
+    /* TODO: touch focus
     touch = [=] (weston_touch *touch, wl_fixed_t sx, wl_fixed_t sy)
     {
         core->focus_output(core->get_output_at(

@@ -138,6 +138,7 @@ class wayfire_move : public wayfire_plugin_t
             prev_x = sx;
             prev_y = sy;
 
+            output->bring_to_front(view);
             if (view->maximized)
                 view->set_maximized(false);
             if (view->fullscreen)

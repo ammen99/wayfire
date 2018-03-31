@@ -67,6 +67,8 @@ subdir('src')
 #subdir(shell)
 subdir('plugins')
 
+install_subdir('shaders', install_dir: 'share/wayfire')
+
 summary = [
 	'',
 	'----------------',

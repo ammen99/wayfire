@@ -12,6 +12,8 @@
 extern "C"
 {
 #include <wlr/backend/libinput.h>
+#include <wlr/backend/session.h>
+#include <wlr/backend/multi.h>
 }
 
 #include "core.hpp"
@@ -522,6 +524,20 @@ void handle_keyboard_mod_cb(wl_listener*, void* data)
         wlr_seat_keyboard_send_modifiers(core->input->seat, &kbd->modifiers);
 }
 
+static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
+{
+    if (!session)
+        return false;
+    if (mods ^ (MODIFIER_ALT | MODIFIER_CTRL))
+        return false;
+    if (key < KEY_F1 || key > KEY_F12)
+        return false;
+
+    int target_vt = key - KEY_F1 + 1;
+    wlr_session_change_vt(session, target_vt);
+    return true;
+}
+
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
     auto mod = mod_from_key(key);
@@ -529,6 +545,10 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 
     if (state == WLR_KEY_PRESSED)
     {
+
+        if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
+            return true;
+
         std::vector<key_callback*> callbacks;
 
         auto mod_state = get_modifiers();
@@ -580,7 +600,6 @@ void input_manager::handle_pointer_button(wlr_pointer *ptr, uint32_t button, uin
         for (auto& pair : button_bindings)
         {
             auto& binding = pair.second;
-            std::cout << mod_state << " " << binding->mod << " " << button << " " << binding->button << std::endl;
             if (binding->output == core->get_active_output() &&
                 mod_state == binding->mod && button == binding->button)
                 callbacks.push_back(binding->call);

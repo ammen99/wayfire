@@ -11,6 +11,7 @@ extern "C"
 }
 
 #include <wayland-server.h>
+#include "desktop-api.hpp"
 
 #include "api/core.hpp"
 
@@ -98,6 +99,8 @@ int main(int argc, char *argv[])
 
     log_info ("runnign at server %s", server_name);
     setenv("WAYLAND_DISPLAY", server_name, 1);
+
+    wlr_xwayland_set_seat(core->api->xwayland, core->get_current_seat());
 
 //    load_xwayland(ec);
 
