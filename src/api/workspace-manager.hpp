@@ -28,8 +28,7 @@ class workspace_manager
         /* return if the view is visible on the given workspace */
         virtual bool view_visible_on(wayfire_view view, std::tuple<int, int>) = 0;
 
-        /* executes call for each view managed by the workspace manager
-         * includes background and panels */
+        /* execute call for each view, these including panels/backgrounds/etc */
         virtual void for_all_view(view_callback_proc_t call) = 0;
 
         /* executes call for each desktop view(~user apps) in the workspace manager */

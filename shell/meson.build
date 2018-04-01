@@ -34,14 +34,14 @@ background = executable('wayfire-shell-background',
 #    install: true,
 #    install_dir: 'lib/wayfire')
 #
-#if conf_data.get('BUILD_WITH_ALSA', false)
-#  sound_popup = executable('wayfire-sound-popup',
-#      ['sound-popup.cpp'],
-#      dependencies: shell_deps + [alsa],
-#      include_directories: wayfire_conf_inc,
-#      install: true,
-#      install_dir: 'lib/wayfire')
-#endif
+if conf_data.get('BUILD_WITH_ALSA', false)
+  sound_popup = executable('wayfire-sound-popup',
+      ['sound-popup.cpp'],
+      dependencies: shell_deps + [alsa],
+      include_directories: wayfire_conf_inc,
+      install: true,
+      install_dir: 'lib/wayfire')
+endif
 
 
 

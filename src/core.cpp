@@ -626,15 +626,15 @@ void input_manager::handle_pointer_button(uint32_t button, uint32_t state)
         active_grab->callbacks.pointer.button(button, state);
 }
 
-void input_manager::update_cursor_focus(wayfire_view focus, int x, int y)
+void input_manager::update_cursor_focus(wlr_surface *focus, int x, int y)
 {
     if (focus == cursor_focus)
         return;
 
     cursor_focus = focus;
-    if (focus && focus->surface)
+    if (focus)
     {
-        wlr_seat_pointer_notify_enter(seat, focus->surface, x, y);
+        wlr_seat_pointer_notify_enter(seat, focus, x, y);
     } else
     {
         wlr_seat_pointer_notify_enter(seat, NULL, x, y);
@@ -655,18 +655,20 @@ void input_manager::update_cursor_position(uint32_t time_msec)
         return;
     }
 
-    auto view = output->get_view_at_point(cursor->x, cursor->y);
-    if (view && view->is_mapped)
-    {
-        int sx, sy;
-        view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
 
-        update_cursor_focus(view, sx, sy);
-        wlr_seat_pointer_notify_motion(core->input->seat, time_msec, sx, sy);
-    } else
-    {
-        update_cursor_focus(nullptr, cursor->x, cursor->y);
-    }
+    int sx = cursor->x, sy = cursor->y;
+    wlr_surface *new_focus = NULL;
+
+    output->workspace->for_all_view(
+        [&] (wayfire_view view)
+        {
+            if (new_focus) return;
+            auto surface = view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
+            if (surface) new_focus = surface;
+        });
+
+    update_cursor_focus(new_focus, sx, sy);
+    wlr_seat_pointer_notify_motion(core->input->seat, time_msec, sx, sy);
 }
 
 void input_manager::handle_pointer_motion(wlr_event_pointer_motion *ev)

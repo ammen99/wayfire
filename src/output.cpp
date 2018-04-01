@@ -312,6 +312,7 @@ void render_manager::paint()
     wlr_renderer_scissor(rr, NULL);
 
     transformation_renderer();
+    render_panels();
     wlr_renderer_end(rr);
     wlr_output_damage_swap_buffers(damage_manager, NULL, NULL);
 

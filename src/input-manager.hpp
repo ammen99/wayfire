@@ -65,8 +65,8 @@ class input_manager
         void setup_keyboard(wlr_input_device *dev);
         void handle_new_input(wlr_input_device *dev);
 
-        wayfire_view cursor_focus = nullptr;
-        void update_cursor_focus(wayfire_view focus, int x, int y);
+        wlr_surface* cursor_focus = nullptr;
+        void update_cursor_focus(wlr_surface *focus, int x, int y);
         void update_cursor_position(uint32_t time_msec);
 
     public:

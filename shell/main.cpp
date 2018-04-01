@@ -108,9 +108,7 @@ int main(int argc, char *argv[])
     if (!setup_wayland_connection())
         return -1;
 
-outputs[0].panel = new wayfire_panel(config, 0, 600, 100);
-
-    //wayfire_shell_add_listener(display.wfshell, &bg_shell_listener, 0);
+    wayfire_shell_add_listener(display.wfshell, &bg_shell_listener, 0);
 
     while(true) {
         if (wl_display_dispatch(display.wl_disp) < 0)

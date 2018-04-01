@@ -250,8 +250,6 @@ void handle_input(int x, int y)
 
 void setup_window()
 {
-    window = create_window(geometry.w, geometry.h);
-
     window->touch_down = [] (uint32_t, int id, int x, int y)
     {
         input_count |= input_input_focus;
@@ -305,8 +303,6 @@ void setup_window()
         if (input_count & ~input_input_focus)
             handle_input(x, y);
     };
-
-    wayfire_shell_add_panel(display.wfshell, -1, window->surface);
     wayfire_shell_configure_panel(display.wfshell, -1, window->surface, geometry.x, geometry.y);
 
     cr = cairo_create(window->cairo_surface);
@@ -335,8 +331,12 @@ int main(int argc, char **argv)
         inactive_time_mms = std::atoi(argv[5]) * 1000;
 
     setup_audio();
-    setup_window();
-    render_frame();
+    window = create_window(geometry.w, geometry.h,
+                           [] () {
+                               setup_window();
+                               render_frame();
+                           });
+    wayfire_shell_add_panel(display.wfshell, -1, window->surface);
 
     while(true) {
         if (wl_display_dispatch(display.wl_disp) < 0)

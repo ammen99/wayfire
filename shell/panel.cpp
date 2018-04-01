@@ -50,6 +50,7 @@ wayfire_panel::wayfire_panel(wayfire_config *config, uint32_t output, uint32_t w
     autohide = (bool) config->get_section("shell_panel")->get_int("autohide", 1);
 
     window = create_window(width, height, [=] () {create_panel();});
+    wayfire_shell_add_panel(display.wfshell, output, window->surface);
 }
 
 void wayfire_panel::set_autohide(bool ah)
@@ -149,13 +150,10 @@ void wayfire_panel::setup_window()
         }
     };
 
-    /*
-    wayfire_shell_add_panel(display.wfshell, output, window->surface);
     if (!autohide)
         wayfire_shell_reserve(display.wfshell, output, WAYFIRE_SHELL_PANEL_POSITION_UP, width / display.scale, height / display.scale);
 
     wayfire_shell_configure_panel(display.wfshell, output, window->surface, 0, -height);
-    */
 
     state = HIDDEN;
     animation.y = -height;
@@ -172,7 +170,9 @@ void wayfire_panel::resize(uint32_t w, uint32_t h)
     cairo_destroy(cr);
 
     delete_window(window);
+
     window = create_window(w, h, [=] () {setup_window(); reinit_widgets_context();});
+    wayfire_shell_add_panel(display.wfshell, output, window->surface);
 }
 
 void wayfire_panel::reinit_widgets_context()
@@ -396,10 +396,8 @@ void wayfire_panel::render_frame(bool first_call)
             }
         }
 
-        /*
         wayfire_shell_configure_panel(display.wfshell, output,
                                       window->surface, 0, animation.y);
-                                      */
     }
 
     bool should_swap = first_call;

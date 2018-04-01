@@ -128,7 +128,9 @@ void viewport_manager::view_bring_to_front(wayfire_view view)
 
 void viewport_manager::view_removed(wayfire_view view)
 {
+    background_layer.remove(view);
     normal_layer.remove(view);
+    panel_layer.remove(view);
 }
 
 bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> vp)

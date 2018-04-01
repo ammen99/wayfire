@@ -72,16 +72,6 @@ bool rect_intersect(wf_geometry screen, wf_geometry win)
 
 void desktop_surface_removed(weston_desktop_surface *surface, void *user_data)
 {
-    debug << "desktop_surface_removed " << surface << std::endl;
-
-    auto view = core->find_view(surface);
-    weston_desktop_surface_unlink_view(view->handle);
-
-    pixman_region32_fini(&view->surface->pending.input);
-    pixman_region32_init(&view->surface->pending.input);
-    pixman_region32_fini(&view->surface->input);
-    pixman_region32_init(&view->surface->input);
-
     view->destroyed = true;
 
     if (view->output)
@@ -216,13 +206,53 @@ void wayfire_view_t::resize(int w, int h, bool send_signal)
         output->emit_signal("view-geometry-changed", &data);
 }
 
-bool wayfire_view_t::map_input_coordinates(int cx, int cy, int& sx, int& sy)
+wlr_surface* wayfire_view_t::map_input_coordinates(int cx, int cy, int& sx, int& sy)
 {
-    auto real_geometry = get_output_geometry();
-    sx = cx - real_geometry.x;
-    sy = cy - real_geometry.y;
+    wlr_surface *ret = NULL;
 
-    return point_inside({cx, cy}, real_geometry);
+    for_each_surface(
+        [&] (wlr_surface *surface, int x, int y)
+        {
+            if (ret) return;
+
+            sx = cx - x;
+            sy = cy - y;
+
+            if (wlr_surface_point_accepts_input(surface, sx, sy))
+                ret = surface;
+        });
+
+    return ret;
+}
+
+static void for_each_subsurface(wlr_surface *root,
+                                int root_x, int root_y,
+                                wf_surface_iterator_callback call,
+                                bool reverse = false)
+{
+    if (reverse)
+        call(root, root_x, root_y);
+
+    wlr_subsurface *sub;
+    wl_list_for_each(sub, &root->subsurface_list, parent_link)
+    {
+
+        int child_x = root_x + sub->surface->current->subsurface_position.x;
+        int child_y = root_y + sub->surface->current->subsurface_position.y;
+
+        log_info("has subsurface %d %d", child_x, child_y);
+
+        for_each_subsurface(sub->surface, child_x, child_y, call);
+    }
+
+    if (!reverse)
+        call(root, root_x, root_y);
+}
+
+void wayfire_view_t::for_each_surface(wf_surface_iterator_callback call, bool reverse)
+{
+    auto og = get_output_geometry();
+    for_each_subsurface(surface, og.x, og.y, call, reverse);
 }
 
 void wayfire_view_t::set_geometry(wf_geometry g)
@@ -260,6 +290,10 @@ void wayfire_view_t::set_parent(wayfire_view parent)
 
 void wayfire_view_t::map()
 {
+    auto workarea = output->workspace->get_workarea();
+    geometry.x += workarea.x;
+    geometry.y += workarea.y;
+
     log_info("mapping a view %d", is_special);
     update_size();
     if (is_mapped)
@@ -274,6 +308,7 @@ void wayfire_view_t::map()
     create_view_signal data;
     data.view = self();
     output->emit_signal("create-view", &data);
+
 
     if (!is_special)
     {
@@ -441,16 +476,186 @@ static void handle_v6_request_fullscreen(wl_listener*, void *data)
     handle_fullscreen_request(view, wo, ev->fullscreen);
 }
 
-class wayfire_xdg6_view : public wayfire_view_t
+void handle_new_popup(wl_listener*, void*);
+void handle_popup_map(wl_listener*, void*);
+void handle_popup_unmap(wl_listener*, void*);
+void handle_popup_destroy(wl_listener*, void*);
+
+/* xdg_popup_v6 implementation
+ * Currently we use a "hack": we treat the toplevel as a special popup,
+ * so that we can use the same functions for adding a new popup, tracking them, etc. */
+
+/* TODO: Figure out a way to animate this, possibly implement wayfire_renderable_t */
+class wayfire_xdg6_popup
+{
+    protected:
+        wl_listener new_popup, destroy_popup,
+                    m_popup_map, m_popup_unmap;
+
+                wlr_xdg_surface_v6 *base_surface;
+
+        wayfire_xdg6_popup(wayfire_output*& output, wlr_xdg_surface_v6 *base)
+            :base_surface(base), m_popup_output(output)
+        {
+            core->api->xdg_v6_popups[base_surface] = this;
+
+            new_popup.notify     = handle_new_popup;
+            destroy_popup.notify = handle_popup_destroy;
+            m_popup_map.notify   = handle_popup_map;
+            m_popup_unmap.notify = handle_popup_unmap;
+
+            wl_signal_add(&base_surface->events.new_popup, &new_popup);
+
+            if (base_surface->role == WLR_XDG_SURFACE_V6_ROLE_POPUP)
+            {
+                wl_signal_add(&base_surface->events.destroy,   &destroy_popup);
+                wl_signal_add(&base_surface->events.map,   &m_popup_map);
+                wl_signal_add(&base_surface->events.unmap, &m_popup_unmap);
+            }
+        }
+
+    public:
+        bool m_popup_mapped = false;
+
+        wayfire_xdg6_popup *parent_popup = NULL;
+        wlr_xdg_popup_v6 *m_popup = NULL;
+        wayfire_output*& m_popup_output;
+
+        std::vector<wayfire_xdg6_popup*> m_children;
+
+        wayfire_xdg6_popup(wayfire_output*& output, wlr_xdg_popup_v6 *pop)
+            : wayfire_xdg6_popup(output, pop->base)
+        {
+            m_popup = pop;
+        }
+
+        virtual ~wayfire_xdg6_popup()
+        {
+            core->api->xdg_v6_popups.erase(base_surface);
+            for (auto c : m_children)
+                delete c;
+        }
+};
+
+void handle_new_popup(wl_listener*, void *data)
+{
+    auto popup = static_cast<wlr_xdg_popup_v6*> (data);
+    auto it = core->api->xdg_v6_popups.find(popup->parent);
+    if (it == core->api->xdg_v6_popups.end())
+    {
+        log_error("attempting to create a popup with unknown parent");
+        return;
+    }
+
+    auto parent = it->second;
+    auto pop = new wayfire_xdg6_popup(parent->m_popup_output, popup);
+
+    pop->parent_popup = parent;
+    parent->m_children.push_back(pop);
+}
+
+/* TODO: damage from popups, recursive till top */
+void handle_popup_map(wl_listener*, void *data)
+{
+    auto popup = static_cast<wlr_xdg_surface_v6*> (data);
+    auto it = core->api->xdg_v6_popups.find(popup);
+    if (it == core->api->xdg_v6_popups.end())
+    {
+        log_error("attempting to map an unknown popup");
+        return;
+    }
+
+    it->second->m_popup_mapped = true;
+}
+
+void handle_popup_unmap(wl_listener*, void *data)
+{
+    auto popup = static_cast<wlr_xdg_surface_v6*> (data);
+    auto it = core->api->xdg_v6_popups.find(popup);
+    if (it == core->api->xdg_v6_popups.end())
+    {
+        log_error("attempting to unmap an unknown popup");
+        return;
+    }
+
+    it->second->m_popup_mapped = false;
+}
+
+void handle_popup_destroy(wl_listener*, void *data)
+{
+    auto popup = static_cast<wlr_xdg_surface_v6*> (data);
+    auto it = core->api->xdg_v6_popups.find(popup);
+    if (it == core->api->xdg_v6_popups.end())
+    {
+        log_error("attempting to destroy an unknown popup");
+        return;
+    }
+
+    auto wf_popup = it->second;
+    wf_popup->m_popup_mapped = false;
+
+    auto parent = it->second->parent_popup;
+    if (parent)
+    {
+        auto pit = parent->m_children.begin();
+        while (pit != parent->m_children.end())
+        {
+            if (*pit == wf_popup)
+                pit = parent->m_children.erase(pit);
+            else
+                ++pit;
+        }
+    } else
+    {
+        log_error("attempting to destroy a popup without a parent!");
+    }
+
+    delete wf_popup;
+}
+
+/* the top call for xdg6_popup_for_each_surface is with a toplevel surface
+ * which has m_popup = NULL, we must make sure to handle this case */
+static void xdg6_popup_for_each_surface(wayfire_xdg6_popup *popup,
+                                        int popup_x, int popup_y,
+                                        wf_surface_iterator_callback call,
+                                        bool reverse)
+{
+    if (popup->m_popup && reverse)
+    {
+        for_each_subsurface(popup->m_popup->base->surface,
+                            popup_x, popup_y, call, reverse);
+    }
+
+    for (auto p : popup->m_children)
+    {
+        if (p->m_popup_mapped)
+        {
+            xdg6_popup_for_each_surface(p,
+                                        popup_x + p->m_popup->geometry.x,
+                                        popup_y + p->m_popup->geometry.y,
+                                        call, reverse);
+        }
+    }
+
+    if (popup->m_popup && !reverse)
+    {
+        for_each_subsurface(popup->m_popup->base->surface,
+                            popup_x, popup_y, call, reverse);
+    }
+}
+
+
+class wayfire_xdg6_view : public wayfire_view_t, wayfire_xdg6_popup
 {
     wlr_xdg_surface_v6 *v6_surface;
     wl_listener map,
                 request_move, request_resize,
                 request_maximize, request_fullscreen;
 
+
     public:
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
-        : wayfire_view_t (s->surface), v6_surface(s)
+        : wayfire_view_t (s->surface), wayfire_xdg6_popup(output, s), v6_surface(s)
     {
         log_info ("new xdg_shell_v6 surface: %s app-id: %s",
                   nonull(v6_surface->toplevel->title),
@@ -522,7 +727,6 @@ class wayfire_xdg6_view : public wayfire_view_t
     void move(int w, int h, bool send)
     {
         wayfire_view_t::move(w, h, send);
-        log_info("got it with %p %d", surface->texture, v6_surface->configured);
     }
 
     void resize(int w, int h, bool send)
@@ -532,13 +736,36 @@ class wayfire_xdg6_view : public wayfire_view_t
         wayfire_view_t::resize(w, h, send);
         wlr_xdg_toplevel_v6_set_size(v6_surface, w, h);
     }
+
+    void for_each_surface(wf_surface_iterator_callback call, bool reverse)
+    {
+        auto og = get_output_geometry();
+
+        if (reverse)
+        {
+            for_each_subsurface(surface, og.x, og.y, call, reverse);
+            xdg6_popup_for_each_surface(this, og.x, og.y, call, reverse);
+        } else
+        {
+            xdg6_popup_for_each_surface(this, og.x, og.y, call, reverse);
+            for_each_subsurface(surface, og.x, og.y, call);
+        }
+    }
+
+    ~wayfire_xdg6_view()
+    {
+    }
 };
+
+
 
 void notify_v6_created(wl_listener*, void *data)
 {
-    core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data));
-}
+    auto surf = static_cast<wlr_xdg_surface_v6*> (data);
 
+    if (surf->role == WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL)
+        core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data));
+}
 
 /* end of xdg_shell_v6 implementation */
 
@@ -701,21 +928,34 @@ void wayfire_view_t::simple_render(uint32_t bits, pixman_region32_t *damage)
 
 void wayfire_view_t::render(uint32_t bits, pixman_region32_t *damage)
 {
-    if (!surface->texture)
-        return;
-    auto rr = wlr_backend_get_renderer(core->backend);
 
-    float matrix[9];
-    auto g = get_output_geometry();
-    wlr_matrix_project_box(matrix, &g,
-                           surface->current->transform, 0, output->handle->transform_matrix);
+    //log_info("start it");
+    for_each_surface([=] (wlr_surface *surface, int x, int y)
+                     {
+     //                    log_info("got surface %d %d %p", x, y, surface->texture);
+                         if (!surface->texture)
+                             return;
 
-    log_info("render at %d %d %d %d %p", g.x, g.y, g.width, g.height, surface->texture);
-    wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
+                         auto rr = wlr_backend_get_renderer(core->backend);
 
-	struct timespec now;
-	clock_gettime(CLOCK_MONOTONIC, &now);
-    wlr_surface_send_frame_done(surface, &now);
+                         float matrix[9];
+                         wlr_box g;
+
+                         g.x = x;
+                         g.y = y;
+                         g.width = surface->current->width;
+                         g.height = surface->current->height;
+
+      //                   log_info("%d %d %d %d", g.x, g.y, g.width, g.height);
+
+                         wlr_matrix_project_box(matrix, &g,
+                                                surface->current->transform, 0, output->handle->transform_matrix);
+                         wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
+
+                         struct timespec now;
+                         clock_gettime(CLOCK_MONOTONIC, &now);
+                         wlr_surface_send_frame_done(surface, &now);
+                     }, true);
 
     return;
 

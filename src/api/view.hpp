@@ -50,6 +50,7 @@ struct wf_custom_view_data
 
 class wayfire_view_t;
 using wayfire_view = std::shared_ptr<wayfire_view_t>;
+using wf_surface_iterator_callback = std::function<void(wlr_surface*, int, int)>;
 
 class wayfire_view_t
 {
@@ -62,6 +63,11 @@ class wayfire_view_t
 
         inline wayfire_view self();
         virtual void update_size();
+
+        /* iterate all (sub) surfaces, popups, etc. in top-most order
+         * for example, first popups, then subsurfaces, then main surface
+         * When reverse=true, the order in which surfaces are visited is reversed */
+        virtual void for_each_surface(wf_surface_iterator_callback callback, bool reverse = false);
 
     public:
 
@@ -94,9 +100,9 @@ class wayfire_view_t
         virtual wf_geometry get_output_geometry() { return geometry; };
 
         /* map from global to surface local coordinates
-         * returns false iff cursor is outside of the view, but sx and sy should be still set
+         * returns the (sub)surface under the cursor or NULL iff the cursor is outside of the view
          * TODO: it should be overwritable by plugins which deform the view */
-        virtual bool map_input_coordinates(int cursor_x, int cursor_y, int &sx, int &sy);
+        virtual wlr_surface *map_input_coordinates(int cursor_x, int cursor_y, int &sx, int &sy);
 
         virtual void set_geometry(wf_geometry g);
         virtual void set_resizing(bool resizing);
