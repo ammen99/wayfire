@@ -122,7 +122,7 @@ viewport_manager::~viewport_manager()
 
 void viewport_manager::view_bring_to_front(wayfire_view view)
 {
-    normal_layer.remove(view);
+    view_removed(view);
     normal_layer.insert(normal_layer.begin(), view);
 }
 

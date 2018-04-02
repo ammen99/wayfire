@@ -106,6 +106,9 @@ void wayfire_handle_focus_parent::init(wayfire_config*)
         intercept_recursion = true;
         output->focus_view(last_view);
         intercept_recursion = false;
+
+        /* free shared_ptr reference */
+        last_view.reset();
     };
     output->connect_signal("focus-view", &focus_event);
 }

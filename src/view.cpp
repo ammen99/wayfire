@@ -120,7 +120,7 @@ void destroyed_cb(wl_listener*, void *data)
 {
     auto view = core->find_view((wlr_surface*) data);
 
-    view->output->detach_view(view);
+    view->destroyed = 1;
     core->erase_view(view);
 }
 
@@ -290,7 +290,6 @@ void wayfire_view_t::map()
     geometry.x += workarea.x;
     geometry.y += workarea.y;
 
-    log_info("mapping a view %d", is_special);
     update_size();
     if (is_mapped)
     {
@@ -439,7 +438,6 @@ static void handle_v6_map(wl_listener*, void *data)
     auto view = core->find_view(surface->surface);
 
     assert(view);
-
     view->map();
 }
 
