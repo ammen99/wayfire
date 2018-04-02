@@ -236,12 +236,8 @@ static void for_each_subsurface(wlr_surface *root,
     wlr_subsurface *sub;
     wl_list_for_each(sub, &root->subsurface_list, parent_link)
     {
-
         int child_x = root_x + sub->surface->current->subsurface_position.x;
         int child_y = root_y + sub->surface->current->subsurface_position.y;
-
-        log_info("has subsurface %d %d", child_x, child_y);
-
         for_each_subsurface(sub->surface, child_x, child_y, call);
     }
 
@@ -630,10 +626,9 @@ static void xdg6_popup_for_each_surface(wayfire_xdg6_popup *popup,
     {
         if (p->m_popup_mapped)
         {
-            xdg6_popup_for_each_surface(p,
-                                        popup_x + p->m_popup->geometry.x,
-                                        popup_y + p->m_popup->geometry.y,
-                                        call, reverse);
+            double px, py;
+            wlr_xdg_surface_v6_popup_get_position(p->m_popup->base, &px, &py);
+            xdg6_popup_for_each_surface(p, popup_x + px, popup_y + py, call, reverse);
         }
     }
 
