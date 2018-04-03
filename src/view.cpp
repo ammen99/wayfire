@@ -268,8 +268,7 @@ void wayfire_surface_t::render(int x, int y, wlr_box *damage)
     auto box = get_scissor_box(output, damage);
     wlr_renderer_scissor(rr, &box);
 
-    wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
-
+    wlr_render_texture_with_matrix(rr, surface->texture, matrix, alpha);
 }
 
 void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)

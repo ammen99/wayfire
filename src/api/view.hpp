@@ -84,6 +84,7 @@ class wayfire_surface_t
 
         wlr_surface *surface;
         bool is_mapped = false;
+        float alpha = 1.0;
 
         /* returns top-left corner in output coordinates */
         virtual wf_point get_output_position();
@@ -180,4 +181,5 @@ class wayfire_view_t : public wayfire_surface_t
          * by plugins like move, animate, etc. */
         bool is_special = false;
 };
+
 #endif

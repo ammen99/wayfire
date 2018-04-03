@@ -474,7 +474,7 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
         OpenGL::prepare_framebuffer(stream->fbuff, stream->tex);
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
-    GL_CALL(glClearColor(1, 0, 0, 1));
+    GL_CALL(glClearColor(0, 0, 0, 1));
     GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 
     GetTuple(x, y, stream->ws);
