@@ -277,7 +277,8 @@ std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
         std::tuple<int, int> ws)
 {
     std::vector<wayfire_view> ret = custom_views;
-    wayfire_view v;
+    for (auto v : panel_layer)
+        ret.push_back(v);
 
     GetTuple(tx, ty, ws);
 

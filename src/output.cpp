@@ -348,6 +348,19 @@ void render_manager::post_paint()
 
     if (constant_redraw)
         schedule_redraw();
+
+    auto views = output->workspace->get_renderable_views_on_workspace(
+        output->workspace->get_current_workspace());
+
+    for (auto v : views)
+    {
+        v->for_each_surface([] (wayfire_surface_t *surface, int, int)
+        {
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            wlr_surface_send_frame_done(surface->surface, &now);
+        });
+    }
 }
 
 void render_manager::run_effects()
@@ -616,12 +629,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     while(rev_it != to_render.rend())
     {
         auto ds = std::move(*rev_it);
-
-        int n_rect;
-        auto rects = pixman_region32_rectangles(&ds->damage, &n_rect);
-
-        for (int i = 0; i < n_rect; i++)
-            ds->surface->render_pixman(ds->x, ds->y, &rects[i]);
+        ds->surface->render_pixman(ds->x, ds->y, &ds->damage);
 
         ++rev_it;
     }

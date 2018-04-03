@@ -98,7 +98,7 @@ class wayfire_surface_t
 
         virtual void render(int x, int y, wlr_box* damage);
         /* just wrapper for the render() */
-        virtual void render_pixman(int x, int y, pixman_box32_t* damage);
+        virtual void render_pixman(int x, int y, pixman_region32_t* damage);
 
         /* iterate all (sub) surfaces, popups, etc. in top-most order
          * for example, first popups, then subsurfaces, then main surface

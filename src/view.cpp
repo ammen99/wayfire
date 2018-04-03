@@ -270,20 +270,23 @@ void wayfire_surface_t::render(int x, int y, wlr_box *damage)
 
     wlr_render_texture_with_matrix(rr, surface->texture, matrix, 1);
 
-    struct timespec now;
-    clock_gettime(CLOCK_MONOTONIC, &now);
-    wlr_surface_send_frame_done(surface, &now);
 }
 
-void wayfire_surface_t::render_pixman(int x, int y, pixman_box32_t *damage)
+void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 {
-    wlr_box d;
-    d.x = damage->x1;
-    d.y = damage->y1;
-    d.width = damage->x2 - damage->x1;
-    d.height = damage->y2 - damage->y1;
+    int n_rect;
+    auto rects = pixman_region32_rectangles(damage, &n_rect);
 
-    render(x, y, &d);
+    for (int i = 0; i < n_rect; i++)
+    {
+        wlr_box d;
+        d.x = rects[i].x1;
+        d.y = rects[i].y1;
+        d.width = rects[i].x2 - rects[i].x1;
+        d.height = rects[i].y2 - rects[i].y1;
+
+        render(x, y, &d);
+    }
 }
 
 /* wayfire_view_t implementation */
@@ -708,6 +711,14 @@ class wayfire_xdg6_view : public wayfire_view_t
         wl_signal_add(&v6_surface->toplevel->events.request_resize,     &request_resize);
         wl_signal_add(&v6_surface->toplevel->events.request_maximize,   &request_maximize);
         wl_signal_add(&v6_surface->toplevel->events.request_fullscreen, &request_fullscreen);
+    }
+
+    wf_point get_output_position()
+    {
+        return {
+            geometry.x - v6_surface->geometry.x,
+            geometry.y - v6_surface->geometry.y,
+        };
     }
 
     wf_geometry get_output_geometry()
