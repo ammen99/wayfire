@@ -20,7 +20,7 @@ struct sending_signal
 void idle_send_signal(void *data)
 {
     auto conv = (sending_signal*) data;
-    conv->data->view->output->emit_signal(conv->name, conv->data);
+    conv->data->view->get_output()->emit_signal(conv->name, conv->data);
     delete conv->data;
     delete conv;
 }

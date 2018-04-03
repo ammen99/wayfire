@@ -1,23 +1,17 @@
 #include <output.hpp>
 #include <core.hpp>
+#include <debug.hpp>
 #include <view.hpp>
 #include <workspace-manager.hpp>
 #include <render-manager.hpp>
 #include <queue>
 #include <linux/input.h>
 #include <utility>
-#include "../../shared/config.hpp"
+#include "config.hpp"
 #include "view-change-viewport-signal.hpp"
 
 
 #define MAX_DIRS_IN_QUEUE 4
-
-class vswitch;
-struct slide_data
-{
-    vswitch* plugin;
-    int index;
-};
 
 struct switch_direction
 {
@@ -43,31 +37,15 @@ class vswitch : public wayfire_plugin_t
         grab_interface->name = "vswitch";
         grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
 
-        callback_left = [=] (weston_keyboard*, uint32_t) {
-            add_direction(-1, 0);
-        };
-        callback_right = [=] (weston_keyboard*, uint32_t) {
-            add_direction(1, 0);
-        };
-        callback_up = [=] (weston_keyboard*, uint32_t) {
-            add_direction(0, -1);
-        };
-        callback_down = [=] (weston_keyboard*, uint32_t) {
-            add_direction(0, 1);
-        };
+        callback_left = [=] (uint32_t) { add_direction(-1, 0); };
+        callback_right = [=] (uint32_t) { add_direction(1, 0); };
+        callback_up = [=] (uint32_t) { add_direction(0, -1); };
+        callback_down = [=] (uint32_t) { add_direction(0, 1); };
 
-        callback_win_left = [=] (weston_keyboard*, uint32_t) {
-            add_direction(-1, 0, output->get_top_view());
-        };
-        callback_win_right = [=] (weston_keyboard*, uint32_t) {
-            add_direction(1, 0, output->get_top_view());
-        };
-        callback_win_up = [=] (weston_keyboard*, uint32_t) {
-            add_direction(0, -1, output->get_top_view());
-        };
-        callback_win_down = [=] (weston_keyboard*, uint32_t) {
-            add_direction(0, 1, output->get_top_view());
-        };
+        callback_win_left = [=] (uint32_t) { add_direction(-1, 0, output->get_top_view()); };
+        callback_win_right = [=] (uint32_t) { add_direction(1, 0, output->get_top_view()); };
+        callback_win_up = [=] (uint32_t) { add_direction(0, -1, output->get_top_view()); };
+        callback_win_down = [=] (uint32_t) { add_direction(0, 1, output->get_top_view()); };
 
         auto section   = config->get_section("vswitch");
         auto key_left  = section->get_key("binding_left",  {MODIFIER_SUPER, KEY_LEFT});
@@ -145,9 +123,11 @@ class vswitch : public wayfire_plugin_t
         float dx = GetProgress(sx, tx, current_step, max_step);
         float dy = GetProgress(sy, ty, current_step, max_step);
 
-        /* XXX: Possibly apply transform in custom rendering? */
         for (auto v : views)
+        {
+            log_info("move view %f %f", v.ox + dx, v.oy + dy);
             v.v->move(v.ox + dx, v.oy + dy);
+        }
 
         if (current_step == max_step)
             slide_done();
@@ -161,7 +141,6 @@ class vswitch : public wayfire_plugin_t
         GetTuple(vx, vy, output->workspace->get_current_workspace());
         auto old_ws = output->workspace->get_current_workspace();
         int dx = front.dx, dy = front.dy;
-
 
         vx += dx;
         vy += dy;
@@ -223,6 +202,8 @@ class vswitch : public wayfire_plugin_t
         for (auto view : views_to_move) {
             if (view->is_mapped && !view->destroyed && view != static_view)
             {
+                log_info("found move view");
+
                 view->set_moving(true);
                 views.push_back({view, view->geometry.x, view->geometry.y});
             }
@@ -241,7 +222,7 @@ class vswitch : public wayfire_plugin_t
         }
 
         running = true;
-        output->render->add_output_effect(&hook, nullptr);
+        output->render->add_output_effect(&hook);
         output->render->auto_redraw(true);
 
         return true;
@@ -252,7 +233,7 @@ class vswitch : public wayfire_plugin_t
         output->deactivate_plugin(grab_interface);
         dirs = std::queue<switch_direction> ();
         running = false;
-        output->render->rem_effect(&hook, nullptr);
+        output->render->rem_effect(&hook);
         output->render->auto_redraw(false);
     }
 };

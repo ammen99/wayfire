@@ -1,5 +1,5 @@
 #include <plugin.hpp>
-#include "../../shared/config.hpp"
+#include "config.hpp"
 #include <core.hpp>
 
 class wayfire_autostart : public wayfire_plugin_t

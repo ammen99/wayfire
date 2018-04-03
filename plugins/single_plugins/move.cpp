@@ -145,7 +145,7 @@ class wayfire_move : public wayfire_plugin_t
                 view->set_fullscreen(false);
 
             if (!view->is_special)
-                view->output->focus_view(nullptr);
+                view->get_output()->focus_view(nullptr);
             view->set_moving(true);
 
             if (enable_snap)
@@ -169,7 +169,7 @@ class wayfire_move : public wayfire_plugin_t
                 if (view->is_special)
                     return;
 
-                view->output->focus_view(view);
+                view->get_output()->focus_view(view);
                 view->set_moving(false);
 
                 if (enable_snap && slot != 0) {

@@ -169,8 +169,18 @@ void render_manager::load_context()
     OpenGL::bind_context(ctx);
 
     dirty_context = false;
-
     output->emit_signal("reload-gl", nullptr);
+
+    GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+    output_streams.resize(vw);
+
+    for (int i = 0; i < vw; i++) {
+        for (int j = 0;j < vh; j++) {
+            output_streams[i].push_back(wf_workspace_stream{});
+            output_streams[i][j].tex = output_streams[i][j].fbuff = 0;
+            output_streams[i][j].ws = std::make_tuple(i, j);
+        }
+    }
 }
 
 void render_manager::release_context()
@@ -191,7 +201,14 @@ render_manager::~render_manager()
 
 void render_manager::damage(wlr_box box)
 {
+    schedule_redraw();
     wlr_output_damage_add_box(damage_manager, &box);
+}
+
+void render_manager::damage(pixman_region32_t *region)
+{
+    schedule_redraw();
+    wlr_output_damage_add(damage_manager, region);
 }
 
 void redraw_idle_cb(void *data)
@@ -223,44 +240,23 @@ void render_manager::schedule_redraw()
         idle_redraw_source = wl_event_loop_add_idle(core->ev_loop, redraw_idle_cb, output);
 }
 
-
+/* return damage from this frame for the given workspace, coordinates relative to the workspace */
 void render_manager::get_ws_damage(std::tuple<int, int> ws, pixman_region32_t *out_damage)
 {
     GetTuple(vx, vy, ws);
-    GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
+    GetTuple(cx, cy, output->workspace->get_current_workspace());
     auto og = output->get_full_geometry();
 
     if (!pixman_region32_selfcheck(out_damage))
         pixman_region32_init(out_damage);
 
-    pixman_region32_intersect_rect(out_damage, &frame_damage,
-                                   og.x + vx * og.width / vw,
-                                   og.y + vy * og.height / vh,
-                                   og.width / vw,
-                                   og.height / vh);
+    pixman_region32_intersect_rect(out_damage,
+                                   &frame_damage,
+                                   (vx - cx) * og.width,
+                                   (vy - cy) * og.height,
+                                   og.width, og.height);
 
-    int nrect;
-    auto rects = pixman_region32_rectangles(out_damage, &nrect);
-
-    if (nrect > 0)
-    {
-        pixman_box32_t boxes[nrect];
-
-        for (int i = 0; i < nrect; i++)
-        {
-            boxes[i].x1 = (rects[i].x1 - og.x) * vw;
-            boxes[i].x2 = (rects[i].x2 - og.x) * vw;
-            boxes[i].y1 = (rects[i].y1 - og.y) * vh;
-            boxes[i].y2 = (rects[i].y2 - og.y) * vh;
-        }
-
-
-        pixman_region32_fini(out_damage);
-        pixman_region32_init_rects(out_damage, boxes, nrect);
-    }
-
-    GetTuple(cx, cy, output->workspace->get_current_workspace());
-    pixman_region32_translate(out_damage, og.x - cx * og.width, og.y - cy * og.height);
+    pixman_region32_translate(out_damage, (cx - vx) * og.width, (cy - vy) * og.height);
 }
 
 void render_manager::reset_renderer()
@@ -290,7 +286,10 @@ void render_manager::render_panels()
     {
         auto view = *it;
         if (!view->is_hidden) /* use is_visible() when implemented */
-            view->render(TEXTURE_TRANSFORM_USE_DEVCOORD);
+        {
+            auto og = view->get_output_position();
+            view->render(og.x, og.y, NULL);
+        }
 
         ++it;
     }
@@ -304,23 +303,35 @@ void render_manager::paint()
     /* TODO: what does result mean??? */
     result = false;
 
-    auto rr = wlr_backend_get_renderer(core->backend);
-    wlr_renderer_begin(rr, output->handle->width, output->handle->height);
-    if (dirty_context)
-        load_context();
+    if (pixman_region32_not_empty(&frame_damage))
+    {
+        auto rr = wlr_backend_get_renderer(core->backend);
+        wlr_renderer_begin(rr, output->handle->width, output->handle->height);
+        if (dirty_context)
+            load_context();
 
-    wlr_renderer_scissor(rr, NULL);
+        GetTuple(vx, vy, output->workspace->get_current_workspace());
+        auto target_stream = &output_streams[vx][vy];
+        if (current_ws_stream != target_stream)
+        {
+            if (current_ws_stream)
+                workspace_stream_stop(current_ws_stream);
 
-    transformation_renderer();
-    render_panels();
-    wlr_renderer_end(rr);
+            current_ws_stream = target_stream;
+            workspace_stream_start(current_ws_stream);
+        } else
+        {
+            workspace_stream_update(current_ws_stream);
+        }
+
+        wlr_renderer_end(rr);
+    }
     wlr_output_damage_swap_buffers(damage_manager, NULL, NULL);
 
-    auto_redraw(true);
     post_paint();
 
     /*
-    OpenGL::bind_context(ctx);
+       OpenGL::bind_context(ctx);
     if (renderer)
     {
         OpenGL::bind_context(ctx);
@@ -349,6 +360,7 @@ void render_manager::run_effects()
         (*effect)();
 }
 
+/* TODO: this should be a WAYFIRE_VIEW_TRANSFORMATOR_LEVEL_2 transform actually */
 void render_manager::transformation_renderer()
 {
     auto views = output->workspace->get_renderable_views_on_workspace(
@@ -366,46 +378,30 @@ void render_manager::transformation_renderer()
         auto view = *it;
         if (!view->is_hidden) /* use is_visible() when implemented */
         {
-            view->render(TEXTURE_TRANSFORM_USE_DEVCOORD);
+          //  view->render(TEXTURE_TRANSFORM_USE_DEVCOORD);
         }
 
         ++it;
     }
 }
 
-void render_manager::add_output_effect(effect_hook_t* hook, wayfire_view v)
+void render_manager::add_output_effect(effect_hook_t* hook)
 {
-    if (v)
-        v->effects.push_back(hook);
-    else
-        output_effects.push_back(hook);
+    output_effects.push_back(hook);
 }
 
-void render_manager::rem_effect(const effect_hook_t *hook, wayfire_view v)
+void render_manager::rem_effect(const effect_hook_t *hook)
 {
-    if (v)
-    {
-        auto it = std::remove_if(v->effects.begin(), v->effects.end(),
-                                 [hook] (const effect_hook_t *h)
-                                 {
-                                     if (h == hook)
-                                         return true;
-                                     return false;
-                                 });
 
-        v->effects.erase(it, v->effects.end());
-    } else
-    {
-        auto it = std::remove_if(output_effects.begin(), output_effects.end(),
-                                 [hook] (const effect_hook_t *h)
-                                 {
-                                     if (h == hook)
-                                         return true;
-                                     return false;
-                                 });
+    auto it = std::remove_if(output_effects.begin(), output_effects.end(),
+                             [hook] (const effect_hook_t *h)
+                             {
+                                 if (h == hook)
+                                     return true;
+                                 return false;
+                             });
 
-        output_effects.erase(it, output_effects.end());
-    }
+    output_effects.erase(it, output_effects.end());
 }
 
 void render_manager::texture_from_workspace(std::tuple<int, int> vp,
@@ -439,13 +435,13 @@ void render_manager::texture_from_workspace(std::tuple<int, int> vp,
                 v->geometry.x += dx;
                 v->geometry.y += dy;
 
-                v->render();
+ //               v->render();
 
                 v->geometry.x -= dx;
                 v->geometry.y -= dy;
             } else
             {
-                v->render();
+  //              v->render();
             }
         }
         ++it;
@@ -465,6 +461,8 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
         OpenGL::prepare_framebuffer(stream->fbuff, stream->tex);
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
+    GL_CALL(glClearColor(1, 0, 0, 1));
+    GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
@@ -485,14 +483,10 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
         {
             if (!v->is_special)
             {
-                v->geometry.x += dx;
-                v->geometry.y += dy;
-                v->render();
-                v->geometry.x -= dx;
-                v->geometry.y -= dy;
+                v->render(v->geometry.x + dx, v->geometry.y + dy, NULL);
             } else
             {
-                v->render();
+                v->render(v->geometry.x, v->geometry.y, NULL);
             }
         }
         ++it;
@@ -547,92 +541,93 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
 
-    struct damaged_view
+    struct damaged_surface_t
     {
-        wayfire_view view;
-        pixman_region32_t *damage;
+        wayfire_surface_t *surface;
+
+        int x, y;
+        pixman_region32_t damage;
+
+        ~damaged_surface_t()
+        { pixman_region32_fini(&damage); }
     };
 
-    std::vector<damaged_view> update_views;
+    using damaged_surface = std::unique_ptr<damaged_surface_t>;
+    std::vector<damaged_surface> to_render;
 
     auto it = views.begin();
 
     while (it != views.end() && pixman_region32_not_empty(&ws_damage))
     {
-        damaged_view dv;
-        dv.view = *it;
+        auto view = *it;
+        if (!view->is_visible())
+            goto next;
 
-        if (dv.view->is_visible())
+        view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
         {
-            dv.damage = new pixman_region32_t;
-            if (dv.view->is_special)
+            if (!surface->surface->texture || !pixman_region32_not_empty(&ws_damage))
+                return;
+
+            if (!view->is_special)
             {
-                /* TODO: check ds_geometry */
-                /* make background's damage be at the target viewport */
-                pixman_region32_init_rect(dv.damage,
-                    dv.view->geometry.x + (dx - g.x),
-                    dv.view->geometry.y + (dy - g.y),
-                    dv.view->surface->current->width,
-                    dv.view->surface->current->height);
-            } else
-            {
-                pixman_region32_init_rect(dv.damage,
-                        dv.view->geometry.x,
-                        dv.view->geometry.y,
-                        dv.view->surface->current->width, dv.view->surface->current->height);
+                x -= dx;
+                y -= dy;
             }
 
-            pixman_region32_intersect(dv.damage, dv.damage, &ws_damage);
-            if (pixman_region32_not_empty(dv.damage)) {
-                update_views.push_back(dv);
-                /* If we are processing background, then this is not correct, as its
-                 * transform.opaque isn't positioned properly. But as
-                 * background is the last in the list, we don' care */
-                pixman_region32_subtract(&ws_damage, &ws_damage, &dv.view->surface->current->opaque);
-            } else {
-                pixman_region32_fini(dv.damage);
-                delete dv.damage;
+            auto ds = damaged_surface(new damaged_surface_t);
+            pixman_region32_init_rect(&ds->damage,
+                                      x, y,
+                                      surface->surface->current->width,
+                                      surface->surface->current->height);
+
+            pixman_region32_intersect(&ds->damage, &ds->damage, &ws_damage);
+            if (pixman_region32_not_empty(&ds->damage))
+            {
+                ds->x = x;
+                ds->y = y;
+                ds->surface = surface;
+
+                pixman_region32_t opaque;
+                pixman_region32_init(&opaque);
+                pixman_region32_copy(&opaque, &surface->surface->current->opaque);
+                pixman_region32_translate(&opaque, x, y);
+                pixman_region32_subtract(&ws_damage, &ws_damage, &opaque);
+                pixman_region32_fini(&opaque);
+
+                to_render.push_back(std::move(ds));
             }
-        }
-        ++it;
+        });
+
+        next: ++it;
     };
 
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stream->fbuff));
 
+    /*
+     TODO; implement scale != 1
     glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(scale_x, scale_y, 1));
     glm::mat4 translate = glm::translate(glm::mat4(), glm::vec3(scale_x - 1, scale_y - 1, 0));
     std::swap(wayfire_view_transform::global_scale, scale);
     std::swap(wayfire_view_transform::global_translate, translate);
+    */
 
-    auto rev_it = update_views.rbegin();
-    while(rev_it != update_views.rend())
+
+    auto rev_it = to_render.rbegin();
+    while(rev_it != to_render.rend())
     {
-        auto dv = *rev_it;
+        auto ds = std::move(*rev_it);
 
-#define render_op(dx, dy) \
-        dv.view->geometry.x -= dx; \
-        dv.view->geometry.y -= dy; \
-        dv.view->render(0, dv.damage); \
-        dv.view->geometry.x += dx; \
-        dv.view->geometry.y += dy;
+        int n_rect;
+        auto rects = pixman_region32_rectangles(&ds->damage, &n_rect);
 
+        for (int i = 0; i < n_rect; i++)
+            ds->surface->render_pixman(ds->x, ds->y, &rects[i]);
 
-        pixman_region32_translate(dv.damage, -(dx - g.x), -(dy - g.y));
-        if (dv.view->is_special)
-        {
-            render_op(0, 0);
-        } else
-        {
-            render_op(dx - g.x, dy - g.y);
-        }
-
-        pixman_region32_fini(dv.damage);
-        delete dv.damage;
         ++rev_it;
     }
 
-    std::swap(wayfire_view_transform::global_scale, scale);
-    std::swap(wayfire_view_transform::global_translate, translate);
+   // std::swap(wayfire_view_transform::global_scale, scale);
+   // std::swap(wayfire_view_transform::global_translate, translate);
 
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
     pixman_region32_fini(&ws_damage);
@@ -698,7 +693,7 @@ void shell_add_background(struct wl_client *client, struct wl_resource *resource
 {
     auto view = wl_surface_to_wayfire_view(surface);
     auto wo = wl_output_to_wayfire_output(output);
-    if (!wo) wo = view ? view->output : nullptr;
+    if (!wo) wo = view ? view->get_output() : nullptr;
 
     if (!wo || !view)
     {
@@ -715,7 +710,7 @@ void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
 {
     auto view = wl_surface_to_wayfire_view(surface);
     auto wo = wl_output_to_wayfire_output(output);
-    if (!wo) wo = view ? view->output : nullptr;
+    if (!wo) wo = view ? view->get_output() : nullptr;
 
 
     if (!wo || !view) {
@@ -732,7 +727,7 @@ void shell_configure_panel(struct wl_client *client, struct wl_resource *resourc
 {
     auto view = wl_surface_to_wayfire_view(surface);
     auto wo = wl_output_to_wayfire_output(output);
-    if (!wo) wo = view ? view->output : nullptr;
+    if (!wo) wo = view ? view->get_output() : nullptr;
 
     if (!wo || !view) {
         log_error("shell_configure_panel called with invalid surface or output");
@@ -922,7 +917,7 @@ void wayfire_output::deactivate()
 
 void wayfire_output::attach_view(wayfire_view v)
 {
-    v->output = this;
+    v->set_output(this);
     workspace->view_bring_to_front(v);
 
     _view_signal data;

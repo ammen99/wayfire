@@ -48,33 +48,81 @@ struct wf_custom_view_data
     virtual ~wf_custom_view_data() {}
 };
 
+/* General TODO: mark member functions const where appropriate */
+
 class wayfire_view_t;
 using wayfire_view = std::shared_ptr<wayfire_view_t>;
-using wf_surface_iterator_callback = std::function<void(wlr_surface*, int, int)>;
 
-class wayfire_view_t
+/* do not copy the surface, it is not reference counted and you will get crashes */
+class wayfire_surface_t;
+using wf_surface_iterator_callback = std::function<void(wayfire_surface_t*, int, int)>;
+
+/* abstraction for desktop-apis, no real need for plugins
+ * This is a base class to all "drawables" - desktop views, subsurfaces, popups */
+class wayfire_surface_t
+{
+    /* TODO: maybe some functions don't need to be virtual? */
+    protected:
+         wl_listener committed, destroy, new_sub;
+         std::vector<wayfire_surface_t*> surface_children;
+
+         virtual void for_each_surface_recursive(wf_surface_iterator_callback callback,
+                                                 int x, int y, bool reverse = false);
+
+        wayfire_surface_t *parent_surface;
+        wayfire_surface_t() = delete;
+
+        wayfire_output *output;
+
+        /* position relative to parent */
+        virtual void get_child_position(int &x, int &y);
+
+    public:
+
+        wayfire_surface_t(wlr_surface *surface, wayfire_surface_t *parent = nullptr);
+        virtual ~wayfire_surface_t();
+
+        wlr_surface *surface;
+        bool is_mapped = false;
+
+        /* returns top-left corner in output coordinates */
+        virtual wf_point get_output_position();
+
+        /* return surface box in output coordinates */
+        virtual wf_geometry get_output_geometry();
+
+        virtual void commit();
+
+        virtual wayfire_output *get_output() { return output; };
+        virtual void set_output(wayfire_output*);
+
+        virtual void render(int x, int y, wlr_box* damage);
+        /* just wrapper for the render() */
+        virtual void render_pixman(int x, int y, pixman_box32_t* damage);
+
+        /* iterate all (sub) surfaces, popups, etc. in top-most order
+         * for example, first popups, then subsurfaces, then main surface
+         * When reverse=true, the order in which surfaces are visited is reversed */
+        virtual void for_each_surface(wf_surface_iterator_callback callback, bool reverse = false);
+};
+
+/* Represents a desktop window (not as X11 window, but like a xdg_toplevel surface) */
+class wayfire_view_t : public wayfire_surface_t
 {
     protected:
 
         void force_update_xwayland_position();
         int in_continuous_move = 0, in_continuous_resize = 0;
 
-        wl_listener committed, destroy;
-
         inline wayfire_view self();
         virtual void update_size();
 
-        /* iterate all (sub) surfaces, popups, etc. in top-most order
-         * for example, first popups, then subsurfaces, then main surface
-         * When reverse=true, the order in which surfaces are visited is reversed */
-        virtual void for_each_surface(wf_surface_iterator_callback callback, bool reverse = false);
-
     public:
 
+        /* these represent toplevel relations, children here are transient windows,
+         * such as the close file dialogue */
         wayfire_view parent = nullptr;
         std::vector<wayfire_view> children;
-
-        wlr_surface *surface;
 
         /* plugins can subclass wf_custom_view_data and use it to store view-specific information
          * it must provide a virtual destructor to free its data. Custom data is deleted when the view
@@ -84,7 +132,6 @@ class wayfire_view_t
         wayfire_view_t(wlr_surface *surface);
         virtual ~wayfire_view_t();
 
-        wayfire_output *output;
         wf_geometry geometry;
 
         virtual void move(int x, int y, bool send_signal = true);
@@ -93,8 +140,8 @@ class wayfire_view_t
         virtual void close() {};
 
         virtual void set_parent(wayfire_view parent);
-        virtual bool is_toplevel() { return true; }
 
+        virtual wf_point get_output_position() { return {geometry.x, geometry.y}; }
         /* return geometry together with shadows, etc.
          * view->geometry contains "WM" geometry */
         virtual wf_geometry get_output_geometry() { return geometry; };
@@ -102,7 +149,7 @@ class wayfire_view_t
         /* map from global to surface local coordinates
          * returns the (sub)surface under the cursor or NULL iff the cursor is outside of the view
          * TODO: it should be overwritable by plugins which deform the view */
-        virtual wlr_surface *map_input_coordinates(int cursor_x, int cursor_y, int &sx, int &sy);
+        virtual wayfire_surface_t *map_input_coordinates(int cursor_x, int cursor_y, int &sx, int &sy);
 
         virtual void set_geometry(wf_geometry g);
         virtual void set_resizing(bool resizing);
@@ -116,11 +163,9 @@ class wayfire_view_t
         wayfire_view_transform transform;
 
         bool is_visible();
-
-        bool is_mapped = false;
-
-        virtual void commit();
         virtual void map();
+        virtual void unmap() {is_mapped = false;};
+        virtual void commit();
         virtual void damage();
 
         /* Used to specify that this view has been destroyed.
@@ -134,11 +179,5 @@ class wayfire_view_t
         /* backgrounds, panels, lock surfaces -> they shouldn't be touched
          * by plugins like move, animate, etc. */
         bool is_special = false;
-
-        std::vector<effect_hook_t*> effects;
-
-        /* simple_render is used to just render the view without running the attached effects */
-        virtual void simple_render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
-        void render(uint32_t bits = 0, pixman_region32_t *damage = nullptr);
 };
 #endif

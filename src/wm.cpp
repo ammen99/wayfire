@@ -45,7 +45,7 @@ void wayfire_focus::init(wayfire_config *)
             return;
 
         output->deactivate_plugin(grab_interface);
-        view->output->focus_view(view);
+        view->get_output()->focus_view(view);
     };
 
     output->add_button(0, BTN_LEFT, &callback);
@@ -63,7 +63,7 @@ void wayfire_focus::init(wayfire_config *)
             return;
 
         output->deactivate_plugin(grab_interface);
-        view->output->focus_view(view, touch->seat);
+        view->get_output()->focus_view(view, touch->seat);
     };
 
     output->add_touch(0, &touch);
@@ -80,7 +80,7 @@ void wayfire_fullscreen::init(wayfire_config *conf)
 void wayfire_handle_focus_parent::focus_view(wayfire_view view)
 {
     last_view = view;
-    view->output->bring_to_front(view);
+    view->get_output()->bring_to_front(view);
     for (auto child : view->children)
         focus_view(child);
 }

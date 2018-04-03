@@ -554,8 +554,6 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
     auto mod = mod_from_key(key);
-    if (mod) return handle_keyboard_mod(mod, state);
-
     if (state == WLR_KEY_PRESSED)
     {
 
@@ -577,8 +575,15 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
         for (auto call : callbacks)
             (*call) (key);
 
+        /* make sure we update modifier state when modifier-modifier binding occurs */
+        if (mod)
+            mods_count[mod] += (state == WLR_KEY_PRESSED ? 1 : -1);
+
         return callbacks.size();
     }
+
+    if (mod)
+        return handle_keyboard_mod(mod, state);
 
     if (active_grab)
     {
@@ -664,7 +669,7 @@ void input_manager::update_cursor_position(uint32_t time_msec)
         {
             if (new_focus) return;
             auto surface = view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
-            if (surface) new_focus = surface;
+            if (surface) new_focus = surface->surface;
         });
 
     update_cursor_focus(new_focus, sx, sy);
@@ -1333,7 +1338,7 @@ void wayfire_core::remove_output(wayfire_output *output)
     output->workspace->for_each_view_reverse([=] (wayfire_view view)
     {
         output->workspace->view_removed(view);
-        view->output = nullptr;
+        view->set_output(nullptr);
 
         active_output->attach_view(view);
         view->move(view->geometry.x + dx, view->geometry.y + dy);
@@ -1345,7 +1350,7 @@ void wayfire_core::remove_output(wayfire_output *output)
     output->workspace->for_all_view([output] (wayfire_view view)
     {
         output->workspace->view_removed(view);
-        view->output = nullptr;
+        view->set_output(nullptr);
     });
 
     delete output;
@@ -1487,8 +1492,8 @@ void wayfire_core::focus_view(wayfire_view v, wlr_seat *seat)
     if (!v)
         return;
 
-    if (v->output != active_output)
-        focus_output(v->output);
+    if (v->get_output() != active_output)
+        focus_output(v->get_output());
 
     active_output->focus_view(v, seat);
 }
@@ -1500,8 +1505,8 @@ void wayfire_core::erase_view(wayfire_view v)
     /* TODO: what do we do now? */
     views.erase(v->surface);
 
-    if (v->output)
-        v->output->detach_view(v);
+    if (v->get_output())
+        v->get_output()->detach_view(v);
 
     /*
     if (v->handle && destroy_handle)
@@ -1531,8 +1536,8 @@ void wayfire_core::run(const char *command)
 void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *new_output)
 {
     assert(new_output);
-    if (v->output)
-        v->output->detach_view(v);
+    if (v->get_output())
+        v->get_output()->detach_view(v);
 
     new_output->attach_view(v);
 }

@@ -48,6 +48,10 @@ class render_manager
         bool draw_overlay_panel = true;
 
         pixman_region32_t frame_damage;
+
+        std::vector<std::vector<wf_workspace_stream>> output_streams;
+        wf_workspace_stream *current_ws_stream = nullptr;
+
         void get_ws_damage(std::tuple<int, int> ws, pixman_region32_t *out_damage);
         std::vector<effect_hook_t*> output_effects;
 
@@ -76,10 +80,11 @@ class render_manager
         void schedule_redraw();
         void set_hide_overlay_panels(bool set);
 
-        void add_output_effect(effect_hook_t*, wayfire_view v = nullptr);
-        void rem_effect(const effect_hook_t*, wayfire_view v = nullptr);
+        void add_output_effect(effect_hook_t*);
+        void rem_effect(const effect_hook_t*);
 
         void damage(wlr_box box);
+        void damage(pixman_region32_t *region);
 
         /* this function renders a viewport and
          * saves the image in texture which is returned */

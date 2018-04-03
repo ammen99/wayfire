@@ -265,7 +265,7 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 
     std::vector<wayfire_view> ret;
     for_each_view([&ret, g] (wayfire_view view) {
-        if (rect_intersect(g, view->geometry) && view->is_toplevel()) {
+        if (rect_intersect(g, view->geometry)) {
             ret.push_back(view);
         }
     });
@@ -336,8 +336,8 @@ void viewport_manager::add_background(wayfire_view background, int x, int y)
     auto g = output->get_full_geometry();
     background->move(x + g.x, y + g.y);
 
-    background->output->detach_view(background);
-    background->output = output;
+    background->get_output()->detach_view(background);
+    background->set_output(output);
 
     background_layer.push_front(background);
 }
@@ -347,8 +347,8 @@ void viewport_manager::add_panel(wayfire_view panel)
     panel->is_special = true;
     /* views have first been created as desktop views,
      * so they are currently in the normal layer, we must remove them first */
-    panel->output->detach_view(panel);
-    panel->output = output;
+    panel->get_output()->detach_view(panel);
+    panel->set_output(output);
 
     panel_layer.push_front(panel);
 }
