@@ -141,7 +141,7 @@ bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> v
     g.x += (tx - vx) * output->handle->width;
     g.y += (ty - vy) * (output->handle->height);
 
-    return rect_intersect(g, view->geometry);
+    return rect_intersect(g, view->get_wm_geometry());
 }
 
 void viewport_manager::for_all_view(view_callback_proc_t call)
@@ -225,7 +225,7 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     auto dy = (vy - ny) * output->handle->height;
 
     for_each_view([=] (wayfire_view v) {
-        v->move(v->geometry.x + dx, v->geometry.y + dy);
+        v->move(v->get_wm_geometry().x + dx, v->get_wm_geometry().y + dy);
     });
 
     output->render->schedule_redraw();
@@ -265,7 +265,7 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
 
     std::vector<wayfire_view> ret;
     for_each_view([&ret, g] (wayfire_view view) {
-        if (rect_intersect(g, view->geometry)) {
+        if (rect_intersect(g, view->get_wm_geometry())) {
             ret.push_back(view);
         }
     });
@@ -316,7 +316,7 @@ std::vector<wayfire_view> viewport_manager::get_panels()
 
     auto g = output->get_full_geometry();
     for (auto v : panel_layer)
-        if (rect_intersect(g, v->geometry))
+        if (rect_intersect(g, v->get_wm_geometry()))
             ret.push_back(v);
 
     return ret;

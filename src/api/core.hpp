@@ -21,6 +21,7 @@ extern "C"
 }
 
 struct desktop_apis_t;
+class decorator_base_t;
 class input_manager;
 class wayfire_config;
 class wayfire_output;
@@ -51,6 +52,7 @@ class wayfire_core
         std::vector<wl_resource*> shell_clients;
 
         desktop_apis_t *api;
+        bool set_decorator(decorator_base_t *decor);
 
         wl_display *display;
         wl_event_loop *ev_loop;
@@ -76,6 +78,7 @@ class wayfire_core
 
         void add_view(wayfire_view view);
         wayfire_view find_view(wlr_surface *);
+        wayfire_view find_view(uint32_t id);
 
         /* completely destroy a view */
         void erase_view(wayfire_view view);

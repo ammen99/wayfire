@@ -1235,6 +1235,14 @@ void wayfire_core::init(wayfire_config *conf)
 
 }
 
+bool wayfire_core::set_decorator(decorator_base_t *decor)
+{
+    if (api->decorator)
+        return false;
+
+    return (api->decorator = decor);
+}
+
 void refocus_idle_cb(void *data)
 {
     core->refocus_active_output_active_view();
@@ -1330,9 +1338,9 @@ void wayfire_core::remove_output(wayfire_output *output)
     if (output == active_output)
         focus_output(outputs.begin()->second);
 
-    auto og = output->get_full_geometry();
-    auto ng = active_output->get_full_geometry();
-    int dx = ng.x - og.x, dy = ng.y - og.y;
+ //   auto og = output->get_full_geometry();
+  //  auto ng = active_output->get_full_geometry();
+   // int dx = ng.x - og.x, dy = ng.y - og.y;
 
     /* first move each desktop view(e.g windows) to another output */
     output->workspace->for_each_view_reverse([=] (wayfire_view view)
@@ -1341,7 +1349,8 @@ void wayfire_core::remove_output(wayfire_output *output)
         view->set_output(nullptr);
 
         active_output->attach_view(view);
-        view->move(view->geometry.x + dx, view->geometry.y + dy);
+        /* TODO: do we actually move()? */
+       // view->move(view->get_geometry().x + dx, view->get_geometry().y + dy);
         active_output->focus_view(view);
     });
 
@@ -1474,7 +1483,6 @@ void wayfire_core::add_view(wayfire_view view)
 {
     views[view->surface] = view;
     assert(active_output);
-    active_output->attach_view(view);
 }
 
 wayfire_view wayfire_core::find_view(wlr_surface *handle)
@@ -1485,6 +1493,15 @@ wayfire_view wayfire_core::find_view(wlr_surface *handle)
     } else {
         return it->second;
     }
+}
+
+wayfire_view wayfire_core::find_view(uint32_t id)
+{
+    for (auto v : views)
+        if (v.second->get_id() == id)
+            return v.second;
+
+    return nullptr;
 }
 
 void wayfire_core::focus_view(wayfire_view v, wlr_seat *seat)

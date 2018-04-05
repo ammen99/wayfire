@@ -86,10 +86,6 @@ class render_manager
         void damage(wlr_box box);
         void damage(pixman_region32_t *region);
 
-        /* this function renders a viewport and
-         * saves the image in texture which is returned */
-        void texture_from_workspace(std::tuple<int, int>, uint& fbuff, uint &tex);
-
         void workspace_stream_start(wf_workspace_stream *stream);
         void workspace_stream_update(wf_workspace_stream *stream,
                 float scale_x = 1, float scale_y = 1);

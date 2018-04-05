@@ -156,8 +156,8 @@ class vswitch : public wayfire_plugin_t
         auto output_g = output->get_full_geometry();
         if (front.view)
         {
-            front.view->move(front.view->geometry.x + dx * output_g.width,
-                             front.view->geometry.y + dy * output_g.height);
+            front.view->move(front.view->get_wm_geometry().x + dx * output_g.width,
+                             front.view->get_wm_geometry().y + dy * output_g.height);
             output->focus_view(front.view);
 
             view_change_viewport_signal data;
@@ -205,7 +205,7 @@ class vswitch : public wayfire_plugin_t
                 log_info("found move view");
 
                 view->set_moving(true);
-                views.push_back({view, view->geometry.x, view->geometry.y});
+                views.push_back({view, view->get_wm_geometry().x, view->get_wm_geometry().y});
             }
         }
 

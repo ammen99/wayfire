@@ -122,20 +122,22 @@ class wayfire_resize : public wayfire_plugin_t {
 
         initial_x = sx;
         initial_y = sy;
-        initial_geometry = view->geometry;
+        initial_geometry = view->get_wm_geometry();
 
         if (forced_edges == 0) {
-            int view_x = initial_x - view->geometry.x;
-            int view_y = initial_y - view->geometry.y;
+            auto vg = view->get_wm_geometry();
+
+            int view_x = initial_x - vg.x;
+            int view_y = initial_y - vg.y;
 
             edges = 0;
-            if (view_x < view->geometry.width / 2) {
+            if (view_x < vg.width / 2) {
                 edges |= WL_SHELL_SURFACE_RESIZE_LEFT;
             } else {
                 edges |= WL_SHELL_SURFACE_RESIZE_RIGHT;
             }
 
-            if (view_y < view->geometry.height / 2) {
+            if (view_y < vg.height / 2) {
                 edges |= WL_SHELL_SURFACE_RESIZE_TOP;
             } else {
                 edges |= WL_SHELL_SURFACE_RESIZE_BOTTOM;

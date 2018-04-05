@@ -417,52 +417,6 @@ void render_manager::rem_effect(const effect_hook_t *hook)
     output_effects.erase(it, output_effects.end());
 }
 
-void render_manager::texture_from_workspace(std::tuple<int, int> vp,
-        GLuint &fbuff, GLuint &tex)
-{
-    OpenGL::bind_context(output->render->ctx);
-
-    if (fbuff == (uint)-1 || tex == (uint)-1)
-        OpenGL::prepare_framebuffer(fbuff, tex);
-
-    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbuff));
-
-    auto g = output->get_full_geometry();
-
-    GetTuple(x, y, vp);
-    GetTuple(cx, cy, output->workspace->get_current_workspace());
-
-    int dx = -g.x + (cx - x)  * output->handle->width,
-        dy = -g.y + (cy - y)  * output->handle->height;
-
-    auto views = output->workspace->get_renderable_views_on_workspace(vp);
-    auto it = views.rbegin();
-
-    while (it != views.rend())
-    {
-        auto v = *it;
-        if (v->is_visible())
-        {
-            if (!v->is_special)
-            {
-                v->geometry.x += dx;
-                v->geometry.y += dy;
-
- //               v->render();
-
-                v->geometry.x -= dx;
-                v->geometry.y -= dy;
-            } else
-            {
-  //              v->render();
-            }
-        }
-        ++it;
-    };
-
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-}
-
 void render_manager::workspace_stream_start(wf_workspace_stream *stream)
 {
     stream->running = true;
@@ -496,10 +450,10 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
         {
             if (!v->is_special)
             {
-                v->render(v->geometry.x + dx, v->geometry.y + dy, NULL);
+                v->render(v->get_wm_geometry().x + dx, v->get_wm_geometry().y + dy, NULL);
             } else
             {
-                v->render(v->geometry.x, v->geometry.y, NULL);
+                v->render(v->get_wm_geometry().x, v->get_wm_geometry().y, NULL);
             }
         }
         ++it;
@@ -1039,7 +993,7 @@ wayfire_view wayfire_output::get_view_at_point(int x, int y)
     wayfire_view chosen = nullptr;
 
     workspace->for_each_view([x, y, &chosen] (wayfire_view v) {
-        if (v->is_visible() && point_inside({x, y}, v->geometry)) {
+        if (v->is_visible() && point_inside({x, y}, v->get_wm_geometry())) {
             if (chosen == nullptr)
                 chosen = v;
         }

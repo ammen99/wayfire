@@ -213,8 +213,8 @@ class wayfire_move : public wayfire_plugin_t
 
         void input_motion(int x, int y)
         {
-            view->move(view->geometry.x + x - prev_x,
-                    view->geometry.y + y - prev_y);
+            auto vg = view->get_wm_geometry();
+            view->move(vg.x + x - prev_x, vg.y + y - prev_y);
             prev_x = x;
             prev_y = y;
 

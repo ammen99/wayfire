@@ -136,13 +136,13 @@ class wayfire_grid : public wayfire_plugin_t {
 
         current_step = 0;
         current_view.view = view;
-        current_view.original = view->geometry;
+        current_view.original = view->get_wm_geometry();
         current_view.target = {tx, ty, tw, th};
         current_view.maximizing = current_view.fullscreening = false;
 
         view->set_moving(true);
         view->set_resizing(true);
-        view->set_geometry(view->geometry);
+        view->set_geometry(view->get_wm_geometry());
 
         output->render->auto_redraw(true);
         output->render->add_output_effect(&hook);
@@ -212,10 +212,10 @@ class wayfire_grid : public wayfire_plugin_t {
         if (use_full_area)
             g = output->get_full_geometry();
 
-        if (it == saved_view_geometry.end() || v->geometry != g ||
+        if (it == saved_view_geometry.end() || v->get_wm_geometry() != g ||
                 force_maximize)
         {
-            saved_view_geometry[v] = v->geometry;
+            saved_view_geometry[v] = v->get_wm_geometry();
             x = g.x;
             y = g.y;
             w = g.width;

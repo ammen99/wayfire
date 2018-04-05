@@ -25,7 +25,8 @@ server_protocols = [
 	[wl_protocol_dir, 'unstable/idle-inhibit/idle-inhibit-unstable-v1.xml'],
 	[wl_protocol_dir, 'unstable/linux-dmabuf/linux-dmabuf-unstable-v1.xml'],
 	[wl_protocol_dir, 'unstable/xdg-shell/xdg-shell-unstable-v6.xml'],
-    'wayfire-shell.xml'
+    'wayfire-shell.xml',
+    '/home/ilex/work/wf-basic-deco/proto/wf-decorator.xml'
 ]
 
 client_protocols = [
