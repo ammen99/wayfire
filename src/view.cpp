@@ -43,6 +43,26 @@ bool operator != (const wf_geometry& a, const wf_geometry& b)
     return !(a == b);
 }
 
+wf_point operator + (const wf_point& a, const wf_point& b)
+{
+    return {a.x + b.x, a.y + b.y};
+}
+
+wf_point operator + (const wf_point& a, const wf_geometry& b)
+{
+    return {a.x + b.x, a.y + b.y};
+}
+
+wf_geometry operator + (const wf_geometry &a, const wf_point& b)
+{
+    return {
+        a.x + b.x,
+        a.y + b.y,
+        a.width,
+        a.height
+    };
+}
+
 bool point_inside(wf_point point, wf_geometry rect)
 {
     if(point.x < rect.x || point.y < rect.y)
@@ -167,9 +187,6 @@ void wayfire_surface_t::get_child_position(int &x, int &y)
 
 wf_point wayfire_surface_t::get_output_position()
 {
-    /* if we reach a toplevel, it should override get_output_position */
-    assert(parent_surface != NULL);
-
     auto pos = parent_surface->get_output_position();
 
     int dx, dy;
@@ -438,6 +455,14 @@ void wayfire_view_t::get_child_position(int &x, int &y)
 
     x = geometry.x;
     y = geometry.y;
+}
+
+wf_point wayfire_view_t::get_output_position()
+{
+    if (decoration)
+        return decoration->get_output_position() + wf_point{geometry.x, geometry.y};
+
+    return {geometry.x, geometry.y};
 }
 
 void wayfire_view_t::map()
@@ -726,16 +751,20 @@ class wayfire_xdg6_view : public wayfire_view_t
 
     virtual void get_child_position(int &x, int &y)
     {
-        auto pos = get_output_position();
-        x = pos.x; y = pos.y;
+        x = geometry.x - v6_surface->geometry.x;
+        y = geometry.y - v6_surface->geometry.y;
     }
 
     virtual wf_point get_output_position()
     {
-        return {
+        wf_point position {
             geometry.x - v6_surface->geometry.x,
             geometry.y - v6_surface->geometry.y,
         };
+
+        if (decoration)
+            return position + decoration->get_output_position();
+        return position;
     }
 
     virtual wf_geometry get_output_geometry()
@@ -900,7 +929,7 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
     */
 
     ~wayfire_xdg6_decoration_view()
-    { close(); }
+    { contained->close(); }
 };
 
 void wayfire_view_t::commit()

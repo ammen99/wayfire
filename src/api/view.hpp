@@ -40,6 +40,10 @@ using wf_geometry = wlr_box;
 bool operator == (const wf_geometry& a, const wf_geometry& b);
 bool operator != (const wf_geometry& a, const wf_geometry& b);
 
+wf_point operator + (const wf_point& a, const wf_point& b);
+wf_point operator + (const wf_point& a, const wf_geometry& b);
+wf_geometry operator + (const wf_geometry &a, const wf_point& b);
+
 bool point_inside(wf_point point, wf_geometry rect);
 bool rect_intersect(wf_geometry screen, wf_geometry win);
 
@@ -156,7 +160,7 @@ class wayfire_view_t : public wayfire_surface_t
 
         virtual void set_parent(wayfire_view parent);
 
-        virtual wf_point get_output_position() { return {geometry.x, geometry.y}; }
+        virtual wf_point get_output_position();
 
         virtual wf_geometry get_wm_geometry() { return decoration ? decoration->get_wm_geometry() : geometry; }
 
