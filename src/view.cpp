@@ -1141,14 +1141,14 @@ class wayfire_xwayland_view : public wayfire_view_t
         wlr_xwayland_surface_close(xw);
     }
 
-    void _set_maximized(bool maxim)
+    void set_maximized(bool maxim)
     {
         wayfire_view_t::set_maximized(maxim);
         wlr_xwayland_surface_set_maximized(xw, maxim);
 
     }
 
-    void _set_fullscreen(bool full)
+    void set_fullscreen(bool full)
     {
         wayfire_view_t::set_fullscreen(full);
         wlr_xwayland_surface_set_fullscreen(xw, full);
