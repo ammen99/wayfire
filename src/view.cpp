@@ -98,27 +98,6 @@ void surface_committed_cb(wl_listener*, void *data)
     surface->commit();
 }
 
-// TODO: do better
-void surface_destroyed_cb(wl_listener*, void *data)
-{
-    auto surface = core->api->desktop_surfaces[(wlr_surface*) data];
-    assert(surface);
-
-    auto view = core->find_view(surface->surface);
-    if (view)
-    {
-        view->destroyed = 1;
-        core->erase_view(view);
-        return;
-    }
-
-    /* TODO: if a decoration is closed in this way ... */
-
-    /* we can safely delete here as this was an xdg popup/subsurface */
-    /* Probably do something else? */
-    delete surface;
-}
-
 void subsurface_created_cb(wl_listener*, void *data)
 {
     auto sub = static_cast<wlr_subsurface*> (data);
@@ -132,6 +111,8 @@ void subsurface_created_cb(wl_listener*, void *data)
 
     new wayfire_surface_t(sub->surface, parent);
 }
+
+void surface_destroyed_cb(wl_listener*, void*);
 
 wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* parent)
 {
@@ -325,12 +306,6 @@ wayfire_view_t::wayfire_view_t(wlr_surface *surf)
     geometry.height = surface->current->height;
 
     transform.color = glm::vec4(1, 1, 1, 1);
-}
-
-wayfire_view_t::~wayfire_view_t()
-{
-    for (auto& kv : custom_data)
-        delete kv.second;
 }
 
 wayfire_view wayfire_view_t::self()
@@ -829,6 +804,11 @@ class wayfire_xdg6_view : public wayfire_view_t
         return nonull(v6_surface->toplevel->title);
     }
 
+    virtual void close()
+    {
+        wlr_xdg_surface_v6_send_close(v6_surface);
+    }
+
     ~wayfire_xdg6_view()
     {
     }
@@ -838,18 +818,24 @@ class wayfire_xdg6_view : public wayfire_view_t
 
 /* start xdg6_decoration implementation */
 
+void handle_decoration_destroyed(wl_listener*, void*);
+
 class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
 {
     wayfire_view contained = NULL;
     std::unique_ptr<wf_decorator_frame_t> frame;
 
     wf_point v6_surface_offset;
+    wl_listener destroyed_listener;
 
     public:
 
     wayfire_xdg6_decoration_view(wlr_xdg_surface_v6 *decor) :
         wayfire_xdg6_view(decor)
-    { }
+    {
+        destroyed_listener.notify = handle_decoration_destroyed;
+        wl_signal_add(&decor->events.destroy, &destroyed_listener);
+    }
 
     void init(wayfire_view view, std::unique_ptr<wf_decorator_frame_t>&& fr)
     {
@@ -915,6 +901,24 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
             wayfire_xdg6_view::resize(new_g.width, new_g.height, false);
     }
 
+    void release_child()
+    {
+        if (!contained)
+            return;
+
+        log_info("release child");
+        surface_children.clear();
+        contained->set_decoration(nullptr, nullptr);
+
+        if (!contained->destroyed)
+            contained->close();
+
+        contained = NULL;
+    }
+
+    wlr_surface *get_keyboard_focus_surface()
+    { return contained->get_keyboard_focus_surface(); }
+
  //   void move_request() { contained->move_request(); }
   //  void resize_request() { contained->resize_request(); }
    // void maximize_request(bool state) { contained->maximize_request(state); }
@@ -929,8 +933,19 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
     */
 
     ~wayfire_xdg6_decoration_view()
-    { contained->close(); }
+    { }
 };
+
+void handle_decoration_destroyed(wl_listener*, void* data)
+{
+    auto surf = static_cast<wlr_xdg_surface_v6*> (data);
+    auto view = core->find_view(surf->surface);
+
+    auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (view);
+
+    assert(decor);
+    decor->release_child();
+}
 
 void wayfire_view_t::commit()
 {
@@ -951,14 +966,51 @@ void wayfire_view_t::commit()
     }
 }
 
+// TODO: do better
+void surface_destroyed_cb(wl_listener*, void *data)
+{
+    auto surface = core->api->desktop_surfaces[(wlr_surface*) data];
+    assert(surface);
+
+    auto view = core->find_view(surface->surface);
+    if (view)
+    {
+        view->destroyed = 1;
+        if (view->decoration)
+        {
+            auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (view->decoration);
+            assert(decor);
+
+            decor->release_child();
+            decor->close();
+        }
+
+        core->erase_view(view);
+
+        log_info("destroy surface %ld", view.use_count());
+        return;
+    }
+
+    /* TODO: if a decoration is closed in this way ... */
+
+    /* we can safely delete here as this was an xdg popup/subsurface */
+    /* Probably do something else? */
+    delete surface;
+}
+
+wayfire_view_t::~wayfire_view_t()
+{
+    for (auto& kv : custom_data)
+        delete kv.second;
+}
+
 void wayfire_view_t::set_decoration(wayfire_view decor,
                                     std::unique_ptr<wf_decorator_frame_t> frame)
 {
+    if (decor)
     {
         auto raw_ptr = dynamic_cast<wayfire_xdg6_decoration_view*> (decor.get());
         assert(raw_ptr);
-
-//        set_maximized(true);
 
         if (output)
             output->detach_view(self());
@@ -968,7 +1020,6 @@ void wayfire_view_t::set_decoration(wayfire_view decor,
 
     decoration = decor;
 }
-
 
 /* end xdg6_decoration_implementation */
 

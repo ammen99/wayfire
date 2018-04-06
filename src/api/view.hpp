@@ -121,6 +121,8 @@ class wayfire_surface_t
 class wayfire_view_t : public wayfire_surface_t
 {
     friend class wayfire_xdg6_decoration_view;
+    friend void surface_destroyed_cb(wl_listener*, void *data);
+
     protected:
         wayfire_view decoration;
 
@@ -172,6 +174,7 @@ class wayfire_view_t : public wayfire_surface_t
          * returns the (sub)surface under the cursor or NULL iff the cursor is outside of the view
          * TODO: it should be overwritable by plugins which deform the view */
         virtual wayfire_surface_t *map_input_coordinates(int cursor_x, int cursor_y, int &sx, int &sy);
+        virtual wlr_surface *get_keyboard_focus_surface() { return surface; };
 
         virtual void set_geometry(wf_geometry g);
         virtual void set_resizing(bool resizing);

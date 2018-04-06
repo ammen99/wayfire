@@ -961,9 +961,9 @@ void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
     set_active_view(v);
 
     if (v) {
-        log_debug("output %s focus: %p", handle->name, v->surface);
+        log_debug("output %s focus: %p", handle->name, v->get_keyboard_focus_surface());
         bring_to_front(v);
-        set_keyboard_focus(seat, v->surface);
+        set_keyboard_focus(seat, v->get_keyboard_focus_surface());
     } else {
         log_debug("output %s focus: (null)", handle->name);
         set_keyboard_focus(seat, NULL);
