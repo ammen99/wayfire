@@ -347,7 +347,7 @@ void wayfire_view_t::set_resizing(bool resizing)
         decoration->set_resizing(resizing);
 }
 
-void wayfire_view_t::_move(int x, int y, bool send_signal)
+void wayfire_view_t::move(int x, int y, bool send_signal)
 {
     view_geometry_changed_signal data;
     data.view = core->find_view(surface);
@@ -362,15 +362,7 @@ void wayfire_view_t::_move(int x, int y, bool send_signal)
         output->emit_signal("view-geometry-changed", &data);
 }
 
-void wayfire_view_t::move(int x, int y, bool send_signal)
-{
-    if (decoration)
-        decoration->move(x, y, send_signal);
-    else
-        _move(x, y, send_signal);
-}
-
-void wayfire_view_t::_resize(int w, int h, bool send_signal)
+void wayfire_view_t::resize(int w, int h, bool send_signal)
 {
     view_geometry_changed_signal data;
     data.view = core->find_view(surface);
@@ -383,14 +375,6 @@ void wayfire_view_t::_resize(int w, int h, bool send_signal)
 
     if (send_signal)
         output->emit_signal("view-geometry-changed", &data);
-}
-
-void wayfire_view_t::resize(int w, int h, bool send_signal)
-{
-    if (decoration)
-        decoration->resize(w, h, send_signal);
-    else
-        _resize(w, h, send_signal);
 }
 
 wayfire_surface_t *wayfire_view_t::map_input_coordinates(int cx, int cy, int& sx, int& sy)
@@ -418,37 +402,18 @@ void wayfire_view_t::set_geometry(wf_geometry g)
     resize(g.width, g.height);
 }
 
-void wayfire_view_t::_set_maximized(bool maxim)
-{
-        maximized = maxim;
-}
-
 void wayfire_view_t::set_maximized(bool maxim)
 {
-    if (decoration)
-        decoration->set_maximized(maxim);
-    else
-        _set_maximized(maxim);
-}
-
-void wayfire_view_t::_set_fullscreen(bool full)
-{
-    fullscreen = full;
+    maximized = maxim;
 }
 
 void wayfire_view_t::set_fullscreen(bool full)
 {
-    if (decoration)
-        decoration->set_fullscreen(full);
-    else
-        _set_fullscreen(full);
+    fullscreen = full;
 }
 
 void wayfire_view_t::activate(bool active)
-{
-    if (decoration)
-        decoration->activate(active);
-}
+{ }
 
 void wayfire_view_t::set_parent(wayfire_view parent)
 {
@@ -465,6 +430,14 @@ void wayfire_view_t::set_parent(wayfire_view parent)
         if (it == parent->children.end())
             parent->children.push_back(self());
     }
+}
+
+void wayfire_view_t::get_child_position(int &x, int &y)
+{
+    assert(decoration);
+
+    x = geometry.x;
+    y = geometry.y;
 }
 
 void wayfire_view_t::map()
@@ -510,36 +483,17 @@ void wayfire_view_t::map()
     return;
 }
 
-void wayfire_view_t::commit()
-{
-    wayfire_surface_t::commit();
-
-    auto old_geometry = geometry;
-    update_size();
-
-    if (decoration && old_geometry != geometry)
-        decoration->set_geometry(decoration->get_wm_geometry());
-}
-
 void wayfire_view_t::damage()
 {
     /* TODO: bounding box damage */
     output->render->damage(get_output_geometry());
 }
 
-void wayfire_view_t::for_each_surface(wf_surface_iterator_callback call, bool reverse)
-{
-    if (reverse && decoration)
-        decoration->for_each_surface(call, reverse);
-
-    wayfire_surface_t::for_each_surface(call, reverse);
-
-    if (!reverse && decoration)
-        decoration->for_each_surface(call, reverse);
-}
-
 void wayfire_view_t::move_request()
 {
+    if (decoration)
+        return decoration->move_request();
+
     move_request_signal data;
     data.view = self();
     output->emit_signal("move-request", &data);
@@ -547,6 +501,9 @@ void wayfire_view_t::move_request()
 
 void wayfire_view_t::resize_request()
 {
+    if (decoration)
+        return decoration->resize_request();
+
     resize_request_signal data;
     data.view = self();
     output->emit_signal("resize-request", &data);
@@ -554,6 +511,9 @@ void wayfire_view_t::resize_request()
 
 void wayfire_view_t::maximize_request(bool state)
 {
+    if (decoration)
+        return decoration->maximize_request(state);
+
     if (maximized == state)
         return;
 
@@ -573,6 +533,9 @@ void wayfire_view_t::maximize_request(bool state)
 
 void wayfire_view_t::fullscreen_request(wayfire_output *out, bool state)
 {
+    if (decoration)
+        decoration->fullscreen_request(out, state);
+
     if (fullscreen == state)
         return;
 
@@ -729,6 +692,7 @@ static void handle_v6_request_fullscreen(wl_listener*, void *data)
 
 class wayfire_xdg6_view : public wayfire_view_t
 {
+    protected:
     wlr_xdg_surface_v6 *v6_surface;
     wl_listener map, new_popup,
                 request_move, request_resize,
@@ -760,6 +724,12 @@ class wayfire_xdg6_view : public wayfire_view_t
         wl_signal_add(&v6_surface->toplevel->events.request_fullscreen, &request_fullscreen);
     }
 
+    virtual void get_child_position(int &x, int &y)
+    {
+        auto pos = get_output_position();
+        x = pos.x; y = pos.y;
+    }
+
     virtual wf_point get_output_position()
     {
         return {
@@ -770,9 +740,10 @@ class wayfire_xdg6_view : public wayfire_view_t
 
     virtual wf_geometry get_output_geometry()
     {
+        auto pos = get_output_position();
         return {
-            geometry.x - v6_surface->geometry.x,
-            geometry.y - v6_surface->geometry.y,
+            pos.x,
+            pos.y,
             surface->current ? surface->current->width : 0,
             surface->current ? surface->current->height : 0
         };
@@ -796,37 +767,37 @@ class wayfire_xdg6_view : public wayfire_view_t
         wlr_xdg_toplevel_v6_set_activated(v6_surface, act);
     }
 
-    virtual void _set_maximized(bool max)
+    virtual void set_maximized(bool max)
     {
-        wayfire_view_t::_set_maximized(max);
+        wayfire_view_t::set_maximized(max);
         wlr_xdg_toplevel_v6_set_maximized(v6_surface, max);
     }
 
-    virtual void _set_fullscreen(bool full)
+    virtual void set_fullscreen(bool full)
     {
-        wayfire_view_t::_set_fullscreen(full);
+        wayfire_view_t::set_fullscreen(full);
         wlr_xdg_toplevel_v6_set_fullscreen(v6_surface, full);
     }
 
-    virtual void _move(int w, int h, bool send)
+    virtual void move(int w, int h, bool send)
     {
-        wayfire_view_t::_move(w, h, send);
+        wayfire_view_t::move(w, h, send);
     }
 
-    virtual void _resize(int w, int h, bool send)
+    virtual void resize(int w, int h, bool send)
     {
-        wayfire_view_t::_resize(w, h, send);
+        wayfire_view_t::resize(w, h, send);
         wlr_xdg_toplevel_v6_set_size(v6_surface, w, h);
     }
 
     std::string get_app_id()
     {
-        return v6_surface->toplevel->app_id;
+        return nonull(v6_surface->toplevel->app_id);
     }
 
     std::string get_title()
     {
-        return v6_surface->toplevel->title;
+        return nonull(v6_surface->toplevel->title);
     }
 
     ~wayfire_xdg6_view()
@@ -840,9 +811,10 @@ class wayfire_xdg6_view : public wayfire_view_t
 
 class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
 {
-    /* our lifetime is tied to the contained lifetime */
-    wayfire_view_t *contained = NULL;
+    wayfire_view contained = NULL;
     std::unique_ptr<wf_decorator_frame_t> frame;
+
+    wf_point v6_surface_offset;
 
     public:
 
@@ -850,52 +822,75 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
         wayfire_xdg6_view(decor)
     { }
 
-    void init(wayfire_view_t *view, std::unique_ptr<wf_decorator_frame_t>&& fr)
+    void init(wayfire_view view, std::unique_ptr<wf_decorator_frame_t>&& fr)
     {
         frame = std::move(fr);
         contained = view;
-        set_geometry(view->get_wm_geometry());
+        geometry = view->get_wm_geometry();
+
+        set_geometry(geometry);
+        surface_children.push_back(view.get());
+
+        v6_surface_offset = {v6_surface->geometry.x, v6_surface->geometry.y};
     }
 
-    void map()
+    void activate(bool state)
     {
-        wayfire_surface_t::map();
+        wayfire_xdg6_view::activate(state);
+        contained->activate(state);
     }
 
-    void unmap()
+    void commit()
     {
-        wayfire_surface_t::unmap();
+        wayfire_xdg6_view::commit();
+
+        wf_point new_offset = {v6_surface->geometry.x, v6_surface->geometry.y};
+        if (new_offset.x != v6_surface_offset.x || new_offset.y != v6_surface_offset.y)
+        {
+            move(geometry.x, geometry.y, false);
+            v6_surface_offset = new_offset;
+        }
     }
 
     void move(int x, int y, bool ss)
     {
-        _move(x, y, false);
         auto new_g = frame->get_child_geometry(geometry);
+        new_g.x += v6_surface->geometry.x;
+        new_g.y += v6_surface->geometry.y;
 
         log_info ("contained is moved to %d+%d, decor to %d+%d", new_g.x, new_g.y,
                   x, y);
-        contained->_move(new_g.x, new_g.y, ss);
+        contained->move(new_g.x, new_g.y, false);
+        wayfire_xdg6_view::move(x, y, ss);
     }
 
     void resize(int w, int h, bool ss)
     {
-        _resize(w, h, false);
+        auto new_geometry = geometry;
+        new_geometry.width = w;
+        new_geometry.height = h;
 
-        auto new_g = frame->get_child_geometry(geometry);
+        auto new_g = frame->get_child_geometry(new_geometry);
         log_info ("contained is resized to %dx%d, decor to %dx%d", new_g.width, new_g.height,
                   w, h);
 
-        contained->_resize(new_g.width, new_g.height, ss);
+        contained->resize(new_g.width, new_g.height, false);
     }
 
-    void move_request() { contained->move_request(); }
-    void resize_request() { contained->resize_request(); }
-    void maximize_request(bool state) { contained->maximize_request(state); }
-    void fullscreen_request(wayfire_output *wo, bool state)
-    { contained->fullscreen_request(wo, state); }
+    void child_configured(wf_geometry g)
+    {
+        auto new_g = frame->get_geometry_interior(g);
+        log_info("contained configured %dx%d, we become: %dx%d",
+                 g.width, g.height, new_g.width, new_g.height);
+        if (new_g.width != geometry.width || new_g.height != geometry.height)
+            wayfire_xdg6_view::resize(new_g.width, new_g.height, false);
+    }
 
-    void set_maximized(bool state)
-    { _set_maximized(state); }
+ //   void move_request() { contained->move_request(); }
+  //  void resize_request() { contained->resize_request(); }
+   // void maximize_request(bool state) { contained->maximize_request(state); }
+   // void fullscreen_request(wayfire_output *wo, bool state)
+    //{ contained->fullscreen_request(wo, state); }
 
     /* TODO: fullscreen ?
     void set_fullscreen(wayfire_output *wo, bool state)
@@ -904,24 +899,45 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
     }
     */
 
-    wf_geometry get_wm_geometry()
-    { return geometry; }
-
     ~wayfire_xdg6_decoration_view()
     { close(); }
 };
 
-void wayfire_view_t::set_decoration(std::unique_ptr<wayfire_view_t> decor,
+void wayfire_view_t::commit()
+{
+    wayfire_surface_t::commit();
+
+    auto old_geometry = geometry;
+    update_size();
+
+    log_info("%s committed %dx%d was %dx%d", get_title().c_str(), old_geometry.width,
+             old_geometry.height, geometry.width, geometry.height);
+
+    /* configure frame_interior */
+    if (decoration)
+    {
+        auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (decoration);
+        assert(decor);
+        decor->child_configured(geometry);
+    }
+}
+
+void wayfire_view_t::set_decoration(wayfire_view decor,
                                     std::unique_ptr<wf_decorator_frame_t> frame)
 {
     {
         auto raw_ptr = dynamic_cast<wayfire_xdg6_decoration_view*> (decor.get());
         assert(raw_ptr);
 
-        raw_ptr->init(this, std::move(frame));
+//        set_maximized(true);
+
+        if (output)
+            output->detach_view(self());
+
+        raw_ptr->init(self(), std::move(frame));
     }
 
-    decoration = std::move(decor);
+    decoration = decor;
 }
 
 
@@ -938,12 +954,13 @@ void notify_v6_created(wl_listener*, void *data)
             core->api->decorator->is_decoration_window(surf->toplevel->title))
         {
             log_info("create wf decoration view");
-            auto view = new wayfire_xdg6_decoration_view(surf);
-            /* we pass ownership to the decorator, and we assume that it won't be closed */
-            core->api->decorator->decoration_ready(std::unique_ptr<wayfire_xdg6_decoration_view> (view));
+            core->add_view(std::make_shared<wayfire_xdg6_decoration_view> (surf));
+            auto view = core->find_view(surf->surface);
+
+            core->api->decorator->decoration_ready(view);
         } else
         {
-            core->add_view(std::make_shared<wayfire_xdg6_view> ((wlr_xdg_surface_v6*)data));
+            core->add_view(std::make_shared<wayfire_xdg6_view> (surf));
         }
     }
 }
@@ -1027,7 +1044,7 @@ class wayfire_xwayland_view : public wayfire_view_t
 
     void resize(int w, int h, bool s)
     {
-        wayfire_view_t::_resize(w, h, s);
+        wayfire_view_t::resize(w, h, s);
         wlr_xwayland_surface_configure(xw, geometry.x, geometry.y,
                                        geometry.width, geometry.height);
     }
@@ -1046,14 +1063,14 @@ class wayfire_xwayland_view : public wayfire_view_t
 
     void _set_maximized(bool maxim)
     {
-        wayfire_view_t::_set_maximized(maxim);
+        wayfire_view_t::set_maximized(maxim);
         wlr_xwayland_surface_set_maximized(xw, maxim);
 
     }
 
     void _set_fullscreen(bool full)
     {
-        wayfire_view_t::_set_fullscreen(full);
+        wayfire_view_t::set_fullscreen(full);
         wlr_xwayland_surface_set_fullscreen(xw, full);
     }
 };

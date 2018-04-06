@@ -9,14 +9,24 @@
 
 class gtk_frame : public wf_decorator_frame_t
 {
-    wf_geometry get_child_geometry(wf_geometry base)
+    wf_geometry get_child_geometry(wf_geometry frame_geometry)
     {
-        base.x += 5;
-        base.y += 40;
-        base.width -= 10;
-        base.height -= 45;
+        frame_geometry.x = 5;
+        frame_geometry.y = 40;
+        frame_geometry.width -= 10;
+        frame_geometry.height -= 45;
 
-        return base;
+        return frame_geometry;
+    }
+
+    wf_geometry get_geometry_interior(wf_geometry child)
+    {
+        child.x = 0;
+        child.y = 0;
+        child.width += 10;
+        child.height += 45;
+
+        return child;
     }
 };
 
@@ -42,7 +52,7 @@ class gtk_decorator : public decorator_base_t
         return begins_with(title, gtk_decorator_prefix);
     }
 
-    virtual void decoration_ready(std::unique_ptr<wayfire_view_t> decor_window)
+    virtual void decoration_ready(wayfire_view decor_window)
     {
         auto title = decor_window->get_title();
         uint32_t id = std::stoul(title.substr(gtk_decorator_prefix.size()));
@@ -52,7 +62,7 @@ class gtk_decorator : public decorator_base_t
         assert(view);
 
         auto frame = new gtk_frame();
-        view->set_decoration(std::move(decor_window), std::unique_ptr<wf_decorator_frame_t>(frame));
+        view->set_decoration(decor_window, std::unique_ptr<wf_decorator_frame_t>(frame));
     }
 } decorator;
 
@@ -117,7 +127,7 @@ class wayfire_decoration : public wayfire_plugin_t
     void new_view(wayfire_view view)
     {
         log_info("new view %p", decorator_resource);
-        if (decorator_resource)
+        if (decorator_resource && !decorator.is_decoration_window(view->get_title()))
         {
             wf_decorator_manager_send_create_new_decoration(decorator_resource,
                                                             view->get_id());

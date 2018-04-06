@@ -118,7 +118,7 @@ class wayfire_view_t : public wayfire_surface_t
 {
     friend class wayfire_xdg6_decoration_view;
     protected:
-        std::unique_ptr<wayfire_view_t> decoration;
+        wayfire_view decoration;
 
         void force_update_xwayland_position();
         int in_continuous_move = 0, in_continuous_resize = 0;
@@ -128,15 +128,11 @@ class wayfire_view_t : public wayfire_surface_t
         inline wayfire_view self();
         virtual void update_size();
 
-        virtual void _move(int x, int y, bool send_signal = true);
-        virtual void _resize(int w, int h, bool send_signal = true);
-
-        virtual void _set_maximized(bool maxim);
-        virtual void _set_fullscreen(bool fullscreen);
-
         wf_geometry geometry;
 
         uint32_t id;
+
+        virtual void get_child_position(int &x, int &y);
     public:
 
         /* these represent toplevel relations, children here are transient windows,
@@ -159,8 +155,6 @@ class wayfire_view_t : public wayfire_surface_t
         virtual void close() {};
 
         virtual void set_parent(wayfire_view parent);
-
-        virtual void for_each_surface(wf_surface_iterator_callback callback, bool reverse = false);
 
         virtual wf_point get_output_position() { return {geometry.x, geometry.y}; }
 
@@ -194,7 +188,7 @@ class wayfire_view_t : public wayfire_surface_t
         virtual std::string get_app_id() { return ""; }
         virtual std::string get_title() { return ""; }
 
-        virtual void set_decoration(std::unique_ptr<wayfire_view_t> view,
+        virtual void set_decoration(wayfire_view view,
                                     std::unique_ptr<wf_decorator_frame_t> frame);
 
         /* Used to specify that this view has been destroyed.
