@@ -91,8 +91,9 @@ class wayfire_surface_t
         wlr_surface *surface;
 
         bool is_mapped = false;
-        virtual void map() {is_mapped = true; }
-        virtual void unmap() {is_mapped = false;}
+        virtual void map();
+        virtual void unmap();
+        virtual void damage();
 
         float alpha = 1.0;
 
@@ -189,7 +190,6 @@ class wayfire_view_t : public wayfire_surface_t
 
         bool is_visible();
         virtual void commit();
-        virtual void damage();
         virtual void map();
 
         virtual std::string get_app_id() { return ""; }

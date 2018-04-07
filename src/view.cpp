@@ -188,6 +188,24 @@ wf_geometry wayfire_surface_t::get_output_geometry()
     };
 }
 
+void wayfire_surface_t::map()
+{
+    is_mapped = true;
+    damage();
+}
+
+void wayfire_surface_t::unmap()
+{
+    is_mapped = false;
+    damage();
+}
+
+void wayfire_surface_t::damage()
+{
+    /* TODO: bounding box damage */
+    output->render->damage(get_output_geometry());
+}
+
 void wayfire_surface_t::commit()
 {
     pixman_region32_t damage;
@@ -463,6 +481,7 @@ void wayfire_view_t::map()
 
     if (!is_special)
     {
+        output->attach_view(self());
         output->focus_view(self());
 
         /* TODO: check mods
@@ -481,12 +500,6 @@ void wayfire_view_t::map()
     }
 
     return;
-}
-
-void wayfire_view_t::damage()
-{
-    /* TODO: bounding box damage */
-    output->render->damage(get_output_geometry());
 }
 
 void wayfire_view_t::move_request()
@@ -657,7 +670,7 @@ static void handle_v6_unmap(wl_listener*, void *data)
     auto wf_surface = core->api->desktop_surfaces[surface->surface];
 
     assert(wf_surface);
-    wf_surface->map();
+    wf_surface->unmap();
 }
 
 static void handle_v6_request_move(wl_listener*, void *data)
@@ -722,6 +735,8 @@ class wayfire_xdg6_view : public wayfire_view_t
         wl_signal_add(&v6_surface->toplevel->events.request_resize,     &request_resize);
         wl_signal_add(&v6_surface->toplevel->events.request_maximize,   &request_maximize);
         wl_signal_add(&v6_surface->toplevel->events.request_fullscreen, &request_fullscreen);
+
+        set_maximized(true);
     }
 
     virtual void get_child_position(int &x, int &y)
@@ -972,6 +987,8 @@ void surface_destroyed_cb(wl_listener*, void *data)
     auto surface = core->api->desktop_surfaces[(wlr_surface*) data];
     assert(surface);
 
+    surface->damage();
+
     auto view = core->find_view(surface->surface);
     if (view)
     {
@@ -1094,7 +1111,6 @@ class wayfire_xwayland_view : public wayfire_view_t
     {
         log_info("new xwayland surface %s class: %s instance: %s",
                  nonull(xw->title), nonull(xw->class_t), nonull(xw->instance));
-        map();
 
         configure.notify          = handle_xwayland_request_configure;
         request_move.notify       = handle_xwayland_request_move;
@@ -1107,6 +1123,13 @@ class wayfire_xwayland_view : public wayfire_view_t
         wl_signal_add(&xw->events.request_maximize,   &request_maximize);
         wl_signal_add(&xw->events.request_fullscreen, &request_fullscreen);
         wl_signal_add(&xw->events.request_configure,  &configure);
+    }
+
+    virtual void commit()
+    {
+        wayfire_view_t::commit();
+        if (!is_mapped)
+            map();
     }
 
     void activate(bool active)
@@ -1147,6 +1170,9 @@ class wayfire_xwayland_view : public wayfire_view_t
         wlr_xwayland_surface_set_maximized(xw, maxim);
 
     }
+
+    std::string get_title() { return nonull(xw->title); }
+    std::string get_app_id() {return nonull(xw->class_t); }
 
     void set_fullscreen(bool full)
     {
