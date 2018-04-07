@@ -224,7 +224,7 @@ void wayfire_surface_t::commit()
     auto rect = get_output_geometry();
     pixman_region32_translate(&damage, rect.x, rect.y);
 
-    if (rect != geometry)
+    if (is_subsurface() && rect != geometry)
     {
         output->render->damage(geometry);
         output->render->damage(rect);
@@ -641,6 +641,8 @@ class wayfire_xdg6_popup : public wayfire_surface_t
             wlr_xdg_surface_v6_popup_get_position(popup->base, &sx, &sy);
             x = sx; y = sy;
         }
+
+        virtual bool is_subsurface() { return true; }
 };
 
 void handle_new_popup(wl_listener*, void *data)

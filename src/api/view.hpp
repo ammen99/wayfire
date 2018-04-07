@@ -84,6 +84,8 @@ class wayfire_surface_t
         virtual void get_child_position(int &x, int &y);
         wf_geometry geometry;
 
+        virtual bool is_subsurface() { return surface->subsurface; }
+
     public:
 
         wayfire_surface_t(wlr_surface *surface, wayfire_surface_t *parent = nullptr);
