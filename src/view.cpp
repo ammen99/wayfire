@@ -109,6 +109,13 @@ void subsurface_created_cb(wl_listener*, void *data)
         return;
     }
 
+    if (core->api->desktop_surfaces.count(sub->surface))
+    {
+        log_error ("adding same subsurface twice!");
+        return;
+    }
+
+    log_info("subsurface %p", sub->surface);
     new wayfire_surface_t(sub->surface, parent);
 }
 
@@ -137,11 +144,13 @@ wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* pa
     wl_signal_add(&surface->events.commit,         &committed);
     wl_signal_add(&surface->events.destroy,        &destroy);
 
+    log_info("map %p -> %p", surface, this);
     core->api->desktop_surfaces[surface] = this;
 }
 
 wayfire_surface_t::~wayfire_surface_t()
 {
+    log_info("unmap %p", this);
     core->api->desktop_surfaces.erase(surface);
 
     if (parent_surface)
@@ -591,7 +600,6 @@ void wayfire_view_t::fullscreen_request(wayfire_output *out, bool state)
 /* TODO: unmap */
 
 static void handle_new_popup(wl_listener*, void*);
-static void handle_popup_destroy(wl_listener*, void*);
 static void handle_v6_map(wl_listener*, void *data);
 static void handle_v6_unmap(wl_listener*, void *data);
 
@@ -614,16 +622,15 @@ class wayfire_xdg6_popup : public wayfire_surface_t
             :wayfire_surface_t(popup->base->surface,
                                core->api->desktop_surfaces[popup->parent->surface])
         {
+            log_info("doing it like a pro");
             assert(parent_surface);
             this->popup = popup;
 
             new_popup.notify     = handle_new_popup;
-            destroy_popup.notify = handle_popup_destroy;
             m_popup_map.notify   = handle_v6_map;
             m_popup_unmap.notify = handle_v6_unmap;
 
             wl_signal_add(&popup->base->events.new_popup, &new_popup);
-     //       wl_signal_add(&popup->base->events.destroy,   &destroy_popup);
             wl_signal_add(&popup->base->events.map,       &m_popup_map);
             wl_signal_add(&popup->base->events.unmap,     &m_popup_unmap);
         }
@@ -647,20 +654,6 @@ void handle_new_popup(wl_listener*, void *data)
     }
 
     new wayfire_xdg6_popup(popup);
-}
-
-/* TODO: damage from popups, recursive till top */
-void handle_popup_destroy(wl_listener*, void *data)
-{
-    auto popup = static_cast<wlr_xdg_surface_v6*> (data);
-    auto it = core->api->desktop_surfaces.find(popup->surface);
-    if (it == core->api->desktop_surfaces.end())
-    {
-        log_error("attempting to destroy an unknown popup");
-        return;
-    }
-
-    delete it->second;
 }
 
 static void handle_v6_map(wl_listener*, void *data)
@@ -1014,6 +1007,7 @@ void surface_destroyed_cb(wl_listener*, void *data)
 
     /* we can safely delete here as this was an xdg popup/subsurface */
     /* Probably do something else? */
+    log_info("delete destroyed %p", surface);
     delete surface;
 }
 
