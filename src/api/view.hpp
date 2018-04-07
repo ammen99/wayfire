@@ -136,7 +136,7 @@ class wayfire_view_t : public wayfire_surface_t
         bool wait_decoration = false;
 
         inline wayfire_view self();
-        virtual void update_size();
+        virtual bool update_size();
 
         uint32_t id;
 

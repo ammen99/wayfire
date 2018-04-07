@@ -285,7 +285,7 @@ static wlr_box get_scissor_box(wayfire_output *output, wlr_box *box)
 
 void wayfire_surface_t::render(int x, int y, wlr_box *damage)
 {
-    if (!surface->texture)
+    if (!wlr_surface_has_buffer(surface))
         return;
 
     wlr_box geometry;
@@ -354,10 +354,14 @@ bool wayfire_view_t::is_visible()
     return true;
 }
 
-void wayfire_view_t::update_size()
+bool wayfire_view_t::update_size()
 {
+    int old_w = geometry.width, old_h = geometry.height;
+
     geometry.width = surface->current ? surface->current->width  : 0;
     geometry.height = surface->current? surface->current->height : 0;
+
+    return geometry.width != old_w || geometry.height != old_h;
 }
 
 void wayfire_view_t::set_moving(bool moving)
@@ -481,7 +485,9 @@ void wayfire_view_t::map()
     geometry.x += workarea.x;
     geometry.y += workarea.y;
 
-    update_size();
+    if (update_size())
+        damage();
+
     if (is_mapped)
     {
         log_error ("request to map %p twice!", surface);
@@ -771,8 +777,9 @@ class wayfire_xdg6_view : public wayfire_view_t
         };
     }
 
-    virtual void update_size()
+    virtual bool update_size()
     {
+        auto old_w = geometry.width, old_h = geometry.height;
         if (v6_surface->geometry.width > 0 && v6_surface->geometry.height > 0)
         {
             geometry.width = v6_surface->geometry.width;
@@ -781,6 +788,8 @@ class wayfire_xdg6_view : public wayfire_view_t
         {
             wayfire_view_t::update_size();
         }
+
+        return old_w != geometry.width || old_h != geometry.height;
     }
 
     virtual void activate(bool act)
@@ -967,7 +976,15 @@ void handle_decoration_destroyed(wl_listener*, void* data)
 void wayfire_view_t::commit()
 {
     wayfire_surface_t::commit();
-    update_size();
+
+    auto old = get_output_geometry();
+    if (update_size())
+    {
+        if (output)
+            output->render->damage(old);
+
+        damage();
+    }
 
     /* configure frame_interior */
     if (decoration)
@@ -1136,25 +1153,33 @@ class wayfire_xwayland_view : public wayfire_view_t
         wlr_xwayland_surface_activate(xw, active);
     }
 
+    void send_configure()
+    {
+        wlr_xwayland_surface_configure(xw, geometry.x, geometry.y,
+                                       geometry.width, geometry.height);
+    }
+
     void move(int x, int y, bool s)
     {
-        geometry.x = x;
-        geometry.y = y;
-        set_geometry(geometry);
+        wayfire_view_t::move(x, y, s);
+        send_configure();
     }
 
     void resize(int w, int h, bool s)
     {
         wayfire_view_t::resize(w, h, s);
-        wlr_xwayland_surface_configure(xw, geometry.x, geometry.y,
-                                       geometry.width, geometry.height);
+        send_configure();
     }
 
     /* TODO: bad with decoration */
     void set_geometry(wf_geometry g)
     {
-        this->geometry = g;
-        resize(geometry.width, geometry.height, true);
+        damage();
+        geometry = g;
+
+        /* send the geometry-changed signal */
+        resize(g.width, g.height, true);
+        send_configure();
     }
 
     void close()
@@ -1166,7 +1191,6 @@ class wayfire_xwayland_view : public wayfire_view_t
     {
         wayfire_view_t::set_maximized(maxim);
         wlr_xwayland_surface_set_maximized(xw, maxim);
-
     }
 
     std::string get_title() { return nonull(xw->title); }

@@ -297,19 +297,22 @@ void render_manager::render_panels()
 
 void render_manager::paint()
 {
+    timespec repaint_started;
+    clock_gettime(CLOCK_MONOTONIC, &repaint_started);
+
     bool needs_swap;
     pixman_region32_clear(&frame_damage);
-    bool result = wlr_output_damage_make_current(damage_manager, &needs_swap, &frame_damage);
-    /* TODO: what does result mean??? */
-    result = false;
+    if (!wlr_output_damage_make_current(damage_manager, &needs_swap, &frame_damage) || !needs_swap)
+        return;
+
+    auto rr = wlr_backend_get_renderer(core->backend);
+    wlr_renderer_begin(rr, output->handle->width, output->handle->height);
+
+    if (dirty_context)
+        load_context();
 
     if (pixman_region32_not_empty(&frame_damage))
     {
-        auto rr = wlr_backend_get_renderer(core->backend);
-        wlr_renderer_begin(rr, output->handle->width, output->handle->height);
-        if (dirty_context)
-            load_context();
-
         GetTuple(vx, vy, output->workspace->get_current_workspace());
         auto target_stream = &output_streams[vx][vy];
         if (current_ws_stream != target_stream)
@@ -323,11 +326,10 @@ void render_manager::paint()
         {
             workspace_stream_update(current_ws_stream);
         }
-
-        wlr_renderer_end(rr);
     }
 
-    wlr_output_damage_swap_buffers(damage_manager, NULL, NULL);
+    wlr_renderer_end(rr);
+    wlr_output_damage_swap_buffers(damage_manager, &repaint_started, &frame_damage);
 
     post_paint();
 

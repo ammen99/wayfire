@@ -476,7 +476,7 @@ struct button_callback_data : wf_callback
 static void handle_pointer_button_cb(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_event_pointer_button*> (data);
-    core->input->handle_pointer_button(ev->button, ev->state);
+    core->input->handle_pointer_button(ev);
         wlr_seat_pointer_notify_button(core->input->seat, ev->time_msec,
                                        ev->button, ev->state);
 }
@@ -608,9 +608,13 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
     return false;
 }
 
-void input_manager::handle_pointer_button(uint32_t button, uint32_t state)
+void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
 {
-    if (state == WLR_BUTTON_PRESSED)
+    /* force pointer refocus */
+    cursor_focus = nullptr;
+    update_cursor_position(ev->time_msec);
+
+    if (ev->state == WLR_BUTTON_PRESSED)
     {
         std::vector<button_callback*> callbacks;
 
@@ -619,23 +623,20 @@ void input_manager::handle_pointer_button(uint32_t button, uint32_t state)
         {
             auto& binding = pair.second;
             if (binding->output == core->get_active_output() &&
-                mod_state == binding->mod && button == binding->button)
+                mod_state == binding->mod && ev->button == binding->button)
                 callbacks.push_back(binding->call);
         }
 
         for (auto call : callbacks)
-            (*call) (button, cursor->x, cursor->y);
+            (*call) (ev->button, cursor->x, cursor->y);
     }
 
     if (active_grab && active_grab->callbacks.pointer.button)
-        active_grab->callbacks.pointer.button(button, state);
+        active_grab->callbacks.pointer.button(ev->button, ev->state);
 }
 
 void input_manager::update_cursor_focus(wlr_surface *focus, int x, int y)
 {
-    if (focus == cursor_focus)
-        return;
-
     cursor_focus = focus;
     if (focus)
     {
@@ -896,7 +897,7 @@ bool input_manager::grab_input(wayfire_grab_interface iface)
 
     assert(!active_grab); // cannot have two active input grabs!
     active_grab = iface;
-
+    update_cursor_focus(nullptr, 0, 0);
 
     /*
     if (ptr)
