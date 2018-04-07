@@ -212,8 +212,16 @@ void wayfire_surface_t::commit()
     pixman_region32_init(&damage);
     pixman_region32_copy(&damage, &surface->current->buffer_damage);
 
-    auto pos = get_output_position();
-    pixman_region32_translate(&damage, pos.x, pos.y);
+    auto rect = get_output_geometry();
+    pixman_region32_translate(&damage, rect.x, rect.y);
+
+    if (rect != geometry)
+    {
+        output->render->damage(geometry);
+        output->render->damage(rect);
+
+        geometry = rect;
+    }
 
     /* TODO: transform damage */
     output->render->damage(&damage);
@@ -955,7 +963,6 @@ void handle_decoration_destroyed(wl_listener*, void* data)
 {
     auto surf = static_cast<wlr_xdg_surface_v6*> (data);
     auto view = core->find_view(surf->surface);
-
     auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (view);
 
     assert(decor);
@@ -965,12 +972,7 @@ void handle_decoration_destroyed(wl_listener*, void* data)
 void wayfire_view_t::commit()
 {
     wayfire_surface_t::commit();
-
-    auto old_geometry = geometry;
     update_size();
-
-    log_info("%s committed %dx%d was %dx%d", get_title().c_str(), old_geometry.width,
-             old_geometry.height, geometry.width, geometry.height);
 
     /* configure frame_interior */
     if (decoration)

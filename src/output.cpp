@@ -326,6 +326,7 @@ void render_manager::paint()
 
         wlr_renderer_end(rr);
     }
+
     wlr_output_damage_swap_buffers(damage_manager, NULL, NULL);
 
     post_paint();

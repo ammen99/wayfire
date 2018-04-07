@@ -82,6 +82,7 @@ class wayfire_surface_t
 
         /* position relative to parent */
         virtual void get_child_position(int &x, int &y);
+        wf_geometry geometry;
 
     public:
 
@@ -134,8 +135,6 @@ class wayfire_view_t : public wayfire_surface_t
 
         inline wayfire_view self();
         virtual void update_size();
-
-        wf_geometry geometry;
 
         uint32_t id;
 
