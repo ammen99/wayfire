@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstring>
+#include <getopt.h>
 
 #include "debug-func.hpp"
 #include "config.hpp"
@@ -31,6 +32,11 @@ void compositor_sleep_cb (wl_listener*, void*)
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, signalHandle);
+    signal(SIGSEGV, signalHandle);
+    signal(SIGFPE, signalHandle);
+    signal(SIGILL, signalHandle);
+    signal(SIGABRT, signalHandle);
 
 #ifdef WAYFIRE_DEBUG_ENABLED
     wlr_log_init(L_DEBUG, NULL);
@@ -38,13 +44,28 @@ int main(int argc, char *argv[])
     wlr_log_init(L_ERROR, NULL);
 #endif
 
-    log_info("Initializing wayfire");
+    std::string home_dir = secure_getenv("HOME");
+    std::string config_file = home_dir + "/.config/wayfire.ini";
 
-    signal(SIGINT, signalHandle);
-    signal(SIGSEGV, signalHandle);
-    signal(SIGFPE, signalHandle);
-    signal(SIGILL, signalHandle);
-    signal(SIGABRT, signalHandle);
+    struct option opts[] = {
+        { "config",   required_argument, NULL, 'c' },
+        { 0,          0,                 NULL,  0  }
+    };
+
+    int c, i;
+    while((c = getopt_long(argc, argv, "c:", opts, &i)) != -1)
+    {
+        switch(c)
+        {
+            case 'c':
+                config_file = optarg;
+                break;
+            default:
+                log_error("unrecognized command line argument %s", optarg);
+        }
+    }
+
+    log_info("Starting wayfire");
 
     core = new wayfire_core();
     core->display  = wl_display_create();
@@ -60,18 +81,15 @@ int main(int argc, char *argv[])
     ec->vt_switching = true;
     */
 
-    std::string home_dir = secure_getenv("HOME");
-    auto config_file = home_dir + "/.config/wayfire.ini";
 
-    log_debug("config file: %s", config_file.c_str());
+    log_info("using config file: %s", config_file.c_str());
     wayfire_config *config = new wayfire_config(config_file, -1);
+
     /*
     ec->repaint_msec = config->get_section("core")->get_int("repaint_msec", 16);
     ec->idle_time = config->get_section("core")->get_int("idle_time", 300);
     */
     config->set_refresh_rate(60);
-    //device_config::load(config);
-
     core->init(config);
 
     auto server_name = wl_display_add_socket_auto(core->display);
