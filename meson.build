@@ -44,9 +44,11 @@ conf_data = configuration_data()
 conf_data.set('WF_SRC_DIR', meson.source_root())
 conf_data.set('INSTALL_PREFIX', get_option('prefix'))
 
+# needed to dlopen() plugins
+add_project_link_arguments(['-rdynamic'], language:'cpp')
+
 if get_option('buildtype') == 'debug' or get_option('enable_debug_output')
   conf_data.set('WAYFIRE_DEBUG_ENABLED', true)
-  add_project_link_arguments(['-rdynamic'], language:'cpp')
 endif
 
 if get_option('enable_gles32')
