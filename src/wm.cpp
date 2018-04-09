@@ -41,7 +41,7 @@ void wayfire_focus::init(wayfire_config *)
         core->focus_output(output);
 
         auto view = output->get_view_at_point(x, y);
-        if (!view || view->is_special || view->destroyed || !output->activate_plugin(grab_interface, false))
+        if (!view || view->destroyed || !output->activate_plugin(grab_interface, false))
             return;
 
         output->deactivate_plugin(grab_interface);

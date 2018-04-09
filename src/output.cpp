@@ -995,7 +995,7 @@ wayfire_view wayfire_output::get_view_at_point(int x, int y)
 {
     wayfire_view chosen = nullptr;
 
-    workspace->for_each_view([x, y, &chosen] (wayfire_view v) {
+    workspace->for_all_view([x, y, &chosen] (wayfire_view v) {
         if (v->is_visible() && point_inside({x, y}, v->get_wm_geometry())) {
             if (chosen == nullptr)
                 chosen = v;
