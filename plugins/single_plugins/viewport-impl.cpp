@@ -9,6 +9,7 @@
 #include <pixman-1/pixman.h>
 #include <opengl.hpp>
 #include <list>
+#include <algorithm>
 #include "wayfire-shell-protocol.h"
 
 struct wf_default_workspace_implementation : wf_workspace_implementation
@@ -39,6 +40,8 @@ class viewport_manager : public workspace_manager
 
         std::vector<std::vector<wf_workspace_implementation*>> implementation;
         wf_default_workspace_implementation default_implementation;
+
+        wf_layer* get_layer(wayfire_view view);
 
     public:
         void init(wayfire_output *output);
@@ -120,8 +123,24 @@ viewport_manager::~viewport_manager()
 {
 }
 
+wf_layer* viewport_manager::get_layer(wayfire_view view)
+{
+    auto it = std::find(background_layer.begin(), background_layer.end(), view);
+    if (it != background_layer.end())
+        return &background_layer;
+
+    it = std::find(panel_layer.begin(), panel_layer.end(), view);
+    if (it != panel_layer.end())
+        return &panel_layer;
+
+    return &normal_layer;
+}
+
 void viewport_manager::view_bring_to_front(wayfire_view view)
 {
+    if (get_layer(view) != &normal_layer)
+        return;
+
     view_removed(view);
     normal_layer.insert(normal_layer.begin(), view);
 }
