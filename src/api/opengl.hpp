@@ -11,8 +11,6 @@ extern "C"
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include <map>
 
 class wayfire_output;
@@ -35,13 +33,13 @@ void gl_call(const char*, uint32_t, const char*);
 #define TEXTURE_USE_TEX_GEOMETRY       (1 << 4)
 #define DONT_RELOAD_PROGRAM            (1 << 5)
 
-namespace OpenGL {
+struct gl_geometry
+{
+    float x1, y1, x2, y2;
+};
 
-    /* all are relative coordinates scaled to [0, 1] */
-    struct texture_geometry {
-        float x1, y1, x2, y2;
-    };
-
+namespace OpenGL
+{
     /* Different Context is kept for each output */
     /* Each of the following functions uses the currently bound context */
     struct context_t {
@@ -49,8 +47,6 @@ namespace OpenGL {
 
         GLuint mvpID, colorID;
         GLuint position, uvPosition;
-
-        GLuint w2ID, h2ID;
 
         wayfire_output *output;
         int32_t width, height;
@@ -66,11 +62,15 @@ namespace OpenGL {
 
     /* texg arguments are used only when bits has USE_TEX_GEOMETRY
      * if you don't wish to use them, simply pass {} as argument */
-    void render_transformed_texture(GLuint text, const wf_geometry& g,
-            const texture_geometry& texg, glm::mat4 transform = glm::mat4(),
-            glm::vec4 color = glm::vec4(1.f), uint32_t bits = 0);
-    void render_texture(GLuint tex, const wf_geometry& g,
-            const texture_geometry& texg, uint32_t bits);
+    void render_transformed_texture(GLuint text,
+                                    const gl_geometry& g,
+                                    const gl_geometry& texg,
+                                    glm::mat4 transform = glm::mat4(),
+                                    glm::vec4 color = glm::vec4(1.f),
+                                    uint32_t bits = 0);
+
+    void render_texture(GLuint tex, const gl_geometry& g,
+                        const gl_geometry& texg, uint32_t bits);
 
     GLuint duplicate_texture(GLuint source_tex, int w, int h);
 
@@ -78,7 +78,11 @@ namespace OpenGL {
     GLuint compile_shader(const char *src, GLuint type);
 
     void prepare_framebuffer(GLuint& fbuff, GLuint& texture,
-            float scale_x = 1, float scale_y = 1);
+                             float scale_x = 1, float scale_y = 1);
+
+    void prepare_framebuffer_size(int w, int h,
+                                  GLuint& fbuff, GLuint& texture,
+                                  float scale_x = 1, float scale_y = 1);
 
     /* set program to current program */
     void use_default_program();

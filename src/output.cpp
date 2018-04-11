@@ -333,6 +333,8 @@ void render_manager::paint()
 
     post_paint();
 
+    wlr_output_damage_add_whole(damage_manager);
+
     /*
        OpenGL::bind_context(ctx);
     if (renderer)

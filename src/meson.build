@@ -1,5 +1,5 @@
 wayfire_sources = ['main.cpp',   'core.cpp',   'view.cpp', 'output.cpp',
-                   'opengl.cpp', 'plugin.cpp', 'wm.cpp']
+                   'opengl.cpp', 'plugin.cpp', 'wm.cpp', 'view-3d.cpp']
 
 wayfire_dependencies = [wayland_server, wlroots, xkbcommon, libinput,
                        pixman, egl, libevdev, glesv2, glm, wf_protos,

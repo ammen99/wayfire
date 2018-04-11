@@ -59,7 +59,6 @@ class gtk_decorator : public decorator_base_t
 
         log_info("decor ready for %s %d", title.c_str(), id);
         auto view = core->find_view(id);
-        assert(view);
 
         auto frame = new gtk_frame();
         view->set_decoration(decor_window, std::unique_ptr<wf_decorator_frame_t>(frame));

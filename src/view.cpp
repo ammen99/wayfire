@@ -3,6 +3,7 @@
 #include "opengl.hpp"
 #include "output.hpp"
 #include "view.hpp"
+#include "view-transform.hpp"
 #include "decorator.hpp"
 #include "workspace-manager.hpp"
 #include "render-manager.hpp"
@@ -22,16 +23,6 @@ extern "C"
 
 /* misc definitions */
 
-glm::mat4 wayfire_view_transform::global_rotation;
-glm::mat4 wayfire_view_transform::global_scale;
-glm::mat4 wayfire_view_transform::global_translate;
-glm::mat4 wayfire_view_transform::global_view_projection;
-
-glm::mat4 wayfire_view_transform::calculate_total_transform()
-{
-    return global_view_projection * (global_translate * translation) *
-           (global_rotation * rotation) * (global_scale * scale);
-}
 
 bool operator == (const wf_geometry& a, const wf_geometry& b)
 {
@@ -61,6 +52,11 @@ wf_geometry operator + (const wf_geometry &a, const wf_point& b)
         a.width,
         a.height
     };
+}
+
+wf_point operator - (const wf_point& a)
+{
+    return {-a.x, -a.y};
 }
 
 bool point_inside(wf_point point, wf_geometry rect)
@@ -209,31 +205,44 @@ void wayfire_surface_t::unmap()
     damage();
 }
 
-void wayfire_surface_t::damage()
+void wayfire_surface_t::damage(pixman_region32_t *dmg)
 {
-    /* TODO: bounding box damage */
-    output->render->damage(get_output_geometry());
+    assert(parent_surface);
+
+    if (!dmg)
+    {
+        pixman_region32_t region;
+        pixman_region32_init_rect(&region,
+                                  geometry.x, geometry.y,
+                                  geometry.width, geometry.height);
+        damage(&region);
+        return;
+    }
+
+
+    int x, y;
+    get_child_position(x, y);
+
+    pixman_region32_translate(dmg, x, y);
+    parent_surface->damage(dmg);
 }
 
 void wayfire_surface_t::commit()
 {
-    pixman_region32_t damage;
-    pixman_region32_init(&damage);
-    pixman_region32_copy(&damage, &surface->current->buffer_damage);
+    damage(&surface->current->buffer_damage);
 
-    auto rect = get_output_geometry();
-    pixman_region32_translate(&damage, rect.x, rect.y);
+    wf_geometry rect;
+    get_child_position(rect.x, rect.y);
+    rect.width  = surface ? surface->current->width  : 0;
+    rect.height = surface ? surface->current->height : 0;
 
+    /* TODO: recursively damage children? */
     if (is_subsurface() && rect != geometry)
     {
-        output->render->damage(geometry);
-        output->render->damage(rect);
-
+        damage();
         geometry = rect;
+        damage();
     }
-
-    /* TODO: transform damage */
-    output->render->damage(&damage);
 }
 
 void wayfire_surface_t::set_output(wayfire_output *out)
@@ -309,6 +318,22 @@ void wayfire_surface_t::render(int x, int y, wlr_box *damage)
     wlr_render_texture_with_matrix(rr, surface->texture, matrix, alpha);
 }
 
+void wayfire_surface_t::render_fbo(pixman_region32_t *damage)
+{
+    /* TODO: optimize */
+    wlr_box geometry;
+    geometry.x = geometry.y = 0;
+    geometry.width = surface->current->width;
+    geometry.height = surface->current->height;
+
+    float matrix[9];
+    GL_CALL(glViewport(0, 0, geometry.width, geometry.height));
+    wlr_matrix_projection(matrix, geometry.width, geometry.height, WL_OUTPUT_TRANSFORM_NORMAL);
+
+    wlr_renderer_scissor(core->renderer, NULL);
+    wlr_render_texture(core->renderer, surface->texture, matrix, 0, 0, 1.0);
+}
+
 void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 {
     int n_rect;
@@ -340,7 +365,14 @@ wayfire_view_t::wayfire_view_t(wlr_surface *surf)
     geometry.width = surface->current->width;
     geometry.height = surface->current->height;
 
-    transform.color = glm::vec4(1, 1, 1, 1);
+    /* TODO: calculate pass a good resolution */
+    auto og = output->get_full_geometry();
+    set_transformer(std::unique_ptr<wf_2D_view> (new wf_2D_view(og.width, og.height)));
+
+//    auto tr = dynamic_cast<wf_2D_view*> (get_transformer());
+ //   tr->scaling = glm::scale(glm::mat4(), {0.5, 0.5, 1});
+ //   tr->rotation = glm::rotate(glm::mat4(1.0), float(-M_PI/2.0f), {0.0, 0, 1});
+//    tr->rotation = glm::rotate(tr->rotation, float(-M_PI/4.0), {0, 1, 0});
 }
 
 wayfire_view wayfire_view_t::self()
@@ -411,14 +443,48 @@ void wayfire_view_t::resize(int w, int h, bool send_signal)
 wayfire_surface_t *wayfire_view_t::map_input_coordinates(int cx, int cy, int& sx, int& sy)
 {
     wayfire_surface_t *ret = NULL;
+    if (is_special)
+        return ret;
+
+    auto wm = get_wm_geometry();
+    int center_x = wm.x + wm.width / 2;
+    int center_y = wm.y + wm.height / 2;
 
     for_each_surface(
         [&] (wayfire_surface_t *surface, int x, int y)
         {
             if (ret) return;
 
-            sx = cx - x;
-            sy = cy - y;
+            log_info("transform coordinates global %d@%d, surface at %d@%d, centered at %d@%d", cx, cy, x, y,
+                     center_x, center_y);
+
+            int lx = cx - center_x,
+                ly = center_y - cy;
+
+           log_info("local %d@%d", lx, ly);
+
+           auto ttt = transform->local_to_transformed_point({10, 10});
+           log_info("dbg %d@%d", ttt.x, ttt.y);
+
+
+            if (transform)
+            {
+                auto transformed = transform->transformed_to_local_point({lx, ly});
+                lx = transformed.x;
+                ly = transformed.y;
+            }
+
+            log_info("local transformed %d@%d", lx, ly);
+
+            lx = lx + center_x;
+            ly = center_y - ly;
+
+            log_info("global transformed %d@%d", lx, ly);
+
+            sx = lx - x;
+            sy = ly - y;
+
+            log_info("final: %d@%d", sx, sy);
 
             if (wlr_surface_point_accepts_input(surface->surface, sx, sy))
                 ret = surface;
@@ -477,6 +543,82 @@ wf_point wayfire_view_t::get_output_position()
         return decoration->get_output_position() + wf_point{geometry.x, geometry.y};
 
     return {geometry.x, geometry.y};
+}
+
+void wayfire_view_t::damage(pixman_region32_t *region)
+{
+    if (decoration)
+        return wayfire_surface_t::damage(region);
+
+    pixman_region32_t dummy_damage;
+    pixman_region32_init(&dummy_damage);
+
+    if (!region)
+    {
+        auto g = get_output_geometry();
+        pixman_region32_union_rect(&dummy_damage, &dummy_damage,
+                                   g.x, g.y, g.width, g.height);
+
+        region = &dummy_damage;
+    }
+
+    if (transform)
+    {
+        /*
+        pixman_region32_union(&offscreen_buffer.cached_damage,
+                              &offscreen_buffer.cached_damage,
+                              region);
+                              */
+
+        /* TODO: damage only the bounding box of region */
+        output->render->damage(get_output_geometry());
+    } else
+    {
+        output->render->damage(region);
+    }
+
+    pixman_region32_fini(&dummy_damage);
+}
+
+void wayfire_view_t::render_pixman(int x, int y, pixman_region32_t* damage)
+{
+    if (!wlr_surface_has_buffer(surface))
+        return;
+
+    if (transform)
+    {
+        if (offscreen_buffer.fbo == (uint32_t)-1)
+        {
+            pixman_region32_init(&offscreen_buffer.cached_damage);
+            auto og = get_output_geometry();
+            OpenGL::prepare_framebuffer_size(og.width, og.height,
+                                             offscreen_buffer.fbo, offscreen_buffer.tex);
+        }
+
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
+        wayfire_surface_t::render_fbo(NULL);
+
+        auto og = output->get_full_geometry();
+        GL_CALL(glViewport(0, 0, og.width, og.height));
+
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
+        auto centric_geometry = geometry; // with respect to output center
+        centric_geometry.x = centric_geometry.x - og.width / 2;
+        centric_geometry.y = og.height /2 - centric_geometry.y;
+
+        /* TODO: render with damage? */
+        transform->render_with_damage(offscreen_buffer.tex, 0, centric_geometry, {0, 0, og.width, og.height});
+    } else
+    {
+        wayfire_surface_t::render(x, y, &geometry);
+    }
+}
+
+void wayfire_view_t::set_transformer(std::unique_ptr<wf_view_transformer_t> transformer)
+{
+    /* TODO: damage all */
+    transform = std::move(transformer);
 }
 
 void wayfire_view_t::map()
@@ -987,6 +1129,14 @@ void wayfire_view_t::commit()
             output->render->damage(old);
 
         damage();
+
+        if (transform && offscreen_buffer.fbo != (uint)-1)
+        {
+            glDeleteFramebuffers(1, &offscreen_buffer.fbo);
+            glDeleteTextures(1, &offscreen_buffer.tex);
+
+            offscreen_buffer.fbo = offscreen_buffer.tex = -1;
+        }
     }
 
     /* configure frame_interior */

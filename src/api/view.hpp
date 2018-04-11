@@ -3,7 +3,6 @@
 #include <plugin.hpp>
 #include <vector>
 #include <map>
-#include <glm/glm.hpp>
 #include <functional>
 #include <pixman.h>
 
@@ -13,24 +12,7 @@ extern "C"
 #include <wlr/types/wlr_surface.h>
 }
 
-class wayfire_view_transform {
-    public: // applied to all views
-        static glm::mat4 global_rotation;
-        static glm::mat4 global_scale;
-        static glm::mat4 global_translate;
-
-        static glm::mat4 global_view_projection;
-    public:
-        glm::mat4 rotation;
-        glm::mat4 scale;
-        glm::mat4 translation;
-
-        glm::vec4 color;
-    public:
-        glm::mat4 calculate_total_transform();
-};
 class wayfire_output;
-
 struct wf_point
 {
     int x, y;
@@ -43,6 +25,7 @@ bool operator != (const wf_geometry& a, const wf_geometry& b);
 wf_point operator + (const wf_point& a, const wf_point& b);
 wf_point operator + (const wf_point& a, const wf_geometry& b);
 wf_geometry operator + (const wf_geometry &a, const wf_point& b);
+wf_point operator - (const wf_point& a);
 
 bool point_inside(wf_point point, wf_geometry rect);
 bool rect_intersect(wf_geometry screen, wf_geometry win);
@@ -62,6 +45,7 @@ class wayfire_surface_t;
 using wf_surface_iterator_callback = std::function<void(wayfire_surface_t*, int, int)>;
 
 class wf_decorator_frame_t;
+class wf_view_transformer_t;
 
 /* abstraction for desktop-apis, no real need for plugins
  * This is a base class to all "drawables" - desktop views, subsurfaces, popups */
@@ -82,6 +66,8 @@ class wayfire_surface_t
 
         /* position relative to parent */
         virtual void get_child_position(int &x, int &y);
+
+        /* geometry relative to parent */
         wf_geometry geometry;
 
         virtual bool is_subsurface() { return surface->subsurface; }
@@ -96,7 +82,8 @@ class wayfire_surface_t
         bool is_mapped = false;
         virtual void map();
         virtual void unmap();
-        virtual void damage();
+
+        virtual void damage(pixman_region32_t *region = nullptr);
 
         float alpha = 1.0;
 
@@ -114,6 +101,8 @@ class wayfire_surface_t
         virtual void render(int x, int y, wlr_box* damage);
         /* just wrapper for the render() */
         virtual void render_pixman(int x, int y, pixman_region32_t* damage);
+
+        virtual void render_fbo(pixman_region32_t *damage);
 
         /* iterate all (sub) surfaces, popups, etc. in top-most order
          * for example, first popups, then subsurfaces, then main surface
@@ -139,8 +128,16 @@ class wayfire_view_t : public wayfire_surface_t
         virtual bool update_size();
 
         uint32_t id;
-
         virtual void get_child_position(int &x, int &y);
+
+        struct
+        {
+            uint32_t fbo = -1, tex = -1;
+            pixman_region32_t cached_damage;
+        } offscreen_buffer;
+
+        std::unique_ptr<wf_view_transformer_t> transform;
+
     public:
 
         /* these represent toplevel relations, children here are transient windows,
@@ -164,12 +161,11 @@ class wayfire_view_t : public wayfire_surface_t
 
         virtual void set_parent(wayfire_view parent);
 
-        virtual wf_point get_output_position();
-
+        /* return geometry as should be used for all WM purposes */
         virtual wf_geometry get_wm_geometry() { return decoration ? decoration->get_wm_geometry() : geometry; }
 
-        /* return geometry together with shadows, etc.
-         * view->geometry contains "WM" geometry */
+
+        virtual wf_point get_output_position();
         virtual wf_geometry get_output_geometry() { return geometry; };
 
         /* map from global to surface local coordinates
@@ -187,17 +183,14 @@ class wayfire_view_t : public wayfire_surface_t
         virtual void set_maximized(bool maxim);
         virtual void set_fullscreen(bool fullscreen);
 
-        wayfire_view_transform transform;
-
         bool is_visible();
         virtual void commit();
         virtual void map();
+        virtual void damage(pixman_region32_t *region = nullptr);
 
         virtual std::string get_app_id() { return ""; }
         virtual std::string get_title() { return ""; }
 
-        virtual void set_decoration(wayfire_view view,
-                                    std::unique_ptr<wf_decorator_frame_t> frame);
 
         /* Used to specify that this view has been destroyed.
          * Useful when animating view close */
@@ -215,6 +208,32 @@ class wayfire_view_t : public wayfire_surface_t
         virtual void resize_request();
         virtual void maximize_request(bool state);
         virtual void fullscreen_request(wayfire_output *output, bool state);
+
+        virtual void set_decoration(wayfire_view view,
+                                    std::unique_ptr<wf_decorator_frame_t> frame);
+
+        /*
+         *                              View transforms
+         * A view transform can be any kind of transformation, for example 3D rotation,
+         * wobbly effect or similar. When we speak of transforms, a "view" is defined
+         * as a toplevel window (including decoration) and also all of its subsurfaces/popups.
+         * The transformation then is applied to this group of surfaces together.
+         *
+         * When a view has a custom transform, then internally all these surfaces are
+         * rendered to a FBO, and then the custom transformation renders the resulting
+         * texture as it sees fit. In this way we could have composable transformations
+         * in the future(e.g several FBO passes).
+         *
+         * Damage tracking for transformed views is done on the boundingbox of the
+         * damaged region after applying the transformation, but all damaged parts
+         * of the internal FBO are updated.
+         * */
+
+        virtual void set_transformer(std::unique_ptr<wf_view_transformer_t> transformer);
+
+        /* the returned value is just a temporary object */
+        virtual wf_view_transformer_t* get_transformer() { return transform.get(); }
+        virtual void render_pixman(int x, int y, pixman_region32_t* damage);
 };
 
 #endif

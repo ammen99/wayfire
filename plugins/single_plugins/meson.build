@@ -5,4 +5,5 @@ autostart     = shared_module('autostart',     'autostart.cpp',     include_dire
 vswitch       = shared_module('vswitch',       'vswitch.cpp',       include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')
 viewport_impl = shared_module('viewport_impl', 'viewport-impl.cpp', include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman, wf_protos], install: true, install_dir: 'lib/wayfire/')
 grid          = shared_module('grid',          'grid.cpp',          include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')
+wrot          = shared_module('wrot',          'wrot.cpp',          include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')
 

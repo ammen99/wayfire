@@ -4,6 +4,8 @@
 #include "output.hpp"
 #include "render-manager.hpp"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace {
     OpenGL::context_t *bound;
 }
@@ -153,9 +155,6 @@ namespace OpenGL
         glm::mat4 identity;
         GL_CALL(glUniformMatrix4fv(ctx->mvpID, 1, GL_FALSE, &identity[0][0]));
 
-        ctx->w2ID = GL_CALL(glGetUniformLocation(ctx->program, "w2"));
-        ctx->h2ID = GL_CALL(glGetUniformLocation(ctx->program, "h2"));
-
         ctx->position   = GL_CALL(glGetAttribLocation(ctx->program, "position"));
         ctx->uvPosition = GL_CALL(glGetAttribLocation(ctx->program, "uvPosition"));
         return ctx;
@@ -188,14 +187,22 @@ namespace OpenGL
         delete ctx;
     }
 
-    void render_texture(GLuint tex, const wf_geometry& g,
-            const texture_geometry& texg, uint32_t bits)
+    void render_texture(GLuint tex, const gl_geometry& g,
+            const gl_geometry& texg, uint32_t bits)
     {
+        render_transformed_texture(tex, g, texg, glm::mat4(1.0f), glm::vec4(1.0), bits);
+    }
+
+    void render_transformed_texture(GLuint tex,
+                                    const gl_geometry& g,
+                                    const gl_geometry& texg,
+                                    glm::mat4 model,
+                                    glm::vec4 color,
+                                    uint32_t bits)
+    {
+        /* TODO: perhaps clean many of the flags, as we won't use them anymore in wlroots */
         if ((bits & DONT_RELOAD_PROGRAM) == 0)
             GL_CALL(glUseProgram(bound->program));
-
-        GL_CALL(glUniform1f(bound->w2ID, bound->width / 2));
-        GL_CALL(glUniform1f(bound->h2ID, bound->height / 2));
 
         if ((bits & TEXTURE_TRANSFORM_USE_DEVCOORD))
         {
@@ -205,27 +212,12 @@ namespace OpenGL
             GL_CALL(glViewport(0, 0, bound->width, bound->height));
         }
 
-        float w2 = float(bound->width) / 2.;
-        float h2 = float(bound->height) / 2.;
-
-        float tlx = float(g.x) - w2,
-              tly = h2 - float(g.y);
-
-        float w = g.width;
-        float h = g.height;
-
-        if(bits & TEXTURE_TRANSFORM_INVERT_Y) {
-            h   *= -1;
-            tly += h;
-        }
-
         GLfloat vertexData[] = {
-            tlx    , tly - h, 0.f, // 1
-            tlx + w, tly - h, 0.f, // 2
-            tlx + w, tly    , 0.f, // 3
-            tlx    , tly    , 0.f, // 4
+            g.x1, g.y2,
+            g.x2, g.y2,
+            g.x2, g.y1,
+            g.x1, g.y1,
         };
-
 
         GLfloat coordData[] = {
             0.0f, 1.0f,
@@ -249,31 +241,20 @@ namespace OpenGL
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
         GL_CALL(glActiveTexture(GL_TEXTURE0));
 
-        GL_CALL(glVertexAttribPointer(bound->position, 3, GL_FLOAT, GL_FALSE, 0, vertexData));
+        GL_CALL(glVertexAttribPointer(bound->position, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
         GL_CALL(glEnableVertexAttribArray(bound->position));
 
         GL_CALL(glVertexAttribPointer(bound->uvPosition, 2, GL_FLOAT, GL_FALSE, 0, coordData));
         GL_CALL(glEnableVertexAttribArray(bound->uvPosition));
 
+        GL_CALL(glUniformMatrix4fv(bound->mvpID, 1, GL_FALSE, &model[0][0]));
+        GL_CALL(glUniform4fv(bound->colorID, 1, &color[0]));
+        GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+
         GL_CALL(glDrawArrays (GL_TRIANGLE_FAN, 0, 4));
 
         GL_CALL(glDisableVertexAttribArray(bound->position));
         GL_CALL(glDisableVertexAttribArray(bound->uvPosition));
-    }
-
-    void render_transformed_texture(GLuint tex, const wf_geometry& g,
-            const texture_geometry& texg, glm::mat4 model,
-            glm::vec4 color, uint32_t bits)
-    {
-        GL_CALL(glUseProgram(bound->program));
-
-        GL_CALL(glUniformMatrix4fv(bound->mvpID, 1, GL_FALSE, &model[0][0]));
-        GL_CALL(glUniform4fv(bound->colorID, 1, &color[0]));
-
-        GL_CALL(glEnable(GL_BLEND));
-        GL_CALL(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-        render_texture(tex, g, texg, bits | DONT_RELOAD_PROGRAM);
-        GL_CALL(glDisable(GL_BLEND));
     }
 
     void prepare_framebuffer(GLuint &fbuff, GLuint &texture,
@@ -307,6 +288,40 @@ namespace OpenGL
         if (status != GL_FRAMEBUFFER_COMPLETE)
             log_error("failed to initialize framebuffer");
     }
+
+    void prepare_framebuffer_size(int w, int h,
+                                  GLuint &fbuff, GLuint &texture,
+                                  float scale_x, float scale_y)
+    {
+        log_info("new fb %d %d %u %u", w, h, fbuff, texture);
+        GL_CALL(glGenFramebuffers(1, &fbuff));
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbuff));
+
+        GL_CALL(glGenTextures(1, &texture));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, texture));
+
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h,
+                             0, GL_RGBA, GL_UNSIGNED_BYTE, 0));
+
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                texture, 0));
+
+        auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
+
+        log_info("gl::: !!!! %d %d",
+                 glCheckFramebufferStatus(GL_FRAMEBUFFER), GL_FRAMEBUFFER_COMPLETE);
+        if (status != GL_FRAMEBUFFER_COMPLETE)
+            log_error("failed to initialize framebuffer");
+        else
+            log_error("initialized framebuffer %u with attachment %u", fbuff, texture);
+    }
+
 
     GLuint duplicate_texture(GLuint tex, int w, int h)
     {

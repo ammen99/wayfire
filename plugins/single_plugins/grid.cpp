@@ -264,14 +264,12 @@ class wayfire_grid : public wayfire_plugin_t {
     void snap_signal_cb(signal_data *ddata)
     {
         snap_signal *data = static_cast<snap_signal*>(ddata);
-        assert(data);
         handle_key(data->view, data->tslot);
     }
 
     void maximize_signal_cb(signal_data *ddata)
     {
         auto data = static_cast<view_maximized_signal*> (ddata);
-        assert(data);
 
         int x, y, w, h;
         toggle_maximized(data->view, x, y, w, h, data->state);
@@ -289,7 +287,6 @@ class wayfire_grid : public wayfire_plugin_t {
     void fullscreen_signal_cb(signal_data *ddata)
     {
         auto data = static_cast<view_fullscreen_signal*> (ddata);
-        assert(data);
 
         int x, y, w, h;
         toggle_maximized(data->view, x, y, w, h, data->state, true);
