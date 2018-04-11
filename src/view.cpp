@@ -481,9 +481,12 @@ wf_point wayfire_view_t::get_output_position()
 
 void wayfire_view_t::map()
 {
-    auto workarea = output->workspace->get_workarea();
-    geometry.x += workarea.x;
-    geometry.y += workarea.y;
+    if (!is_special)
+    {
+        auto workarea = output->workspace->get_workarea();
+        geometry.x += workarea.x;
+        geometry.y += workarea.y;
+    }
 
     if (update_size())
         damage();
