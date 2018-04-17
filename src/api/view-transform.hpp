@@ -62,10 +62,11 @@ class wf_3D_view : public wf_view_transformer_t
 
         glm::mat4 calculate_total_transform();
 
+        float m_width, m_height;
         float m_aspect;
 
     public:
-        wf_3D_view(float aspect);
+        wf_3D_view(float width, float height);
 
         virtual wf_point local_to_transformed_point(wf_point point);
         virtual wf_point transformed_to_local_point(wf_point point);

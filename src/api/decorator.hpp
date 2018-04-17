@@ -6,7 +6,7 @@
 class wf_decorator_frame_t
 {
     public:
-        /* return the geometry of the contained view relative to the decoration view */
+        /* return the geometry of the contained view */
         virtual wf_geometry get_child_geometry(wf_geometry frame_geometry) = 0;
         /* return the geometry of the frame if the child is resized to child_geometry.
          * This must be consistent with get_child_geometry(), e.g

@@ -205,18 +205,19 @@ namespace OpenGL
             GL_CALL(glUseProgram(bound->program));
 
         if ((bits & TEXTURE_TRANSFORM_USE_DEVCOORD))
-        {
             use_device_viewport();
-        } else
-        {
-            GL_CALL(glViewport(0, 0, bound->width, bound->height));
-        }
+
+        gl_geometry final_g = g;
+        if (bits & TEXTURE_TRANSFORM_INVERT_Y)
+            std::swap(final_g.y1, final_g.y2);
+        if (bits & TEXTURE_TRANSFORM_INVERT_X)
+            std::swap(final_g.x1, final_g.x2);
 
         GLfloat vertexData[] = {
-            g.x1, g.y2,
-            g.x2, g.y2,
-            g.x2, g.y1,
-            g.x1, g.y1,
+            final_g.x1, final_g.y2,
+            final_g.x2, final_g.y2,
+            final_g.x2, final_g.y1,
+            final_g.x1, final_g.y1,
         };
 
         GLfloat coordData[] = {

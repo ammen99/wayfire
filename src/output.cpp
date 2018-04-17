@@ -305,6 +305,7 @@ void render_manager::paint()
     if (!wlr_output_damage_make_current(damage_manager, &needs_swap, &frame_damage) || !needs_swap)
         return;
 
+    log_info("begin repaint");
     auto rr = wlr_backend_get_renderer(core->backend);
     wlr_renderer_begin(rr, output->handle->width, output->handle->height);
 
@@ -538,6 +539,11 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
         view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
         {
             if (!surface->surface->texture || !pixman_region32_not_empty(&ws_damage))
+                return;
+
+            /* views with transforms can be skipped */
+            /* TODO: damage bounding_box */
+            if (view->get_transformer() && surface != view.get())
                 return;
 
             if (!view->is_special)

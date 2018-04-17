@@ -83,6 +83,8 @@ class wayfire_surface_t
         virtual void map();
         virtual void unmap();
 
+        wayfire_surface_t *get_main_surface();
+
         virtual void damage(pixman_region32_t *region = nullptr);
 
         float alpha = 1.0;
@@ -102,7 +104,10 @@ class wayfire_surface_t
         /* just wrapper for the render() */
         virtual void render_pixman(int x, int y, pixman_region32_t* damage);
 
-        virtual void render_fbo(pixman_region32_t *damage);
+        /* render to an offscreen buffer, without applying output transform/scale/etc.
+         * Rendering is done in */
+        virtual void render_fbo(int x, int y, int fb_width, int fb_height,
+                                pixman_region32_t *damage);
 
         /* iterate all (sub) surfaces, popups, etc. in top-most order
          * for example, first popups, then subsurfaces, then main surface
@@ -118,6 +123,7 @@ class wayfire_view_t : public wayfire_surface_t
 
     protected:
         wayfire_view decoration;
+        int decor_x, decor_y;
 
         void force_update_xwayland_position();
         int in_continuous_move = 0, in_continuous_resize = 0;
@@ -133,10 +139,13 @@ class wayfire_view_t : public wayfire_surface_t
         struct
         {
             uint32_t fbo = -1, tex = -1;
+            int32_t fb_width = 0, fb_height = 0;
             pixman_region32_t cached_damage;
         } offscreen_buffer;
 
         std::unique_ptr<wf_view_transformer_t> transform;
+
+        virtual wlr_box get_bounding_box();
 
     public:
 

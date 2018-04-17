@@ -11,8 +11,8 @@ class gtk_frame : public wf_decorator_frame_t
 {
     wf_geometry get_child_geometry(wf_geometry frame_geometry)
     {
-        frame_geometry.x = 5;
-        frame_geometry.y = 40;
+        frame_geometry.x += 5;
+        frame_geometry.y += 40;
         frame_geometry.width -= 10;
         frame_geometry.height -= 45;
 
