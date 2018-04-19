@@ -23,6 +23,7 @@ extern "C"
 
 /* misc definitions */
 
+/* TODO: use surface->data instead of a global map */
 
 bool operator == (const wf_geometry& a, const wf_geometry& b)
 {
@@ -219,16 +220,13 @@ void wayfire_surface_t::damage(pixman_region32_t *dmg)
                                   geometry.x, geometry.y,
                                   geometry.width, geometry.height);
 
-        auto main_surface = get_main_surface();
-        main_surface->output->render->damage(&region);
+        output->render->damage(&region);
         return;
     } else
     {
         auto pos = get_output_position();
         pixman_region32_translate(dmg, pos.x, pos.y);
-
-        auto main_surface = get_main_surface();
-        main_surface->output->render->damage(dmg);
+        output->render->damage(dmg);
 
         /* TODO: maybe we don't have to translate back? */
         pixman_region32_translate(dmg, -pos.x, -pos.y);
@@ -237,7 +235,7 @@ void wayfire_surface_t::damage(pixman_region32_t *dmg)
 
 void wayfire_surface_t::commit()
 {
-    damage(&surface->current->buffer_damage);
+    damage(&surface->current->surface_damage);
 
     wf_geometry rect = get_output_geometry();
 
@@ -380,7 +378,7 @@ wayfire_view_t::wayfire_view_t(wlr_surface *surf)
     geometry.height = surface->current->height;
 
     auto og = output->get_full_geometry();
-    set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(og.width, og.height)));
+//    set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(og.width, og.height)));
 }
 
 wayfire_view wayfire_view_t::self()
@@ -542,33 +540,31 @@ wf_point wayfire_view_t::get_output_position()
 
 void wayfire_view_t::damage(pixman_region32_t *region)
 {
-    if (decoration)
-        return wayfire_surface_t::damage(region);
-
     pixman_region32_t dummy_damage;
     pixman_region32_init(&dummy_damage);
 
+    auto output_geometry = get_output_geometry();
     if (!region)
     {
-        auto g = get_output_geometry();
         pixman_region32_union_rect(&dummy_damage, &dummy_damage,
-                                   g.x, g.y, g.width, g.height);
+                                   0, 0, output_geometry.width, output_geometry.height);
 
         region = &dummy_damage;
     }
 
+    pixman_region32_translate(region, output_geometry.x, output_geometry.y);
     if (transform)
     {
         /* TODO: damage only the bounding box of region */
 
         /*
-        pixman_region32_union(&offscreen_buffer.cached_damage,
-                              &offscreen_buffer.cached_damage,
-                              region);
-                              */
+           pixman_region32_union(&offscreen_buffer.cached_damage,
+           &offscreen_buffer.cached_damage,
+           region);
+           */
 
-        output->render->damage(transform->get_bounding_box(get_output_geometry()));
-        } else
+        output->render->damage(transform->get_bounding_box(output_geometry));
+    } else
     {
         output->render->damage(region);
     }
@@ -621,9 +617,9 @@ void wayfire_view_t::render_pixman(int x, int y, pixman_region32_t* damage)
 
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
             GL_CALL(glViewport(0, 0, output_geometry.width, output_geometry.height));
+
             GL_CALL(glClearColor(0, 0, 0, 0));
             GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
-
         }
 
         for_each_surface([=] (wayfire_surface_t *surface, int x, int y) {
@@ -644,7 +640,7 @@ void wayfire_view_t::render_pixman(int x, int y, pixman_region32_t* damage)
         transform->render_with_damage(offscreen_buffer.tex, 0, centric_geometry, {0, 0, og.width, og.height});
     } else
     {
-        wayfire_surface_t::render(x, y, &geometry);
+        wayfire_surface_t::render_pixman(x, y, damage);
     }
 }
 

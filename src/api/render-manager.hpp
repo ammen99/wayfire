@@ -2,12 +2,6 @@
 #define RENDER_MANAGER_HPP
 
 #include "plugin.hpp"
-
-extern "C"
-{
-#include <wlr/types/wlr_output_damage.h>
-}
-
 #include <vector>
 #include <pixman.h>
 
@@ -28,17 +22,18 @@ struct wf_workspace_stream
     float scale_x, scale_y;
 };
 
+struct wf_output_damage;
 class render_manager
 {
 
     friend void redraw_idle_cb(void *data);
+    friend void damage_idle_cb(void *data);
     friend void frame_cb (wl_listener*, void *data);
 
     private:
         wayfire_output *output;
-        wl_event_source *idle_redraw_source = NULL;
+        wl_event_source *idle_redraw_source = NULL, *idle_damage_source = NULL;
 
-        wlr_output_damage *damage_manager;
         wl_listener frame_listener;
 
         bool dirty_context = true;
@@ -48,6 +43,7 @@ class render_manager
         bool draw_overlay_panel = true;
 
         pixman_region32_t frame_damage;
+        std::unique_ptr<wf_output_damage> output_damage;
 
         std::vector<std::vector<wf_workspace_stream>> output_streams;
         wf_workspace_stream *current_ws_stream = nullptr;
@@ -83,7 +79,7 @@ class render_manager
         void add_output_effect(effect_hook_t*);
         void rem_effect(const effect_hook_t*);
 
-        void damage(wlr_box box);
+        void damage(const wlr_box& box);
         void damage(pixman_region32_t *region);
 
         void workspace_stream_start(wf_workspace_stream *stream);

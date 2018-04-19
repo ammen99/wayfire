@@ -67,7 +67,7 @@ class input_manager
 
         wlr_surface* cursor_focus = nullptr;
         void update_cursor_focus(wlr_surface *focus, int x, int y);
-        void update_cursor_position(uint32_t time_msec);
+        void update_cursor_position(uint32_t time_msec, bool real_update = true);
 
     public:
         input_manager();

@@ -3,15 +3,17 @@
 #include <core.hpp>
 #include <render-manager.hpp>
 #include <workspace-manager.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
-#include "../../shared/config.hpp"
+#include "config.hpp"
 /* TODO: this file should be included in some header maybe(plugin.hpp) */
 #include <linux/input-event-codes.h>
-#include "../../shared/config.hpp"
 #include "view-change-viewport-signal.hpp"
 
 
-class wayfire_expo : public wayfire_plugin_t {
+class wayfire_expo : public wayfire_plugin_t
+{
     private:
         key_callback toggle_cb, press_cb, move_cb;
         touch_gesture_callback touch_toggle_cb;
@@ -65,7 +67,7 @@ class wayfire_expo : public wayfire_plugin_t {
         max_steps = section->get_duration("duration", 20);
         delimiter_offset = section->get_int("offset", 10);
 
-        toggle_cb = [=] (weston_keyboard *kbd, uint32_t key) {
+        toggle_cb = [=] (uint32_t key) {
             if (!state.active) {
                 activate();
             } else {
@@ -87,47 +89,44 @@ class wayfire_expo : public wayfire_plugin_t {
         activate_gesture.finger_count = 3;
         output->add_gesture(activate_gesture, &touch_toggle_cb);
 
-        action_button = section->get_button("action", {0, BTN_LEFT});
-
-        grab_interface->callbacks.pointer.button = [=] (weston_pointer *ptr,
-                uint32_t button, uint32_t state)
+        grab_interface->callbacks.pointer.button = [=] (uint32_t button, uint32_t state)
         {
-            auto kbd = weston_seat_get_keyboard(ptr->seat);
-            if (kbd->modifiers.mods_depressed != action_button.mod)
-                return;
-            if (button != action_button.button)
+            if (button != BTN_LEFT)
                 return;
 
-            handle_input_press(ptr->x, ptr->y, state);
+            GetTuple(x, y, core->get_cursor_position());
+            handle_input_press(x, y, state);
 
         };
-        grab_interface->callbacks.pointer.motion = [=] (weston_pointer *ptr,
-                weston_pointer_motion_event *ev)
+        grab_interface->callbacks.pointer.motion = [=] (int32_t x, int32_t y)
         {
-            handle_input_move(ptr->x, ptr->y);
+            handle_input_move(x, y);
         };
 
+        /* TODO: enable touch gestures again */
+        /*
         grab_interface->callbacks.touch.down = [=] (weston_touch *touch,
                 int32_t id, wl_fixed_t sx, wl_fixed_t sy)
         {
             if (id > 0) return;
-            handle_input_press(sx, sy, WL_POINTER_BUTTON_STATE_PRESSED);
+            handle_input_press(sx, sy, WLr_button_released);
         };
 
         grab_interface->callbacks.touch.up = [=] (weston_touch *touch, int32_t id)
         {
             if (id > 0) return;
-            handle_input_press(0, 0, WL_POINTER_BUTTON_STATE_RELEASED);
+            handle_input_press(0, 0, wlr_button_released);
         };
 
         grab_interface->callbacks.touch.motion = [=] (weston_touch *touch,
                 int32_t id, wl_fixed_t sx, wl_fixed_t sy)
         {
-            if (id > 0) /* we handle just the first finger */
+            if (id > 0) // we handle just the first finger
                 return;
 
             handle_input_move(sx, sy);
         };
+    */
 
         renderer = std::bind(std::mem_fn(&wayfire_expo::render), this);
 
@@ -200,8 +199,8 @@ class wayfire_expo : public wayfire_plugin_t {
     wayfire_view moving_view;
     void handle_input_move(wl_fixed_t x, wl_fixed_t y)
     {
-        int cx = wl_fixed_to_int(x);
-        int cy = wl_fixed_to_int(y);
+        int cx = x;
+        int cy = y;
 
         if (state.button_pressed && !state.in_zoom)
         {
@@ -222,8 +221,8 @@ class wayfire_expo : public wayfire_plugin_t {
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
         int max = std::max(vw, vh);
 
-        moving_view->move(moving_view->geometry.x + (cx - sx) * max,
-                moving_view->geometry.y + (cy - sy) * max);
+        auto g = moving_view->get_wm_geometry();
+        moving_view->move(g.x + (cx - sx) * max, g.y + (cy - sy) * max);
 
         sx = cx;
         sy = cy;
@@ -292,7 +291,7 @@ class wayfire_expo : public wayfire_plugin_t {
 
         wayfire_view search = nullptr;
         output->workspace->for_each_view([&search, og, sx, sy] (wayfire_view v) {
-            if (!search && point_inside({sx + og.x, sy + og.y}, v->geometry))
+            if (!search && point_inside({sx + og.x, sy + og.y}, v->get_wm_geometry()))
             search = v;
         });
 
@@ -314,14 +313,14 @@ class wayfire_expo : public wayfire_plugin_t {
 
     void handle_input_press(wl_fixed_t x, wl_fixed_t y, uint32_t state)
     {
-        if (state == WL_POINTER_BUTTON_STATE_RELEASED && !this->state.moving) {
+        if (state == WLR_BUTTON_RELEASED && !this->state.moving) {
             deactivate();
-        } else if (state == WL_POINTER_BUTTON_STATE_RELEASED) {
+        } else if (state == WLR_BUTTON_RELEASED) {
             end_move();
         } else {
             this->state.button_pressed = true;
-            sx = wl_fixed_to_int(x);
-            sy = wl_fixed_to_int(y);
+            sx = x;
+            sy = y;
 
             moving_view = find_view_at(sx, sy);
             update_target_workspace(sx, sy);
@@ -361,11 +360,15 @@ class wayfire_expo : public wayfire_plugin_t {
         }
 
         glm::mat4 matrix;
-        matrix = glm::rotate(matrix, angle, glm::vec3(0, 0, 1));
-        matrix = glm::translate(matrix, glm::vec3(render_params.off_x, render_params.off_y, 0));
-        matrix = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
+        auto rot       = glm::rotate(matrix, angle, glm::vec3(0, 0, 1));
+        auto translate = glm::translate(matrix, glm::vec3(render_params.off_x, render_params.off_y, 0));
+        auto scale     = glm::scale(matrix, glm::vec3(render_params.scale_x, render_params.scale_y, 1));
+        matrix = rot * translate * scale;
 
         OpenGL::use_device_viewport();
+        auto vp = OpenGL::get_device_viewport();
+        GL_CALL(glScissor(vp.x, vp.y, vp.width, vp.height));
+
         glClearColor(background_color.r, background_color.g,
                      background_color.b, background_color.a);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -380,14 +383,17 @@ class wayfire_expo : public wayfire_plugin_t {
                             render_params.scale_x, render_params.scale_y);
                 }
 
-                wf_geometry g = {
-                    (i - vx) * w + delimiter_offset,
-                    (j - vy) * h + delimiter_offset,
-                    w - 2 * delimiter_offset,
-                    h - 2 * delimiter_offset
-                };
+                float tlx = (i - vx) * w + delimiter_offset;
+                float tly = (j - vy) * h + delimiter_offset;
 
-                OpenGL::texture_geometry texg;
+                float brx = tlx + w - 2 * delimiter_offset;
+                float bry = tly + h - 2 * delimiter_offset;
+
+                gl_geometry out_geometry = {
+                    2.0f * tlx / w - 1.0f, 1.0f - 2.0f * tly / h,
+                    2.0f * brx / w - 1.0f, 1.0f - 2.0f * bry / h};
+
+                gl_geometry texg;
                 texg.x1 = 0;
                 texg.y1 = 0;
                 texg.x2 = streams[i][j]->scale_x;
@@ -398,9 +404,9 @@ class wayfire_expo : public wayfire_plugin_t {
                 GL_CALL(glScissor(vp_geometry.x, vp_geometry.y,
                                   vp_geometry.width, vp_geometry.height));
 
-                OpenGL::render_transformed_texture(streams[i][j]->tex, g, texg, matrix,
-                        glm::vec4(1), TEXTURE_TRANSFORM_USE_DEVCOORD | TEXTURE_TRANSFORM_INVERT_Y |
-                        TEXTURE_USE_TEX_GEOMETRY);
+                OpenGL::render_transformed_texture(streams[i][j]->tex, out_geometry, texg, matrix,
+                        glm::vec4(1), TEXTURE_TRANSFORM_USE_DEVCOORD |
+                        TEXTURE_USE_TEX_GEOMETRY | TEXTURE_TRANSFORM_INVERT_Y);
 
                 GL_CALL(glDisable(GL_SCISSOR_TEST));
             }

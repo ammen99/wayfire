@@ -612,7 +612,9 @@ void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
 {
     /* force pointer refocus */
     cursor_focus = nullptr;
-    update_cursor_position(ev->time_msec);
+
+    if (ev->state == WLR_BUTTON_RELEASED)
+        update_cursor_position(ev->time_msec, false);
 
     if (ev->state == WLR_BUTTON_PRESSED)
     {
@@ -648,13 +650,13 @@ void input_manager::update_cursor_focus(wlr_surface *focus, int x, int y)
     }
 }
 
-void input_manager::update_cursor_position(uint32_t time_msec)
+void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
 {
     auto output = core->get_output_at(cursor->x, cursor->y);
     if (!output) return;
     assert(output);
 
-    if (input_grabbed())
+    if (input_grabbed() && real_update)
     {
         if (active_grab->callbacks.pointer.motion)
             active_grab->callbacks.pointer.motion(cursor->x, cursor->y);
