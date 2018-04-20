@@ -26,6 +26,7 @@ class input_manager;
 class wayfire_config;
 class wayfire_output;
 class wayfire_view_t;
+class wayfire_surface_t;
 
 using wayfire_view = std::shared_ptr<wayfire_view_t>;
 using output_callback_proc = std::function<void(wayfire_output *)>;
@@ -75,6 +76,7 @@ class wayfire_core
         wlr_seat *get_current_seat();
         void set_default_cursor();
         std::tuple<int, int> get_cursor_position();
+        wayfire_surface_t *get_cursor_focus();
 
         void add_view(wayfire_view view);
         wayfire_view find_view(wlr_surface *);

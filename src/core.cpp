@@ -610,11 +610,11 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 
 void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
 {
-    /* force pointer refocus */
-    cursor_focus = nullptr;
-
     if (ev->state == WLR_BUTTON_RELEASED)
+    {
+        cursor_focus = nullptr;
         update_cursor_position(ev->time_msec, false);
+    }
 
     if (ev->state == WLR_BUTTON_PRESSED)
     {
@@ -637,12 +637,12 @@ void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
         active_grab->callbacks.pointer.button(ev->button, ev->state);
 }
 
-void input_manager::update_cursor_focus(wlr_surface *focus, int x, int y)
+void input_manager::update_cursor_focus(wayfire_surface_t *focus, int x, int y)
 {
     cursor_focus = focus;
     if (focus)
     {
-        wlr_seat_pointer_notify_enter(seat, focus, x, y);
+        wlr_seat_pointer_notify_enter(seat, focus->surface, x, y);
     } else
     {
         wlr_seat_pointer_clear_focus(seat);
@@ -653,7 +653,6 @@ void input_manager::update_cursor_focus(wlr_surface *focus, int x, int y)
 void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
 {
     auto output = core->get_output_at(cursor->x, cursor->y);
-    if (!output) return;
     assert(output);
 
     if (input_grabbed() && real_update)
@@ -663,16 +662,14 @@ void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
         return;
     }
 
-
     int sx = cursor->x, sy = cursor->y;
-    wlr_surface *new_focus = NULL;
+    wayfire_surface_t *new_focus = NULL;
 
     output->workspace->for_all_view(
         [&] (wayfire_view view)
         {
             if (new_focus) return;
-            auto surface = view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
-            if (surface) new_focus = surface->surface;
+            new_focus = view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
         });
 
     update_cursor_focus(new_focus, sx, sy);
@@ -1298,6 +1295,11 @@ std::tuple<int, int> wayfire_core::get_cursor_position()
         return std::tuple<int, int> (input->cursor->x, input->cursor->y);
     else
         return std::tuple<int, int> (0, 0);
+}
+
+wayfire_surface_t *wayfire_core::get_cursor_focus()
+{
+    return input->cursor_focus;
 }
 
 static int _last_output_id = 0;

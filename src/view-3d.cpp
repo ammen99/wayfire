@@ -87,8 +87,11 @@ void wf_2D_view::render_with_damage(uint32_t src_tex,
     auto translate = glm::translate(transform, {off_x, off_y, 0});
 
     transform = ortho * translate * scale * rotate;
-    OpenGL::use_device_viewport();
+
     wlr_renderer_scissor(core->renderer, &scissor_box);
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, target_fbo));
+    OpenGL::use_device_viewport();
+
     OpenGL::render_transformed_texture(src_tex, {tlx, tly, brx, bry},{}, transform);
 }
 

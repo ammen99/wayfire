@@ -24,11 +24,12 @@ class wf_wrot : public wayfire_plugin_t
                 if (!view->get_transformer())
                 {
                     auto og = view->get_output()->get_full_geometry();
-                    view->set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(og.width, og.height)));
+                    view->set_transformer(std::unique_ptr<wf_2D_view> (new wf_2D_view(og.width, og.height)));
                 }
 
-                auto tr = dynamic_cast<wf_3D_view*> (view->get_transformer());
-                tr->rotation = glm::rotate(tr->rotation, 0.01f, {0, 0, 1});
+                auto tr = dynamic_cast<wf_2D_view*> (view->get_transformer());
+                view->damage();
+                tr->angle += 0.02;
                 view->damage();
 
  //               tr->angle += 0.01;

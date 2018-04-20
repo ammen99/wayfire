@@ -65,8 +65,7 @@ class input_manager
         void setup_keyboard(wlr_input_device *dev);
         void handle_new_input(wlr_input_device *dev);
 
-        wlr_surface* cursor_focus = nullptr;
-        void update_cursor_focus(wlr_surface *focus, int x, int y);
+        void update_cursor_focus(wayfire_surface_t *focus, int x, int y);
         void update_cursor_position(uint32_t time_msec, bool real_update = true);
 
     public:
@@ -74,6 +73,8 @@ class input_manager
         wlr_seat *seat = nullptr;
         wlr_cursor *cursor = NULL;
         wlr_xcursor_manager *xcursor;
+
+        wayfire_surface_t* cursor_focus = nullptr;
 
         int pointer_count = 0, keyboard_count = 0, touch_count = 0;
         void update_capabilities();
