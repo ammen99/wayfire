@@ -633,6 +633,8 @@ void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
             GL_CALL(glViewport(0, 0, output_geometry.width, output_geometry.height));
 
+            wlr_renderer_scissor(core->renderer, NULL);
+
             GL_CALL(glClearColor(1, 1, 1, 0));
             GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
         }

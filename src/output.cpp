@@ -450,8 +450,6 @@ void render_manager::paint()
     wlr_renderer_end(rr);
     output_damage->swap_buffers(&repaint_started, &swap_damage);
 
-    output_damage->add();
-
     pixman_region32_fini(&swap_damage);
     post_paint();
 
