@@ -450,6 +450,8 @@ void render_manager::paint()
     wlr_renderer_end(rr);
     output_damage->swap_buffers(&repaint_started, &swap_damage);
 
+    output_damage->add();
+
     pixman_region32_fini(&swap_damage);
     post_paint();
 
@@ -555,35 +557,19 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
     GL_CALL(glClearColor(0, 0, 0, 1));
     GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
 
-    GetTuple(x, y, stream->ws);
+    GetTuple(vx, vy, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
+    auto og = output->get_full_geometry();
 
-    /* TODO: this assumes we use viewports arranged in a grid
-     * It would be much better to actually ask the workspace_manager
-     * for view's position on the given workspace*/
-    int dx = (cx - x)  * output->handle->width,
-        dy = (cy - y)  * output->handle->height;
+    /* damage the whole workspace region, so that we get a full repaint */
+    pixman_region32_union_rect(&frame_damage,
+                               &frame_damage,
+                               (vx - cx) * og.width,
+                               (vy - cy) * og.height,
+                               og.width, og.height);
 
-    auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
-    auto it = views.rbegin();
+    workspace_stream_update(stream, 1, 1);
 
-    while (it != views.rend())
-    {
-        auto v = *it;
-        if (v->is_visible())
-        {
-            if (!v->is_special)
-            {
-                v->render(v->get_wm_geometry().x + dx, v->get_wm_geometry().y + dy, NULL);
-            } else
-            {
-                v->render(v->get_wm_geometry().x, v->get_wm_geometry().y, NULL);
-            }
-        }
-        ++it;
-    };
-
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 
 void render_manager::workspace_stream_update(wf_workspace_stream *stream,
@@ -623,7 +609,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
     if (scale_x != stream->scale_x || scale_y != stream->scale_y)
     {
-        /* FIXME: */
+        /* FIXME: enable scaled rendering */
 //        stream->scale_x = scale_x;
 //        stream->scale_y = scale_y;
 
@@ -652,26 +638,53 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     while (it != views.end() && pixman_region32_not_empty(&ws_damage))
     {
         auto view = *it;
+        int view_dx = 0, view_dy = 0;
+
         if (!view->is_visible())
             goto next;
 
-        view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
+        if (!view->is_special)
         {
-            if (!surface->surface->texture || !pixman_region32_not_empty(&ws_damage))
-                return;
+            view_dx = -dx;
+            view_dy = -dy;
+        }
 
-            /* views with transforms can be skipped */
-            /* TODO: damage bounding_box */
-            if (view->get_transformer() && surface != view.get())
-                return;
+        if (view->get_transformer())
+        {
+            auto ds = damaged_surface(new damaged_surface_t);
 
-            if (!view->is_special)
+            auto bbox = view->get_bounding_box();
+            auto obox = view->get_output_geometry();
+
+            pixman_region32_init_rect(&ds->damage,
+                                      bbox.x + view_dx, bbox.y + view_dy, bbox.width, bbox.height);
+
+            pixman_region32_intersect(&ds->damage, &ds->damage, &ws_damage);
+            if (pixman_region32_not_empty(&ds->damage))
             {
-                x -= dx;
-                y -= dy;
+                ds->x = obox.x + view_dx;
+                ds->y = obox.y + view_dy;
+                ds->surface = view.get();
+
+                to_render.push_back(std::move(ds));
             }
 
+            goto next;
+        }
+
+        view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
+        {
+            if (!wlr_surface_has_buffer(surface->surface)
+                || !pixman_region32_not_empty(&ws_damage))
+                return;
+
+            /* make sure all coordinates are in workspace-local coords */
+            x += view_dx;
+            y += view_dy;
+
             auto ds = damaged_surface(new damaged_surface_t);
+
+            /* TODO: perhaps use output_geometry, doesn't matter that it will be a bit more CPU */
             pixman_region32_init_rect(&ds->damage,
                                       x, y,
                                       surface->surface->current->width,
@@ -698,8 +711,6 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
         next: ++it;
     };
 
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, stream->fbuff));
-
     /*
      TODO; implement scale != 1
     glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(scale_x, scale_y, 1));
@@ -713,7 +724,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
     while(rev_it != to_render.rend())
     {
         auto ds = std::move(*rev_it);
-        ds->surface->render_pixman(ds->x, ds->y, &ds->damage);
+        ds->surface->render_fb(ds->x, ds->y, &ds->damage, stream->fbuff);
 
         ++rev_it;
     }

@@ -71,6 +71,8 @@ class wayfire_surface_t
         wf_geometry geometry;
 
         virtual bool is_subsurface() { return surface->subsurface; }
+        virtual void damage(const wlr_box& box);
+        virtual void damage(pixman_region32_t *region);
 
     public:
 
@@ -85,7 +87,7 @@ class wayfire_surface_t
 
         wayfire_surface_t *get_main_surface();
 
-        virtual void damage(pixman_region32_t *region = nullptr);
+        virtual void damage();
 
         float alpha = 1.0;
 
@@ -113,6 +115,8 @@ class wayfire_surface_t
          * for example, first popups, then subsurfaces, then main surface
          * When reverse=true, the order in which surfaces are visited is reversed */
         virtual void for_each_surface(wf_surface_iterator_callback callback, bool reverse = false);
+
+        virtual void render_fb(int x, int y, pixman_region32_t* damage, int target_fb);
 };
 
 /* Represents a desktop window (not as X11 window, but like a xdg_toplevel surface) */
@@ -135,6 +139,7 @@ class wayfire_view_t : public wayfire_surface_t
 
         uint32_t id;
         virtual void get_child_position(int &x, int &y);
+        virtual void damage(const wlr_box& box);
 
         struct
         {
@@ -144,8 +149,6 @@ class wayfire_view_t : public wayfire_surface_t
         } offscreen_buffer;
 
         std::unique_ptr<wf_view_transformer_t> transform;
-
-        virtual wlr_box get_bounding_box();
 
     public:
 
@@ -172,6 +175,7 @@ class wayfire_view_t : public wayfire_surface_t
 
         /* return geometry as should be used for all WM purposes */
         virtual wf_geometry get_wm_geometry() { return decoration ? decoration->get_wm_geometry() : geometry; }
+        virtual wlr_box get_bounding_box();
 
 
         virtual wf_point get_output_position();
@@ -195,7 +199,8 @@ class wayfire_view_t : public wayfire_surface_t
         bool is_visible();
         virtual void commit();
         virtual void map();
-        virtual void damage(pixman_region32_t *region = nullptr);
+
+        virtual void damage();
 
         virtual std::string get_app_id() { return ""; }
         virtual std::string get_title() { return ""; }
@@ -242,7 +247,7 @@ class wayfire_view_t : public wayfire_surface_t
 
         /* the returned value is just a temporary object */
         virtual wf_view_transformer_t* get_transformer() { return transform.get(); }
-        virtual void render_pixman(int x, int y, pixman_region32_t* damage);
+        virtual void render_fb(int x, int y, pixman_region32_t* damage, int target_fb);
 };
 
 #endif

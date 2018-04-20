@@ -20,8 +20,16 @@ class wf_wrot : public wayfire_plugin_t
             grab_interface->callbacks.pointer.motion = [=] (int, int)
             {
                 auto view = output->get_top_view();
-//                auto tr = dynamic_cast<wf_3D_view*> (view->get_transformer());
- //               tr->rotation = glm::rotate(tr->rotation, 0.01f, {1, 0, 0});
+
+                if (!view->get_transformer())
+                {
+                    auto og = view->get_output()->get_full_geometry();
+                    view->set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(og.width, og.height)));
+                }
+
+                auto tr = dynamic_cast<wf_3D_view*> (view->get_transformer());
+                tr->rotation = glm::rotate(tr->rotation, 0.01f, {0, 0, 1});
+                view->damage();
 
  //               tr->angle += 0.01;
 //                tr->angle = M_PI/2;

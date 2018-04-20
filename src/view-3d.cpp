@@ -1,6 +1,7 @@
 #include "view-transform.hpp"
 #include "opengl.hpp"
 #include "debug.hpp"
+#include "core.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -86,9 +87,10 @@ void wf_2D_view::render_with_damage(uint32_t src_tex,
     auto translate = glm::translate(transform, {off_x, off_y, 0});
 
     transform = ortho * translate * scale * rotate;
+    OpenGL::use_device_viewport();
+    wlr_renderer_scissor(core->renderer, &scissor_box);
     OpenGL::render_transformed_texture(src_tex, {tlx, tly, brx, bry},{}, transform);
 }
-
 
 wf_3D_view::wf_3D_view(float w, float h)
     : m_width(w), m_height(h), m_aspect(w/h)
@@ -131,9 +133,9 @@ void wf_3D_view::render_with_damage(uint32_t src_tex,
                                 wlr_box src_box,
                                 wlr_box scissor_box)
 {
-    GL_CALL(glScissor(scissor_box.x, scissor_box.y, scissor_box.width, scissor_box.height));
-    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target_fbo));
-
+    wlr_renderer_scissor(core->renderer, &scissor_box);
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, target_fbo));
+    OpenGL::use_device_viewport();
 
     const float tlx = -src_box.width / 2.0;
     const float tly =  src_box.height / 2.0;

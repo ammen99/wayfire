@@ -645,7 +645,7 @@ void input_manager::update_cursor_focus(wlr_surface *focus, int x, int y)
         wlr_seat_pointer_notify_enter(seat, focus, x, y);
     } else
     {
-        wlr_seat_pointer_notify_enter(seat, NULL, x, y);
+        wlr_seat_pointer_clear_focus(seat);
         core->set_default_cursor();
     }
 }

@@ -302,11 +302,15 @@ std::vector<wayfire_view> viewport_manager::get_renderable_views_on_workspace(
     GetTuple(tx, ty, ws);
 
     wf_geometry g = output->get_full_geometry();
-    g.x += (tx - vx) * output->handle->width;
-    g.y += (ty - vy) * (output->handle->height);
+    g.x += (tx - vx) * g.width;
+    g.y += (ty - vy) * g.height;
 
     for (auto v : normal_layer)
+    {
+        auto bbox = v->get_bounding_box();
+        if (rect_intersect(g, bbox))
             ret.push_back(v);
+    }
 
     auto bg = get_background_view();
     if (bg) ret.push_back(bg);
@@ -335,7 +339,7 @@ std::vector<wayfire_view> viewport_manager::get_panels()
 
     auto g = output->get_full_geometry();
     for (auto v : panel_layer)
-        if (rect_intersect(g, v->get_wm_geometry()))
+        if (rect_intersect(g, v->get_bounding_box()))
             ret.push_back(v);
 
     return ret;
