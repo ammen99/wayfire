@@ -250,6 +250,8 @@ void wayfire_surface_t::commit()
     {
         damage(geometry);
         damage(rect);
+
+        geometry = rect;
     }
 
     /* TODO: transform damage */
