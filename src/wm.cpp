@@ -15,13 +15,13 @@ void wayfire_exit::init(wayfire_config*)
         wl_display_terminate(core->display);
     };
 
-    output->add_key(MODIFIER_SUPER, KEY_Z,       &key);
-    output->add_key(MODIFIER_ALT   | MODIFIER_CTRL,  KEY_BACKSPACE, &key);
+    output->add_key(WLR_MODIFIER_LOGO, KEY_Z,       &key);
+    output->add_key(WLR_MODIFIER_ALT   | WLR_MODIFIER_CTRL,  KEY_BACKSPACE, &key);
 }
 
 void wayfire_close::init(wayfire_config *config)
 {
-    auto key = config->get_section("core")->get_key("view_close", {MODIFIER_SUPER, KEY_Q});
+    auto key = config->get_section("core")->get_key("view_close", {WLR_MODIFIER_LOGO, KEY_Q});
     callback = [=] (uint32_t key)
     {
         auto view = output->get_top_view();

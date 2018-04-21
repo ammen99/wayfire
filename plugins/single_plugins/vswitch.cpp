@@ -48,15 +48,15 @@ class vswitch : public wayfire_plugin_t
         callback_win_down = [=] (uint32_t) { add_direction(0, 1, output->get_top_view()); };
 
         auto section   = config->get_section("vswitch");
-        auto key_left  = section->get_key("binding_left",  {MODIFIER_SUPER, KEY_LEFT});
-        auto key_right = section->get_key("binding_right", {MODIFIER_SUPER, KEY_RIGHT});
-        auto key_up    = section->get_key("binding_up",    {MODIFIER_SUPER, KEY_UP});
-        auto key_down  = section->get_key("binding_down",  {MODIFIER_SUPER, KEY_DOWN});
+        auto key_left  = section->get_key("binding_left",  {WLR_MODIFIER_LOGO, KEY_LEFT});
+        auto key_right = section->get_key("binding_right", {WLR_MODIFIER_LOGO, KEY_RIGHT});
+        auto key_up    = section->get_key("binding_up",    {WLR_MODIFIER_LOGO, KEY_UP});
+        auto key_down  = section->get_key("binding_down",  {WLR_MODIFIER_LOGO, KEY_DOWN});
 
-        auto key_win_left  = section->get_key("binding_win_left",  {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_LEFT});
-        auto key_win_right = section->get_key("binding_win_right", {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_RIGHT});
-        auto key_win_up    = section->get_key("binding_win_up",    {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_UP});
-        auto key_win_down  = section->get_key("binding_win_down",  {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_DOWN});
+        auto key_win_left  = section->get_key("binding_win_left",  {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT, KEY_LEFT});
+        auto key_win_right = section->get_key("binding_win_right", {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT, KEY_RIGHT});
+        auto key_win_up    = section->get_key("binding_win_up",    {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT, KEY_UP});
+        auto key_win_down  = section->get_key("binding_win_down",  {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT, KEY_DOWN});
 
         if (key_left.keyval)
             output->add_key(key_left.mod,  key_left.keyval,  &callback_left);

@@ -53,7 +53,7 @@ class wayfire_command : public wayfire_plugin_t
         {
             cmds.resize(1);
             cmds[0] = [] (uint32_t) { core->run("weston-terminal"); };
-            output->add_key(MODIFIER_ALT, KEY_ENTER, &cmds.back());
+            output->add_key(WLR_MODIFIER_ALT, KEY_ENTER, &cmds.back());
         }
     }
 };

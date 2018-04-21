@@ -695,12 +695,15 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
                 ds->y = y;
                 ds->surface = surface;
 
-                pixman_region32_t opaque;
-                pixman_region32_init(&opaque);
-                pixman_region32_copy(&opaque, &surface->surface->current->opaque);
-                pixman_region32_translate(&opaque, x, y);
-                pixman_region32_subtract(&ws_damage, &ws_damage, &opaque);
-                pixman_region32_fini(&opaque);
+                if (ds->surface->alpha >= 0.999f)
+                {
+                    pixman_region32_t opaque;
+                    pixman_region32_init(&opaque);
+                    pixman_region32_copy(&opaque, &surface->surface->current->opaque);
+                    pixman_region32_translate(&opaque, x, y);
+                    pixman_region32_subtract(&ws_damage, &ws_damage, &opaque);
+                    pixman_region32_fini(&opaque);
+                }
 
                 to_render.push_back(std::move(ds));
             }

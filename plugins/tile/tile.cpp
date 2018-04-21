@@ -484,7 +484,7 @@ class wayfire_tile : public wayfire_plugin_t
         };
 
         auto select_key = config->get_section("tile")->get_key("select-mode",
-                {MODIFIER_ALT, KEY_S});
+                {WLR_MODIFIER_ALT, KEY_S});
         if (select_key.keyval)
             output->add_key(select_key.mod, select_key.keyval, &select_view);
 
@@ -502,7 +502,7 @@ class wayfire_tile : public wayfire_plugin_t
         };
 
         auto maximize_key = config->get_section("tile")->get_key("maximize",
-                {MODIFIER_SUPER, KEY_M});
+                {WLR_MODIFIER_SUPER, KEY_M});
         if (maximize_key.keyval)
             output->add_key(maximize_key.mod, maximize_key.keyval, &maximize_view);
 
@@ -522,7 +522,7 @@ class wayfire_tile : public wayfire_plugin_t
         };
 
         auto resize_key = config->get_section("tile")->get_button("resize",
-                {MODIFIER_SUPER, BTN_LEFT});
+                {WLR_MODIFIER_SUPER, BTN_LEFT});
         if (resize_key.button)
             output->add_button(resize_key.mod, resize_key.button, &resize_container);
     }

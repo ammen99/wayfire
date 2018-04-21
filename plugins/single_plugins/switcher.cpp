@@ -1,7 +1,9 @@
 #include <output.hpp>
+#include <debug.hpp>
 #include <opengl.hpp>
 #include <signal-definitions.hpp>
 #include <view.hpp>
+#include <view-transform.hpp>
 #include <render-manager.hpp>
 #include <workspace-manager.hpp>
 
@@ -9,6 +11,8 @@
 #include <linux/input-event-codes.h>
 #include <algorithm>
 #include "../../shared/config.hpp"
+
+/* TODO: possibly decouple fast-switch and regular switching, they don't have much in common these days */
 
 struct duple
 {
@@ -83,7 +87,6 @@ class view_switcher : public wayfire_plugin_t
         bool in_rotate = false;
 
         bool reversed_folds = false;
-        bool first_press_skipped = false;
 
         /* the following are needed for fast switching, for ex.
          * if the user presses alt-tab(assuming this is our binding)
@@ -104,7 +107,7 @@ class view_switcher : public wayfire_plugin_t
         float back = 0.3f;
     } attribs;
 
-    render_hook_t renderer;
+    effect_hook_t hook;
 
     std::vector<wayfire_view> views; // all views on current viewport
     std::vector<view_paint_attribs> active_views; // views that are rendered
@@ -120,8 +123,8 @@ class view_switcher : public wayfire_plugin_t
 
         auto section = config->get_section("switcher");
 
-        fast_switch_key = section->get_key("fast_switch", {MODIFIER_ALT, KEY_ESC});
-        fast_switch_binding = [=] (weston_keyboard *kbd, uint32_t key)
+        fast_switch_key = section->get_key("fast_switch", {WLR_MODIFIER_ALT, KEY_ESC});
+        fast_switch_binding = [=] (uint32_t key)
         {
             if (state.active && !state.in_fast_switch)
                 return;
@@ -136,9 +139,9 @@ class view_switcher : public wayfire_plugin_t
         initial_animation_steps = section->get_duration("initial_animation", 5);;
         view_scale_config = section->get_double("view_thumbnail_size", 0.4);
 
-        activate_key = section->get_key("activate", {MODIFIER_ALT, KEY_TAB});
+        activate_key = section->get_key("activate", {WLR_MODIFIER_ALT, KEY_TAB});
 
-        init_binding = [=] (weston_keyboard *, uint32_t)
+        init_binding = [=] (uint32_t)
         {
             if (state.in_fast_switch)
                 return;
@@ -157,35 +160,24 @@ class view_switcher : public wayfire_plugin_t
 
         using namespace std::placeholders;
         grab_interface->callbacks.keyboard.key = std::bind(std::mem_fn(&view_switcher::handle_key),
-                this, _1, _2, _3);
+                this, _1, _2);
 
         grab_interface->callbacks.keyboard.mod = std::bind(std::mem_fn(&view_switcher::handle_mod),
-                this, _1, _2, _3, _4, _5);
+                this, _1, _2);
 
         next_view = section->get_key("next", {0, KEY_RIGHT});
         prev_view = section->get_key("prev", {0, KEY_LEFT});
         terminate = section->get_key("exit", {0, KEY_ENTER});
 
-        renderer = std::bind(std::mem_fn(&view_switcher::render), this);
-
+        hook = [=] () { update_animation(); };
         destroyed = [=] (signal_data *data)
         {
-            auto conv = static_cast<destroy_view_signal*> (data);
-            assert(conv);
-
-            cleanup_view(conv->destroyed_view);
+            cleanup_view(get_signaled_view(data));
         };
     }
 
     void setup_graphics()
     {
-        auto view = glm::lookAt(glm::vec3(0., 0., 1. * output->handle->width / output->handle->height),
-                glm::vec3(0., 0., 0.),
-                glm::vec3(0., 1., 0.));
-        auto proj = glm::perspective(45.f, 1.f, .1f, 100.f);
-
-        wayfire_view_transform::global_view_projection = proj * view;
-
         if (views.size() == 2) {
             attribs.offset = 0.4f;
             attribs.angle = M_PI / 5.;
@@ -205,6 +197,8 @@ class view_switcher : public wayfire_plugin_t
             return;
 
         update_views();
+        update_transforms();
+
         if (!views.size())
         {
             output->deactivate_plugin(grab_interface);
@@ -213,7 +207,6 @@ class view_switcher : public wayfire_plugin_t
 
         state.active = true;
         state.mod_released = false;
-        state.first_press_skipped = false;
         state.in_continuous_switch = false;
         state.reversed_folds = false;
         next_actions = std::queue<int>();
@@ -222,7 +215,8 @@ class view_switcher : public wayfire_plugin_t
         output->focus_view(nullptr);
 
         output->render->auto_redraw(true);
-        output->render->set_renderer(renderer);
+        output->render->damage(NULL);
+        output->render->add_output_effect(&hook);
 
         output->connect_signal("destroy-view", &destroyed);
         output->connect_signal("detach-view", &destroyed);
@@ -232,10 +226,14 @@ class view_switcher : public wayfire_plugin_t
 
         auto bg = output->workspace->get_background_view();
         if (bg) {
-            bg->transform.translation = glm::translate(glm::mat4(),
-                    glm::vec3(0, 0, -9));
-            bg->transform.scale = glm::scale(glm::mat4(),
-                    glm::vec3(6, 6, 1));
+            GetTuple(sw, sh, output->get_screen_size());
+            bg->set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(sw, sh)));
+            auto tr = dynamic_cast<wf_3D_view*> (bg->get_transformer());
+            assert(tr);
+
+            tr->color = {0.6, 0.6, 0.6, 1.0};
+            tr->translation = glm::translate(glm::mat4(1.0f), glm::vec3(0, 0, -9));
+            tr->scaling = glm::scale(glm::mat4(1.0f), glm::vec3(1, 1, 1));
         }
     }
 
@@ -255,6 +253,7 @@ class view_switcher : public wayfire_plugin_t
 
     void push_next_view(int delta)
     {
+        log_info("push next view %d", state.in_rotate || state.in_fold || state.in_unfold);
         if ((state.in_rotate || state.in_fold || state.in_unfold) &&
                 next_actions.size() < MAX_ACTIONS)
             next_actions.push(delta);
@@ -262,12 +261,9 @@ class view_switcher : public wayfire_plugin_t
             start_rotate(delta);
     }
 
-    void stop_continuous_switch(weston_keyboard *kbd, uint32_t depressed, uint32_t locked,
-            uint32_t latched, uint32_t group)
+    void stop_continuous_switch()
     {
 
-        weston_keyboard_send_modifiers(kbd, wl_display_get_serial(kbd->seat->compositor->wl_display),
-                depressed, locked, latched, group);
         state.in_continuous_switch = false;
         if (state.in_fast_switch)
         {
@@ -278,43 +274,40 @@ class view_switcher : public wayfire_plugin_t
         }
     }
 
-    void handle_mod(weston_keyboard *kbd, uint32_t depressed, uint32_t locked,
-            uint32_t latched, uint32_t group)
+    void handle_mod(uint32_t mod, uint32_t st)
     {
-        bool mod_released = (depressed & activate_key.mod) == 0;
-        bool fast_mod_released = (depressed & fast_switch_key.mod) == 0;
+        bool mod_released = (mod == activate_key.mod && st == WLR_KEY_RELEASED);
+        bool fast_mod_released = (mod == fast_switch_key.mod && st == WLR_KEY_RELEASED);
 
         if ((mod_released && state.in_continuous_switch) ||
             (fast_mod_released && state.in_fast_switch))
         {
-            stop_continuous_switch(kbd, depressed, locked, latched, group);
+            stop_continuous_switch();
         } else if (mod_released)
         {
             state.mod_released = true;
         }
     }
 
-    void handle_key(weston_keyboard *kbd, uint32_t key, uint32_t kstate)
+    void handle_key(uint32_t key, uint32_t kstate)
     {
-        /* when we setup keyboard grab, we receive a signal for it
-         * it is not necessary so we skip it, as there is no way to circumvent this */
-        if ((key == activate_key.keyval || key == fast_switch_key.keyval) &&
-            !state.first_press_skipped)
-        {
-            state.first_press_skipped = true;
+        log_info("handle key %u %u %u %u", key, KEY_ENTER, kstate, WLR_KEY_PRESSED);
+        if (kstate != WLR_KEY_PRESSED)
             return;
-        }
 
-        if (kstate != WL_KEYBOARD_KEY_STATE_PRESSED)
-            return;
+        log_info("good state");
 
 #define fast_switch_on (state.in_fast_switch && key == fast_switch_key.keyval)
 
         if (!state.mod_released && (key == activate_key.keyval || fast_switch_on))
+        {
+            log_info("continuous");
             state.in_continuous_switch = true;
+        }
 
         if (key == activate_key.keyval && state.in_continuous_switch && !state.in_fast_switch)
         {
+            log_info("nowadays");
             push_next_view(1);
             return;
         }
@@ -339,6 +332,18 @@ class view_switcher : public wayfire_plugin_t
     {
         current_view_index = 0;
         views = output->workspace->get_views_on_workspace(output->workspace->get_current_workspace());
+    }
+
+    void update_transforms()
+    {
+        GetTuple(sw, sh, output->get_screen_size());
+
+        for (auto v : views)
+        {
+            auto tr = v->get_transformer();
+            if (!tr || !dynamic_cast<wf_3D_view*>(tr))
+                v->set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(sw, sh)));
+        }
     }
 
     void view_chosen(int i)
@@ -377,59 +382,14 @@ class view_switcher : public wayfire_plugin_t
             push_next_view(1);
     }
 
-    void render_view(wayfire_view v)
+    void update_animation()
     {
-        GetTuple(sw, sh, output->get_screen_size());
-
-        int cx = sw / 2;
-        int cy = sh / 2;
-
-        wf_geometry compositor_geometry = v->geometry;
-        v->geometry.x = cx - compositor_geometry.width / 2;
-        v->geometry.y = cy - compositor_geometry.height / 2;
-
-        auto old_color = v->transform.color;
-        if (views[current_view_index] != v)
-            v->transform.color = {0.6, 0.6, 0.6, 0.8};
-
-        v->render(TEXTURE_TRANSFORM_USE_COLOR);
-
-        v->transform.color = old_color;
-        v->geometry = compositor_geometry;
-    }
-
-    void render()
-    {
-        OpenGL::use_default_program();
-
-        /* folds require views to be sorted according to their rendering order,
-         * not upon their z-values which aren't set yet */
-        if (!state.in_fold)
-        {
-            GL_CALL(glEnable(GL_DEPTH_TEST));
-            GL_CALL(glEnable(GL_BLEND));
-        }
-
-        GL_CALL(glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT));
-
-        auto bg = output->workspace->get_background_view();
-        if (bg)
-        {
-            bg->transform.color = glm::vec4(0.7, 0.7, 0.7, 1.0);
-            bg->render(0);
-        }
-        for(int i = active_views.size() - 1; i >= 0; i--)
-            render_view(active_views[i].view);
-
         if (state.in_fold)
             update_fold();
         else if (state.in_unfold)
             update_unfold();
         else if (state.in_rotate)
             update_rotate();
-
-        GL_CALL(glDisable(GL_DEPTH_TEST));
-        GL_CALL(glDisable(GL_BLEND));
     }
 
     void start_fold()
@@ -444,10 +404,13 @@ class view_switcher : public wayfire_plugin_t
         {
             const auto& v = views[i];
             /* center of screen minus center of view */
-            float cx = -(sw / 2 - (v->geometry.x + v->geometry.width / 2.f)) / sw * 2.f;
-            float cy =  (sh / 2 - (v->geometry.y + v->geometry.height / 2.f)) / sh * 2.f;
+            auto wm_geometry = v->get_wm_geometry();
+            float cx = (sw / 2.0 - wm_geometry.width / 2.0f) - wm_geometry.x;
+            float cy = wm_geometry.y - (sh / 2.0 - wm_geometry.height / 2.0f);
 
-            float scale_factor = get_scale_factor(v->geometry.width, v->geometry.height, sw, sh, view_scale_config);
+            log_info("go to %f@%f", cx, cy);
+
+            float scale_factor = get_scale_factor(wm_geometry.width, wm_geometry.height, sw, sh, view_scale_config);
 
             view_paint_attribs elem;
             elem.view = v;
@@ -455,14 +418,14 @@ class view_switcher : public wayfire_plugin_t
 
             if (state.reversed_folds)
             {
-                elem.off_x = {0, cx};
-                elem.off_y = {0, cy};
+                elem.off_x = {cx, 0};
+                elem.off_y = {cy, 0};
                 elem.scale_x = {scale_factor, 1};
                 elem.scale_y = {scale_factor, 1};
             } else
             {
-                elem.off_x = {cx, 0};
-                elem.off_y = {cy, 0};
+                elem.off_x = {0, cx};
+                elem.off_y = {0, cy};
                 elem.scale_x = {1, scale_factor};
                 elem.scale_y = {1, scale_factor};
             }
@@ -476,26 +439,32 @@ class view_switcher : public wayfire_plugin_t
     {
         for (auto v : active_views)
         {
+            auto tr = dynamic_cast<wf_3D_view*> (v.view->get_transformer());
+            assert(tr);
+
+            v.view->damage();
             if (v.updates & UPDATE_OFFSET)
             {
-                v.view->transform.translation = glm::translate(glm::mat4(), glm::vec3(
+                tr->translation = glm::translate(glm::mat4(), glm::vec3(
                             GetProgress(v.off_x.start, v.off_x.end, step, maxstep),
                             GetProgress(v.off_y.start, v.off_y.end, step, maxstep),
                             GetProgress(v.off_z.start, v.off_z.end, step, maxstep)));
             }
             if (v.updates & UPDATE_SCALE)
             {
-                v.view->transform.scale = glm::scale(glm::mat4(), glm::vec3(
+                tr->scaling = glm::scale(glm::mat4(), glm::vec3(
                             GetProgress(v.scale_x.start, v.scale_x.end, step, maxstep),
                             GetProgress(v.scale_y.start, v.scale_y.end, step, maxstep),
                             1));
             }
             if (v.updates & UPDATE_ROTATION)
             {
-                v.view->transform.rotation = glm::rotate(glm::mat4(),
+                tr->rotation = glm::rotate(glm::mat4(),
                         GetProgress(v.rot.start, v.rot.end, step, maxstep),
                         glm::vec3(0, 1, 0));
             }
+
+            v.view->damage();
         }
     }
 
@@ -524,9 +493,6 @@ class view_switcher : public wayfire_plugin_t
 
         if(current_step == initial_animation_steps)
         {
-            for (auto &v : active_views)
-                v.view->transform.translation = glm::mat4();
-
             state.in_fold = false;
             if (!state.reversed_folds)
             {
@@ -540,6 +506,29 @@ class view_switcher : public wayfire_plugin_t
         }
     }
 
+    void push_unfolded_transformed_view(wayfire_view v,
+                               duple off_x, duple off_z, duple rot)
+    {
+        GetTuple(sw, sh, output->get_screen_size());
+        auto wm_geometry = v->get_wm_geometry();
+
+        float cx = (sw / 2.0 - wm_geometry.width / 2.0f) - wm_geometry.x;
+        float cy = wm_geometry.y - (sh / 2.0 - wm_geometry.height / 2.0f);
+
+        view_paint_attribs elem;
+        elem.view = v;
+        elem.off_x = {cx + off_x.start * sw / 2.0f, cx + off_x.end * sw / 2.0f};
+        log_info("moved to %f@%f %fx%f", elem.off_x.start, elem.off_x.end, off_x.start, off_x.end);
+        elem.off_y = {cy, cy};
+        log_info("%f@%f", elem.off_y.start, elem.off_y.end);
+        elem.off_z = off_z;
+        elem.rot = rot;
+
+        elem.updates = UPDATE_ROTATION | UPDATE_OFFSET;
+
+        active_views.push_back(elem);
+    }
+
     void start_unfold()
     {
         state.in_unfold = true;
@@ -549,18 +538,15 @@ class view_switcher : public wayfire_plugin_t
 
         if (views.size() == 2)
         {
-            view_paint_attribs elem;
-            elem.view = views[current_view_index];
-            elem.off_x = {0, attribs.offset};
-            elem.off_z = {0, -attribs.back};
-            elem.rot= {0, -attribs.angle};
+            push_unfolded_transformed_view(views[current_view_index],
+                                           {0, attribs.offset},
+                                           {0, -attribs.back},
+                                           {0, -attribs.angle});
 
-            active_views.push_back(elem);
-            elem.view = views[1 - current_view_index];
-            elem.off_x = {0, -attribs.offset};
-            elem.off_z = {0, -attribs.back};
-            elem.rot = {0, attribs.angle};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[1 - current_view_index],
+                                           {0, -attribs.offset},
+                                           {0, -attribs.back},
+                                           {0, attribs.angle});
         } else
         {
             int prev = (current_view_index + views.size() - 1) % views.size();
@@ -568,36 +554,30 @@ class view_switcher : public wayfire_plugin_t
 
             view_paint_attribs elem;
 
-            elem.view = views[current_view_index];
-            elem.off_x = {0, 0};
-            elem.off_z = {0, 0};
-            elem.rot = {0, 0};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[current_view_index],
+                                           {0, 0},
+                                           {0, 0},
+                                           {0, 0});
 
-            elem.view = views[prev];
-            elem.off_x = {0, -attribs.offset};
-            elem.off_z = {0, -attribs.back};
-            elem.rot = {0, +attribs.angle};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[prev],
+                                           {0, -attribs.offset},
+                                           {0, -attribs.back},
+                                           {0, +attribs.angle});
 
-            elem.view = views[next];
-            elem.off_x = {0, +attribs.offset};
-            elem.off_z = {0, -attribs.back};
-            elem.rot = {0, -attribs.angle};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[next],
+                                           {0, +attribs.offset},
+                                           {0, -attribs.back},
+                                           {0, -attribs.angle});
         }
 
         for (auto& elem : active_views)
         {
-            elem.off_y = {0, 0};
             if (state.reversed_folds)
             {
                 std::swap(elem.off_x.start, elem.off_x.end);
                 std::swap(elem.off_z.start, elem.off_z.end);
                 std::swap(elem.rot.start, elem.rot.end);
             }
-
-            elem.updates = UPDATE_ROTATION | UPDATE_OFFSET;
         }
     }
 
@@ -621,7 +601,6 @@ class view_switcher : public wayfire_plugin_t
 
     void start_rotate (int dir)
     {
-        //update_views();
         int sz = views.size();
         if (sz <= 1)
             return;
@@ -639,59 +618,48 @@ class view_switcher : public wayfire_plugin_t
 
         /* only two views */
 
-        view_paint_attribs elem;
         if (next == prev) {
-            elem.view = views[current_view_index],
-            elem.off_x = {-attribs.offset, attribs.offset};
-            elem.off_z = {attribs.back, attribs.back};
-            elem.rot   = {attribs.angle, -attribs.angle};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[current_view_index],
+                                           {-attribs.offset, attribs.offset},
+                                           {attribs.back, attribs.back},
+                                           {attribs.angle, -attribs.angle});
 
-            elem.view = views[next],
-            elem.off_x = {-attribs.offset, -attribs.offset};
-            elem.off_z = {attribs.back, attribs.back};
-            elem.rot   = {attribs.angle, attribs.angle};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[next],
+                                           {-attribs.offset, -attribs.offset},
+                                           {attribs.back, attribs.back},
+                                           {attribs.angle, attribs.angle});
         } else {
-            elem.view = views[current_view_index];
-            elem.off_x = {attribs.offset * dir, 0};
-            elem.off_z = {-attribs.back, 0};
-            elem.rot   = {-attribs.angle * dir, 0};
-            active_views.push_back(elem);
+            push_unfolded_transformed_view(views[current_view_index],
+                                           {attribs.offset * dir, 0},
+                                           {-attribs.back, 0},
+                                           {-attribs.angle * dir, 0});
 
             if (dir == 1) {
-                elem.view = views[prev];
-                elem.off_x = {0, -attribs.offset};
-                elem.off_z = {0, -attribs.back};
-                elem.rot   = {0, attribs.angle};
-                active_views.push_back(elem);
+                push_unfolded_transformed_view(views[prev],
+                                               {0, -attribs.offset},
+                                               {0, -attribs.back},
+                                               {0, attribs.angle});
 
-                elem.view = views[next];
-                elem.off_x = {attribs.offset, attribs.offset};
-                elem.off_z = {-attribs.back, -attribs.back};
-                elem.rot   = {-attribs.angle, -attribs.angle};
-                active_views.push_back(elem);
+                push_unfolded_transformed_view(views[next],
+                                               {attribs.offset, attribs.offset},
+                                               {-attribs.back, -attribs.back},
+                                               {-attribs.angle, -attribs.angle});
 
             } else {
-                elem.view = views[next];
-                elem.off_x = {0, attribs.offset};
-                elem.off_z = {0, -attribs.back};
-                elem.rot   = {0, -attribs.angle};
-                active_views.push_back(elem);
+                push_unfolded_transformed_view(views[next],
+                                               {0, attribs.offset},
+                                               {0, -attribs.back},
+                                               {0, -attribs.angle});
 
-                elem.view = views[prev];
-                elem.off_x = {-attribs.offset, -attribs.offset};
-                elem.off_z = {-attribs.back, -attribs.back};
-                elem.rot   = {attribs.angle, attribs.angle};
-                active_views.push_back(elem);
+                push_unfolded_transformed_view(views[prev],
+                                               {-attribs.offset, -attribs.offset},
+                                               {-attribs.back, -attribs.back},
+                                               {attribs.angle, attribs.angle});
             }
         }
 
         for (auto& elem : active_views)
-        {
-            elem.off_y = {0, 0};
             elem.updates = UPDATE_ROTATION | UPDATE_OFFSET;
-        }
 
         current_step = 0;
     }
@@ -716,16 +684,12 @@ class view_switcher : public wayfire_plugin_t
         output->deactivate_plugin(grab_interface);
 
         auto bg = output->workspace->get_background_view();
-        if (bg) {
-            bg->transform.color = glm::vec4(1);
-            bg->transform.translation = glm::mat4();
-            bg->transform.scale = glm::mat4();
-        }
+        if (bg)
+            bg->set_transformer(nullptr);
 
-        wayfire_view_transform::global_view_projection = glm::mat4();
-
+        log_info("reset tranforms");
         for(auto v : views)
-            v->transform.scale = v->transform.translation = v->transform.rotation = glm::mat4();
+            v->set_transformer(nullptr);
 
         state.active = false;
         view_chosen(current_view_index);
@@ -755,14 +719,11 @@ class view_switcher : public wayfire_plugin_t
             state.in_continuous_switch = true;
             state.active = true;
             state.mod_released = false;
-            state.first_press_skipped = false;
 
             for (auto view : views) {
-                if (view && view->handle) {
-                    view->handle->alpha = 0.5;
-                    weston_surface_damage(view->surface);
-                    weston_view_geometry_dirty(view->handle);
-                    weston_view_update_transform(view->handle);
+                if (view) {
+                    view->alpha = 0.7;
+                    view->damage();
                 }
             }
 
@@ -777,12 +738,11 @@ class view_switcher : public wayfire_plugin_t
     {
         for (auto view : views)
         {
+            view->set_transformer(nullptr);
             if (view)
             {
-                view->handle->alpha = 1.0;
-                weston_surface_damage(view->surface);
-                weston_view_geometry_dirty(view->handle);
-                weston_view_update_transform(view->handle);
+                view->alpha = 1.0;
+                view->damage();
             }
         }
         view_chosen(current_view_index);
@@ -800,19 +760,15 @@ class view_switcher : public wayfire_plugin_t
     {
 #define index current_view_index
         if (views[index]) {
-            views[index]->handle->alpha = 0.5;
-            weston_surface_damage(views[index]->surface);
-            weston_view_geometry_dirty(views[index]->handle);
-            weston_view_update_transform(views[index]->handle);
+            views[index]->alpha = 0.7;
+            views[index]->damage();
         }
 
         index = (index + 1) % views.size();
 
         if (views[index]) {
-            views[index]->handle->alpha = 1.0;
-            weston_surface_damage(views[index]->surface);
-            weston_view_geometry_dirty(views[index]->handle);
-            weston_view_update_transform(views[index]->handle);
+            views[index]->alpha = 1.0;
+            views[index]->damage();
         }
 
         output->bring_to_front(views[index]);

@@ -41,7 +41,7 @@ class wayfire_screenshot : public wayfire_plugin_t {
 
             auto section = config->get_section("screenshot");
 
-            auto key = section->get_key("take", {MODIFIER_SUPER, KEY_S});
+            auto key = section->get_key("take", {WLR_MODIFIER_SUPER, KEY_S});
             if (key.keyval == 0)
                 return;
 
@@ -61,7 +61,7 @@ class wayfire_screenshot : public wayfire_plugin_t {
             };
             output->add_key(key.mod, key.keyval, &screenshot);
 
-            key = section->get_key("record", {MODIFIER_SUPER, KEY_R});
+            key = section->get_key("record", {WLR_MODIFIER_SUPER, KEY_R});
             if (key.keyval == 0)
                 return;
 

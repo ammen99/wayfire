@@ -512,13 +512,13 @@ static void handle_keyboard_key_cb(wl_listener*, void *data)
 static uint32_t mod_from_key(uint32_t key)
 {
     if (key == KEY_LEFTALT || key == KEY_RIGHTALT)
-        return MODIFIER_ALT;
+        return WLR_MODIFIER_ALT;
     if (key == KEY_LEFTCTRL || key == KEY_RIGHTCTRL)
-        return MODIFIER_CTRL;
+        return WLR_MODIFIER_CTRL;
     if (key == KEY_LEFTSHIFT || key == KEY_RIGHTSHIFT)
-        return MODIFIER_SHIFT;
+        return WLR_MODIFIER_SHIFT;
     if (key == KEY_LEFTMETA || key == KEY_RIGHTMETA)
-        return MODIFIER_SUPER;
+        return WLR_MODIFIER_LOGO;
 
     return 0;
 }
@@ -540,7 +540,7 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 {
     if (!session)
         return false;
-    if (mods ^ (MODIFIER_ALT | MODIFIER_CTRL))
+    if (mods ^ (WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL))
         return false;
 
     if (key < KEY_F1 || key > KEY_F10)
@@ -553,7 +553,14 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
+
     auto mod = mod_from_key(key);
+    if (mod && handle_keyboard_mod(mod, state))
+        return true;
+
+    if (active_grab && active_grab->callbacks.keyboard.key)
+        active_grab->callbacks.keyboard.key(key, state);
+
     if (state == WLR_KEY_PRESSED)
     {
 
@@ -575,24 +582,11 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
         for (auto call : callbacks)
             (*call) (key);
 
-        /* make sure we update modifier state when modifier-modifier binding occurs */
-        if (mod)
-            mods_count[mod] += (state == WLR_KEY_PRESSED ? 1 : -1);
-
-        return callbacks.size();
+        if (callbacks.size())
+            return true;
     }
 
-    if (mod)
-        return handle_keyboard_mod(mod, state);
-
-    if (active_grab)
-    {
-        if (active_grab->callbacks.keyboard.key)
-            active_grab->callbacks.keyboard.key(key, state);
-        return true;
-    }
-
-    return false;
+    return active_grab;
 }
 
 bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
@@ -880,12 +874,11 @@ input_manager::input_manager()
 
 uint32_t input_manager::get_modifiers()
 {
-    uint32_t result = 0;
-    for (int i = 0; i < 4; i++)
-        if (mods_count[(1 << i)] > 0)
-            result |= (1 << i);
+    auto kbd = wlr_seat_get_keyboard(seat);
+    if (!kbd)
+        return 0;
 
-    return result;
+    return wlr_keyboard_get_modifiers(kbd);
 }
 
 // TODO: set pointer, reset mods, grab gr */

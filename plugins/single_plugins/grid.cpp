@@ -33,15 +33,15 @@ class wayfire_grid : public wayfire_plugin_t {
     std::vector<std::string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
     std::vector<wayfire_key> default_keys = {
         {0, 0},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP1},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP2},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP3},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP4},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP5},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP6},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP7},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP8},
-        {MODIFIER_ALT | MODIFIER_CTRL, KEY_KP9},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP1},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP2},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP3},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP4},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP5},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP6},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP7},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP8},
+        {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_KP9},
     };
     key_callback bindings[10];
     wayfire_key keys[10];

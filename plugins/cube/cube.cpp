@@ -89,7 +89,7 @@ class wayfire_cube : public wayfire_plugin_t {
         backgroud_color = section->get_color("background", {0, 0, 0, 1});
 
         act_button = section->get_button("activate",
-                {MODIFIER_ALT | MODIFIER_CTRL, BTN_LEFT});
+                {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, BTN_LEFT});
 
         if (act_button.button == 0)
             return;

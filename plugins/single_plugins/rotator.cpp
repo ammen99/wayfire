@@ -15,13 +15,13 @@ class wayfire_rotator : public wayfire_plugin_t {
         auto section = config->get_section("rotator");
 
         wayfire_key up_key    = section->get_key("rotate_up",
-                {MODIFIER_ALT|MODIFIER_CTRL, KEY_UP});
+                {WLR_MODIFIER_ALT|WLR_MODIFIER_CTRL, KEY_UP});
         wayfire_key down_key  = section->get_key("rotate_down",
-                {MODIFIER_ALT|MODIFIER_CTRL, KEY_DOWN});
+                {WLR_MODIFIER_ALT|WLR_MODIFIER_CTRL, KEY_DOWN});
         wayfire_key left_key  = section->get_key("rotate_left",
-                {MODIFIER_ALT|MODIFIER_CTRL, KEY_LEFT});
+                {WLR_MODIFIER_ALT|WLR_MODIFIER_CTRL, KEY_LEFT});
         wayfire_key right_key = section->get_key("rotate_right",
-                {MODIFIER_ALT|MODIFIER_CTRL, KEY_RIGHT});
+                {WLR_MODIFIER_ALT|WLR_MODIFIER_CTRL, KEY_RIGHT});
 
         up = [=] (weston_keyboard*, uint32_t) {
             output->set_transform(WL_OUTPUT_TRANSFORM_NORMAL);

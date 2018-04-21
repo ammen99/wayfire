@@ -5,10 +5,6 @@
 #include <string>
 #include <map>
 
-#define MODIFIER_CTRL  (1 << 0)
-#define MODIFIER_ALT   (1 << 1)
-#define MODIFIER_SUPER (1 << 2)
-#define MODIFIER_SHIFT (1 << 3)
 
 struct wayfire_key {
     uint32_t mod;

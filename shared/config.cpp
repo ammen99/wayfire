@@ -5,6 +5,11 @@
 #include <libevdev/libevdev.h>
 #include <linux/input.h>
 
+extern "C"
+{
+#include <wlr/types/wlr_keyboard.h>
+}
+
 #include <config.h>
 
 std::ofstream out;
@@ -56,13 +61,13 @@ wayfire_key wayfire_config_section::get_key(string name, wayfire_key df)
     ans.mod = 0;
     for (size_t i = 0; i < items.size() - 1; i++) {
         if (items[i] == "<alt>")
-            ans.mod |= MODIFIER_ALT;
+            ans.mod |= WLR_MODIFIER_ALT;
         if (items[i] == "<ctrl>")
-            ans.mod |= MODIFIER_CTRL;
+            ans.mod |= WLR_MODIFIER_CTRL;
         if (items[i] == "<shift>")
-            ans.mod |= MODIFIER_SHIFT;
+            ans.mod |= WLR_MODIFIER_SHIFT;
         if (items[i] == "<super>")
-            ans.mod |= MODIFIER_SUPER;
+            ans.mod |= WLR_MODIFIER_LOGO;
     }
 
     ans.keyval = libevdev_event_code_from_name(EV_KEY, items[items.size() - 1].c_str());
@@ -93,13 +98,13 @@ wayfire_button wayfire_config_section::get_button(string name, wayfire_button df
     for (size_t i = 0; i < items.size() - 1; i++)
     {
         if (items[i] == "<alt>")
-            ans.mod |= MODIFIER_ALT;
+            ans.mod |= WLR_MODIFIER_ALT;
         if (items[i] == "<ctrl>")
-            ans.mod |= MODIFIER_CTRL;
+            ans.mod |= WLR_MODIFIER_CTRL;
         if (items[i] == "<shift>")
-            ans.mod |= MODIFIER_SHIFT;
+            ans.mod |= WLR_MODIFIER_SHIFT;
         if (items[i] == "<super>")
-            ans.mod |= MODIFIER_SUPER;
+            ans.mod |= WLR_MODIFIER_LOGO;
     }
 
     auto button = items[items.size() - 1];

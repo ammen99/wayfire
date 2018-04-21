@@ -22,9 +22,9 @@ class wayfire_output_manager : public wayfire_plugin_t
 
             auto section = config->get_section("oswitch");
 
-            auto actkey  = section->get_key("next_output", {MODIFIER_SUPER, KEY_K});
+            auto actkey  = section->get_key("next_output", {WLR_MODIFIER_SUPER, KEY_K});
             auto withwin = section->get_key("next_output_with_win",
-                    {MODIFIER_SUPER | MODIFIER_SHIFT, KEY_K});
+                    {WLR_MODIFIER_SUPER | WLR_MODIFIER_SHIFT, KEY_K});
 
             switch_output = [=] (weston_keyboard *kbd, uint32_t key) {
                 /* when we switch the output, the oswitch keybinding

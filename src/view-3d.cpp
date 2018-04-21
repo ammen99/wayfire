@@ -109,7 +109,7 @@ wf_3D_view::wf_3D_view(float w, float h)
 /* TODO: cache total_transform, because it is often unnecessarily recomputed */
 glm::mat4 wf_3D_view::calculate_total_transform()
 {
-    glm::mat4 depth_scale = glm::scale(glm::mat4(1.0), {1, 1, 2.0 / std::max(m_width, m_height)});
+    glm::mat4 depth_scale = glm::scale(glm::mat4(1.0), {1, 1, 2.0 / std::min(m_width, m_height)});
     return view_proj * depth_scale * translation * rotation * scaling;
 }
 

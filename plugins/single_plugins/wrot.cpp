@@ -15,7 +15,7 @@ class wf_wrot : public wayfire_plugin_t
                 grab_interface->grab();
             };
 
-            output->add_button(MODIFIER_ALT, BTN_RIGHT, &call);
+            output->add_button(WLR_MODIFIER_ALT, BTN_RIGHT, &call);
 
             grab_interface->callbacks.pointer.motion = [=] (int, int)
             {

@@ -176,7 +176,7 @@ void vkeyboard::init(wayfire_config *config)
 
     auto section = config->get_section("vkeyboard");
     disabling_key = section->get_key("disable_real_keyboard",
-                                     {MODIFIER_ALT | MODIFIER_CTRL, KEY_K});
+                                     {WLR_MODIFIER_ALT | WLR_MODIFIER_CTRL, KEY_K});
     if (disabling_key.keyval)
     {
         disable_real_keyboard = [=] (weston_keyboard *kbd, uint32_t key)
