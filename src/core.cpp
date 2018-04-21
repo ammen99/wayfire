@@ -604,11 +604,12 @@ bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 
 void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
 {
+    /* TODO: do we need this?
     if (ev->state == WLR_BUTTON_RELEASED)
     {
         cursor_focus = nullptr;
         update_cursor_position(ev->time_msec, false);
-    }
+    } */
 
     if (ev->state == WLR_BUTTON_PRESSED)
     {
