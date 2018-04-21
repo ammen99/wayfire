@@ -1419,6 +1419,7 @@ void init_desktop_apis()
 
     core->api->xwayland_created.notify = notify_xwayland_created;
     core->api->xwayland = wlr_xwayland_create(core->display, core->compositor);
+    log_info("xwayland display started at%d", core->api->xwayland->display);
     wl_signal_add(&core->api->xwayland->events.new_surface, &core->api->xwayland_created);
 }
 

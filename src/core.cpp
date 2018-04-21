@@ -1538,6 +1538,9 @@ void wayfire_core::run(const char *command)
     if (!pid) {
         if (!fork()) {
             setenv("WAYLAND_DISPLAY", wayland_display.c_str(), 1);
+            auto xdisp = ":" + std::to_string(api->xwayland->display);
+            setenv("DISPLAY", xdisp.c_str(), 1);
+
             exit(execl("/bin/sh", "/bin/bash", "-c", command, NULL));
         } else {
             exit(0);
