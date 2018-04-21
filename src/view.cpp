@@ -18,6 +18,7 @@ extern "C"
 #define static
 #include <wlr/render/wlr_renderer.h>
 #include <wlr/types/wlr_matrix.h>
+#include <wlr/util/region.h>
 #undef static
 }
 
@@ -242,8 +243,9 @@ void wayfire_surface_t::commit()
     wf_geometry rect = get_output_geometry();
 
     pixman_region32_t dmg;
+
     pixman_region32_init(&dmg);
-    pixman_region32_copy(&dmg, &surface->current->buffer_damage);
+    pixman_region32_copy(&dmg, &surface->current->surface_damage);
 
     pixman_region32_translate(&dmg, rect.x, rect.y);
 
@@ -305,50 +307,6 @@ void wayfire_surface_t::for_each_surface(wf_surface_iterator_callback call, bool
     for_each_surface_recursive(call, pos.x, pos.y, reverse);
 }
 
-static wlr_box get_scissor_box(wayfire_output *output, wlr_box *box)
-{
-    int ow, oh;
-    wlr_output_transformed_resolution(output->handle, &ow, &oh);
-
-    wlr_box result;
-    memcpy(&result, box, sizeof(result));
-
-    /* XXX: wlroots-git breaks this */
-    // Scissor is in renderer coordinates, ie. upside down
-    enum wl_output_transform transform = wlr_output_transform_compose(
-        wlr_output_transform_invert(output->handle->transform),
-        WL_OUTPUT_TRANSFORM_FLIPPED_180);
-
-    wlr_box_transform(box, transform, ow, oh, &result);
-    return result;
-}
-
-void wayfire_surface_t::render(int x, int y, wlr_box *damage)
-{
-    if (!wlr_surface_has_buffer(surface))
-        return;
-
-    wlr_box geometry;
-
-    geometry.x = x;
-    geometry.y = y;
-    geometry.width = surface->current->width;
-    geometry.height = surface->current->height;
-
-    if (!damage) damage = &geometry;
-
-    auto rr = core->renderer;
-    float matrix[9];
-    wlr_matrix_project_box(matrix, &geometry,
-                           surface->current->transform,
-                           0, output->handle->transform_matrix);
-
-    auto box = get_scissor_box(output, damage);
-    wlr_renderer_scissor(rr, &box);
-
-    wlr_render_texture_with_matrix(rr, surface->texture, matrix, alpha);
-}
-
 void wayfire_surface_t::render_fbo(int x, int y, int fb_w, int fb_h,
                                    pixman_region32_t *damage)
 {
@@ -374,10 +332,61 @@ void wayfire_surface_t::render_fbo(int x, int y, int fb_w, int fb_h,
     wlr_render_texture(core->renderer, surface->texture, matrix, 0, 0, alpha);
 }
 
+static wlr_box get_scissor_box(wayfire_output *output, wlr_box *box)
+{
+    int ow, oh;
+    wlr_output_transformed_resolution(output->handle, &ow, &oh);
+
+    wlr_box result;
+    memcpy(&result, box, sizeof(result));
+
+    /* XXX: wlroots-git breaks this */
+    // Scissor is in renderer coordinates, ie. upside down
+    enum wl_output_transform transform = wlr_output_transform_compose(
+        wlr_output_transform_invert(output->handle->transform),
+        WL_OUTPUT_TRANSFORM_FLIPPED_180);
+
+    wlr_box_transform(box, transform, ow, oh, &result);
+    return result;
+}
+
+void wayfire_surface_t::render(int x, int y, wlr_box *damage)
+{
+    if (!wlr_surface_has_buffer(surface))
+        return;
+
+    wlr_box geometry;
+
+    geometry.x = x * output->handle->scale;
+    geometry.y = y * output->handle->scale;
+    geometry.width = surface->current->width * output->handle->scale;
+    geometry.height = surface->current->height * output->handle->scale;
+
+    if (!damage) damage = &geometry;
+
+    auto rr = core->renderer;
+    float matrix[9];
+    wlr_matrix_project_box(matrix, &geometry,
+                           surface->current->transform,
+                           0, output->handle->transform_matrix);
+
+    auto box = get_scissor_box(output, damage);
+    wlr_renderer_scissor(rr, &box);
+
+    wlr_render_texture_with_matrix(rr, surface->texture, matrix, alpha);
+}
+
 void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 {
+    /* TODO: wlr_region_expand */
+    pixman_region32_t scaled;
+    pixman_region32_init(&scaled);
+    pixman_region32_copy(&scaled, damage);
+
+    wlr_region_scale(&scaled, &scaled, output->handle->scale);
+
     int n_rect;
-    auto rects = pixman_region32_rectangles(damage, &n_rect);
+    auto rects = pixman_region32_rectangles(&scaled, &n_rect);
 
     for (int i = 0; i < n_rect; i++)
     {
@@ -389,6 +398,8 @@ void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 
         render(x, y, &d);
     }
+
+    pixman_region32_fini(&scaled);
 }
 
 void wayfire_surface_t::render_fb(int x, int y, pixman_region32_t *damage, int fb)
@@ -404,6 +415,9 @@ wayfire_view_t::wayfire_view_t(wlr_surface *surf)
 {
     set_output(core->get_active_output());
     output->render->schedule_redraw();
+
+    GetTuple(sw, sh, output->get_screen_size());
+    log_info("it was %dx%d", sw, sh);
 
     surface = surf;
 

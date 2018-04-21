@@ -18,6 +18,7 @@ extern "C"
 #include <wlr/render/wlr_renderer.h>
 #undef static
 #include <wlr/types/wlr_output_damage.h>
+#include <wlr/util/region.h>
 }
 
 #include "wm.hpp"
@@ -162,7 +163,7 @@ struct wf_output_damage
     void add()
     {
         int w, h;
-        wlr_output_transformed_resolution(output, &w, &h);
+        wlr_output_effective_resolution(output, &w, &h);
         add({0, 0, w, h});
     }
 
@@ -191,7 +192,7 @@ struct wf_output_damage
             pixman_region32_t regular;
 
             int w, h;
-            wlr_output_transformed_resolution(output, &w, &h);
+            wlr_output_effective_resolution(output, &w, &h);
 
             pixman_region32_init_rect(&regular, 0, 0, w, h);
             pixman_region32_subtract(&frame_damage, &frame_damage, &regular);
@@ -411,7 +412,7 @@ void render_manager::paint()
     wlr_renderer_begin(rr, output->handle->width, output->handle->height);
 
     int w, h;
-    wlr_output_transformed_resolution(output->handle, &w, &h);
+    wlr_output_effective_resolution(output->handle, &w, &h);
 
     if (dirty_context)
         load_context();
@@ -448,6 +449,8 @@ void render_manager::paint()
     }
 
     wlr_renderer_end(rr);
+
+    wlr_region_scale(&swap_damage, &swap_damage, output->handle->scale);
     output_damage->swap_buffers(&repaint_started, &swap_damage);
 
     pixman_region32_fini(&swap_damage);
@@ -911,7 +914,10 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
         wlr_output_set_mode(handle, mode);
     }
 
-    wlr_output_layout_add_auto(core->output_layout, handle);
+    wlr_output_set_scale(handle, 2.0);
+    wlr_output_set_transform(handle, WL_OUTPUT_TRANSFORM_NORMAL);
+    wlr_output_layout_add(core->output_layout, handle, 0, 0);
+
     core->set_default_cursor();
 
     render = new render_manager(this);
@@ -932,8 +938,11 @@ wayfire_output::~wayfire_output()
 
 wf_geometry wayfire_output::get_full_geometry()
 {
-    return {handle->lx, handle->ly,
-            handle->width, handle->height};
+    wf_geometry g;
+    g.x = handle->lx; g.y = handle->ly;
+    wlr_output_effective_resolution(handle, &g.width, &g.height);
+
+    return g;
 }
 
 void wayfire_output::set_transform(wl_output_transform new_tr)
@@ -985,7 +994,9 @@ wl_output_transform wayfire_output::get_transform()
 
 std::tuple<int, int> wayfire_output::get_screen_size()
 {
-    return std::make_tuple(handle->width, handle->height);
+    int w, h;
+    wlr_output_effective_resolution(handle, &w, &h);
+    return std::make_tuple(w, h);
 }
 
 void wayfire_output::ensure_pointer()
