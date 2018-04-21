@@ -269,17 +269,32 @@ void wayfire_surface_t::for_each_surface_recursive(wf_surface_iterator_callback 
                                                    int x, int y, bool reverse)
 {
     if (reverse)
-        call(this, x, y);
-
-    int dx, dy;
-    for (auto c : surface_children)
     {
-        c->get_child_position(dx, dy);
-        c->for_each_surface_recursive(call, x + dx, y + dy, reverse);
-    }
-
-    if (!reverse)
         call(this, x, y);
+
+        int dx, dy;
+
+        for (auto c : surface_children)
+        {
+            c->get_child_position(dx, dy);
+            c->for_each_surface_recursive(call, x + dx, y + dy, reverse);
+        }
+    } else
+    {
+        auto it = surface_children.rbegin();
+        int dx, dy;
+
+        while(it != surface_children.rend())
+        {
+            auto& c = *it;
+            c->get_child_position(dx, dy);
+            c->for_each_surface_recursive(call, x + dx, y + dy, reverse);
+
+            ++it;
+        }
+
+        call(this, x, y);
+    }
 }
 
 void wayfire_surface_t::for_each_surface(wf_surface_iterator_callback call, bool reverse)
