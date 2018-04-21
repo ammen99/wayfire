@@ -140,9 +140,9 @@ class wayfire_move : public wayfire_plugin_t
 
             output->bring_to_front(view);
             if (view->maximized)
-                view->set_maximized(false);
+                view->maximize_request(false);
             if (view->fullscreen)
-                view->set_fullscreen(false);
+                view->fullscreen_request(view->get_output(), false);
 
             if (!view->is_special)
                 view->get_output()->focus_view(nullptr);
