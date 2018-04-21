@@ -122,6 +122,8 @@ void surface_destroyed_cb(wl_listener*, void*);
 
 wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* parent)
 {
+    inc_keep_count();
+
     this->surface = surface;
     this->parent_surface = parent;
 
@@ -713,33 +715,33 @@ void wayfire_view_t::map()
     is_mapped = true;
 
     /* TODO: consider not emitting a create-view for special surfaces */
-    create_view_signal data;
+    map_view_signal data;
     data.view = self();
-    output->emit_signal("create-view", &data);
+    output->emit_signal("map-view", &data);
 
 
     if (!is_special)
     {
         output->attach_view(self());
         output->focus_view(self());
-
-        /* TODO: check mods
-           auto seat = core->get_current_seat();
-           auto kbd = seat ? weston_seat_get_keyboard(seat) : NULL;
-
-           if (kbd)
-           {
-           we send zero depressed modifiers, because some modifiers are
-         * stuck when opening a window(for example if the app was opened while some plugin
-         * was working or similar)
-         weston_keyboard_send_modifiers(kbd, wl_display_next_serial(core->ec->wl_display),
-         0, kbd->modifiers.mods_latched,
-         kbd->modifiers.mods_locked, kbd->modifiers.group);
-         } */
     }
 
     return;
 }
+
+void wayfire_view_t::unmap()
+{
+    wayfire_surface_t::unmap();
+
+    auto old_output = output;
+    output->detach_view(self());
+    output = old_output;
+
+    unmap_view_signal data;
+    data.view = self();
+    output->emit_signal("unmap-view", &data);
+}
+
 
 void wayfire_view_t::move_request()
 {
@@ -1217,33 +1219,22 @@ void surface_destroyed_cb(wl_listener*, void *data)
     auto surface = core->api->desktop_surfaces[(wlr_surface*) data];
     assert(surface);
 
-    surface->damage();
+    surface->destroyed = true;
+    surface->dec_keep_count();
+}
 
-    auto view = core->find_view(surface->surface);
-    if (view)
+void wayfire_view_t::destruct()
+{
+    if (decoration)
     {
-        view->destroyed = 1;
-        if (view->decoration)
-        {
-            auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (view->decoration);
-            assert(decor);
+        auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (decoration);
+        assert(decor);
 
-            decor->release_child();
-            decor->close();
-        }
-
-        core->erase_view(view);
-
-        log_info("destroy surface %ld", view.use_count());
-        return;
+        decor->release_child();
+        decor->close();
     }
 
-    /* TODO: if a decoration is closed in this way ... */
-
-    /* we can safely delete here as this was an xdg popup/subsurface */
-    /* Probably do something else? */
-    log_info("delete destroyed %p", surface);
-    delete surface;
+    core->erase_view(self());
 }
 
 wayfire_view_t::~wayfire_view_t()

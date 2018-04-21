@@ -13,6 +13,8 @@ wayfire_view get_signaled_view(signal_data *data);
 
 using create_view_signal     = _view_signal;
 using destroy_view_signal    = _view_signal;
+using map_view_signal        = _view_signal;
+using unmap_view_signal      = _view_signal;
 using focus_view_signal      = _view_signal;
 using view_set_parent_signal = _view_signal;
 using move_request_signal    = _view_signal;

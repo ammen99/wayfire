@@ -84,6 +84,13 @@ class wayfire_surface_t
         bool is_mapped = false;
         virtual void map();
         virtual void unmap();
+        virtual void destruct() { delete this; };
+
+        int keep_count = 0;
+        bool destroyed = false;
+
+        void inc_keep_count() { ++keep_count; }
+        void dec_keep_count() { --keep_count; if (!keep_count) destruct(); }
 
         wayfire_surface_t *get_main_surface();
 
@@ -199,6 +206,8 @@ class wayfire_view_t : public wayfire_surface_t
         bool is_visible();
         virtual void commit();
         virtual void map();
+        virtual void unmap();
+        virtual void destruct();
 
         virtual void damage();
 
@@ -209,7 +218,7 @@ class wayfire_view_t : public wayfire_surface_t
         /* Used to specify that this view has been destroyed.
          * Useful when animating view close */
         bool destroyed = false;
-        int keep_count = 0;
+
 
         /* Set if the current view should not be rendered by built-in renderer */
         bool is_hidden = false;
