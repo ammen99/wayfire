@@ -217,11 +217,6 @@ class wayfire_view_t : public wayfire_surface_t
         virtual std::string get_title() { return ""; }
 
 
-        /* Used to specify that this view has been destroyed.
-         * Useful when animating view close */
-        bool destroyed = false;
-
-
         /* Set if the current view should not be rendered by built-in renderer */
         bool is_hidden = false;
 
