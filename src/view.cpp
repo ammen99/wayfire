@@ -38,6 +38,18 @@ bool operator != (const wf_geometry& a, const wf_geometry& b)
     return !(a == b);
 }
 
+/* TODO: implement rotation */
+wf_geometry get_output_box_from_box(const wf_geometry& g, float scale, wl_output_transform)
+{
+    wf_geometry r;
+    r.x = std::floor(g.x * scale);
+    r.y = std::floor(g.y * scale);
+    r.width = std::ceil(g.width * scale);
+    r.height = std::ceil(g.height * scale);
+
+    return r;
+}
+
 wf_point operator + (const wf_point& a, const wf_point& b)
 {
     return {a.x + b.x, a.y + b.y};
@@ -239,14 +251,12 @@ void wayfire_surface_t::damage()
 
 void wayfire_surface_t::commit()
 {
-
     wf_geometry rect = get_output_geometry();
 
     pixman_region32_t dmg;
 
     pixman_region32_init(&dmg);
     pixman_region32_copy(&dmg, &surface->current->surface_damage);
-
     pixman_region32_translate(&dmg, rect.x, rect.y);
 
     /* TODO: recursively damage children? */
@@ -355,14 +365,13 @@ void wayfire_surface_t::render(int x, int y, wlr_box *damage)
     if (!wlr_surface_has_buffer(surface))
         return;
 
-    wlr_box geometry;
-
-    geometry.x = x * output->handle->scale;
-    geometry.y = y * output->handle->scale;
-    geometry.width = surface->current->width * output->handle->scale;
-    geometry.height = surface->current->height * output->handle->scale;
+    wlr_box geometry {x, y, surface->current->width, surface->current->height};
+    geometry = get_output_box_from_box(geometry, output->handle->scale,
+                                       WL_OUTPUT_TRANSFORM_NORMAL);
 
     if (!damage) damage = &geometry;
+
+    log_info("damage render at %d@%d %dx%d", damage->x, damage->y, damage->width, damage->height);
 
     auto rr = core->renderer;
     float matrix[9];
@@ -378,15 +387,8 @@ void wayfire_surface_t::render(int x, int y, wlr_box *damage)
 
 void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 {
-    /* TODO: wlr_region_expand */
-    pixman_region32_t scaled;
-    pixman_region32_init(&scaled);
-    pixman_region32_copy(&scaled, damage);
-
-    wlr_region_scale(&scaled, &scaled, output->handle->scale);
-
     int n_rect;
-    auto rects = pixman_region32_rectangles(&scaled, &n_rect);
+    auto rects = pixman_region32_rectangles(damage, &n_rect);
 
     for (int i = 0; i < n_rect; i++)
     {
@@ -398,8 +400,6 @@ void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 
         render(x, y, &d);
     }
-
-    pixman_region32_fini(&scaled);
 }
 
 void wayfire_surface_t::render_fb(int x, int y, pixman_region32_t *damage, int fb)
@@ -615,7 +615,7 @@ void wayfire_view_t::damage(const wlr_box& box)
         output->render->damage(get_bounding_box());
     } else
     {
-        output->render->damage(box);
+        output->render->damage(get_output_box_from_box(box, output->handle->scale, WL_OUTPUT_TRANSFORM_NORMAL));
     }
 }
 

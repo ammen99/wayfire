@@ -163,14 +163,15 @@ struct wf_output_damage
     void add()
     {
         int w, h;
-        wlr_output_effective_resolution(output, &w, &h);
+        wlr_output_transformed_resolution(output, &w, &h);
         add({0, 0, w, h});
     }
 
     void add(const wlr_box& box)
     {
         pixman_region32_union_rect(&frame_damage, &frame_damage,
-                                   box.x, box.y, box.width, box.height);
+                                   box.x * output->scale, box.y * output->scale,
+                                   box.width * output->scale, box.height * output->scale);
 
         auto sbox = box;
         wlr_output_damage_add_box(damage_manager, &sbox);
@@ -192,7 +193,7 @@ struct wf_output_damage
             pixman_region32_t regular;
 
             int w, h;
-            wlr_output_effective_resolution(output, &w, &h);
+            wlr_output_transformed_resolution(output, &w, &h);
 
             pixman_region32_init_rect(&regular, 0, 0, w, h);
             pixman_region32_subtract(&frame_damage, &frame_damage, &regular);
@@ -324,18 +325,20 @@ void render_manager::get_ws_damage(std::tuple<int, int> ws, pixman_region32_t *o
 {
     GetTuple(vx, vy, ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
-    auto og = output->get_full_geometry();
+
+    int sw, sh;
+    wlr_output_transformed_resolution(output->handle, &sw, &sh);
 
     if (!pixman_region32_selfcheck(out_damage))
         pixman_region32_init(out_damage);
 
     pixman_region32_intersect_rect(out_damage,
                                    &frame_damage,
-                                   (vx - cx) * og.width,
-                                   (vy - cy) * og.height,
-                                   og.width, og.height);
+                                   (vx - cx) * sw,
+                                   (vy - cy) * sh,
+                                   sw, sh);
 
-    pixman_region32_translate(out_damage, (cx - vx) * og.width, (cy - vy) * og.height);
+    pixman_region32_translate(out_damage, (cx - vx) * sw, (cy - vy) * sh);
 }
 
 void damage_idle_cb(void *data)
@@ -412,7 +415,7 @@ void render_manager::paint()
     wlr_renderer_begin(rr, output->handle->width, output->handle->height);
 
     int w, h;
-    wlr_output_effective_resolution(output->handle, &w, &h);
+    wlr_output_transformed_resolution(output->handle, &w, &h);
 
     if (dirty_context)
         load_context();
@@ -429,6 +432,12 @@ void render_manager::paint()
 
         if (pixman_region32_not_empty(&frame_damage))
         {
+            log_info("region32_t is done");
+            int n;
+            auto rects = pixman_region32_rectangles(&frame_damage, &n);
+            for (int i = 0;i < n; i++)
+                log_info("got damage rect: %d@%d %d@%d", rects[i].x1, rects[i].y1, rects[i].x2, rects[i].y2);
+
             pixman_region32_copy(&swap_damage, &frame_damage);
             GetTuple(vx, vy, output->workspace->get_current_workspace());
             auto target_stream = &output_streams[vx][vy];
@@ -450,7 +459,7 @@ void render_manager::paint()
 
     wlr_renderer_end(rr);
 
-    wlr_region_scale(&swap_damage, &swap_damage, output->handle->scale);
+//    wlr_region_scale(&swap_damage, &swap_damage, output->handle->scale);
     output_damage->swap_buffers(&repaint_started, &swap_damage);
 
     pixman_region32_fini(&swap_damage);
@@ -560,14 +569,16 @@ void render_manager::workspace_stream_start(wf_workspace_stream *stream)
 
     GetTuple(vx, vy, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
-    auto og = output->get_full_geometry();
+
+    int sw, sh;
+    wlr_output_transformed_resolution(output->handle, &sw, &sh);
 
     /* damage the whole workspace region, so that we get a full repaint */
     pixman_region32_union_rect(&frame_damage,
                                &frame_damage,
-                               (vx - cx) * og.width,
-                               (vy - cy) * og.height,
-                               og.width, og.height);
+                               (vx - cx) * sw,
+                               (vy - cy) * sh,
+                               sw, sh);
 
     workspace_stream_update(stream, 1, 1);
 
@@ -597,8 +608,11 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
     if (scaling > 2)
     {
+        int sw, sh;
+        wlr_output_transformed_resolution(output->handle, &sw, &sh);
+
         pixman_region32_union_rect(&ws_damage, &ws_damage, dx, dy,
-                g.width, g.height);
+                sw, sh);
     }
 
     /* we don't have to update anything */
@@ -614,8 +628,10 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 //        stream->scale_x = scale_x;
 //        stream->scale_y = scale_y;
 
+        int sw, sh;
+        wlr_output_transformed_resolution(output->handle, &sw, &sh);
         pixman_region32_union_rect(&ws_damage, &ws_damage, dx, dy,
-                g.width, g.height);
+                                   sw, sh);
     }
 
     auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
@@ -657,8 +673,12 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
             auto bbox = view->get_bounding_box();
             auto obox = view->get_output_geometry();
 
+            bbox = bbox + wf_point{view_dx, view_dy};
+            bbox = get_output_box_from_box(bbox, output->handle->scale,
+                                           WL_OUTPUT_TRANSFORM_NORMAL);
+
             pixman_region32_init_rect(&ds->damage,
-                                      bbox.x + view_dx, bbox.y + view_dy, bbox.width, bbox.height);
+                                      bbox.x, bbox.y, bbox.width, bbox.height);
 
             pixman_region32_intersect(&ds->damage, &ds->damage, &ws_damage);
             if (pixman_region32_not_empty(&ds->damage))
@@ -685,11 +705,16 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
             auto ds = damaged_surface(new damaged_surface_t);
 
-            /* TODO: perhaps use output_geometry, doesn't matter that it will be a bit more CPU */
+            auto obox = surface->get_output_geometry();
+            obox.x = x;
+            obox.y = y;
+
+            obox = get_output_box_from_box(obox, output->handle->scale,
+                                           WL_OUTPUT_TRANSFORM_NORMAL);
+
             pixman_region32_init_rect(&ds->damage,
-                                      x, y,
-                                      surface->surface->current->width,
-                                      surface->surface->current->height);
+                                      obox.x, obox.y,
+                                      obox.width, obox.height);
 
             pixman_region32_intersect(&ds->damage, &ds->damage, &ws_damage);
             if (pixman_region32_not_empty(&ds->damage))
@@ -704,7 +729,8 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
                     pixman_region32_init(&opaque);
                     pixman_region32_copy(&opaque, &surface->surface->current->opaque);
                     pixman_region32_translate(&opaque, x, y);
-                    pixman_region32_subtract(&ws_damage, &ws_damage, &opaque);
+                    wlr_region_scale(&opaque, &opaque, output->handle->scale);
+                    //pixman_region32_subtract(&ws_damage, &ws_damage, &opaque);
                     pixman_region32_fini(&opaque);
                 }
 

@@ -27,6 +27,8 @@ wf_point operator + (const wf_point& a, const wf_geometry& b);
 wf_geometry operator + (const wf_geometry &a, const wf_point& b);
 wf_point operator - (const wf_point& a);
 
+wf_geometry get_output_box_from_box(const wlr_box& box, float scale, wl_output_transform transform);
+
 bool point_inside(wf_point point, wf_geometry rect);
 bool rect_intersect(wf_geometry screen, wf_geometry win);
 
