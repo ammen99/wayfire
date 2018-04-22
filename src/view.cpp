@@ -371,8 +371,6 @@ void wayfire_surface_t::render(int x, int y, wlr_box *damage)
 
     if (!damage) damage = &geometry;
 
-    log_info("damage render at %d@%d %dx%d", damage->x, damage->y, damage->width, damage->height);
-
     auto rr = core->renderer;
     float matrix[9];
     wlr_matrix_project_box(matrix, &geometry,
@@ -415,9 +413,6 @@ wayfire_view_t::wayfire_view_t(wlr_surface *surf)
 {
     set_output(core->get_active_output());
     output->render->schedule_redraw();
-
-    GetTuple(sw, sh, output->get_screen_size());
-    log_info("it was %dx%d", sw, sh);
 
     surface = surf;
 
@@ -1207,9 +1202,7 @@ void wayfire_view_t::commit()
     auto old = get_output_geometry();
     if (update_size())
     {
-        if (output)
-            output->render->damage(old);
-
+        damage(old);
         damage();
     }
 

@@ -1176,9 +1176,9 @@ void finish_wf_shell_bind_cb(void *data)
     auto resource = (wl_resource*) data;
     core->shell_clients.push_back(resource);
     core->for_each_output([=] (wayfire_output *out) {
+        GetTuple(sw, sh, out->get_screen_size());
         wayfire_shell_send_output_created(resource,
-                out->id,
-                out->handle->width, out->handle->height);
+                                          out->id, sw, sh);
         /*
         if (out->handle->set_gamma) {
             wayfire_shell_send_gamma_size(resource,

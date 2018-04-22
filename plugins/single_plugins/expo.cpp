@@ -448,8 +448,10 @@ class wayfire_expo : public wayfire_plugin_t
             render_params.scale_y = 1.f / vh;
         }
 
-        float mf_x = 2. * delimiter_offset / output->handle->width;
-        float mf_y = 2. * delimiter_offset / output->handle->height;
+        GetTuple(w,  h,  output->get_screen_size());
+
+        float mf_x = 2. * delimiter_offset / w;
+        float mf_y = 2. * delimiter_offset / h;
 
         zoom_target.scale_x = {1, 1.f / vw};
         zoom_target.scale_y = {1, 1.f / vh};

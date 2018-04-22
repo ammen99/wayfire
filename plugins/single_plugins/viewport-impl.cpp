@@ -157,8 +157,8 @@ bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> v
     GetTuple(tx, ty, vp);
 
     auto g = output->get_full_geometry();
-    g.x += (tx - vx) * output->handle->width;
-    g.y += (ty - vy) * (output->handle->height);
+    g.x += (tx - vx) * g.width;
+    g.y += (ty - vy) * g.height;
 
     return rect_intersect(g, view->get_wm_geometry());
 }
@@ -240,8 +240,9 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
         return;
     }
 
-    auto dx = (vx - nx) * output->handle->width;
-    auto dy = (vy - ny) * output->handle->height;
+    GetTuple(sw, sh, output->get_screen_size());
+    auto dx = (vx - nx) * sw;
+    auto dy = (vy - ny) * sh;
 
     for_each_view([=] (wayfire_view v) {
         v->move(v->get_wm_geometry().x + dx, v->get_wm_geometry().y + dy);
@@ -279,8 +280,8 @@ std::vector<wayfire_view> viewport_manager::get_views_on_workspace(std::tuple<in
     GetTuple(tx, ty, vp);
 
     wf_geometry g = output->get_full_geometry();
-    g.x += (tx - vx) * output->handle->width;
-    g.y += (ty - vy) * (output->handle->height);
+    g.x += (tx - vx) * g.width;
+    g.y += (ty - vy) * g.height;
 
     std::vector<wayfire_view> ret;
     for_each_view([&ret, g] (wayfire_view view) {

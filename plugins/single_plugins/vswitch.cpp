@@ -179,9 +179,10 @@ class vswitch : public wayfire_plugin_t
         dx = dirs.front().dx, dy = dirs.front().dy;
         wayfire_view static_view = front.view;
 
+        GetTuple(sw, sh, output->get_screen_size());
         sx = sy = 0;
-        tx = -dx * output->handle->width;
-        ty = -dy * output->handle->height;
+        tx = -dx * sw;
+        ty = -dy * sh;
 
         GetTuple(vwidth, vheight, output->workspace->get_workspace_grid_size());
         if (vx + dx < 0 || vx + dx >= vwidth || vy + dy < 0 || vy + dy >= vheight) {

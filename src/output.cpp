@@ -170,8 +170,7 @@ struct wf_output_damage
     void add(const wlr_box& box)
     {
         pixman_region32_union_rect(&frame_damage, &frame_damage,
-                                   box.x * output->scale, box.y * output->scale,
-                                   box.width * output->scale, box.height * output->scale);
+                                   box.x, box.y, box.width, box.height);
 
         auto sbox = box;
         wlr_output_damage_add_box(damage_manager, &sbox);
