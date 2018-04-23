@@ -72,7 +72,7 @@ class wayfire_surface_t
         /* geometry relative to parent */
         wf_geometry geometry;
 
-        virtual bool is_subsurface() { return surface->subsurface; }
+        virtual bool is_subsurface();
         virtual void damage(const wlr_box& box);
         virtual void damage(pixman_region32_t *region);
 

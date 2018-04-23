@@ -141,7 +141,7 @@ wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* pa
     this->parent_surface = parent;
 
     /* map by default if this is a subsurface, only toplevels/popups have map/unmap events */
-    if (surface->subsurface)
+    if (is_subsurface())
         is_mapped = true;
 
     if (parent)
@@ -186,6 +186,11 @@ wayfire_surface_t::~wayfire_surface_t()
 wayfire_surface_t *wayfire_surface_t::get_main_surface()
 {
     return this->parent_surface ? this->parent_surface->get_main_surface() : this;
+}
+
+bool wayfire_surface_t::is_subsurface()
+{
+    return wlr_surface_is_subsurface(surface);
 }
 
 void wayfire_surface_t::get_child_position(int &x, int &y)
@@ -350,12 +355,7 @@ static wlr_box get_scissor_box(wayfire_output *output, wlr_box *box)
     wlr_box result;
     memcpy(&result, box, sizeof(result));
 
-    /* XXX: wlroots-git breaks this */
-    // Scissor is in renderer coordinates, ie. upside down
-    enum wl_output_transform transform = wlr_output_transform_compose(
-        wlr_output_transform_invert(output->handle->transform),
-        WL_OUTPUT_TRANSFORM_FLIPPED_180);
-
+    enum wl_output_transform transform = wlr_output_transform_invert(output->handle->transform);
     wlr_box_transform(box, transform, ow, oh, &result);
     return result;
 }
