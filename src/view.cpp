@@ -142,7 +142,7 @@ wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* pa
 
     /* map by default if this is a subsurface, only toplevels/popups have map/unmap events */
     if (is_subsurface())
-        is_mapped = true;
+        map();
 
     if (parent)
     {

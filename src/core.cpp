@@ -553,17 +553,20 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
+    log_info("current modifiers are %u", get_modifiers());
+    log_info("currently pressing %x %d", key, state == WLR_KEY_PRESSED);
 
     auto mod = mod_from_key(key);
     if (mod && handle_keyboard_mod(mod, state))
-        return true;
+    {
+        if (active_grab && active_grab->callbacks.keyboard.key)
+            active_grab->callbacks.keyboard.key(key, state);
 
-    if (active_grab && active_grab->callbacks.keyboard.key)
-        active_grab->callbacks.keyboard.key(key, state);
+        return true;
+    }
 
     if (state == WLR_KEY_PRESSED)
     {
-
         if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
             return true;
 
@@ -591,7 +594,6 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 
 bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 {
-    mods_count[modifier] += (state == WLR_KEY_PRESSED ? 1 : -1);
     if (active_grab)
     {
         if (active_grab->callbacks.keyboard.mod)
