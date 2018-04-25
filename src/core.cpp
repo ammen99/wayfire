@@ -554,7 +554,7 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
     log_info("current modifiers are %u", get_modifiers());
-    log_info("currently pressing %d %d", key, state == WLR_KEY_PRESSED);
+    log_info("currently pressing %d %d, kbd num: %d", key, state == WLR_KEY_PRESSED, keyboard_count);
 
     auto mod = mod_from_key(key);
     if (mod && handle_keyboard_mod(mod, state))
@@ -805,7 +805,10 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
     log_info("add new input: %s", dev->name);
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
+    {
+        log_info("previous device was keyboard");
         setup_keyboard(dev);
+    }
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
     {
