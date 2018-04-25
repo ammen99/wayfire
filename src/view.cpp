@@ -1358,8 +1358,6 @@ class wayfire_xwayland_view : public wayfire_view_t
     virtual void commit()
     {
         wayfire_view_t::commit();
-        if (!is_mapped)
-            map();
     }
 
     void activate(bool active)
@@ -1418,10 +1416,29 @@ class wayfire_xwayland_view : public wayfire_view_t
     }
 };
 
+void notify_xwayland_mapped(wl_listener*, void *data)
+{
+    auto xsurf = (wlr_xwayland_surface*) data;
+    auto view = core->find_view(xsurf->surface);
+
+    /* when a xwayland surface is created, it still doesn't have a xsurf->surface,
+     * this happens when the surface is mapped. To be consistent with other shells,
+     * we create the view only when it has been mapped */
+    if (!view)
+    {
+        view = std::make_shared<wayfire_xwayland_view> (xsurf);
+        core->add_view(view);
+    }
+
+    view->map();
+}
+
 void notify_xwayland_created(wl_listener *, void *data)
 {
-    core->add_view(std::make_shared<wayfire_xwayland_view> ((wlr_xwayland_surface*) data));
+    auto xsurf = (wlr_xwayland_surface*) data;
+    wl_signal_add(&xsurf->events.map, &core->api->xwayland_mapped);
 }
+
 /* end of xwayland implementation */
 
 void init_desktop_apis()
@@ -1434,7 +1451,9 @@ void init_desktop_apis()
 
     core->api->xwayland_created.notify = notify_xwayland_created;
     core->api->xwayland = wlr_xwayland_create(core->display, core->compositor);
+
     log_info("xwayland display started at%d", core->api->xwayland->display);
+    core->api->xwayland_mapped.notify = notify_xwayland_mapped;
     wl_signal_add(&core->api->xwayland->events.new_surface, &core->api->xwayland_created);
 }
 

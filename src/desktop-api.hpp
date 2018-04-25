@@ -25,7 +25,7 @@ struct desktop_apis_t
     decorator_base_t *decorator = NULL;
 
     std::map<wlr_surface *, wayfire_surface_t *> desktop_surfaces;
-    wl_listener v6_created, xwayland_created;
+    wl_listener v6_created, xwayland_created, xwayland_mapped;
 };
 
 void init_desktop_apis();
