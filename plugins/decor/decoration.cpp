@@ -120,7 +120,7 @@ class wayfire_decoration : public wayfire_plugin_t
             new_view(get_signaled_view(data));
         };
 
-        output->connect_signal("create-view", &view_created);
+        output->connect_signal("map-view", &view_created);
     }
 
     void new_view(wayfire_view view)

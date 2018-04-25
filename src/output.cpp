@@ -431,11 +431,14 @@ void render_manager::paint()
 
         if (pixman_region32_not_empty(&frame_damage))
         {
+            /*
             log_info("region32_t is done");
             int n;
             auto rects = pixman_region32_rectangles(&frame_damage, &n);
             for (int i = 0;i < n; i++)
+
                 log_info("got damage rect: %d@%d %d@%d", rects[i].x1, rects[i].y1, rects[i].x2, rects[i].y2);
+                */
 
             pixman_region32_copy(&swap_damage, &frame_damage);
             GetTuple(vx, vy, output->workspace->get_current_workspace());
