@@ -791,8 +791,10 @@ void input_manager::setup_keyboard(wlr_input_device *dev)
 
     wl_signal_add(&dev->keyboard->events.key, &key);
     wl_signal_add(&dev->keyboard->events.modifiers, &modifier);
+
     wlr_seat_set_keyboard(seat, dev);
 
+    keyboards.push_back(dev->keyboard);
     keyboard_count++;
 }
 
@@ -877,11 +879,11 @@ input_manager::input_manager()
 
 uint32_t input_manager::get_modifiers()
 {
-    auto kbd = wlr_seat_get_keyboard(seat);
-    if (!kbd)
-        return 0;
+    uint32_t mods = 0;
+    for (auto kbd : keyboards)
+        mods |= wlr_keyboard_get_modifiers(kbd);
 
-    return wlr_keyboard_get_modifiers(kbd);
+    return mods;
 }
 
 // TODO: set pointer, reset mods, grab gr */

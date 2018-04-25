@@ -23,7 +23,9 @@ struct wlr_seat;
 
 class input_manager
 {
-    friend void handle_new_input_cb(wl_listener*, void *data);
+    friend void handle_new_input_cb      (wl_listener*, void *data);
+    friend void handle_input_destroyed_cb(wl_listener*, void *data);
+
 
     private:
         wayfire_grab_interface active_grab = nullptr;
@@ -68,7 +70,10 @@ class input_manager
         void update_cursor_focus(wayfire_surface_t *focus, int x, int y);
         void update_cursor_position(uint32_t time_msec, bool real_update = true);
 
+        std::vector<wlr_keyboard*> keyboards;
+
     public:
+
         input_manager();
         wlr_seat *seat = nullptr;
         wlr_cursor *cursor = NULL;
