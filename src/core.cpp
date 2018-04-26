@@ -499,9 +499,14 @@ static void handle_pointer_axis_cb(wl_listener*, void *data)
     core->input->handle_pointer_axis(ev);
 }
 
-static void handle_keyboard_key_cb(wl_listener*, void *data)
+static void handle_keyboard_key_cb(wl_listener* listener, void *data)
 {
     auto ev = static_cast<wlr_event_keyboard_key*> (data);
+    wf_keyboard *keyboard = wl_container_of(listener, keyboard, key);
+
+    auto seat = core->get_current_seat();
+    wlr_seat_set_keyboard(seat, keyboard->device);
+
     if (!core->input->handle_keyboard_key(ev->keycode, ev->state))
     {
         wlr_seat_keyboard_notify_key(core->input->seat, ev->time_msec,
@@ -523,9 +528,14 @@ static uint32_t mod_from_key(uint32_t key)
     return 0;
 }
 
-static void handle_keyboard_mod_cb(wl_listener*, void* data)
+static void handle_keyboard_mod_cb(wl_listener* listener, void* data)
 {
     auto kbd = static_cast<wlr_keyboard*> (data);
+    wf_keyboard *keyboard = wl_container_of(listener, keyboard, modifier);
+
+    auto seat = core->get_current_seat();
+    wlr_seat_set_keyboard(seat, keyboard->device);
+
     if (!core->input->input_grabbed())
         wlr_seat_keyboard_send_modifiers(core->input->seat, &kbd->modifiers);
 }
@@ -553,9 +563,6 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
-    log_info("current modifiers are %u", get_modifiers());
-    log_info("currently pressing %d %d, kbd num: %d", key, state == WLR_KEY_PRESSED, keyboard_count);
-
     auto mod = mod_from_key(key);
     if (mod && handle_keyboard_mod(mod, state))
     {
@@ -761,7 +768,7 @@ void input_manager::update_capabilities()
     uint32_t cap = 0;
     if (pointer_count)
         cap |= WL_SEAT_CAPABILITY_POINTER;
-    if (keyboard_count)
+    if (keyboards.size())
         cap |= WL_SEAT_CAPABILITY_KEYBOARD;
     if (touch_count)
         cap |= WL_SEAT_CAPABILITY_TOUCH;
@@ -776,8 +783,15 @@ void handle_new_input_cb(wl_listener*, void *data)
     core->input->handle_new_input(dev);
 }
 
+void handle_keyboard_destroy_cb(wl_listener *listener, void*)
+{
+    wf_keyboard *keyboard = wl_container_of(listener, keyboard, destroy);
+    core->input->handle_input_destroyed(keyboard->device);
+}
+
 /* TODO: repeat info, xkb options - language, model, etc */
-void input_manager::setup_keyboard(wlr_input_device *dev)
+wf_keyboard::wf_keyboard(wlr_input_device *dev)
+    : handle(dev->keyboard), device(dev)
 {
     auto ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     xkb_rule_names rules = {0, 0, 0, 0, 0};
@@ -789,13 +803,15 @@ void input_manager::setup_keyboard(wlr_input_device *dev)
 
     wlr_keyboard_set_repeat_info(dev->keyboard, 40, 400);
 
+    key.notify      = handle_keyboard_key_cb;
+    modifier.notify = handle_keyboard_mod_cb;
+    destroy.notify  = handle_keyboard_destroy_cb;
+
     wl_signal_add(&dev->keyboard->events.key, &key);
     wl_signal_add(&dev->keyboard->events.modifiers, &modifier);
+    wl_signal_add(&dev->events.destroy, &destroy);
 
-    wlr_seat_set_keyboard(seat, dev);
-
-    keyboards.push_back(dev->keyboard);
-    keyboard_count++;
+    wlr_seat_set_keyboard(core->get_current_seat(), dev);
 }
 
 void input_manager::handle_new_input(wlr_input_device *dev)
@@ -803,12 +819,8 @@ void input_manager::handle_new_input(wlr_input_device *dev)
     if (!cursor)
         create_seat();
 
-    log_info("add new input: %s", dev->name);
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
-    {
-        log_info("previous device was keyboard");
-        setup_keyboard(dev);
-    }
+        keyboards.push_back(std::unique_ptr<wf_keyboard> (new wf_keyboard(dev)));
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
     {
@@ -821,6 +833,29 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
     if (wlr_input_device_is_libinput(dev))
         configure_input_device(wlr_libinput_get_device_handle(dev));
+
+    update_capabilities();
+}
+
+void input_manager::handle_input_destroyed(wlr_input_device *dev)
+{
+    log_info("add new input: %s", dev->name);
+    if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
+    {
+        auto it = std::remove_if(keyboards.begin(), keyboards.end(),
+                                 [=] (const std::unique_ptr<wf_keyboard>& kbd) { return kbd->device == dev; });
+
+        keyboards.erase(it, keyboards.end());
+    }
+
+    if (dev->type == WLR_INPUT_DEVICE_POINTER)
+    {
+        wlr_cursor_detach_input_device(cursor, dev);
+        pointer_count--;
+    }
+
+    if (dev->type == WLR_INPUT_DEVICE_TOUCH)
+        touch_count--;
 
     update_capabilities();
 }
@@ -852,8 +887,6 @@ input_manager::input_manager()
     wl_signal_add(&core->backend->events.new_input,
                   &input_device_created);
 
-    key.notify                = handle_keyboard_key_cb;
-    modifier.notify           = handle_keyboard_mod_cb;
     button.notify             = handle_pointer_button_cb;
     motion.notify             = handle_pointer_motion_cb;
     motion_absolute.notify    = handle_pointer_motion_absolute_cb;
@@ -883,8 +916,9 @@ input_manager::input_manager()
 uint32_t input_manager::get_modifiers()
 {
     uint32_t mods = 0;
-    for (auto kbd : keyboards)
-        mods |= wlr_keyboard_get_modifiers(kbd);
+    auto keyboard = wlr_seat_get_keyboard(seat);
+    if (keyboard)
+        mods = wlr_keyboard_get_modifiers(keyboard);
 
     return mods;
 }
@@ -900,17 +934,6 @@ bool input_manager::grab_input(wayfire_grab_interface iface)
     update_cursor_focus(nullptr, 0, 0);
 
     /*
-    if (ptr)
-    {
-        weston_pointer_start_grab(ptr, &pgrab);
-        auto background = core->get_active_output()->workspace->get_background_view();
-        if (background)
-        {
-            weston_pointer_clear_focus(ptr);
-            weston_pointer_set_focus(ptr, background->handle, -10000000, -1000000);
-        }
-    }
-
     grab_start_finalized = false;
 
 
@@ -926,14 +949,6 @@ void input_manager::ungrab_input()
     active_grab = nullptr;
 
     /*
-
-        weston_keyboard_send_modifiers(kbd,
-                                       wl_display_next_serial(core->ec->wl_display),
-                                       0,
-                                       kbd->modifiers.mods_latched,
-                                       kbd->modifiers.mods_locked,
-                                       kbd->modifiers.group);
-
     if (is_touch_enabled())
         gr->end_grab();
         */

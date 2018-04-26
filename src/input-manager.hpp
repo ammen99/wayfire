@@ -21,10 +21,18 @@ struct key_callback_data;
 struct button_callback_data;
 struct wlr_seat;
 
+struct wf_keyboard
+{
+    wlr_keyboard *handle;
+    wlr_input_device *device;
+    wl_listener key, modifier, destroy;
+    wf_keyboard(wlr_input_device *keyboard);
+};
+
 class input_manager
 {
-    friend void handle_new_input_cb      (wl_listener*, void *data);
-    friend void handle_input_destroyed_cb(wl_listener*, void *data);
+    friend void handle_new_input_cb       (wl_listener*, void*);
+    friend void handle_keyboard_destroy_cb(wl_listener*, void*);
 
 
     private:
@@ -32,7 +40,6 @@ class input_manager
         bool session_active = true;
 
         wl_listener input_device_created,
-                    key, modifier,
                     button, motion, motion_absolute, axis,
                     request_set_cursor,
                     touch_down, touch_up, touch_motion;
@@ -64,13 +71,13 @@ class input_manager
         bool is_touch_enabled();
 
         void create_seat();
-        void setup_keyboard(wlr_input_device *dev);
         void handle_new_input(wlr_input_device *dev);
+        void handle_input_destroyed(wlr_input_device *dev);
 
         void update_cursor_focus(wayfire_surface_t *focus, int x, int y);
         void update_cursor_position(uint32_t time_msec, bool real_update = true);
 
-        std::vector<wlr_keyboard*> keyboards;
+        std::vector<std::unique_ptr<wf_keyboard>> keyboards;
 
     public:
 
@@ -81,7 +88,7 @@ class input_manager
 
         wayfire_surface_t* cursor_focus = nullptr;
 
-        int pointer_count = 0, keyboard_count = 0, touch_count = 0;
+        int pointer_count = 0, touch_count = 0;
         void update_capabilities();
         void set_cursor(wlr_seat_pointer_request_set_cursor_event *ev);
 
