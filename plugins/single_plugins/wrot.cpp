@@ -23,8 +23,9 @@ class wf_wrot : public wayfire_plugin_t
 
                 if (!view->get_transformer())
                 {
-                    auto og = view->get_output()->get_full_geometry();
-                    view->set_transformer(std::unique_ptr<wf_2D_view> (new wf_2D_view(og.width, og.height)));
+                    int w, h;
+                    wlr_output_effective_resolution(view->get_output()->handle, &w, &h);
+                    view->set_transformer(std::unique_ptr<wf_2D_view> (new wf_2D_view(w, h)));
                 }
 
                 auto tr = dynamic_cast<wf_2D_view*> (view->get_transformer());

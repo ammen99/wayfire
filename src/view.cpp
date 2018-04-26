@@ -607,7 +607,8 @@ void wayfire_view_t::damage(const wlr_box& box)
                                    real_box.width, real_box.height);
 
         /* TODO: damage only the bounding box of region */
-        output->render->damage(get_bounding_box());
+        output->render->damage(get_output_box_from_box(get_bounding_box(),
+                                                       output->handle->scale, WL_OUTPUT_TRANSFORM_NORMAL));
     } else
     {
         output->render->damage(get_output_box_from_box(box, output->handle->scale, WL_OUTPUT_TRANSFORM_NORMAL));
@@ -636,7 +637,9 @@ void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
     {
         auto output_geometry = get_output_geometry();
 
-        if (output_geometry.width != offscreen_buffer.fb_width || output_geometry.height != offscreen_buffer.fb_height)
+        int scale = surface->current->scale;
+        if (output_geometry.width * scale != offscreen_buffer.fb_width
+            || output_geometry.height * scale != offscreen_buffer.fb_height)
         {
             if (offscreen_buffer.fbo != (uint)-1)
             {
@@ -650,11 +653,11 @@ void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
         if (offscreen_buffer.fbo == (uint32_t)-1)
         {
             pixman_region32_init(&offscreen_buffer.cached_damage);
-            OpenGL::prepare_framebuffer_size(output_geometry.width, output_geometry.height,
+            OpenGL::prepare_framebuffer_size(output_geometry.width * scale, output_geometry.height * scale,
                                              offscreen_buffer.fbo, offscreen_buffer.tex);
 
-            offscreen_buffer.fb_width = output_geometry.width;
-            offscreen_buffer.fb_height = output_geometry.height;
+            offscreen_buffer.fb_width = output_geometry.width * scale;
+            offscreen_buffer.fb_height = output_geometry.height * scale;
 
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
             GL_CALL(glViewport(0, 0, output_geometry.width, output_geometry.height));
@@ -668,17 +671,15 @@ void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
         for_each_surface([=] (wayfire_surface_t *surface, int x, int y) {
             GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
             GL_CALL(glViewport(0, 0, offscreen_buffer.fb_width, offscreen_buffer.fb_height));
-            surface->render_fbo(x - output_geometry.x, y - output_geometry.y,
+            surface->render_fbo((x - output_geometry.x) * scale, (y - output_geometry.y) * scale,
                                 offscreen_buffer.fb_width, offscreen_buffer.fb_height,
                                 NULL);
         }, true);
 
-        auto og = output->get_full_geometry();
-
         auto obox = output_geometry;
         obox.x = x;
         obox.y = y;
-        auto centric_geometry = get_output_centric_geometry(og, obox);
+        auto centric_geometry = get_output_centric_geometry(output->get_full_geometry(), obox);
 
         int n_rect;
         auto rects = pixman_region32_rectangles(damage, &n_rect);
