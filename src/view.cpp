@@ -102,7 +102,7 @@ bool rect_intersect(wf_geometry screen, wf_geometry win)
 }
 
 /* wayfire_surface_t implementation */
-void surface_committed_cb(wl_listener*, void *data)
+void handle_surface_committed(wl_listener*, void *data)
 {
     auto surface = core->api->desktop_surfaces[(wlr_surface*) data];
     assert(surface);
@@ -110,7 +110,7 @@ void surface_committed_cb(wl_listener*, void *data)
     surface->commit();
 }
 
-void subsurface_created_cb(wl_listener*, void *data)
+void handle_subsurface_created(wl_listener*, void *data)
 {
     auto sub = static_cast<wlr_subsurface*> (data);
 
@@ -122,16 +122,12 @@ void subsurface_created_cb(wl_listener*, void *data)
     }
 
     if (core->api->desktop_surfaces.count(sub->surface))
-    {
-        log_info("adding same subsurface twice!");
         return;
-    }
 
-    log_info("subsurface %p", sub->surface);
     new wayfire_surface_t(sub->surface, parent);
 }
 
-void surface_destroyed_cb(wl_listener*, void*);
+void handle_surface_destroyed(wl_listener*, void*);
 
 wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* parent)
 {
@@ -140,9 +136,6 @@ wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* pa
     this->surface = surface;
     this->parent_surface = parent;
 
-    /* map by default if this is a subsurface, only toplevels/popups have map/unmap events */
-    if (is_subsurface())
-        map();
 
     if (parent)
     {
@@ -150,15 +143,20 @@ wayfire_surface_t::wayfire_surface_t(wlr_surface *surface, wayfire_surface_t* pa
         parent->surface_children.push_back(this);
     }
 
-    new_sub.notify   = subsurface_created_cb;
-    committed.notify = surface_committed_cb;
-    destroy.notify   = surface_destroyed_cb;
+    new_sub.notify   = handle_subsurface_created;
+    committed.notify = handle_surface_committed;
+    destroy.notify   = handle_surface_destroyed;
 
     wl_signal_add(&surface->events.new_subsurface, &new_sub);
     wl_signal_add(&surface->events.commit,         &committed);
-    wl_signal_add(&surface->events.destroy,        &destroy);
 
-    log_info("map %p -> %p", surface, this);
+    /* map by default if this is a subsurface, only toplevels/popups have map/unmap events */
+    if (wlr_surface_is_subsurface(surface))
+    {
+        map();
+        wl_signal_add(&surface->events.destroy, &destroy);
+    }
+
     core->api->desktop_surfaces[surface] = this;
 }
 
@@ -842,6 +840,7 @@ void wayfire_view_t::fullscreen_request(wayfire_output *out, bool state)
 static void handle_new_popup(wl_listener*, void*);
 static void handle_v6_map(wl_listener*, void *data);
 static void handle_v6_unmap(wl_listener*, void *data);
+static void handle_v6_destroy(wl_listener*, void *data);
 
 /* xdg_popup_v6 implementation
  * Currently we use a "hack": we treat the toplevel as a special popup,
@@ -851,7 +850,8 @@ static void handle_v6_unmap(wl_listener*, void *data);
 class wayfire_xdg6_popup : public wayfire_surface_t
 {
     protected:
-        wl_listener new_popup, destroy_popup,
+        wl_listener destroy,
+                    new_popup, destroy_popup,
                     m_popup_map, m_popup_unmap;
 
         wlr_xdg_popup_v6 *popup;
@@ -866,6 +866,7 @@ class wayfire_xdg6_popup : public wayfire_surface_t
             log_info("new xdg6 popup");
             this->popup = popup;
 
+            destroy.notify       = handle_v6_destroy;
             new_popup.notify     = handle_new_popup;
             m_popup_map.notify   = handle_v6_map;
             m_popup_unmap.notify = handle_v6_unmap;
@@ -873,6 +874,7 @@ class wayfire_xdg6_popup : public wayfire_surface_t
             wl_signal_add(&popup->base->events.new_popup, &new_popup);
             wl_signal_add(&popup->base->events.map,       &m_popup_map);
             wl_signal_add(&popup->base->events.unmap,     &m_popup_unmap);
+            wl_signal_add(&popup->base->events.destroy,   &destroy);
         }
 
         virtual void get_child_position(int &x, int &y)
@@ -916,6 +918,16 @@ static void handle_v6_unmap(wl_listener*, void *data)
     wf_surface->unmap();
 }
 
+static void handle_v6_destroy(wl_listener*, void *data)
+{
+    auto surface = static_cast<wlr_xdg_surface_v6*> (data);
+    auto wf_surface = core->api->desktop_surfaces[surface->surface];
+
+    assert(wf_surface);
+    wf_surface->destroyed = 1;
+    wf_surface->dec_keep_count();
+}
+
 static void handle_v6_request_move(wl_listener*, void *data)
 {
     auto ev = static_cast<wlr_xdg_toplevel_v6_move_event*> (data);
@@ -946,11 +958,12 @@ static void handle_v6_request_fullscreen(wl_listener*, void *data)
     view->fullscreen_request(wo, ev->fullscreen);
 }
 
+/* TODO: perhaps implement show_window_menu and minimize_request if anyone needs those */
 class wayfire_xdg6_view : public wayfire_view_t
 {
     protected:
     wlr_xdg_surface_v6 *v6_surface;
-    wl_listener map, unmap, new_popup,
+    wl_listener destroy, map, unmap, new_popup,
                 request_move, request_resize,
                 request_maximize, request_fullscreen;
 
@@ -963,6 +976,7 @@ class wayfire_xdg6_view : public wayfire_view_t
                   nonull(v6_surface->toplevel->title),
                   nonull(v6_surface->toplevel->app_id));
 
+        destroy.notify            = handle_v6_destroy;
         new_popup.notify          = handle_new_popup;
         map.notify                = handle_v6_map;
         unmap.notify              = handle_v6_unmap;
@@ -973,9 +987,10 @@ class wayfire_xdg6_view : public wayfire_view_t
 
         wlr_xdg_surface_v6_ping(s);
 
-        wl_signal_add(&s->events.new_popup,      &new_popup);
-        wl_signal_add(&v6_surface->events.map,   &map);
-        wl_signal_add(&v6_surface->events.unmap, &unmap);
+        wl_signal_add(&v6_surface->events.destroy, &destroy);
+        wl_signal_add(&s->events.new_popup,        &new_popup);
+        wl_signal_add(&v6_surface->events.map,     &map);
+        wl_signal_add(&v6_surface->events.unmap,   &unmap);
         wl_signal_add(&v6_surface->toplevel->events.request_move,       &request_move);
         wl_signal_add(&v6_surface->toplevel->events.request_resize,     &request_resize);
         wl_signal_add(&v6_surface->toplevel->events.request_maximize,   &request_maximize);
@@ -1231,12 +1246,17 @@ void wayfire_view_t::damage()
 }
 
 // TODO: do better
-void surface_destroyed_cb(wl_listener*, void *data)
+void handle_surface_destroyed(wl_listener*, void *data)
 {
-    auto surface = core->api->desktop_surfaces[(wlr_surface*) data];
-    assert(surface);
+    auto wlr_surf = (wlr_surface*) data;
+    auto surface = core->api->desktop_surfaces.count(wlr_surf) ?
+        core->api->desktop_surfaces[wlr_surf] : nullptr;
 
-    log_info("destroy surface");
+    /* this handles just subsurfaces,
+     * others (xdg6/xwayland) have their own destroy event */
+    assert(surface || !wlr_surface_is_subsurface(wlr_surf));
+    if (!surface)
+        return;
 
     surface->destroyed = true;
     surface->dec_keep_count();
@@ -1347,10 +1367,19 @@ static void handle_xwayland_unmap(wl_listener*, void *data)
     view->unmap();
 }
 
+static void handle_xwayland_destroy(wl_listener*, void *data)
+{
+    auto xsurf = static_cast<wlr_xwayland_surface*> (data);
+    auto surface = static_cast<wayfire_surface_t*> (xsurf->data);
+
+    surface->destroyed = 1;
+    surface->dec_keep_count();
+}
+
 class wayfire_xwayland_view : public wayfire_view_t
 {
     wlr_xwayland_surface *xw;
-    wl_listener unmap, configure,
+    wl_listener destroy, unmap, configure,
                 request_move, request_resize,
                 request_maximize, request_fullscreen;
 
@@ -1361,6 +1390,7 @@ class wayfire_xwayland_view : public wayfire_view_t
         log_info("new xwayland surface %s class: %s instance: %s",
                  nonull(xw->title), nonull(xw->class_t), nonull(xw->instance));
 
+        destroy.notify            = handle_xwayland_destroy;
         unmap.notify              = handle_xwayland_unmap;
         configure.notify          = handle_xwayland_request_configure;
         request_move.notify       = handle_xwayland_request_move;
@@ -1368,6 +1398,7 @@ class wayfire_xwayland_view : public wayfire_view_t
         request_maximize.notify   = handle_xwayland_request_maximize;
         request_fullscreen.notify = handle_xwayland_request_fullscreen;
 
+        wl_signal_add(&xw->events.destroy,            &destroy);
         wl_signal_add(&xw->events.unmap,              &unmap);
         wl_signal_add(&xw->events.request_move,       &request_move);
         wl_signal_add(&xw->events.request_resize,     &request_resize);
@@ -1437,7 +1468,7 @@ class wayfire_xwayland_view : public wayfire_view_t
     }
 };
 
-void notify_xwayland_mapped(wl_listener*, void *data)
+void handle_xwayland_map(wl_listener*, void *data)
 {
     auto xsurf = (wlr_xwayland_surface*) data;
     auto view = core->find_view(xsurf->surface);
@@ -1448,6 +1479,7 @@ void notify_xwayland_mapped(wl_listener*, void *data)
     if (!view)
     {
         view = std::make_shared<wayfire_xwayland_view> (xsurf);
+        xsurf->data = view.get();
         core->add_view(view);
     }
 
@@ -1474,7 +1506,7 @@ void init_desktop_apis()
     core->api->xwayland = wlr_xwayland_create(core->display, core->compositor);
 
     log_info("xwayland display started at%d", core->api->xwayland->display);
-    core->api->xwayland_mapped.notify = notify_xwayland_mapped;
+    core->api->xwayland_mapped.notify = handle_xwayland_map;
     wl_signal_add(&core->api->xwayland->events.new_surface, &core->api->xwayland_created);
 }
 
