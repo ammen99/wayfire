@@ -224,8 +224,12 @@ class view_switcher : public wayfire_plugin_t
         setup_graphics();
         start_fold();
 
-        auto bg = output->workspace->get_background_view();
-        if (bg) {
+        auto bgl = output->workspace->get_views_on_workspace(output->workspace->get_current_workspace(),
+                                                            WF_LAYER_BACKGROUND);
+        if (bgl.size())
+        {
+            auto bg = bgl[0];
+
             GetTuple(sw, sh, output->get_screen_size());
             bg->set_transformer(std::unique_ptr<wf_3D_view> (new wf_3D_view(sw, sh)));
             auto tr = dynamic_cast<wf_3D_view*> (bg->get_transformer());
@@ -331,7 +335,7 @@ class view_switcher : public wayfire_plugin_t
     void update_views()
     {
         current_view_index = 0;
-        views = output->workspace->get_views_on_workspace(output->workspace->get_current_workspace());
+        views = output->workspace->get_views_on_workspace(output->workspace->get_current_workspace(), WF_LAYER_WORKSPACE);
     }
 
     void update_transforms()
@@ -683,9 +687,13 @@ class view_switcher : public wayfire_plugin_t
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
 
-        auto bg = output->workspace->get_background_view();
-        if (bg)
+        auto bgl = output->workspace->get_views_on_workspace(output->workspace->get_current_workspace(),
+                                                            WF_LAYER_BACKGROUND);
+        if (bgl.size())
+        {
+            auto bg = bgl[0];
             bg->set_transformer(nullptr);
+        }
 
         log_info("reset tranforms");
         for(auto v : views)

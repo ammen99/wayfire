@@ -56,8 +56,6 @@ class render_manager
 
         void paint();
         void post_paint();
-
-        void transformation_renderer();
         void run_effects();
         void render_panels();
 

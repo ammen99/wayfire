@@ -191,8 +191,11 @@ class vswitch : public wayfire_plugin_t
         }
 
         auto current_views = output->workspace->get_views_on_workspace(
-                output->workspace->get_current_workspace());
-        auto next_views = output->workspace->get_views_on_workspace(std::make_tuple(vx + dx, vy + dy));
+                output->workspace->get_current_workspace(), WF_WM_LAYERS);
+        auto next_views =
+            output->workspace->get_views_on_workspace(
+                std::make_tuple(vx + dx, vy + dy),
+                WF_WM_LAYERS);
 
         std::unordered_set<wayfire_view> views_to_move;
         for (auto view : current_views)

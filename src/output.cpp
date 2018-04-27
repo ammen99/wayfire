@@ -360,11 +360,7 @@ void render_manager::reset_renderer()
 
 void render_manager::set_renderer(render_hook_t rh)
 {
-    if (!rh) {
-        renderer = std::bind(std::mem_fn(&render_manager::transformation_renderer), this);
-    } else {
-        renderer = rh;
-    }
+    renderer = rh;
 }
 
 void render_manager::set_hide_overlay_panels(bool set)
@@ -374,7 +370,9 @@ void render_manager::set_hide_overlay_panels(bool set)
 
 void render_manager::render_panels()
 {
-    auto views = output->workspace->get_panels();
+
+    auto vp = output->workspace->get_current_workspace();
+    auto views = output->workspace->get_views_on_workspace(vp, WF_ABOVE_LAYERS);
     auto it = views.rbegin();
     while (it != views.rend())
     {
@@ -480,14 +478,16 @@ void render_manager::paint()
 void render_manager::post_paint()
 {
     run_effects();
+    /*
     if (!renderer || draw_overlay_panel)
         render_panels();
+        */
 
     if (constant_redraw)
         schedule_redraw();
 
-    auto views = output->workspace->get_renderable_views_on_workspace(
-        output->workspace->get_current_workspace());
+    auto views = output->workspace->get_views_on_workspace(
+        output->workspace->get_current_workspace(), WF_ALL_LAYERS);
 
     /* TODO: do this only if the view isn't fully occluded by another */
     for (auto v : views)
@@ -509,31 +509,6 @@ void render_manager::run_effects()
 
     for (auto& effect : active_effects)
         (*effect)();
-}
-
-/* TODO: this should be a WAYFIRE_VIEW_TRANSFORMATOR_LEVEL_2 transform actually */
-void render_manager::transformation_renderer()
-{
-    auto views = output->workspace->get_renderable_views_on_workspace(
-            output->workspace->get_current_workspace());
-
-    wlr_output_set_fullscreen_surface(output->handle, NULL);
-
-    OpenGL::use_device_viewport();
-    GL_CALL(glClearColor(1, 0, 0, 1));
-    GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
-
-    auto it = views.rbegin();
-    while (it != views.rend())
-    {
-        auto view = *it;
-        if (!view->is_hidden) /* use is_visible() when implemented */
-        {
-          //  view->render(TEXTURE_TRANSFORM_USE_DEVCOORD);
-        }
-
-        ++it;
-    }
 }
 
 void render_manager::add_output_effect(effect_hook_t* hook)
@@ -636,7 +611,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
                                    sw, sh);
     }
 
-    auto views = output->workspace->get_renderable_views_on_workspace(stream->ws);
+    auto views = output->workspace->get_views_on_workspace(stream->ws, WF_ALL_LAYERS);
 
     struct damaged_surface_t
     {
@@ -837,7 +812,13 @@ void shell_add_background(struct wl_client *client, struct wl_resource *resource
     }
 
     log_debug("wf_shell: add_background");
-    wo->workspace->add_background(view, x, y);
+
+    view->is_special = 1;
+    view->get_output()->detach_view(view);
+    view->set_output(wo);
+    view->move(x, y);
+
+    wo->workspace->add_view_to_layer(view, WF_LAYER_BACKGROUND);
 }
 
 void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
@@ -854,7 +835,12 @@ void shell_add_panel(struct wl_client *client, struct wl_resource *resource,
     }
 
     log_debug("wf_shell: add_panel");
-    wo->workspace->add_panel(view);
+
+    view->is_special = 1;
+    view->get_output()->detach_view(view);
+    view->set_output(wo);
+
+    wo->workspace->add_view_to_layer(view, WF_LAYER_TOP);
 }
 
 void shell_configure_panel(struct wl_client *client, struct wl_resource *resource,
@@ -869,7 +855,7 @@ void shell_configure_panel(struct wl_client *client, struct wl_resource *resourc
         return;
     }
 
-    wo->workspace->configure_panel(view, x, y);
+    view->move(x, y);
 }
 
 void shell_reserve(struct wl_client *client, struct wl_resource *resource,
@@ -1063,7 +1049,7 @@ void wayfire_output::deactivate()
 void wayfire_output::attach_view(wayfire_view v)
 {
     v->set_output(this);
-    workspace->view_bring_to_front(v);
+    workspace->add_view_to_layer(v, WF_LAYER_WORKSPACE);
 
     _view_signal data;
     data.view = v;
@@ -1077,11 +1063,12 @@ void wayfire_output::detach_view(wayfire_view v)
     emit_signal("detach-view", &data);
 
     if (v->keep_count <= 0)
-        workspace->view_removed(v);
+        workspace->add_view_to_layer(v, 0);
 
     wayfire_view next = nullptr;
 
-    auto views = workspace->get_views_on_workspace(workspace->get_current_workspace());
+    auto views = workspace->get_views_on_workspace(workspace->get_current_workspace(),
+                                                   WF_WM_LAYERS);
     for (auto wview : views) {
         if (wview != v && wview->is_mapped && !wview->destroyed) {
             next = wview;
@@ -1105,8 +1092,7 @@ void wayfire_output::detach_view(wayfire_view v)
 void wayfire_output::bring_to_front(wayfire_view v) {
     assert(v);
 
-    v->damage();
-    workspace->view_bring_to_front(v);
+    workspace->add_view_to_layer(v, -1);
     v->damage();
 }
 
@@ -1166,7 +1152,7 @@ wayfire_view wayfire_output::get_top_view()
     workspace->for_each_view([&view] (wayfire_view v) {
         if (!view)
             view = v;
-    });
+    }, WF_LAYER_WORKSPACE);
 
     return view;
 }
@@ -1175,12 +1161,12 @@ wayfire_view wayfire_output::get_view_at_point(int x, int y)
 {
     wayfire_view chosen = nullptr;
 
-    workspace->for_all_view([x, y, &chosen] (wayfire_view v) {
+    workspace->for_each_view([x, y, &chosen] (wayfire_view v) {
         if (v->is_visible() && point_inside({x, y}, v->get_wm_geometry())) {
             if (chosen == nullptr)
                 chosen = v;
         }
-    });
+    }, WF_WM_LAYERS);
 
     return chosen;
 }

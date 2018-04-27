@@ -293,7 +293,7 @@ class wayfire_expo : public wayfire_plugin_t
         output->workspace->for_each_view([&search, og, sx, sy] (wayfire_view v) {
             if (!search && point_inside({sx + og.x, sy + og.y}, v->get_wm_geometry()))
             search = v;
-        });
+        }, WF_WM_LAYERS);
 
         return search;
     }
