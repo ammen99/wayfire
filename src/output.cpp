@@ -942,7 +942,9 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
         wlr_output_set_mode(handle, mode);
     }
 
-    wlr_output_set_scale(handle, 2.0);
+    auto section = c->get_section(handle->name);
+    wlr_output_set_scale(handle, section->get_double("scale", 1));
+
     wlr_output_set_transform(handle, WL_OUTPUT_TRANSFORM_NORMAL);
     wlr_output_layout_add(core->output_layout, handle, 0, 0);
 
