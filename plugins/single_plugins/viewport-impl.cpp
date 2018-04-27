@@ -188,10 +188,17 @@ bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> v
     GetTuple(tx, ty, vp);
 
     auto g = output->get_full_geometry();
-    g.x += (tx - vx) * g.width;
-    g.y += (ty - vy) * g.height;
 
-    return rect_intersect(g, view->get_wm_geometry());
+    if (!view->is_special)
+    {
+        g.x += (tx - vx) * g.width;
+        g.y += (ty - vy) * g.height;
+    }
+
+    if (view->get_transformer())
+        return rect_intersect(g, view->get_bounding_box());
+    else
+        return rect_intersect(g, view->get_wm_geometry());
 }
 
 void viewport_manager::for_each_view(view_callback_proc_t call, uint32_t layers_mask)
@@ -308,41 +315,12 @@ viewport_manager::get_views_on_workspace(std::tuple<int, int> vp,
 
     std::vector<wayfire_view> views;
 
-    if (layers_mask & WF_ABOVE_LAYERS)
+    for (int i = 5; i >= 0; i--)
     {
-        for (int i = 4; i <= 5; i++)
+        if ((1 << i) & layers_mask)
         {
-            if ((1 << i) & layers_mask)
-                for (auto v : layers[i])
-                    views.push_back(v);
-        }
-    }
-
-    if (layers_mask & WF_WM_LAYERS)
-    {
-        GetTuple(tx, ty, vp);
-
-        wf_geometry vp_geometry = output->get_full_geometry();
-        vp_geometry.x += (tx - vx) * vp_geometry.width;
-        vp_geometry.y += (ty - vy) * vp_geometry.height;
-
-        for (int i = 2; i <= 3; i++)
-        {
-            if ((1 << i) & layers_mask)
-            {
-                for (auto v : layers[i])
-                    if (rect_intersect(vp_geometry, v->get_wm_geometry()))
-                        views.push_back(v);
-            }
-        }
-    }
-
-    if (layers_mask & WF_BELOW_LAYERS)
-    {
-        for (int i = 0; i <= 1; i++)
-        {
-            if ((1 << i) & layers_mask)
-                for (auto v : layers[i])
+            for (auto v : layers[i])
+                if (view_visible_on(v, vp))
                     views.push_back(v);
         }
     }
