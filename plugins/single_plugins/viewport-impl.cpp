@@ -455,15 +455,14 @@ void viewport_manager::check_lower_panel_layer(int base)
     } else
     {
         // TODO: imlement showing
-        /*
-        weston_layer_set_position(&panel_layer, WESTON_LAYER_POSITION_UI);
+        //weston_layer_set_position(&panel_layer, WESTON_LAYER_POSITION_UI);
 
         if (sent_autohide)
         {
             sent_autohide = 0;
             for (auto res : core->shell_clients)
-                wayfire_shell_send_output_autohide_panels(res, output->handle->id, 0);
-        } */
+                wayfire_shell_send_output_autohide_panels(res, output->id, 0);
+        }
     }
 }
 
