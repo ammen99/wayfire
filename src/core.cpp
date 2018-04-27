@@ -563,21 +563,18 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
+    if (active_grab && active_grab->callbacks.keyboard.key)
+        active_grab->callbacks.keyboard.key(key, state);
+
     auto mod = mod_from_key(key);
-    if (mod && handle_keyboard_mod(mod, state))
-    {
-        if (active_grab && active_grab->callbacks.keyboard.key)
-            active_grab->callbacks.keyboard.key(key, state);
+    if (mod)
+        handle_keyboard_mod(mod, state);
 
-        return true;
-    }
-
+    std::vector<key_callback*> callbacks;
     if (state == WLR_KEY_PRESSED)
     {
         if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
             return true;
-
-        std::vector<key_callback*> callbacks;
 
         auto mod_state = get_modifiers();
 
@@ -591,24 +588,16 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 
         for (auto call : callbacks)
             (*call) (key);
-
-        if (callbacks.size())
-            return true;
     }
 
-    return active_grab;
+
+    return active_grab || !callbacks.empty();
 }
 
-bool input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
+void input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 {
-    if (active_grab)
-    {
-        if (active_grab->callbacks.keyboard.mod)
-            active_grab->callbacks.keyboard.mod(modifier, state);
-        return true;
-    }
-
-    return false;
+    if (active_grab && active_grab->callbacks.keyboard.mod)
+        active_grab->callbacks.keyboard.mod(modifier, state);
 }
 
 void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)

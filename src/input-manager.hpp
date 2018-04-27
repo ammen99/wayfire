@@ -107,7 +107,7 @@ class input_manager
         void handle_pointer_button(wlr_event_pointer_button *ev);
 
         bool handle_keyboard_key(uint32_t key, uint32_t state);
-        bool handle_keyboard_mod(uint32_t key, uint32_t state);
+        void handle_keyboard_mod(uint32_t key, uint32_t state);
 
         bool handle_touch_down  (wlr_touch*, int32_t, wl_fixed_t, wl_fixed_t);
         bool handle_touch_up    (wlr_touch*, int32_t);
