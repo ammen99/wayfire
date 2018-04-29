@@ -1601,14 +1601,37 @@ class wayfire_unmanaged_xwayland_view : public wayfire_view_t
         wlr_xwayland_surface_activate(xw, active);
     }
 
+
     void send_configure()
-    { assert(false); }
+    {
+        wlr_xwayland_surface_configure(xw, geometry.x, geometry.y,
+                                       geometry.width, geometry.height);
+        damage();
+    }
+
     void move(int x, int y, bool s)
-    { assert(false); }
+    {
+        damage();
+        geometry.x = x;
+        geometry.y = y;
+        send_configure();
+    }
+
     void resize(int w, int h, bool s)
-    { assert(false); }
+    {
+        damage();
+        geometry.width = w;
+        geometry.height = h;
+        send_configure();
+    }
+
+    /* TODO: bad with decoration */
     void set_geometry(wf_geometry g)
-    { assert(false); }
+    {
+        damage();
+        geometry = g;
+        send_configure();
+    }
 
     void close()
     {
