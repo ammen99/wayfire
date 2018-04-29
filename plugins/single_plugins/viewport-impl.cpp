@@ -386,6 +386,7 @@ void viewport_manager::check_lower_panel_layer(int base)
     for (auto v : views)
         cnt_fullscreen += (v->fullscreen ? 1 : 0);
 
+    log_info("send autohide %d", base);
     if (cnt_fullscreen)
     {
         if (!sent_autohide)
