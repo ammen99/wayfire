@@ -1567,10 +1567,16 @@ class wayfire_unmanaged_xwayland_view : public wayfire_view_t
 
         wayfire_surface_t::commit();
 
+        auto old_geometry = geometry;
+        if (update_size())
+        {
+            damage(old_geometry);
+            damage();
+        }
+
         log_info("geometry is %d@%d %dx%d", geometry.x, geometry.y, geometry.width, geometry.height);
         auto og = get_output_geometry();
         log_info("ogeometry is %d@%d %dx%d", og.x, og.y, og.width, og.height);
-
     }
 
     void map(wlr_surface *surface)
