@@ -49,16 +49,12 @@ using wf_surface_iterator_callback = std::function<void(wayfire_surface_t*, int,
 class wf_decorator_frame_t;
 class wf_view_transformer_t;
 
-struct wf_surface_type_data_container
-{ wayfire_surface_t *keep_rtti; };
-
 /* abstraction for desktop-apis, no real need for plugins
  * This is a base class to all "drawables" - desktop views, subsurfaces, popups */
 class wayfire_surface_t
 {
     /* TODO: maybe some functions don't need to be virtual? */
     protected:
-        const std::unique_ptr<wf_surface_type_data_container> type_data_container;
 
          wl_listener committed, destroy, new_sub;
          std::vector<wayfire_surface_t*> surface_children;
@@ -190,10 +186,7 @@ class wayfire_view_t : public wayfire_surface_t
         /* return geometry as should be used for all WM purposes */
         virtual wf_geometry get_wm_geometry() { return decoration ? decoration->get_wm_geometry() : geometry; }
         virtual wlr_box get_bounding_box();
-
-
         virtual wf_point get_output_position();
-        virtual wf_geometry get_output_geometry() { return geometry; };
 
         /* map from global to surface local coordinates
          * returns the (sub)surface under the cursor or NULL iff the cursor is outside of the view

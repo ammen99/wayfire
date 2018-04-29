@@ -103,8 +103,7 @@ bool rect_intersect(wf_geometry screen, wf_geometry win)
 
 static wayfire_surface_t* wf_surface_from_void(void *handle)
 {
-    auto type_container = static_cast<wf_surface_type_data_container*> (handle);
-    return type_container->keep_rtti;
+    return static_cast<wayfire_surface_t*> (handle);
 }
 
 static wayfire_view_t* wf_view_from_void(void *handle)
@@ -164,7 +163,6 @@ void handle_subsurface_destroyed(wl_listener*, void *data)
 }
 
 wayfire_surface_t::wayfire_surface_t(wayfire_surface_t* parent)
-    : type_data_container(new wf_surface_type_data_container{this})
 {
     inc_keep_count();
     this->parent_surface = parent;
@@ -178,7 +176,6 @@ wayfire_surface_t::wayfire_surface_t(wayfire_surface_t* parent)
     new_sub.notify   = handle_subsurface_created;
     committed.notify = handle_surface_committed;
     destroy.notify   = nullptr;
-
 }
 
 wayfire_surface_t::~wayfire_surface_t()
@@ -254,21 +251,21 @@ void wayfire_surface_t::map(wlr_surface *surface)
         wl_signal_add(&surface->events.destroy, &destroy);
     }
 
-    surface->data = type_data_container.get();
+    surface->data = this;
     damage();
 }
 
 void wayfire_surface_t::unmap()
 {
     assert(this->surface);
+    damage();
+
     this->surface = nullptr;
 
     wl_list_remove(&new_sub.link);
     wl_list_remove(&committed.link);
     if (destroy.notify)
         wl_list_remove(&destroy.link);
-
-    damage();
 }
 
 void wayfire_surface_t::damage(pixman_region32_t *region)
@@ -906,7 +903,7 @@ class wayfire_xdg6_popup : public wayfire_surface_t
             wl_signal_add(&popup->base->events.unmap,     &m_popup_unmap);
             wl_signal_add(&popup->base->events.destroy,   &destroy);
 
-            popup->base->data = type_data_container.get();
+            popup->base->data = this;
         }
 
         virtual void get_child_position(int &x, int &y)
@@ -1027,7 +1024,7 @@ class wayfire_xdg6_view : public wayfire_view_t
         wl_signal_add(&v6_surface->toplevel->events.request_maximize,   &request_maximize);
         wl_signal_add(&v6_surface->toplevel->events.request_fullscreen, &request_fullscreen);
 
-        v6_surface->data = type_data_container.get();
+        v6_surface->data = this;
     }
 
     virtual wf_point get_output_position()
@@ -1442,7 +1439,7 @@ class wayfire_xwayland_view : public wayfire_view_t
         wl_signal_add(&xw->events.request_fullscreen, &request_fullscreen);
         wl_signal_add(&xw->events.request_configure,  &configure);
 
-        xw->data = type_data_container.get();
+        xw->data = this;
     }
 
     void map(wlr_surface *surface)
@@ -1539,7 +1536,7 @@ class wayfire_unmanaged_xwayland_view : public wayfire_view_t
         wl_signal_add(&xw->events.request_configure,  &configure);
         wl_signal_add(&xw->events.map,                &map_ev);
 
-        xw->data = type_data_container.get();
+        xw->data = this;
     }
 
     bool is_subsurface() { return false; }
@@ -1551,6 +1548,11 @@ class wayfire_unmanaged_xwayland_view : public wayfire_view_t
             wayfire_view_t::move(xw->x, xw->y, false);
 
         wayfire_surface_t::commit();
+
+        log_info("geometry is %d@%d %dx%d", geometry.x, geometry.y, geometry.width, geometry.height);
+        auto og = get_output_geometry();
+        log_info("ogeometry is %d@%d %dx%d", og.x, og.y, og.width, og.height);
+
     }
 
     void map(wlr_surface *surface)
