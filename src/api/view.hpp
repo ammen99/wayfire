@@ -94,7 +94,7 @@ class wayfire_surface_t
         void inc_keep_count() { ++keep_count; }
         void dec_keep_count() { --keep_count; if (!keep_count) destruct(); }
 
-        wayfire_surface_t *get_main_surface();
+        virtual wayfire_surface_t *get_main_surface();
 
         virtual void damage();
 
@@ -181,6 +181,7 @@ class wayfire_view_t : public wayfire_surface_t
         virtual void close() {};
 
         virtual void set_parent(wayfire_view parent);
+        virtual wayfire_surface_t* get_main_surface();
 
         /* return geometry as should be used for all WM purposes */
         virtual wf_geometry get_wm_geometry() { return decoration ? decoration->get_wm_geometry() : geometry; }

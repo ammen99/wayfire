@@ -193,7 +193,13 @@ wayfire_surface_t::~wayfire_surface_t()
     }
 
     for (auto c : surface_children)
-        c->destruct();
+    {
+        /* if we are a decoration window, then we shouldn't
+         * destroy children(contained view) like that */
+        auto cast = dynamic_cast<wayfire_view_t*> (c);
+        if (!cast)
+            c->destruct();
+    }
 }
 
 wayfire_surface_t *wayfire_surface_t::get_main_surface()
@@ -625,13 +631,25 @@ void wayfire_view_t::get_child_position(int &x, int &y)
     y = decor_y;
 }
 
+wayfire_surface_t* wayfire_view_t::get_main_surface()
+{
+    if (decoration)
+        return decoration->get_main_surface();
+    return this;
+}
+
 wf_point wayfire_view_t::get_output_position()
 {
-    return {geometry.x, geometry.y};
+    if (decoration)
+        return decoration->get_output_position() + wf_point{decor_x, decor_y};
+    return wf_point{geometry.x, geometry.y};
 }
 
 void wayfire_view_t::damage(const wlr_box& box)
 {
+    if (decoration)
+        return decoration->damage(box);
+
     auto wm_geometry = get_wm_geometry();
     if (transform)
     {
@@ -774,6 +792,12 @@ void wayfire_view_t::map(wlr_surface *surface)
 void wayfire_view_t::unmap()
 {
     wayfire_surface_t::unmap();
+
+    if (decoration)
+    {
+        decoration->close();
+        decoration->unmap();
+    }
 
     /* TODO: what if a plugin wants to keep this view? */
     auto old_output = output;
@@ -990,13 +1014,14 @@ static void handle_v6_request_fullscreen(wl_listener*, void *data)
 class wayfire_xdg6_view : public wayfire_view_t
 {
     protected:
-    wlr_xdg_surface_v6 *v6_surface;
-    wl_listener destroy, map_ev, unmap, new_popup,
+        wl_listener destroy, map_ev, unmap, new_popup,
                 request_move, request_resize,
                 request_maximize, request_fullscreen;
 
 
     public:
+        wlr_xdg_surface_v6 *v6_surface;
+
     wayfire_xdg6_view(wlr_xdg_surface_v6 *s)
         : wayfire_view_t(), v6_surface(s)
     {
@@ -1041,26 +1066,15 @@ class wayfire_xdg6_view : public wayfire_view_t
 
     virtual wf_point get_output_position()
     {
+        if (decoration)
+            return decoration->get_output_position() + wf_point{decor_x, decor_y};
+
         wf_point position {
             geometry.x - v6_surface->geometry.x,
             geometry.y - v6_surface->geometry.y,
         };
 
         return position;
-    }
-
-    virtual wf_geometry get_output_geometry()
-    {
-        if (!is_mapped())
-            return {0, 0, 0, 0};
-
-        auto pos = get_output_position();
-        return {
-            pos.x,
-            pos.y,
-            surface->current ? surface->current->width : 0,
-            surface->current ? surface->current->height : 0
-        };
     }
 
     virtual bool update_size()
@@ -1131,24 +1145,18 @@ class wayfire_xdg6_view : public wayfire_view_t
 
 /* start xdg6_decoration implementation */
 
-void handle_decoration_destroyed(wl_listener*, void*);
-
 class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
 {
     wayfire_view contained = NULL;
     std::unique_ptr<wf_decorator_frame_t> frame;
 
     wf_point v6_surface_offset;
-    wl_listener destroyed_listener;
 
     public:
 
     wayfire_xdg6_decoration_view(wlr_xdg_surface_v6 *decor) :
         wayfire_xdg6_view(decor)
-    {
-        destroyed_listener.notify = handle_decoration_destroyed;
-        wl_signal_add(&decor->events.destroy, &destroyed_listener);
-    }
+    { }
 
     void init(wayfire_view view, std::unique_ptr<wf_decorator_frame_t>&& fr)
     {
@@ -1212,25 +1220,27 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
     void child_configured(wf_geometry g)
     {
         auto new_g = frame->get_geometry_interior(g);
+        /*
         log_info("contained configured %dx%d, we become: %dx%d",
                  g.width, g.height, new_g.width, new_g.height);
+                 */
         if (new_g.width != geometry.width || new_g.height != geometry.height)
             wayfire_xdg6_view::resize(new_g.width, new_g.height, false);
     }
 
-    void release_child()
+    void unmap()
     {
-        if (!contained)
-            return;
+        /* if the contained view was closed earlier, then the decoration view
+         * has already been forcibly unmapped */
+        if (!surface) return;
 
-        log_info("release child");
-        surface_children.clear();
-        contained->set_decoration(nullptr, nullptr);
+        wayfire_view_t::unmap();
 
-        if (!contained->destroyed)
+        if (contained->is_mapped())
+        {
+            contained->set_decoration(nullptr, nullptr);
             contained->close();
-
-        contained = NULL;
+        }
     }
 
     wlr_surface *get_keyboard_focus_surface()
@@ -1252,16 +1262,6 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
     ~wayfire_xdg6_decoration_view()
     { }
 };
-
-void handle_decoration_destroyed(wl_listener*, void* data)
-{
-    auto surf = static_cast<wlr_xdg_surface_v6*> (data);
-    auto view = wf_view_from_void(surf->data);
-    auto decor = dynamic_cast<wayfire_xdg6_decoration_view*> (view);
-
-    assert(decor);
-    decor->release_child();
-}
 
 void wayfire_view_t::commit()
 {
@@ -1291,15 +1291,9 @@ void wayfire_view_t::damage()
 
 void wayfire_view_t::destruct()
 {
-    if (decoration)
-    {
-        auto decor = std::dynamic_pointer_cast<wayfire_xdg6_decoration_view> (decoration);
-        assert(decor);
-
-        decor->release_child();
-        decor->close();
-    }
-
+    auto cast = dynamic_cast<wayfire_xdg6_view*> (this);
+    if (cast)
+        log_info("destroy for self %p", cast->v6_surface);
     core->erase_view(self());
 }
 
@@ -1319,7 +1313,9 @@ void wayfire_view_t::set_decoration(wayfire_view decor,
         assert(raw_ptr);
 
         if (output)
+        {
             output->detach_view(self());
+        }
 
         raw_ptr->init(self(), std::move(frame));
     }
@@ -1347,6 +1343,7 @@ void notify_v6_created(wl_listener*, void *data)
             core->api->decorator->decoration_ready(view);
         } else
         {
+            log_info("core add view for surf %p", surf);
             core->add_view(std::make_shared<wayfire_xdg6_view> (surf));
         }
     }
