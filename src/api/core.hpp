@@ -42,7 +42,9 @@ class wayfire_core
 
         std::vector<wlr_output*> pending_outputs;
         std::map<wlr_output*, wayfire_output*> outputs;
-        std::map<wlr_surface*, wayfire_view> views;
+
+        /* TODO: perhaps switch to a std::vector */
+        std::map<wayfire_view_t*, wayfire_view> views;
 
         void configure(wayfire_config *config);
 
@@ -79,7 +81,6 @@ class wayfire_core
         wayfire_surface_t *get_cursor_focus();
 
         void add_view(wayfire_view view);
-        wayfire_view find_view(wlr_surface *);
         wayfire_view find_view(wayfire_surface_t *);
         wayfire_view find_view(uint32_t id);
 

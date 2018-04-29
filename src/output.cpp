@@ -674,6 +674,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
         view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
         {
+            log_info("render surface %p", surface);
             if (!surface->is_mapped())
                 return;
 

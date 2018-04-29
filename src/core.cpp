@@ -1491,27 +1491,21 @@ void wayfire_core::for_each_output(output_callback_proc call)
 
 void wayfire_core::add_view(wayfire_view view)
 {
-    views[view->surface] = view;
+    views[view.get()] = view;
     assert(active_output);
-}
-
-wayfire_view wayfire_core::find_view(wlr_surface *handle)
-{
-    auto it = views.find(handle);
-    if (it == views.end()) {
-        return nullptr;
-    } else {
-        return it->second;
-    }
 }
 
 wayfire_view wayfire_core::find_view(wayfire_surface_t *handle)
 {
-    for (auto v : views)
-        if (v.second.get() == handle)
-            return v.second;
+    auto view = dynamic_cast<wayfire_view_t*> (handle);
+    if (!view)
+        return nullptr;
 
-    return nullptr;
+    auto it = views.find(view);
+    if (it == views.end())
+        return nullptr;
+
+    return it->second;
 }
 
 wayfire_view wayfire_core::find_view(uint32_t id)
@@ -1539,7 +1533,7 @@ void wayfire_core::erase_view(wayfire_view v)
     if (!v) return;
 
     /* TODO: what do we do now? */
-    views.erase(v->surface);
+    views.erase(v.get());
 
     if (v->get_output())
         v->get_output()->detach_view(v);

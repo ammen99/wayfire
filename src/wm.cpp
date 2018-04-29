@@ -44,23 +44,11 @@ void wayfire_focus::init(wayfire_config *)
         wayfire_surface_t *focus = nullptr, *main_surface = nullptr;
         wayfire_view view = nullptr;
 
-        auto f = core->get_cursor_focus();
-        log_info("found %p", f);
-
-        if (!f)
-            return;
-        log_info("acutally is %p", f->surface);
-
-        auto ff = f->get_main_surface();
-        log_info("mf is: %p", ff);
-
-        if (!ff)
+        if (!(focus = core->get_cursor_focus()) || !(main_surface = focus->get_main_surface()))
             return;
 
-        log_info("base is %p", ff->surface);
-
-        if (!(focus = core->get_cursor_focus()) || !(main_surface = focus->get_main_surface())
-            || !(view = core->find_view(main_surface->surface)))
+        view = core->find_view((wayfire_view_t*)main_surface);
+        if (!view)
             return;
 
 //        if (!view || view->destroyed || !output->activate_plugin(grab_interface, false))

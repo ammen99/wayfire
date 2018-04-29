@@ -49,12 +49,17 @@ using wf_surface_iterator_callback = std::function<void(wayfire_surface_t*, int,
 class wf_decorator_frame_t;
 class wf_view_transformer_t;
 
+struct wf_surface_type_data_container
+{ wayfire_surface_t *keep_rtti; };
+
 /* abstraction for desktop-apis, no real need for plugins
  * This is a base class to all "drawables" - desktop views, subsurfaces, popups */
 class wayfire_surface_t
 {
     /* TODO: maybe some functions don't need to be virtual? */
     protected:
+        const std::unique_ptr<wf_surface_type_data_container> type_data_container;
+
          wl_listener committed, destroy, new_sub;
          std::vector<wayfire_surface_t*> surface_children;
 
