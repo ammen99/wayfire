@@ -69,8 +69,7 @@ class wayfire_surface_t
         /* position relative to parent */
         virtual void get_child_position(int &x, int &y);
 
-        /* geometry relative to parent */
-        wf_geometry geometry;
+        wf_geometry geometry = {0, 0, 0, 0};
 
         virtual bool is_subsurface();
         virtual void damage(const wlr_box& box);
