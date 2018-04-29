@@ -1603,6 +1603,13 @@ class wayfire_unmanaged_xwayland_view : public wayfire_view_t
         wayfire_view_t::render_fb(x, y, damage, target_fb);
     }
 
+    wlr_surface *get_keyboard_focus_surface()
+    {
+        if (wlr_xwayland_surface_is_unmanaged(xw))
+            return nullptr;
+        return surface;
+    }
+
     ~wayfire_unmanaged_xwayland_view()
     {
         log_info("destroy unmanaged xwayland view");

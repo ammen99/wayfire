@@ -1130,6 +1130,9 @@ void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
     if (seat == nullptr)
         seat = core->get_current_seat();
 
+    if (v && !v->get_keyboard_focus_surface())
+        return;
+
     set_active_view(v);
 
     if (v) {

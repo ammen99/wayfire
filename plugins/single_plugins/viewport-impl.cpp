@@ -29,7 +29,7 @@ class viewport_manager : public workspace_manager
         uint32_t layer = 0;
     };
 
-    uint32_t& get_view_layer(wayfire_view view)
+    uint32_t& _get_view_layer(wayfire_view view)
     {
         auto it = view->custom_data.find(custom_layer_data_t::name);
         custom_layer_data_t *layer_data = nullptr;
@@ -88,6 +88,7 @@ class viewport_manager : public workspace_manager
         void for_each_view_reverse(view_callback_proc_t call, uint32_t layers_mask);
 
         void add_view_to_layer(wayfire_view view, uint32_t layer);
+        uint32_t get_view_layer(wayfire_view view);
 
         wf_workspace_implementation* get_implementation(std::tuple<int, int>);
         bool set_implementation(std::tuple<int, int>, wf_workspace_implementation*, bool override = false);
@@ -158,7 +159,7 @@ void viewport_manager::add_view_to_layer(wayfire_view view, uint32_t layer)
     assert(layer == 0 || layer == uint32_t(-1) || (__builtin_popcount(layer) == 1 && layer <= WF_LAYER_LOCK));
     log_info("add to layer %d", layer);
 
-    auto& current_layer = get_view_layer(view);
+    auto& current_layer = _get_view_layer(view);
     if (layer == 0)
     {
         if (current_layer)
@@ -181,6 +182,11 @@ void viewport_manager::add_view_to_layer(wayfire_view view, uint32_t layer)
     log_info("add to layer %d", layer_index_from_mask(layer));
     layer_container.push_front(view);
     current_layer = layer;
+}
+
+uint32_t viewport_manager::get_view_layer(wayfire_view view)
+{
+    return _get_view_layer(view);
 }
 
 bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> vp)

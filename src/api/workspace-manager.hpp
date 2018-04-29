@@ -51,6 +51,8 @@ class workspace_manager
          * if layer_mask == -1, then the view will be moved to the top of its layer */
         virtual void add_view_to_layer(wayfire_view view, uint32_t layer) = 0;
 
+        virtual uint32_t get_view_layer(wayfire_view view) = 0;
+
         /* return the active wf_workspace_implementation for the given workpsace */
         virtual wf_workspace_implementation* get_implementation(std::tuple<int, int>) = 0;
 

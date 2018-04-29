@@ -48,7 +48,7 @@ void wayfire_focus::init(wayfire_config *)
             return;
 
         view = core->find_view((wayfire_view_t*)main_surface);
-        if (!view)
+        if (!view || !view->is_mapped())
             return;
 
 //        if (!view || view->destroyed || !output->activate_plugin(grab_interface, false))
