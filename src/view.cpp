@@ -991,7 +991,7 @@ class wayfire_xdg6_view : public wayfire_view_t
 {
     protected:
     wlr_xdg_surface_v6 *v6_surface;
-    wl_listener destroy, map, unmap, new_popup,
+    wl_listener destroy, map_ev, unmap, new_popup,
                 request_move, request_resize,
                 request_maximize, request_fullscreen;
 
@@ -1006,7 +1006,7 @@ class wayfire_xdg6_view : public wayfire_view_t
 
         destroy.notify            = handle_v6_destroy;
         new_popup.notify          = handle_new_popup;
-        map.notify                = handle_v6_map;
+        map_ev.notify             = handle_v6_map;
         unmap.notify              = handle_v6_unmap;
         request_move.notify       = handle_v6_request_move;
         request_resize.notify     = handle_v6_request_resize;
@@ -1017,7 +1017,7 @@ class wayfire_xdg6_view : public wayfire_view_t
 
         wl_signal_add(&v6_surface->events.destroy, &destroy);
         wl_signal_add(&s->events.new_popup,        &new_popup);
-        wl_signal_add(&v6_surface->events.map,     &map);
+        wl_signal_add(&v6_surface->events.map,     &map_ev);
         wl_signal_add(&v6_surface->events.unmap,   &unmap);
         wl_signal_add(&v6_surface->toplevel->events.request_move,       &request_move);
         wl_signal_add(&v6_surface->toplevel->events.request_resize,     &request_resize);
@@ -1025,6 +1025,18 @@ class wayfire_xdg6_view : public wayfire_view_t
         wl_signal_add(&v6_surface->toplevel->events.request_fullscreen, &request_fullscreen);
 
         v6_surface->data = this;
+    }
+
+    virtual void map(wlr_surface *surface)
+    {
+        wayfire_view_t::map(surface);
+
+        log_info("map surface, maximized is %d", v6_surface->toplevel->current.maximized);
+        if (v6_surface->toplevel->client_pending.maximized)
+            maximize_request(true);
+
+        if (v6_surface->toplevel->client_pending.fullscreen)
+            fullscreen_request(output, true);
     }
 
     virtual wf_point get_output_position()
@@ -1447,6 +1459,12 @@ class wayfire_xwayland_view : public wayfire_view_t
         geometry.x = xw->x;
         geometry.y = xw->y;
         wayfire_view_t::map(surface);
+
+        if (xw->maximized_horz && xw->maximized_vert)
+            maximize_request(true);
+
+        if (xw->fullscreen)
+            fullscreen_request(output, true);
     }
 
     bool is_subsurface() { return false; }
