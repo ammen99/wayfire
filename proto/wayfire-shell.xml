@@ -27,6 +27,11 @@
             <arg name="y" type="int"/>
         </request>
 
+        <request name="focus_panel">
+            <arg name="output" type="uint"/>
+            <arg name="surface" type="object" interface="wl_surface"/>
+        </request>
+
         <request name="reserve">
             <arg name="output" type="uint"/>
             <arg name="side" type="uint"/>
