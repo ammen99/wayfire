@@ -204,7 +204,7 @@ class vswitch : public wayfire_plugin_t
             views_to_move.insert(view);
 
         for (auto view : views_to_move) {
-            if (view->is_mapped && !view->destroyed && view != static_view)
+            if (view->is_mapped() && !view->destroyed && view != static_view)
             {
                 log_info("found move view");
 

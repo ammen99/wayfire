@@ -11,8 +11,6 @@ extern "C"
 #undef class
 }
 
-#include <map>
-
 /* TODO: do we really need to implement wl_shell? who is using it nowadays? */
 class wayfire_surface_t;
 class decorator_base_t;
@@ -23,9 +21,7 @@ struct desktop_apis_t
     wlr_xwayland *xwayland;
 
     decorator_base_t *decorator = NULL;
-
-    std::map<wlr_surface *, wayfire_surface_t *> desktop_surfaces;
-    wl_listener v6_created, xwayland_created, xwayland_mapped;
+    wl_listener v6_created, xwayland_created;
 };
 
 void init_desktop_apis();

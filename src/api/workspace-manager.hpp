@@ -45,6 +45,8 @@ class workspace_manager
         virtual void for_each_view(view_callback_proc_t call, uint32_t layers_mask) = 0;
         virtual void for_each_view_reverse(view_callback_proc_t call, uint32_t layers_mask) = 0;
 
+        /* TODO: split this api? */
+
         /* if layer_mask == 0, then we remove the view from its layer,
          * if layer_mask == -1, then the view will be moved to the top of its layer */
         virtual void add_view_to_layer(wayfire_view view, uint32_t layer) = 0;

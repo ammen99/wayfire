@@ -156,17 +156,17 @@ void viewport_manager::add_view_to_layer(wayfire_view view, uint32_t layer)
 {
     /* make sure it is a valid layer */
     assert(layer == 0 || layer == uint32_t(-1) || (__builtin_popcount(layer) == 1 && layer <= WF_LAYER_LOCK));
-
-    if (layer == 0)
-    {
-        auto& current_layer = get_view_layer(view);
-        remove_from_layer(view, layer_index_from_mask(current_layer));
-        current_layer = 0;
-    }
-
     log_info("add to layer %d", layer);
 
     auto& current_layer = get_view_layer(view);
+    if (layer == 0)
+    {
+        if (current_layer)
+            remove_from_layer(view, layer_index_from_mask(current_layer));
+
+        current_layer = 0;
+        return;
+    }
 
     if (current_layer == layer)
         return;
@@ -300,7 +300,7 @@ void viewport_manager::set_workspace(std::tuple<int, int> nPos)
     auto views = get_views_on_workspace(std::make_tuple(vx, vy), WF_WM_LAYERS);
     auto it = views.rbegin();
     while(it != views.rend()) {
-        if ((*it)->is_mapped && !(*it)->destroyed)
+        if ((*it)->is_mapped() && !(*it)->destroyed)
             output->focus_view(*it);
         ++it;
     }

@@ -62,7 +62,6 @@ class wayfire_surface_t
                                                  int x, int y, bool reverse = false);
 
         wayfire_surface_t *parent_surface;
-        wayfire_surface_t() = delete;
 
         wayfire_output *output;
 
@@ -78,15 +77,16 @@ class wayfire_surface_t
 
     public:
 
-        wayfire_surface_t(wlr_surface *surface, wayfire_surface_t *parent = nullptr);
+        wayfire_surface_t(wayfire_surface_t *parent = nullptr);
         virtual ~wayfire_surface_t();
 
-        wlr_surface *surface;
+        /* if surface != nullptr, then the surface is mapped */
+        wlr_surface *surface = nullptr;
 
-        bool is_mapped = false;
-        virtual void map();
+        virtual void map(wlr_surface *surface);
         virtual void unmap();
-        virtual void destruct() { delete this; };
+        virtual void destruct() { delete this; }
+        virtual bool is_mapped() { return surface; }
 
         int keep_count = 0;
         bool destroyed = false;
@@ -171,7 +171,7 @@ class wayfire_view_t : public wayfire_surface_t
          * is destroyed if not removed earlier */
         std::map<std::string, wf_custom_view_data*> custom_data;
 
-        wayfire_view_t(wlr_surface *surface);
+        wayfire_view_t();
         virtual ~wayfire_view_t();
         uint32_t get_id() { return id; }
 
@@ -207,7 +207,7 @@ class wayfire_view_t : public wayfire_surface_t
 
         bool is_visible();
         virtual void commit();
-        virtual void map();
+        virtual void map(wlr_surface *surface);
         virtual void unmap();
         virtual void destruct();
 
@@ -256,4 +256,5 @@ class wayfire_view_t : public wayfire_surface_t
         virtual void render_fb(int x, int y, pixman_region32_t* damage, int target_fb);
 };
 
+wayfire_view wl_surface_to_wayfire_view(wl_resource *surface);
 #endif

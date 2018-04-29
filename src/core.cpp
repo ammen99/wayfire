@@ -658,11 +658,9 @@ void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
     int sx = cursor->x, sy = cursor->y;
     wayfire_surface_t *new_focus = NULL;
 
-    log_info("iter");
     output->workspace->for_each_view(
         [&] (wayfire_view view)
         {
-            log_info("visit %s", view->get_title().c_str());
             if (new_focus) return;
             new_focus = view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
         }, WF_ALL_LAYERS);
@@ -1505,6 +1503,15 @@ wayfire_view wayfire_core::find_view(wlr_surface *handle)
     } else {
         return it->second;
     }
+}
+
+wayfire_view wayfire_core::find_view(wayfire_surface_t *handle)
+{
+    for (auto v : views)
+        if (v.second.get() == handle)
+            return v.second;
+
+    return nullptr;
 }
 
 wayfire_view wayfire_core::find_view(uint32_t id)

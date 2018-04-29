@@ -80,6 +80,7 @@ class wayfire_core
 
         void add_view(wayfire_view view);
         wayfire_view find_view(wlr_surface *);
+        wayfire_view find_view(wayfire_surface_t *);
         wayfire_view find_view(uint32_t id);
 
         /* completely destroy a view */

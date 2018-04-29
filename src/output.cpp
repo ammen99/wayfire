@@ -496,7 +496,9 @@ void render_manager::post_paint()
         {
             struct timespec now;
             clock_gettime(CLOCK_MONOTONIC, &now);
-            wlr_surface_send_frame_done(surface->surface, &now);
+
+            if (surface->is_mapped())
+                wlr_surface_send_frame_done(surface->surface, &now);
         });
     }
 }
@@ -672,6 +674,9 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
 
         view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
         {
+            if (!surface->is_mapped())
+                return;
+
             if (!wlr_surface_has_buffer(surface->surface)
                 || !pixman_region32_not_empty(&ws_damage))
                 return;
@@ -793,10 +798,6 @@ wayfire_output* wl_output_to_wayfire_output(uint32_t output)
     return result;
 }
 
-wayfire_view wl_surface_to_wayfire_view(wl_resource *surface)
-{
-    return core->find_view((wlr_surface*) wl_resource_get_user_data(surface));
-}
 
 void shell_add_background(struct wl_client *client, struct wl_resource *resource,
         uint32_t output, struct wl_resource *surface, int32_t x, int32_t y)
@@ -1062,15 +1063,13 @@ void wayfire_output::detach_view(wayfire_view v)
     data.view = v;
     emit_signal("detach-view", &data);
 
-    if (v->keep_count <= 0)
-        workspace->add_view_to_layer(v, 0);
+    workspace->add_view_to_layer(v, 0);
 
     wayfire_view next = nullptr;
-
     auto views = workspace->get_views_on_workspace(workspace->get_current_workspace(),
                                                    WF_WM_LAYERS);
     for (auto wview : views) {
-        if (wview != v && wview->is_mapped && !wview->destroyed) {
+        if (wview != v && wview->is_mapped() && !wview->destroyed) {
             next = wview;
             break;
         }
