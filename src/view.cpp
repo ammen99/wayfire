@@ -854,7 +854,7 @@ void wayfire_view_t::maximize_request(bool state)
 void wayfire_view_t::fullscreen_request(wayfire_output *out, bool state)
 {
     if (decoration)
-        decoration->fullscreen_request(out, state);
+        return decoration->fullscreen_request(out, state);
 
     if (fullscreen == state)
         return;
@@ -1180,6 +1180,17 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
         v6_surface_offset = {v6_surface->geometry.x, v6_surface->geometry.y};
     }
 
+    void map(wlr_surface *surface)
+    {
+        wayfire_xdg6_view::map(surface);
+
+        if (contained->maximized)
+            maximize_request(true);
+
+        if (contained->fullscreen)
+            fullscreen_request(output, true);
+    }
+
     void activate(bool state)
     {
         wayfire_xdg6_view::activate(state);
@@ -1255,6 +1266,18 @@ class wayfire_xdg6_decoration_view : public wayfire_xdg6_view
 
     wlr_surface *get_keyboard_focus_surface()
     { return contained->get_keyboard_focus_surface(); }
+
+    void set_maximized(bool state)
+    {
+        wayfire_xdg6_view::set_maximized(state);
+        contained->set_maximized(state);
+    }
+
+    void set_fullscreen(bool state)
+    {
+        wayfire_xdg6_view::set_fullscreen(state);
+        contained->set_fullscreen(state);
+    }
 
  //   void move_request() { contained->move_request(); }
   //  void resize_request() { contained->resize_request(); }
