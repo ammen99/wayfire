@@ -9,12 +9,14 @@
 
 class gtk_frame : public wf_decorator_frame_t
 {
+    public:
+        static uint32_t top, bottom, left, right;
     wf_geometry get_child_geometry(wf_geometry frame_geometry)
     {
-        frame_geometry.x += 5;
-        frame_geometry.y += 40;
-        frame_geometry.width -= 10;
-        frame_geometry.height -= 45;
+        frame_geometry.x += left;
+        frame_geometry.y += top;
+        frame_geometry.width  -= left + right;
+        frame_geometry.height -= top  + bottom;
 
         return frame_geometry;
     }
@@ -23,12 +25,14 @@ class gtk_frame : public wf_decorator_frame_t
     {
         child.x = 0;
         child.y = 0;
-        child.width += 10;
-        child.height += 45;
+        child.width  += left + right;
+        child.height += top  + bottom;
 
         return child;
     }
 };
+
+uint32_t gtk_frame::top = 40, gtk_frame::bottom = 5, gtk_frame::left = 5, gtk_frame::right = 5;
 
 static bool begins_with(const std::string& a, const std::string& b)
 {
@@ -66,16 +70,17 @@ class gtk_decorator : public decorator_base_t
     }
 } decorator;
 
-/* TODO: implement update_borders */
 void update_borders(struct wl_client *client,
                     struct wl_resource *resource,
-                    struct wl_resource *decoration,
                     uint32_t top,
                     uint32_t bottom,
                     uint32_t left,
                     uint32_t right)
 {
-    /* TODO: update borders */
+    gtk_frame::top = top;
+    gtk_frame::bottom = bottom;
+    gtk_frame::left = left;
+    gtk_frame::right = right;
 }
 
 const struct wf_decorator_manager_interface decorator_implementation =
