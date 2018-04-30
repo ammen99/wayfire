@@ -1514,7 +1514,8 @@ class wayfire_xwayland_view : public wayfire_view_t
 
     void send_configure()
     {
-        wlr_xwayland_surface_configure(xw, geometry.x, geometry.y,
+        auto output_geometry = get_output_geometry();
+        wlr_xwayland_surface_configure(xw, output_geometry.x, output_geometry.y,
                                        geometry.width, geometry.height);
     }
 
