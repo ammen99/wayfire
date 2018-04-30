@@ -1067,7 +1067,9 @@ class wayfire_xdg6_view : public wayfire_view_t
     virtual wf_point get_output_position()
     {
         if (decoration)
-            return decoration->get_output_position() + wf_point{decor_x, decor_y};
+            return decoration->get_output_position()
+                + wf_point{decor_x, decor_y}
+                + wf_point{-v6_surface->geometry.x, -v6_surface->geometry.y};
 
         wf_point position {
             geometry.x - v6_surface->geometry.x,
@@ -1075,6 +1077,14 @@ class wayfire_xdg6_view : public wayfire_view_t
         };
 
         return position;
+    }
+
+    virtual void get_child_position(int &x, int &y)
+    {
+        assert(decoration);
+
+        x = decor_x - v6_surface->geometry.x;
+        y = decor_y - v6_surface->geometry.y;
     }
 
     virtual bool update_size()

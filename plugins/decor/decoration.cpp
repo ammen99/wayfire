@@ -61,7 +61,7 @@ class gtk_decorator : public decorator_base_t
         auto view = core->find_view(id);
 
         auto frame = new gtk_frame();
-        view->set_maximized(true);
+      //  view->set_maximized(true);
         view->set_decoration(decor_window, std::unique_ptr<wf_decorator_frame_t>(frame));
     }
 } decorator;
