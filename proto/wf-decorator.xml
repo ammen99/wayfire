@@ -1,0 +1,19 @@
+<protocol name="wf_decorator">
+    <interface name="wf_decorator_manager" version="1">
+        <event name="create_new_decoration">
+            <arg name="view" type="uint"/>
+        </event>
+
+        <request name="update_borders">
+            <arg name="top"    type="uint"/>
+            <arg name="bottom" type="uint"/>
+            <arg name="left"   type="uint"/>
+            <arg name="right"  type="uint"/>
+        </request>
+
+        <event name="title_changed">
+            <arg name="decoration" type="uint"/>
+            <arg name="new_title" type="string"/>
+        </event>
+    </interface>
+</protocol>
