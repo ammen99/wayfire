@@ -871,12 +871,26 @@ void shell_focus_panel(struct wl_client *client, struct wl_resource *resource,
     if (!wo) wo = view ? view->get_output() : nullptr;
 
     if (!wo || !view) {
-        log_error("shell_configure_panel called with invalid surface or output");
+        log_error("shell_focus_panel called with invalid surface or output");
         return;
     }
 
     if (wo == view->get_output())
         wo->focus_view(view);
+}
+
+void shell_return_focus(struct wl_client *client, struct wl_resource *resource,
+        uint32_t output)
+{
+    auto wo = wl_output_to_wayfire_output(output);
+
+    if (!wo) {
+        log_error("shell_return_focus called with invalid surface or output");
+        return;
+    }
+
+    if (wo == core->get_active_output())
+        wo->focus_view(wo->get_top_view());
 }
 
 void shell_reserve(struct wl_client *client, struct wl_resource *resource,
@@ -934,6 +948,7 @@ const struct wayfire_shell_interface shell_interface_impl {
     .add_panel = shell_add_panel,
     .configure_panel = shell_configure_panel,
     .focus_panel = shell_focus_panel,
+    .return_focus = shell_return_focus,
     .reserve = shell_reserve,
     .set_color_gamma = shell_set_color_gamma,
     .output_fade_in_start = shell_output_fade_in_start

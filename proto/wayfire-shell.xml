@@ -32,6 +32,10 @@
             <arg name="surface" type="object" interface="wl_surface"/>
         </request>
 
+        <request name="return_focus">
+            <arg name="output" type="uint"/>
+        </request>
+
         <request name="reserve">
             <arg name="output" type="uint"/>
             <arg name="side" type="uint"/>
