@@ -38,7 +38,7 @@ class wayfire_output_manager : public wayfire_plugin_t
 
             switch_output_with_window = [=] (weston_keyboard *kbd, uint32_t key) {
                 auto next = core->get_next_output(output);
-                auto view = output->get_top_view();
+                auto view = output->get_active_view();
 
                 if (!view)
                 {

@@ -39,6 +39,7 @@ class fade_animation : public animation_base
 class zoom_animation : public animation_base
 {
     wayfire_view view;
+    wf_2D_view *our_transform = nullptr;
 
     float alpha_start = 0, alpha_end = 1;
     float zoom_start = 1./3, zoom_end = 1;
@@ -61,7 +62,8 @@ class zoom_animation : public animation_base
         auto output = view->get_output();
         GetTuple(sw, sh, output->get_screen_size());
 
-        view->set_transformer(std::unique_ptr<wf_2D_view> (new wf_2D_view(sw, sh)));
+        our_transform = new wf_2D_view(sw, sh);
+        view->set_transformer(std::unique_ptr<wf_2D_view> (our_transform));
     }
 
     bool step()
@@ -79,7 +81,8 @@ class zoom_animation : public animation_base
 
     ~zoom_animation()
     {
-        view->set_transformer(nullptr);
+        if (view->get_transformer() == our_transform)
+            view->set_transformer(nullptr);
         view->alpha = 1.0;
     }
 };

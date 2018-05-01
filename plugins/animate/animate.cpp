@@ -27,13 +27,6 @@ void delete_hook_idle(void *data)
 }
 
 template<class animation_type, bool close_animation>
-void delete_hook(animation_hook<animation_type, close_animation> *hook)
-{
-    wl_event_loop_add_idle(core->ev_loop,
-                           delete_hook_idle<animation_type, close_animation>, hook);
-}
-
-template<class animation_type, bool close_animation>
 struct animation_hook
 {
     static_assert(std::is_base_of<animation_base, animation_type>::value,
@@ -42,26 +35,16 @@ struct animation_hook
     animation_base *base = nullptr;
     wayfire_view view;
     wayfire_output *output;
-    wayfire_grab_interface iface;
 
     effect_hook_t hook;
     signal_callback_t view_removed;
 
-    bool effect_running = true;
     bool first_run = true;
 
-    animation_hook(wayfire_grab_interface ifc, wayfire_view view, int frame_count) :
-        iface(ifc)
+    animation_hook(wayfire_view view, int frame_count)
     {
         this->view = view;
         output = view->get_output();
-
-        if (!output->activate_plugin(iface))
-        {
-            effect_running = false;
-            delete_hook(this);
-            return;
-        }
 
         /* make sure view is hidden till we actually start the animation */
         if (!close_animation)
@@ -70,63 +53,48 @@ struct animation_hook
         if (close_animation)
             view->take_snapshot();
 
+        base = dynamic_cast<animation_base*> (new animation_type());
+
         hook = [=] ()
         {
+            view->damage();
+
             if (first_run)
             {
-                base = static_cast<animation_base*> (new animation_type());
                 base->init(view, frame_count, close_animation);
                 first_run = false;
             }
 
+            bool result = base->step();
             view->damage();
-            if (effect_running && !base->step())
-            {
-                effect_running = false;
-                delete_hook(this);
-            }
-            view->damage();
+
+            if (!result)
+                delete this;
         };
 
         output->render->add_output_effect(&hook);
 
         view_removed = [=] (signal_data *data)
         {
-            if (get_signaled_view(data) == view && !close_animation && effect_running)
-            {
-                effect_running = false;
-                delete_hook(this);
-            }
+            if (get_signaled_view(data) == view && !close_animation)
+                delete this;
         };
 
         output->connect_signal("destroy-view", &view_removed);
         output->connect_signal("detach-view", &view_removed);
-
-        output->render->auto_redraw(true);
-        output->render->set_renderer();
     }
 
     ~animation_hook()
     {
-        if (!base)
-            return;
-
         delete base;
 
         output->render->rem_effect(&hook);
+
         output->disconnect_signal("detach-view", &view_removed);
         output->disconnect_signal("destroy-view", &view_removed);
 
-        /* will be false if other animations are still running */
-        if (output->deactivate_plugin(iface))
-        {
-            output->render->auto_redraw(false);
-            output->render->reset_renderer();
-        }
-
         /* make sure we "unhide" the view */
         view->alpha = 1.0;
-
         if (close_animation)
             view->dec_keep_count();
     }
@@ -194,12 +162,12 @@ class wayfire_animation : public wayfire_plugin_t {
             view->inc_keep_count();
 
         if (open_animation == "fade")
-            new animation_hook<fade_animation, false>(grab_interface, view, frame_count);
+            new animation_hook<fade_animation, false>(view, frame_count);
         else if (open_animation == "zoom")
-            new animation_hook<zoom_animation, false>(grab_interface, view, frame_count);
+            new animation_hook<zoom_animation, false>(view, frame_count);
 #if USE_GLES32
         else if (open_animation == "fire")
-            new animation_hook<wf_fire_effect, false>(grab_interface, view, frame_count);
+            new animation_hook<wf_fire_effect, false>(view, frame_count);
 #endif
     }
 
@@ -211,12 +179,12 @@ class wayfire_animation : public wayfire_plugin_t {
             return;
 
         if (close_animation == "fade")
-            new animation_hook<fade_animation, true> (grab_interface, view, frame_count);
+            new animation_hook<fade_animation, true> (view, frame_count);
         else if (close_animation == "zoom")
-            new animation_hook<zoom_animation, true> (grab_interface, view, frame_count);
+            new animation_hook<zoom_animation, true> (view, frame_count);
 #if USE_GLES32
         else if (close_animation == "fire")
-            new animation_hook<wf_fire_effect, true> (grab_interface, view, frame_count);
+            new animation_hook<wf_fire_effect, true> (view, frame_count);
 #endif
     }
 

@@ -1382,7 +1382,7 @@ void wayfire_core::refocus_active_output_active_view()
     if (!active_output)
         return;
 
-    auto view = active_output->get_top_view();
+    auto view = active_output->get_active_view();
     if (view) {
         active_output->focus_view(nullptr);
         active_output->focus_view(view);

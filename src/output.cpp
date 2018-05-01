@@ -978,6 +978,29 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
 
     render = new render_manager(this);
     plugin = new plugin_manager(this, c);
+
+    unmap_view_cb = [=] (signal_data *data)
+    {
+        if (get_signaled_view(data) == active_view)
+        {
+            wayfire_view next_focus = nullptr;
+            auto views = workspace->get_views_on_workspace(workspace->get_current_workspace(),
+                                                           WF_LAYER_WORKSPACE);
+
+            for (auto v : views)
+            {
+                if (v != active_view && v->is_mapped())
+                {
+                    next_focus = v;
+                    break;
+                }
+            }
+
+            set_active_view(next_focus);
+        }
+    };
+
+    connect_signal("unmap-view", &unmap_view_cb);
 }
 
 workspace_manager::~workspace_manager()
@@ -1133,19 +1156,6 @@ void wayfire_output::bring_to_front(wayfire_view v) {
     v->damage();
 }
 
-void wayfire_output::set_active_view(wayfire_view v)
-{
-    if (v == active_view)
-        return;
-
-    if (active_view && !active_view->destroyed)
-        active_view->activate(false);
-
-    active_view = v;
-    if (active_view)
-        active_view->activate(true);
-}
-
 static void set_keyboard_focus(wlr_seat *seat, wlr_surface *surface)
 {
     auto kbd = wlr_seat_get_keyboard(seat);
@@ -1159,35 +1169,53 @@ static void set_keyboard_focus(wlr_seat *seat, wlr_surface *surface)
     }
 }
 
-void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
+void wayfire_output::set_active_view(wayfire_view v, wlr_seat *seat)
 {
+    if (v == active_view)
+        return;
+
+    if (v && !v->is_mapped())
+        return set_active_view(nullptr, seat);
+
     if (seat == nullptr)
         seat = core->get_current_seat();
 
-    if (v && !v->get_keyboard_focus_surface())
-        return;
+    if (active_view && active_view->is_mapped())
+        active_view->activate(false);
 
-    set_active_view(v);
-
-    if (v) {
-        log_debug("output %s focus: %p", handle->name, v->get_keyboard_focus_surface());
-        bring_to_front(v);
-        set_keyboard_focus(seat, v->get_keyboard_focus_surface());
-    } else {
-        log_debug("output %s focus: (null)", handle->name);
+    active_view = v;
+    if (active_view)
+    {
+        set_keyboard_focus(seat, active_view->get_keyboard_focus_surface());
+        active_view->activate(true);
+    } else
+    {
         set_keyboard_focus(seat, NULL);
     }
+}
 
-    focus_view_signal data;
-    data.view = v;
-    emit_signal("focus-view", &data);
+
+void wayfire_output::focus_view(wayfire_view v, wlr_seat *seat)
+{
+    if (v && v->is_mapped() && v->get_keyboard_focus_surface())
+    {
+        set_active_view(v, seat);
+        bring_to_front(v);
+
+        focus_view_signal data;
+        data.view = v;
+        emit_signal("focus-view", &data);
+    }
+    else
+    {
+        set_active_view(nullptr, seat);
+        if (v)
+            bring_to_front(v);
+    }
 }
 
 wayfire_view wayfire_output::get_top_view()
 {
-    if (active_view)
-        return active_view;
-
     wayfire_view view = nullptr;
     workspace->for_each_view([&view] (wayfire_view v) {
         if (!view)

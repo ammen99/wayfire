@@ -37,6 +37,7 @@ class wayfire_output
        wayfire_grab_interface get_input_grab_interface();
 
        wl_listener destroy_listener;
+       signal_callback_t unmap_view_cb;
 
     public:
        int id;
@@ -68,13 +69,18 @@ class wayfire_output
        void deactivate();
 
        wayfire_view get_top_view();
+       wayfire_view get_active_view() { return active_view; }
        wayfire_view get_view_at_point(int x, int y);
 
        void attach_view(wayfire_view v);
        void detach_view(wayfire_view v);
 
+       /* sets keyboard focus and active_view */
+       void set_active_view(wayfire_view v, wlr_seat *seat = nullptr);
+
+       /* same as set_active_view(), but will bring the view to the front */
        void focus_view(wayfire_view v, wlr_seat *seat = nullptr);
-       void set_active_view(wayfire_view v);
+
        void bring_to_front(wayfire_view v);
 
        int add_key(uint32_t mod, uint32_t key, key_callback *);

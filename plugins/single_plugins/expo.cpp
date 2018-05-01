@@ -510,7 +510,7 @@ class wayfire_expo : public wayfire_plugin_t
 
         output->render->reset_renderer();
         output->render->auto_redraw(false);
-        output->focus_view(output->get_top_view());
+        output->focus_view(output->get_active_view());
     }
 };
 
