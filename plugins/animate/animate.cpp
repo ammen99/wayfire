@@ -39,32 +39,24 @@ struct animation_hook
     effect_hook_t hook;
     signal_callback_t view_removed;
 
-    bool first_run = true;
-
     animation_hook(wayfire_view view, int frame_count)
     {
+        log_info("create animation");
         this->view = view;
         output = view->get_output();
-
-        /* make sure view is hidden till we actually start the animation */
-        if (!close_animation)
-            view->alpha = 0.0;
 
         if (close_animation)
             view->take_snapshot();
 
+        view->damage();
         base = dynamic_cast<animation_base*> (new animation_type());
+        base->init(view, frame_count, close_animation);
+        base->step();
+        view->damage();
 
         hook = [=] ()
         {
             view->damage();
-
-            if (first_run)
-            {
-                base->init(view, frame_count, close_animation);
-                first_run = false;
-            }
-
             bool result = base->step();
             view->damage();
 
@@ -118,8 +110,6 @@ class wayfire_animation : public wayfire_plugin_t {
         close_animation = section->get_string("close_animation", "fade");
         frame_count = section->get_duration("duration", 16);
         startup_duration = section->get_duration("startup_duration", 36);
-
-        frame_count = 100;
 
 #if not USE_GLES32
         if(open_animation == "fire" || close_animation == "fire")

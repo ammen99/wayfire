@@ -747,6 +747,7 @@ void wayfire_view_t::take_snapshot()
     if (!is_mapped() || !wlr_surface_has_buffer(surface))
         return;
 
+    wlr_renderer_begin(core->renderer, output->handle->width, output->handle->height);
     auto output_geometry = get_output_geometry();
 
     offscreen_buffer.output_x = output_geometry.x;
@@ -772,13 +773,12 @@ void wayfire_view_t::take_snapshot()
                             offscreen_buffer.fb_width, offscreen_buffer.fb_height,
                             NULL);
     }, true);
-}
 
+    wlr_renderer_end(core->renderer);
+}
 
 void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
 {
-
-
     //log_info("render_pixman %p", surface);
 
     if (decoration && decoration->get_transformer())
@@ -832,16 +832,16 @@ void wayfire_view_t::map(wlr_surface *surface)
     if (update_size())
         damage();
 
-    /* TODO: consider not emitting a create-view for special surfaces */
-    map_view_signal data;
-    data.view = self();
-    output->emit_signal("map-view", &data);
-
     if (!is_special)
     {
         output->attach_view(self());
         output->focus_view(self());
     }
+
+    /* TODO: consider not emitting a create-view for special surfaces */
+    map_view_signal data;
+    data.view = self();
+    output->emit_signal("map-view", &data);
 }
 
 void wayfire_view_t::unmap()
@@ -896,6 +896,7 @@ void wayfire_view_t::maximize_request(bool state)
     } else if (state)
     {
         set_geometry(output->workspace->get_workarea());
+        set_maximized(state);
         output->emit_signal("view-maximized", &data);
     }
 }
@@ -1103,14 +1104,13 @@ class wayfire_xdg6_view : public wayfire_view_t
 
     virtual void map(wlr_surface *surface)
     {
-        wayfire_view_t::map(surface);
-
-        log_info("map surface, maximized is %d", v6_surface->toplevel->current.maximized);
         if (v6_surface->toplevel->client_pending.maximized)
             maximize_request(true);
 
         if (v6_surface->toplevel->client_pending.fullscreen)
             fullscreen_request(output, true);
+
+        wayfire_view_t::map(surface);
     }
 
     virtual wf_point get_output_position()
