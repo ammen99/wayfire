@@ -92,7 +92,7 @@ void wf_2D_view::render_with_damage(uint32_t src_tex,
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, target_fbo));
     OpenGL::use_device_viewport();
 
-    OpenGL::render_transformed_texture(src_tex, {tlx, tly, brx, bry},{}, transform);
+    OpenGL::render_transformed_texture(src_tex, {tlx, tly, brx, bry},{}, transform, {1.0f, 1.0f, 1.0f, alpha});
 }
 
 wf_3D_view::wf_3D_view(float w, float h)

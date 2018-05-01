@@ -91,8 +91,8 @@ class wayfire_surface_t
         int keep_count = 0;
         bool destroyed = false;
 
-        void inc_keep_count() { ++keep_count; }
-        void dec_keep_count() { --keep_count; if (!keep_count) destruct(); }
+        void inc_keep_count();
+        void dec_keep_count();
 
         virtual wayfire_surface_t *get_main_surface();
 
@@ -150,11 +150,18 @@ class wayfire_view_t : public wayfire_surface_t
         virtual void get_child_position(int &x, int &y);
         virtual void damage(const wlr_box& box);
 
-        struct
+        struct offscreen_buffer_t
         {
             uint32_t fbo = -1, tex = -1;
+            /* used to store output_geometry when the view has been destroyed */
+            int32_t output_x = 0, output_y = 0;
             int32_t fb_width = 0, fb_height = 0;
             pixman_region32_t cached_damage;
+
+            void init(int w, int h);
+            void fini();
+            bool valid();
+
         } offscreen_buffer;
 
         std::unique_ptr<wf_view_transformer_t> transform;
@@ -185,6 +192,8 @@ class wayfire_view_t : public wayfire_surface_t
 
         /* return geometry as should be used for all WM purposes */
         virtual wf_geometry get_wm_geometry() { return decoration ? decoration->get_wm_geometry() : geometry; }
+        virtual wf_geometry get_output_geometry();
+
         virtual wlr_box get_bounding_box();
         virtual wf_point get_output_position();
 
@@ -252,6 +261,9 @@ class wayfire_view_t : public wayfire_surface_t
         /* the returned value is just a temporary object */
         virtual wf_view_transformer_t* get_transformer() { return transform.get(); }
         virtual void render_fb(int x, int y, pixman_region32_t* damage, int target_fb);
+
+        bool has_snapshot = false;
+        virtual void take_snapshot();
 };
 
 wayfire_view wl_surface_to_wayfire_view(wl_resource *surface);

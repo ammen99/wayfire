@@ -1532,11 +1532,10 @@ void wayfire_core::erase_view(wayfire_view v)
 {
     if (!v) return;
 
-    /* TODO: what do we do now? */
-    views.erase(v.get());
-
     if (v->get_output())
         v->get_output()->detach_view(v);
+
+    views.erase(v.get());
 
     /*
     if (v->handle && destroy_handle)

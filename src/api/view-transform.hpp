@@ -37,6 +37,7 @@ class wf_2D_view : public wf_view_transformer_t
         float angle = 0.0f;
         float scale_x = 1.0f, scale_y = 1.0f;
         float translation_x = 0.0f, translation_y = 0.0f;
+        float alpha = 1.0f;
 
         float m_aspect;
 

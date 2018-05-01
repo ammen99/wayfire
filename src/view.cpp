@@ -22,11 +22,13 @@ extern "C"
 #undef static
 }
 
-/* TODO: clean up the code, currently it is a horrible mess */
+/* TODO: clean up the code, currently it is a horrible mess
+ * Target: split view.cpp into several files, PIMPL the wayfire_view_t and wayfire_surface_t structures */
+
+/* TODO: consistently use wf_geometry/wlr_box, don't simply mix them
+ * There must be a distinction(i.e what is a box, what is geometry) */
 
 /* misc definitions */
-
-/* TODO: use surface->data instead of a global map */
 
 bool operator == (const wf_geometry& a, const wf_geometry& b)
 {
@@ -273,6 +275,17 @@ void wayfire_surface_t::unmap()
     if (destroy.notify)
         wl_list_remove(&destroy.link);
 }
+void wayfire_surface_t::inc_keep_count()
+{
+    ++keep_count;
+}
+
+void wayfire_surface_t::dec_keep_count()
+{
+    --keep_count;
+    if (!keep_count)
+        destruct();
+}
 
 void wayfire_surface_t::damage(pixman_region32_t *region)
 {
@@ -375,7 +388,7 @@ void wayfire_surface_t::for_each_surface(wf_surface_iterator_callback call, bool
 void wayfire_surface_t::render_fbo(int x, int y, int fb_w, int fb_h,
                                    pixman_region32_t *damage)
 {
-    if (!wlr_surface_has_buffer(surface))
+    if (!is_mapped() || !wlr_surface_has_buffer(surface))
         return;
 
     /* TODO: optimize, use offscreen_buffer.cached_damage */
@@ -394,7 +407,7 @@ void wayfire_surface_t::render_fbo(int x, int y, int fb_w, int fb_h,
     wlr_matrix_scale(matrix, 1.0 / fb_geometry.width, 1.0 / fb_geometry.height);
 
     wlr_renderer_scissor(core->renderer, NULL);
-    wlr_render_texture(core->renderer, surface->texture, matrix, 0, 0, alpha);
+    wlr_render_texture(core->renderer, surface->texture, matrix, 0, 0, 1.0f);
 }
 
 static wlr_box get_scissor_box(wayfire_output *output, wlr_box *box)
@@ -452,6 +465,9 @@ void wayfire_surface_t::render_pixman(int x, int y, pixman_region32_t *damage)
 
 void wayfire_surface_t::render_fb(int x, int y, pixman_region32_t *damage, int fb)
 {
+    if (!is_mapped() || !wlr_surface_has_buffer(surface))
+        return;
+
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb));
     render_pixman(x, y, damage);
 }
@@ -470,10 +486,9 @@ wayfire_view wayfire_view_t::self()
     return core->find_view((wayfire_surface_t*) this);
 }
 
-// TODO: implement is_visible
 bool wayfire_view_t::is_visible()
 {
-    return true;
+    return (is_mapped() || offscreen_buffer.valid()) && !is_hidden;
 }
 
 bool wayfire_view_t::update_size()
@@ -645,6 +660,19 @@ wf_point wayfire_view_t::get_output_position()
     return wf_point{geometry.x, geometry.y};
 }
 
+wf_geometry wayfire_view_t::get_output_geometry()
+{
+    if (is_mapped() || !offscreen_buffer.valid())
+        return wayfire_surface_t::get_output_geometry();
+
+    return {
+        offscreen_buffer.output_x,
+        offscreen_buffer.output_y,
+        offscreen_buffer.fb_width,
+        offscreen_buffer.fb_height
+    };
+}
+
 void wayfire_view_t::damage(const wlr_box& box)
 {
     if (decoration)
@@ -682,60 +710,86 @@ static wf_geometry get_output_centric_geometry(const wf_geometry& output, wf_geo
     return view;
 }
 
+void wayfire_view_t::offscreen_buffer_t::init(int w, int h)
+{
+    OpenGL::prepare_framebuffer_size(w, h, fbo, tex);
+    fb_width = w;
+    fb_height = h;
+
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fbo));
+    GL_CALL(glViewport(0, 0, fb_width, fb_height));
+
+    wlr_renderer_scissor(core->renderer, NULL);
+
+    GL_CALL(glClearColor(0, 0, 0, 0));
+    GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
+}
+
+bool wayfire_view_t::offscreen_buffer_t::valid()
+{
+    return fbo != (uint32_t)-1;
+}
+
+void wayfire_view_t::offscreen_buffer_t::fini()
+{
+    if (!valid())
+        return;
+
+    glDeleteFramebuffers(1, &fbo);
+    glDeleteTextures(1, &tex);
+
+    fb_width = fb_height = 0;
+    fbo = tex = -1;
+}
+
+void wayfire_view_t::take_snapshot()
+{
+    if (!is_mapped() || !wlr_surface_has_buffer(surface))
+        return;
+
+    auto output_geometry = get_output_geometry();
+
+    offscreen_buffer.output_x = output_geometry.x;
+    offscreen_buffer.output_y = output_geometry.y;
+
+    int scale = surface->current->scale;
+    if (output_geometry.width * scale != offscreen_buffer.fb_width
+        || output_geometry.height * scale != offscreen_buffer.fb_height)
+    {
+        offscreen_buffer.fini();
+    }
+
+    if (!offscreen_buffer.valid())
+    {
+        offscreen_buffer.init(output_geometry.width * scale, output_geometry.height * scale);
+        pixman_region32_init(&offscreen_buffer.cached_damage);
+    }
+
+    for_each_surface([=] (wayfire_surface_t *surface, int x, int y) {
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
+        GL_CALL(glViewport(0, 0, offscreen_buffer.fb_width, offscreen_buffer.fb_height));
+        surface->render_fbo((x - output_geometry.x) * scale, (y - output_geometry.y) * scale,
+                            offscreen_buffer.fb_width, offscreen_buffer.fb_height,
+                            NULL);
+    }, true);
+}
+
+
 void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
 {
-    if (!wlr_surface_has_buffer(surface))
-        return;
+
 
     //log_info("render_pixman %p", surface);
 
     if (decoration && decoration->get_transformer())
-        return;
+        assert(false);
 
     if (transform && !decoration)
     {
+        take_snapshot();
         auto output_geometry = get_output_geometry();
-
-        int scale = surface->current->scale;
-        if (output_geometry.width * scale != offscreen_buffer.fb_width
-            || output_geometry.height * scale != offscreen_buffer.fb_height)
-        {
-            if (offscreen_buffer.fbo != (uint)-1)
-            {
-                glDeleteFramebuffers(1, &offscreen_buffer.fbo);
-                glDeleteTextures(1, &offscreen_buffer.tex);
-
-                offscreen_buffer.fbo = offscreen_buffer.tex = -1;
-            }
-        }
-
-        if (offscreen_buffer.fbo == (uint32_t)-1)
-        {
-            pixman_region32_init(&offscreen_buffer.cached_damage);
-            OpenGL::prepare_framebuffer_size(output_geometry.width * scale, output_geometry.height * scale,
-                                             offscreen_buffer.fbo, offscreen_buffer.tex);
-
-            offscreen_buffer.fb_width = output_geometry.width * scale;
-            offscreen_buffer.fb_height = output_geometry.height * scale;
-
-            GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
-            GL_CALL(glViewport(0, 0, output_geometry.width, output_geometry.height));
-
-            wlr_renderer_scissor(core->renderer, NULL);
-
-            GL_CALL(glClearColor(1, 1, 1, 0));
-            GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
-        }
-
-        for_each_surface([=] (wayfire_surface_t *surface, int x, int y) {
-            GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, offscreen_buffer.fbo));
-            GL_CALL(glViewport(0, 0, offscreen_buffer.fb_width, offscreen_buffer.fb_height));
-            surface->render_fbo((x - output_geometry.x) * scale, (y - output_geometry.y) * scale,
-                                offscreen_buffer.fb_width, offscreen_buffer.fb_height,
-                                NULL);
-        }, true);
-
         auto obox = output_geometry;
+
         obox.x = x;
         obox.y = y;
         auto centric_geometry = get_output_centric_geometry(output->get_full_geometry(), obox);
@@ -751,6 +805,7 @@ void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
             auto sbox = get_scissor_box(output, &box);
             transform->render_with_damage(offscreen_buffer.tex, fb, centric_geometry, sbox);
         }
+
     } else
     {
         wayfire_surface_t::render_fb(x, y, damage, fb);
@@ -791,22 +846,16 @@ void wayfire_view_t::map(wlr_surface *surface)
 
 void wayfire_view_t::unmap()
 {
-    wayfire_surface_t::unmap();
+    unmap_view_signal data;
+    data.view = self();
+    output->emit_signal("unmap-view", &data);
 
+    wayfire_surface_t::unmap();
     if (decoration)
     {
         decoration->close();
         decoration->unmap();
     }
-
-    /* TODO: what if a plugin wants to keep this view? */
-    auto old_output = output;
-    output->detach_view(self());
-    output = old_output;
-
-    unmap_view_signal data;
-    data.view = self();
-    output->emit_signal("unmap-view", &data);
 }
 
 void wayfire_view_t::move_request()
@@ -1324,9 +1373,7 @@ void wayfire_view_t::damage()
 
 void wayfire_view_t::destruct()
 {
-    auto cast = dynamic_cast<wayfire_xdg6_view*> (this);
-    if (cast)
-        log_info("destroy for self %p", cast->v6_surface);
+    output->detach_view(self());
     core->erase_view(self());
 }
 
@@ -1346,9 +1393,7 @@ void wayfire_view_t::set_decoration(wayfire_view decor,
         assert(raw_ptr);
 
         if (output)
-        {
             output->detach_view(self());
-        }
 
         raw_ptr->init(self(), std::move(frame));
     }

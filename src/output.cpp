@@ -645,7 +645,13 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
             view_dy = -dy;
         }
 
-        if (view->get_transformer())
+        /* We use the snapshot of a view if either condition is happening:
+         * 1. The view has a transform
+         * 2. The view is visible, but not mapped
+         *    => it is snapshoted and kept alive by some plugin */
+
+        /* Snapshoted views include all of their subsurfaces, so we handle them separately */
+        if (view->get_transformer() || !view->is_mapped())
         {
             auto ds = damaged_surface(new damaged_surface_t);
 
@@ -672,14 +678,11 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
             goto next;
         }
 
+        /* Iterate over all subsurfaces/menus of a "regular" view */
         view->for_each_surface([&] (wayfire_surface_t *surface, int x, int y)
         {
-          //  log_info("render surface %p", surface);
             if (!surface->is_mapped())
-            {
-                log_info("has unmapped surface");
                 return;
-            }
 
             if (!wlr_surface_has_buffer(surface->surface)
                 || !pixman_region32_not_empty(&ws_damage))
@@ -1104,23 +1107,22 @@ void wayfire_output::detach_view(wayfire_view v)
     wayfire_view next = nullptr;
     auto views = workspace->get_views_on_workspace(workspace->get_current_workspace(),
                                                    WF_WM_LAYERS);
-    for (auto wview : views) {
-        if (wview != v && wview->is_mapped() && !wview->destroyed) {
+    for (auto wview : views)
+    {
+        if (wview->is_mapped())
+        {
             next = wview;
             break;
         }
     }
 
-    if (active_view == v) {
-        if (next == nullptr) {
-            active_view = nullptr;
-        } else {
-            if (v->keep_count) {
-                set_active_view(next);
-            } else { /* Some plugins wants to keep the view, let it manage the position */
-                focus_view(next);
-            }
-        }
+    if (next == nullptr)
+    {
+        active_view = nullptr;
+    }
+    else
+    {
+        focus_view(next);
     }
 }
 
