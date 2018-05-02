@@ -792,7 +792,7 @@ void wayfire_view_t::render_fb(int x, int y, pixman_region32_t* damage, int fb)
 
         obox.x = x;
         obox.y = y;
-        auto centric_geometry = get_output_centric_geometry(output->get_full_geometry(), obox);
+        auto centric_geometry = get_output_centric_geometry(output->get_relative_geometry(), obox);
 
         int n_rect;
         auto rects = pixman_region32_rectangles(damage, &n_rect);
@@ -929,7 +929,7 @@ void wayfire_view_t::fullscreen_request(wayfire_output *out, bool state)
     if (surface) {
         wo->emit_signal("view-fullscreen-request", &data);
     } else if (state) {
-        set_geometry(output->get_full_geometry());
+        set_geometry(output->get_relative_geometry());
         output->emit_signal("view-fullscreen", &data);
     }
 

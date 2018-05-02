@@ -210,7 +210,10 @@ class wayfire_grid : public wayfire_plugin_t {
         auto it = saved_view_geometry.find(v);
         auto g = output->workspace->get_workarea();
         if (use_full_area)
+        {
             g = output->get_full_geometry();
+            g.x = g.y = 0;
+        }
 
         if (it == saved_view_geometry.end() || v->get_wm_geometry() != g ||
                 force_maximize)

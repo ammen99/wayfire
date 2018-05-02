@@ -49,12 +49,21 @@ class wayfire_output
 
        wayfire_output(wlr_output*, wayfire_config *config);
        ~wayfire_output();
+
+       /* output-local geometry of the output */
+       wf_geometry get_relative_geometry();
+
+       /* geometry with respect to the output-layout */
        wf_geometry get_full_geometry();
 
        void set_transform(wl_output_transform new_transform);
        wl_output_transform get_transform();
+
        /* makes sure that the pointer is inside the output's geometry */
        void ensure_pointer();
+
+       /* in output-local coordinates */
+       std::tuple<int, int> get_cursor_position();
 
        /* @param break_fs - lower fullscreen windows if any */
        bool activate_plugin  (wayfire_grab_interface owner, bool lower_fs = true);

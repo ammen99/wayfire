@@ -8,7 +8,7 @@ class wayfire_autostart : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         /* make sure we are run only when adding the first output */
-        if (core->get_next_output(output) != output)
+        if (core->get_num_outputs() > 0)
             return;
 
         auto section = config->get_section("autostart");

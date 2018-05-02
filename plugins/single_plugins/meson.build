@@ -8,3 +8,4 @@ grid          = shared_module('grid',          'grid.cpp',          include_dire
 wrot          = shared_module('wrot',          'wrot.cpp',          include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')
 expo          = shared_module('expo',          'expo.cpp',          include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')
 switcher      = shared_module('switcher',      'switcher.cpp',      include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')
+oswitch       = shared_module('oswitch',       'oswitch.cpp',       include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [pixman], install: true, install_dir: 'lib/wayfire/')

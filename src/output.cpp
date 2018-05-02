@@ -401,7 +401,7 @@ void render_manager::paint()
 
     bool needs_swap;
     if (!output_damage->make_current(&frame_damage, needs_swap) || !needs_swap)
-        if (!constant_redraw)
+        if (!constant_redraw && false)
             return;
 
     pixman_region32_t swap_damage;
@@ -567,7 +567,7 @@ void render_manager::workspace_stream_update(wf_workspace_stream *stream,
                                              float scale_x, float scale_y)
 {
     OpenGL::bind_context(output->render->ctx);
-    auto g = output->get_full_geometry();
+    auto g = output->get_relative_geometry();
 
     GetTuple(x, y, stream->ws);
     GetTuple(cx, cy, output->workspace->get_current_workspace());
@@ -819,7 +819,7 @@ void shell_add_background(struct wl_client *client, struct wl_resource *resource
         return;
     }
 
-    log_debug("wf_shell: add_background");
+    log_debug("wf_shell: add_background to %s", wo->handle->name);
 
     view->is_special = 1;
     view->get_output()->detach_view(view);
@@ -972,7 +972,7 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
     wlr_output_set_scale(handle, section->get_double("scale", 1));
 
     wlr_output_set_transform(handle, WL_OUTPUT_TRANSFORM_NORMAL);
-    wlr_output_layout_add(core->output_layout, handle, 0, 0);
+    wlr_output_layout_add_auto(core->output_layout, handle);
 
     core->set_default_cursor();
 
@@ -1013,6 +1013,15 @@ wayfire_output::~wayfire_output()
     delete workspace;
     delete plugin;
     delete render;
+}
+
+wf_geometry wayfire_output::get_relative_geometry()
+{
+    wf_geometry g;
+    g.x = g.y = 0;
+    wlr_output_effective_resolution(handle, &g.width, &g.height);
+
+    return g;
 }
 
 wf_geometry wayfire_output::get_full_geometry()
@@ -1098,6 +1107,14 @@ void wayfire_output::ensure_pointer()
 
         weston_pointer_move(ptr, &ev);
     } */
+}
+
+std::tuple<int, int> wayfire_output::get_cursor_position()
+{
+    GetTuple(x, y, core->get_cursor_position());
+    auto og = get_full_geometry();
+
+    return std::make_tuple(x - og.x, y - og.y);
 }
 
 void wayfire_output::activate()

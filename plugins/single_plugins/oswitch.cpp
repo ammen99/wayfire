@@ -2,8 +2,11 @@
 #include <core.hpp>
 #include <view.hpp>
 #include <linux/input-event-codes.h>
-#include "../../shared/config.hpp"
+#include <config.hpp>
 
+/* XXX: remove next_output_idle_cb, because if an output is unplugged
+ * in between switching outputs(highly unlikely, but still possible),
+ * we should remove the idle source */
 void next_output_idle_cb(void *data)
 {
     auto wo = (wayfire_output*) data;
@@ -22,39 +25,31 @@ class wayfire_output_manager : public wayfire_plugin_t
 
             auto section = config->get_section("oswitch");
 
-            auto actkey  = section->get_key("next_output", {WLR_MODIFIER_SUPER, KEY_K});
+            auto actkey  = section->get_key("next_output", {WLR_MODIFIER_LOGO, KEY_K});
             auto withwin = section->get_key("next_output_with_win",
-                    {WLR_MODIFIER_SUPER | WLR_MODIFIER_SHIFT, KEY_K});
+                    {WLR_MODIFIER_LOGO | WLR_MODIFIER_SHIFT, KEY_K});
 
-            switch_output = [=] (weston_keyboard *kbd, uint32_t key) {
+            switch_output = [=] (uint32_t key) {
                 /* when we switch the output, the oswitch keybinding
                  * may be activated for the next output, which we don't want,
                  * so we postpone the switch */
                 auto next = core->get_next_output(output);
 
-                auto loop = wl_display_get_event_loop(core->ec->wl_display);
-                wl_event_loop_add_idle(loop, next_output_idle_cb, next);
+                wl_event_loop_add_idle(core->ev_loop, next_output_idle_cb, next);
             };
 
-            switch_output_with_window = [=] (weston_keyboard *kbd, uint32_t key) {
+            switch_output_with_window = [=] (uint32_t key) {
                 auto next = core->get_next_output(output);
                 auto view = output->get_active_view();
 
                 if (!view)
                 {
-                    switch_output(kbd, key);
+                    switch_output(key);
                     return;
                 }
 
-                auto pg = view->output->get_full_geometry();
-                auto ng = next->get_full_geometry();
-
-                view->move(view->geometry.x + ng.x - pg.x,
-                           view->geometry.y + ng.y - pg.y);
                 core->move_view_to_output(view, next);
-
-                auto loop = wl_display_get_event_loop(core->ec->wl_display);
-                wl_event_loop_add_idle(loop, next_output_idle_cb, next);
+                wl_event_loop_add_idle(core->ev_loop, next_output_idle_cb, next);
             };
 
             output->add_key(actkey.mod, actkey.keyval, &switch_output);

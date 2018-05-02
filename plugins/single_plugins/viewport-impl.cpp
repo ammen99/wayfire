@@ -159,6 +159,7 @@ void viewport_manager::add_view_to_layer(wayfire_view view, uint32_t layer)
     assert(layer == 0 || layer == uint32_t(-1) || (__builtin_popcount(layer) == 1 && layer <= WF_LAYER_LOCK));
     log_info("add to layer %d", layer);
 
+    view->damage();
     auto& current_layer = _get_view_layer(view);
     if (layer == 0)
     {
@@ -182,6 +183,7 @@ void viewport_manager::add_view_to_layer(wayfire_view view, uint32_t layer)
     log_info("add to layer %d", layer_index_from_mask(layer));
     layer_container.push_front(view);
     current_layer = layer;
+    view->damage();
 }
 
 uint32_t viewport_manager::get_view_layer(wayfire_view view)
@@ -194,6 +196,7 @@ bool viewport_manager::view_visible_on(wayfire_view view, std::tuple<int, int> v
     GetTuple(tx, ty, vp);
 
     auto g = output->get_full_geometry();
+    g.x = g.y = 0;
 
     if (!view->is_special)
     {
@@ -371,8 +374,8 @@ wf_geometry viewport_manager::get_workarea()
     auto g = output->get_full_geometry();
     return
     {
-        g.x + workarea.left_padding,
-        g.y + workarea.top_padding,
+        workarea.left_padding,
+        workarea.top_padding,
         g.width - workarea.left_padding - workarea.right_padding,
         g.height - workarea.top_padding - workarea.bot_padding
     };

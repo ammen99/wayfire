@@ -94,7 +94,7 @@ class wayfire_expo : public wayfire_plugin_t
             if (button != BTN_LEFT)
                 return;
 
-            GetTuple(x, y, core->get_cursor_position());
+            GetTuple(x, y, output->get_cursor_position());
             handle_input_press(x, y, state);
 
         };
@@ -262,8 +262,6 @@ class wayfire_expo : public wayfire_plugin_t
     void input_coordinates_to_global_coordinates(int &sx, int &sy)
     {
         auto og = output->get_full_geometry();
-        sx -= og.x;
-        sy -= og.y;
 
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
 
@@ -291,7 +289,7 @@ class wayfire_expo : public wayfire_plugin_t
 
         wayfire_view search = nullptr;
         output->workspace->for_each_view([&search, og, sx, sy] (wayfire_view v) {
-            if (!search && point_inside({sx + og.x, sy + og.y}, v->get_wm_geometry()))
+            if (!search && point_inside({sx, sy}, v->get_wm_geometry()))
             search = v;
         }, WF_WM_LAYERS);
 

@@ -153,7 +153,7 @@ class vswitch : public wayfire_plugin_t
 
         output->workspace->set_workspace(std::make_tuple(vx, vy));
 
-        auto output_g = output->get_full_geometry();
+        auto output_g = output->get_relative_geometry();
         if (front.view)
         {
             front.view->move(front.view->get_wm_geometry().x + dx * output_g.width,

@@ -98,7 +98,7 @@ class wayfire_resize : public wayfire_plugin_t {
         auto view = get_signaled_view(data);
         if (view)
         {
-            GetTuple(x, y, core->get_cursor_position());
+            GetTuple(x, y, output->get_cursor_position());
             initiate(view, x, y);
         }
     }

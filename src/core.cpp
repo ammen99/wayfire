@@ -622,8 +622,9 @@ void input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
                 callbacks.push_back(binding->call);
         }
 
+        GetTuple(ox, oy, core->get_active_output()->get_cursor_position());
         for (auto call : callbacks)
-            (*call) (ev->button, cursor->x, cursor->y);
+            (*call) (ev->button, ox, oy);
     }
 
     if (active_grab && active_grab->callbacks.pointer.button)
@@ -650,19 +651,21 @@ void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
 
     if (input_grabbed() && real_update)
     {
+        GetTuple(sx, sy, core->get_active_output()->get_cursor_position());
         if (active_grab->callbacks.pointer.motion)
-            active_grab->callbacks.pointer.motion(cursor->x, cursor->y);
+            active_grab->callbacks.pointer.motion(sx, sy);
         return;
     }
 
-    int sx = cursor->x, sy = cursor->y;
+    GetTuple(px, py, output->get_cursor_position());
+    int sx, sy;
     wayfire_surface_t *new_focus = NULL;
 
     output->workspace->for_each_view(
         [&] (wayfire_view view)
         {
             if (new_focus) return;
-            new_focus = view->map_input_coordinates(cursor->x, cursor->y, sx, sy);
+            new_focus = view->map_input_coordinates(px, py, sx, sy);
         }, WF_ALL_LAYERS);
 
     update_cursor_focus(new_focus, sx, sy);
@@ -1572,6 +1575,7 @@ void wayfire_core::move_view_to_output(wayfire_view v, wayfire_output *new_outpu
         v->get_output()->detach_view(v);
 
     new_output->attach_view(v);
+    new_output->focus_view(v);
 }
 
 wayfire_core *core;

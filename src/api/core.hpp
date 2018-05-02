@@ -77,7 +77,10 @@ class wayfire_core
 
         wlr_seat *get_current_seat();
         void set_default_cursor();
+
+        /* in output-layout-local coordinates */
         std::tuple<int, int> get_cursor_position();
+
         wayfire_surface_t *get_cursor_focus();
 
         void add_view(wayfire_view view);
