@@ -38,7 +38,8 @@ void wayfire_focus::init(wayfire_config *)
 
     callback = [=] (uint32_t button, int x, int y)
     {
-        auto output = core->get_output_at(x, y);
+        GetTuple(gx, gy, core->get_cursor_position());
+        auto output = core->get_output_at(gx, gy);
         core->focus_output(output);
 
         wayfire_surface_t *focus = nullptr, *main_surface = nullptr;

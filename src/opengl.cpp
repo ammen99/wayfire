@@ -182,8 +182,8 @@ namespace OpenGL
         GL_CALL(glViewport(vp.x, vp.y, vp.width, vp.height));
     }
 
-    void release_context(context_t *ctx) {
-        glDeleteProgram(ctx->program);
+    void release_context(context_t *ctx)
+    {
         delete ctx;
     }
 

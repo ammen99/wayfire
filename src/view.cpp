@@ -678,6 +678,9 @@ void wayfire_view_t::damage(const wlr_box& box)
     if (decoration)
         return decoration->damage(box);
 
+    if (!output)
+        return;
+
     auto wm_geometry = get_wm_geometry();
     if (transform)
     {
@@ -846,9 +849,12 @@ void wayfire_view_t::map(wlr_surface *surface)
 
 void wayfire_view_t::unmap()
 {
-    unmap_view_signal data;
-    data.view = self();
-    output->emit_signal("unmap-view", &data);
+    if (output)
+    {
+        unmap_view_signal data;
+        data.view = self();
+        output->emit_signal("unmap-view", &data);
+    }
 
     wayfire_surface_t::unmap();
     if (decoration)
@@ -1373,7 +1379,6 @@ void wayfire_view_t::damage()
 
 void wayfire_view_t::destruct()
 {
-    output->detach_view(self());
     core->erase_view(self());
 }
 
@@ -1772,9 +1777,5 @@ void init_desktop_apis()
 
     core->api->xwayland_created.notify = notify_xwayland_created;
     core->api->xwayland = wlr_xwayland_create(core->display, core->compositor);
-
-    log_info("xwayland display started at%d", core->api->xwayland->display);
     wl_signal_add(&core->api->xwayland->events.new_surface, &core->api->xwayland_created);
 }
-
-

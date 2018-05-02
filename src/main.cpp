@@ -8,6 +8,7 @@
 extern "C"
 {
 #include <wlr/backend/multi.h>
+#include <wlr/backend/wayland.h>
 #include <wlr/util/log.h>
 }
 
@@ -32,11 +33,13 @@ void compositor_sleep_cb (wl_listener*, void*)
 
 int main(int argc, char *argv[])
 {
+    /*
     signal(SIGINT, signalHandle);
     signal(SIGSEGV, signalHandle);
     signal(SIGFPE, signalHandle);
     signal(SIGILL, signalHandle);
     signal(SIGABRT, signalHandle);
+    */
 
 #ifdef WAYFIRE_DEBUG_ENABLED
     wlr_log_init(L_DEBUG, NULL);
@@ -70,7 +73,9 @@ int main(int argc, char *argv[])
     core = new wayfire_core();
     core->display  = wl_display_create();
     core->ev_loop  = wl_display_get_event_loop(core->display);
-    core->backend  = wlr_backend_autocreate(core->display);
+    core->backend = wlr_wl_backend_create(core->display, getenv("WAYLAND_DISPLAY"));
+    wlr_wl_output_create(core->backend);
+ //   core->backend  = wlr_backend_autocreate(core->display);
     core->renderer = wlr_backend_get_renderer(core->backend);
 
     /*

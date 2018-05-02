@@ -155,11 +155,6 @@ struct wf_output_damage
         damage_manager = wlr_output_damage_create(output);
     }
 
-    ~wf_output_damage()
-    {
-        wlr_output_damage_destroy(damage_manager);
-    }
-
     void add()
     {
         int w, h;
@@ -229,6 +224,8 @@ void frame_cb (wl_listener*, void *data)
 render_manager::render_manager(wayfire_output *o)
 {
     output = o;
+
+    /* TODO: do we really need a unique_ptr? */
     output_damage = std::unique_ptr<wf_output_damage>(new wf_output_damage(output->handle));
     output_damage->add();
 
@@ -968,6 +965,8 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
         wlr_output_set_mode(handle, mode);
     }
 
+    render = new render_manager(this);
+
     auto section = c->get_section(handle->name);
     wlr_output_set_scale(handle, section->get_double("scale", 1));
 
@@ -975,8 +974,6 @@ wayfire_output::wayfire_output(wlr_output *handle, wayfire_config *c)
     wlr_output_layout_add_auto(core->output_layout, handle);
 
     core->set_default_cursor();
-
-    render = new render_manager(this);
     plugin = new plugin_manager(this, c);
 
     unmap_view_cb = [=] (signal_data *data)

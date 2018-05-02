@@ -11,6 +11,7 @@
 
 extern "C"
 {
+#include <wlr/backend/wayland.h>
 #include <wlr/backend/libinput.h>
 #include <wlr/backend/session.h>
 #include <wlr/backend/multi.h>
@@ -573,8 +574,11 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
     std::vector<key_callback*> callbacks;
     if (state == WLR_KEY_PRESSED)
     {
-        if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
-            return true;
+        if (key == KEY_A)
+            wlr_wl_output_create(core->backend);
+
+        //if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
+         //   return true;
 
         auto mod_state = get_modifiers();
 
@@ -1316,7 +1320,10 @@ void wayfire_core::add_output(wlr_output *output)
 {
     log_info("add new output: %s", output->name);
     if (outputs.find(output) != outputs.end())
+    {
+        log_info("old output");
         return;
+    }
 
     if (!input) {
         pending_outputs.push_back(output);
@@ -1344,9 +1351,10 @@ void wayfire_core::remove_output(wayfire_output *output)
 
     /* we have no outputs, simply quit */
     if (outputs.empty())
-    {
         std::exit(0);
-    }
+
+    for (auto resource : shell_clients)
+        wayfire_shell_send_output_destroyed(resource, output->id);
 
     if (output == active_output)
         focus_output(outputs.begin()->second);
@@ -1358,12 +1366,10 @@ void wayfire_core::remove_output(wayfire_output *output)
     /* first move each desktop view(e.g windows) to another output */
     output->workspace->for_each_view_reverse([=] (wayfire_view view)
     {
-        output->workspace->add_view_to_layer(view, 0);
         view->set_output(nullptr);
+        output->workspace->add_view_to_layer(view, 0);
 
         active_output->attach_view(view);
-        /* TODO: do we actually move()? */
-       // view->move(view->get_geometry().x + dx, view->get_geometry().y + dy);
         active_output->focus_view(view);
     }, WF_WM_LAYERS);
 
@@ -1371,13 +1377,11 @@ void wayfire_core::remove_output(wayfire_output *output)
      * desktop views have been removed by the previous cycle */
     output->workspace->for_each_view([output] (wayfire_view view)
     {
-        output->workspace->add_view_to_layer(view, 0);
         view->set_output(nullptr);
+        output->workspace->add_view_to_layer(view, 0);
     }, WF_ALL_LAYERS);
 
     delete output;
-    for (auto resource : shell_clients)
-        wayfire_shell_send_output_destroyed(resource, output->id);
 }
 
 void wayfire_core::refocus_active_output_active_view()
