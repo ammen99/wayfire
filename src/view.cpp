@@ -668,8 +668,8 @@ wf_geometry wayfire_view_t::get_output_geometry()
     return {
         offscreen_buffer.output_x,
         offscreen_buffer.output_y,
-        offscreen_buffer.fb_width,
-        offscreen_buffer.fb_height
+        (int32_t)(offscreen_buffer.fb_width / output->handle->scale),
+        (int32_t)(offscreen_buffer.fb_height / output->handle->scale)
     };
 }
 
