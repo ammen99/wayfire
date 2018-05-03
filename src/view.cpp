@@ -986,6 +986,14 @@ class wayfire_xdg6_popup : public wayfire_surface_t
             popup->base->data = this;
         }
 
+        ~wayfire_xdg6_popup()
+        {
+            wl_list_remove(&new_popup.link);
+            wl_list_remove(&m_popup_map.link);
+            wl_list_remove(&m_popup_unmap.link);
+            wl_list_remove(&destroy.link);
+        }
+
         virtual void get_child_position(int &x, int &y)
         {
             double sx, sy;
@@ -1203,6 +1211,15 @@ class wayfire_xdg6_view : public wayfire_view_t
 
     ~wayfire_xdg6_view()
     {
+
+        wl_list_remove(&destroy.link);
+        wl_list_remove(&new_popup.link);
+        wl_list_remove(&map_ev.link);
+        wl_list_remove(&unmap.link);
+        wl_list_remove(&request_move.link);
+        wl_list_remove(&request_resize.link);
+        wl_list_remove(&request_maximize.link);
+        wl_list_remove(&request_fullscreen.link);
     }
 };
 
@@ -1534,6 +1551,18 @@ class wayfire_xwayland_view : public wayfire_view_t
         xw->data = this;
     }
 
+    ~wayfire_xwayland_view()
+    {
+        wl_list_remove(&destroy.link);
+        wl_list_remove(&unmap.link);
+        wl_list_remove(&map_ev.link);
+        wl_list_remove(&request_move.link);
+        wl_list_remove(&request_resize.link);
+        wl_list_remove(&request_maximize.link);
+        wl_list_remove(&request_fullscreen.link);
+        wl_list_remove(&configure.link);
+    }
+
     void map(wlr_surface *surface)
     {
         geometry.x = xw->x;
@@ -1740,7 +1769,10 @@ class wayfire_unmanaged_xwayland_view : public wayfire_view_t
 
     ~wayfire_unmanaged_xwayland_view()
     {
-        log_info("destroy unmanaged xwayland view");
+        wl_list_remove(&destroy.link);
+        wl_list_remove(&unmap_listener.link);
+        wl_list_remove(&configure.link);
+        wl_list_remove(&map_ev.link);
     }
 
     std::string get_title()  { return nonull(xw->title);   }

@@ -73,9 +73,7 @@ int main(int argc, char *argv[])
     core = new wayfire_core();
     core->display  = wl_display_create();
     core->ev_loop  = wl_display_get_event_loop(core->display);
-    core->backend = wlr_wl_backend_create(core->display, getenv("WAYLAND_DISPLAY"));
-    wlr_wl_output_create(core->backend);
- //   core->backend  = wlr_backend_autocreate(core->display);
+    core->backend  = wlr_backend_autocreate(core->display);
     core->renderer = wlr_backend_get_renderer(core->backend);
 
     /*

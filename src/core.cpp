@@ -574,11 +574,8 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
     std::vector<key_callback*> callbacks;
     if (state == WLR_KEY_PRESSED)
     {
-        if (key == KEY_A)
-            wlr_wl_output_create(core->backend);
-
-        //if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
-         //   return true;
+        if (check_vt_switch(wlr_multi_get_session(core->backend), key, get_modifiers()))
+            return true;
 
         auto mod_state = get_modifiers();
 
@@ -1347,7 +1344,6 @@ void wayfire_core::remove_output(wayfire_output *output)
     log_info("removing output: %s", output->handle->name);
 
     outputs.erase(output->handle);
-    wl_list_remove(&output->destroy_listener.link);
 
     /* we have no outputs, simply quit */
     if (outputs.empty())

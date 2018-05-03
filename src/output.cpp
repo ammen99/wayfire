@@ -265,6 +265,8 @@ void render_manager::release_context()
 
 render_manager::~render_manager()
 {
+    wl_list_remove(&frame_listener.link);
+
     if (idle_redraw_source)
         wl_event_source_remove(idle_redraw_source);
     if (idle_damage_source)
@@ -1010,6 +1012,8 @@ wayfire_output::~wayfire_output()
     delete workspace;
     delete plugin;
     delete render;
+
+    wl_list_remove(&destroy_listener.link);
 }
 
 wf_geometry wayfire_output::get_relative_geometry()
