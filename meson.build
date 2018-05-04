@@ -7,7 +7,7 @@ project(
 	meson_version: '>=0.43.0',
 	default_options: [
 		'cpp_std=c++11',
-        'c_std=c99',
+        'c_std=c11',
 		'warning_level=2',
 		'werror=false',
 	],
@@ -31,7 +31,7 @@ libinput       = dependency('libinput', version: '>=1.7.0')
 pixman         = dependency('pixman-1')
 threads        = dependency('threads')
 xkbcommon      = dependency('xkbcommon')
-wlroots        = dependency('wlroots')
+wlroots        = dependency('wlroots', fallback: ['wlroots', 'wlroots'])
 
 alsa   = dependency('alsa',           required: false)
 gdk    = dependency('gdk-2.0',        required: false)
