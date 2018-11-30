@@ -42,7 +42,7 @@ void main()
     vec2 uv = uvpos[0];
 
     if (mode == 0) {
-        float radius = offset * 0.1;
+        float radius = offset;
         vec3 acc = vec3(0), div = acc;
         float r = 1.0;
         vec2 vangle = vec2(radius / sqrt(float(iterations)), radius / sqrt(float(iterations)));
@@ -68,11 +68,28 @@ void main()
 }
 )";
 
+static wf_option iterations_opt, offset_opt, degrade_opt;
 static GLuint bokeh_prog, modeID, posID, mvpID, texcoordID, offsetID, iterID, halfpixelID, texID[2];
 
 void
-wayfire_bokeh_blur::init()
+wayfire_bokeh_blur::get_options(blur_options *options)
 {
+    options->iterations = iterations_opt->as_int();
+    options->offset = offset_opt->as_double();
+    options->degrade = degrade_opt->as_int();
+}
+
+void
+wayfire_bokeh_blur::init(wayfire_config_section *section, wf_option_callback *blur_option_changed, struct blur_options *options)
+{
+    iterations_opt = section->get_option("bokeh_iterations", "15");
+    offset_opt = section->get_option("bokeh_offset", "5");
+    degrade_opt = section->get_option("bokeh_degrade", "1");
+    iterations_opt->add_updated_handler(blur_option_changed);
+    offset_opt->add_updated_handler(blur_option_changed);
+    degrade_opt->add_updated_handler(blur_option_changed);
+    get_options(options);
+
     OpenGL::render_begin();
 
     auto vs = OpenGL::compile_shader(bokeh_vertex_shader, GL_VERTEX_SHADER);
@@ -115,11 +132,10 @@ void
 wayfire_bokeh_blur::pre_render(uint32_t src_tex,
                                 wlr_box _src_box,
                                 pixman_region32_t *damage,
-                                const wf_framebuffer& target_fb,
-                                struct blur_options *options)
+                                const wf_framebuffer& target_fb)
 {
-    int iterations = options->iterations;
-    float offset = options->offset;
+    int iterations = iterations_opt->as_int();
+    float offset = offset_opt->as_double();
 
     wlr_box fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
 
@@ -139,11 +155,11 @@ wayfire_bokeh_blur::pre_render(uint32_t src_tex,
     int x = src_box.x, y = src_box.y, w = src_box.width, h = src_box.height;
     int bx = b.x, by = b.y, bw = b.width, bh = b.height;
 
-    int sw = bw * (1.0 / options->degrade);
-    int sh = bh * (1.0 / options->degrade);
+    int sw = bw * (1.0 / degrade_opt->as_int());
+    int sh = bh * (1.0 / degrade_opt->as_int());
 
-    int pw = sw * options->degrade;
-    int ph = sh * options->degrade;
+    int pw = sw * degrade_opt->as_int();
+    int ph = sh * degrade_opt->as_int();
 
     static const float vertexData[] = {
         -1.0f, -1.0f,

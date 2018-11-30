@@ -14,52 +14,6 @@ static wayfire_kawase_blur kawase;
 static wayfire_bokeh_blur bokeh;
 static struct blur_options options;
 
-static void
-compute_params(struct blur_options *options, int strength)
-{
-    int i = 0, d = 0;
-    float o = 0;
-
-    if (!method.compare("box") || !method.compare("gaussian"))
-    {
-        if (strength > 5)
-        {
-            i = strength - 3;
-            d = 2;
-        }
-        else
-        {
-            i = strength;
-            d = 1;
-        }
-        o = strength / 3.0;
-    }
-    else if (!method.compare("kawase"))
-    {
-        if (strength > 5)
-        {
-            i = strength - 3;
-            d = 2;
-        }
-        else
-        {
-            i = strength;
-            d = 1;
-        }
-        o = strength / 1.5;
-    }
-    else if (!method.compare("bokeh"))
-    {
-        i = strength * 2;
-        o = i * 5;
-        d = 1;
-    }
-
-    options->iterations = i;
-    options->offset = o;
-    options->degrade = d;
-}
-
 class wf_blur : public wf_view_transformer_t
 {
     public:
@@ -119,13 +73,13 @@ class wf_blur : public wf_view_transformer_t
                                         const wf_framebuffer& target_fb)
         {
             if (!method.compare("box"))
-                box.pre_render(src_tex, src_box, damage, target_fb, &options);
+                box.pre_render(src_tex, src_box, damage, target_fb);
             else if (!method.compare("gaussian"))
-                gauss.pre_render(src_tex, src_box, damage, target_fb, &options);
+                gauss.pre_render(src_tex, src_box, damage, target_fb);
             else if (!method.compare("kawase"))
-                kawase.pre_render(src_tex, src_box, damage, target_fb, &options);
+                kawase.pre_render(src_tex, src_box, damage, target_fb);
             else if (!method.compare("bokeh"))
-                bokeh.pre_render(src_tex, src_box, damage, target_fb, &options);
+                bokeh.pre_render(src_tex, src_box, damage, target_fb);
         }
 
         virtual void render_with_damage(uint32_t src_tex,
@@ -156,7 +110,7 @@ class wayfire_blur : public wayfire_plugin_t
     wayfire_config_section *section;
     pixman_region32_t padded_region;
     std::string last_method;
-    wf_option method_opt, strength_opt;
+    wf_option method_opt;
 
     wf_framebuffer_base saved_pixels;
 
@@ -168,14 +122,10 @@ class wayfire_blur : public wayfire_plugin_t
 
         section = config->get_section("blur");
         method_opt = section->get_option("method", "kawase");
-        strength_opt = section->get_option("strength", "5");
         method = last_method = method_opt->as_string();
-        compute_params(&options, strength_opt->as_int());
 
         blur_option_changed = [=] ()
         {
-            compute_params(&options, strength_opt->as_int());
-
             output->workspace->for_each_view([=] (wayfire_view view) {
                 if (view->get_transformer(transformer_name))
                 {
@@ -183,13 +133,10 @@ class wayfire_blur : public wayfire_plugin_t
                 }
             }, WF_ALL_LAYERS);
         };
-        strength_opt->add_updated_handler(&blur_option_changed);
 
         blur_method_changed = [=] ()
         {
 	    method = method_opt->as_string();
-
-            compute_params(&options, strength_opt->as_int());
 
             if (!last_method.compare("box"))
                 box.fini();
@@ -201,13 +148,13 @@ class wayfire_blur : public wayfire_plugin_t
                 bokeh.fini();
 
             if (!method.compare("box"))
-                box.init();
+                box.init(section, &blur_option_changed, &options);
 	    else if (!method.compare("gaussian"))
-                gauss.init();
+                gauss.init(section, &blur_option_changed, &options);
 	    else if (!method.compare("kawase"))
-                kawase.init();
+                kawase.init(section, &blur_option_changed, &options);
 	    else if (!method.compare("bokeh"))
-                bokeh.init();
+                bokeh.init(section, &blur_option_changed, &options);
 
             output->workspace->for_each_view([=] (wayfire_view view) {
                 if (view->get_transformer(transformer_name))
@@ -367,13 +314,13 @@ class wayfire_blur : public wayfire_plugin_t
         output->render->connect_signal("workspace-stream-post", &workspace_stream_post);
 
         if (!method.compare("box"))
-            box.init();
+            box.init(section, &blur_option_changed, &options);
 	else if (!method.compare("gaussian"))
-            gauss.init();
+            gauss.init(section, &blur_option_changed, &options);
 	else if (!method.compare("kawase"))
-            kawase.init();
+            kawase.init(section, &blur_option_changed, &options);
 	else if (!method.compare("bokeh"))
-            bokeh.init();
+            bokeh.init(section, &blur_option_changed, &options);
     }
 
     void pixman_box_from_damage_box(const wf_framebuffer& target_fb,

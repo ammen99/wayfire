@@ -62,11 +62,28 @@ void main()
 }
 )";
 
+static wf_option iterations_opt, offset_opt, degrade_opt;
 static GLuint kawase_prog, modeID, posID, mvpID, texcoordID, offsetID, halfpixelID, texID[2];
 
 void
-wayfire_kawase_blur::init()
+wayfire_kawase_blur::get_options(blur_options *options)
 {
+    options->iterations = iterations_opt->as_int();
+    options->offset = offset_opt->as_double();
+    options->degrade = degrade_opt->as_int();
+}
+
+void
+wayfire_kawase_blur::init(wayfire_config_section *section, wf_option_callback *blur_option_changed, struct blur_options *options)
+{
+    iterations_opt = section->get_option("kawase_iterations", "2");
+    offset_opt = section->get_option("kawase_offset", "2");
+    degrade_opt = section->get_option("kawase_degrade", "1");
+    iterations_opt->add_updated_handler(blur_option_changed);
+    offset_opt->add_updated_handler(blur_option_changed);
+    degrade_opt->add_updated_handler(blur_option_changed);
+    get_options(options);
+
     OpenGL::render_begin();
     auto vs = OpenGL::compile_shader(kawase_vertex_shader, GL_VERTEX_SHADER);
     auto fs = OpenGL::compile_shader(kawase_fragment_shader, GL_FRAGMENT_SHADER);
@@ -106,11 +123,10 @@ void
 wayfire_kawase_blur::pre_render(uint32_t src_tex,
                                 wlr_box _src_box,
                                 pixman_region32_t *damage,
-                                const wf_framebuffer& target_fb,
-                                struct blur_options *options)
+                                const wf_framebuffer& target_fb)
 {
-    int i, iterations = options->iterations;
-    float offset = options->offset;
+    int i, iterations = iterations_opt->as_int();
+    float offset = offset_opt->as_double();
 
     wlr_box fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
 
@@ -130,11 +146,11 @@ wayfire_kawase_blur::pre_render(uint32_t src_tex,
     int x = src_box.x, y = src_box.y, w = src_box.width, h = src_box.height;
     int bx = b.x, by = b.y, bw = b.width, bh = b.height;
 
-    int sw = bw * (1.0 / options->degrade);
-    int sh = bh * (1.0 / options->degrade);
+    int sw = bw * (1.0 / degrade_opt->as_int());
+    int sh = bh * (1.0 / degrade_opt->as_int());
 
-    int pw = sw * options->degrade;
-    int ph = sh * options->degrade;
+    int pw = sw * degrade_opt->as_int();
+    int ph = sh * degrade_opt->as_int();
 
     static const float vertexData[] = {
         -1.0f, -1.0f,
