@@ -69,7 +69,7 @@ class wf_blur : public wf_view_transformer_t
 
         virtual void pre_render(uint32_t src_tex,
                                         wlr_box src_box,
-                                        pixman_region32_t *damage,
+                                        const wf_region& damage,
                                         const wf_framebuffer& target_fb)
         {
             if (!method.compare("box"))
@@ -108,7 +108,7 @@ class wayfire_blur : public wayfire_plugin_t
     wf_option_callback blur_option_changed, blur_method_changed;
     const std::string transformer_name = "blur";
     wayfire_config_section *section;
-    pixman_region32_t padded_region;
+    wf_region padded_region;
     std::string last_method;
     wf_option method_opt;
 
@@ -196,16 +196,11 @@ class wayfire_blur : public wayfire_plugin_t
          * damage will be used to render the scene as normal. Then
          * workspace_stream_post is called so we can copy the padded
          * pixels back. */
-        pixman_region32_init(&padded_region);
         workspace_stream_pre = [=] (signal_data *data)
         {
-            auto damage = static_cast<wf_stream_signal*>(data)->raw_damage;
+            auto& damage = static_cast<wf_stream_signal*>(data)->raw_damage;
             const auto& target_fb = static_cast<wf_stream_signal*>(data)->fb;
-            pixman_region32_t expanded_damage;
             wlr_box fb_geom;
-            int i, n_rect;
-
-            pixman_region32_init(&expanded_damage);
 
             fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
 
@@ -221,24 +216,23 @@ class wayfire_blur : public wayfire_plugin_t
             wayfire_surface_t::set_opaque_shrink_constraint("blur",
                 padding);
 
-            auto rects = pixman_region32_rectangles(damage, &n_rect);
-            /* Pad the raw damage and store result in expanded_damage. */
-            for (i = 0; i < n_rect; i++)
+            wf_region expanded_damage;
+            for (const auto& rect : damage)
             {
-                pixman_region32_union_rect(&expanded_damage, &expanded_damage,
-                    rects[i].x1 - padding, rects[i].y1 - padding,
-                    (rects[i].x2 - rects[i].x1) + 2 * padding,
-                    (rects[i].y2 - rects[i].y1) + 2 * padding);
+                expanded_damage |= {
+                    rect.x1 - padding,
+                    rect.y1 - padding,
+                    (rect.x2 - rect.x1) + 2 * padding,
+                    (rect.y2 - rect.y1) + 2 * padding
+                };
             }
             auto fb_g = target_fb.damage_box_from_geometry_box(target_fb.geometry);
 
             /* Keep rects on screen */
-            pixman_region32_intersect_rect(&expanded_damage, &expanded_damage,
-                fb_g.x, fb_g.y,
-                fb_g.width, fb_g.height);
+            expanded_damage &= fb_g;
 
             /* Compute padded region and store result in padded_region. */
-            pixman_region32_subtract(&padded_region, &expanded_damage, damage);
+            padded_region = expanded_damage ^ damage;
 
             OpenGL::render_begin(target_fb);
 
@@ -251,15 +245,11 @@ class wayfire_blur : public wayfire_plugin_t
             GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, target_fb.fb));
 
             /* Copy pixels in padded_region from target_fb to saved_pixels. */
-            rects = pixman_region32_rectangles(&padded_region, &n_rect);
-            for (i = 0; i < n_rect; i++)
+            for (const auto& rect : padded_region)
             {
-                pixman_box32_t box;
-                pixman_box_from_damage_box(target_fb, box,
-                                           rects[i].x1,
-                                           rects[i].y1,
-                                           rects[i].x2,
-                                           rects[i].y2);
+                pixman_box32_t box = pixman_box_from_wlr_box(
+                    target_fb.framebuffer_box_from_damage_box(
+                        wlr_box_from_pixman_box(rect)));
 
                 GL_CALL(glBlitFramebuffer(
                         box.x1, fb_geom.height - box.y2,
@@ -269,10 +259,7 @@ class wayfire_blur : public wayfire_plugin_t
             }
 
             /* This effectively makes damage the same as expanded_damage. */
-            pixman_region32_union(damage, damage, &expanded_damage);
-
-            /* Reset stuff */
-            pixman_region32_fini(&expanded_damage);
+            damage |= expanded_damage;
             OpenGL::render_end();
         };
 
@@ -286,7 +273,6 @@ class wayfire_blur : public wayfire_plugin_t
         {
             const auto& target_fb = static_cast<wf_stream_signal*>(data)->fb;
             wlr_box fb_geom;
-            int i, n_rect;
 
             fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
 
@@ -299,15 +285,11 @@ class wayfire_blur : public wayfire_plugin_t
             GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target_fb.fb));
 
             /* Copy pixels back in padded_region from saved_pixels to target_fb. */
-            auto rects = pixman_region32_rectangles(&padded_region, &n_rect);
-            for (i = 0; i < n_rect; i++)
+            for (const auto& rect : padded_region)
             {
-                pixman_box32_t box;
-                pixman_box_from_damage_box(target_fb, box,
-                                           rects[i].x1,
-                                           rects[i].y1,
-                                           rects[i].x2,
-                                           rects[i].y2);
+                pixman_box32_t box = pixman_box_from_wlr_box(
+                    target_fb.framebuffer_box_from_damage_box(
+                        wlr_box_from_pixman_box(rect)));
 
                 GL_CALL(glBlitFramebuffer(box.x1, box.y1, box.x2, box.y2,
                         box.x1, fb_geom.height - box.y2,
@@ -316,7 +298,7 @@ class wayfire_blur : public wayfire_plugin_t
             }
 
             /* Reset stuff */
-            pixman_region32_clear(&padded_region);
+            padded_region.clear();
             OpenGL::render_end();
         };
 
@@ -330,28 +312,6 @@ class wayfire_blur : public wayfire_plugin_t
             kawase.init(section, &blur_option_changed, &options);
 	else if (!method.compare("bokeh"))
             bokeh.init(section, &blur_option_changed, &options);
-    }
-
-    void pixman_box_from_damage_box(const wf_framebuffer& target_fb,
-                                    pixman_box32_t &pbox,
-                                    uint32_t x1,
-                                    uint32_t y1,
-                                    uint32_t x2,
-                                    uint32_t y2)
-    {
-        wlr_box box;
-
-        box.x = x1;
-        box.y = y1;
-        box.width = x2 - x1;
-        box.height = y2 - y1;
-
-        box = target_fb.framebuffer_box_from_damage_box(box);
-
-        pbox.x1 = box.x;
-        pbox.y1 = box.y;
-        pbox.x2 = box.x + box.width;
-        pbox.y2 = box.y + box.height;
     }
 
     void fini()
@@ -368,8 +328,6 @@ class wayfire_blur : public wayfire_plugin_t
         OpenGL::render_begin();
         saved_pixels.release();
         OpenGL::render_end();
-
-        pixman_region32_fini(&padded_region);
     }
 };
 

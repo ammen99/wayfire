@@ -118,7 +118,7 @@ wayfire_box_blur::init(wayfire_config_section *section, wf_option_callback *blur
 void
 wayfire_box_blur::pre_render(uint32_t src_tex,
                              wlr_box _src_box,
-                             pixman_region32_t *damage,
+                             const wf_region& damage,
                              const wf_framebuffer& target_fb)
 {
     int i, iterations = iterations_opt->as_int();
@@ -126,14 +126,10 @@ wayfire_box_blur::pre_render(uint32_t src_tex,
 
     wlr_box fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
 
-    pixman_box32_t box = *pixman_region32_extents(damage);
-    wlr_box b;
-    b.x = box.x1;
-    b.y = box.y1;
-    b.width = box.x2 - box.x1;
-    b.height = box.y2 - box.y1;
+    wlr_box b = wlr_box_from_pixman_box(damage.get_extents());
     b = target_fb.framebuffer_box_from_damage_box(b);
-    auto src_box = target_fb.framebuffer_box_from_geometry_box(_src_box);
+
+     auto src_box = target_fb.framebuffer_box_from_geometry_box(_src_box);
     int fb_h = fb_geom.height;
 
     src_box.x -= fb_geom.x;

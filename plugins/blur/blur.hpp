@@ -118,7 +118,7 @@ class wayfire_box_blur
     void get_options(struct blur_options*);
     void pre_render(uint32_t src_tex,
                     wlr_box src_box,
-                    pixman_region32_t *damage,
+                    const wf_region& damage,
                     const wf_framebuffer& target_fb);
     void render(uint32_t src_tex,
                 wlr_box src_box,
@@ -138,7 +138,7 @@ class wayfire_gaussian_blur
     void get_options(struct blur_options*);
     void pre_render(uint32_t src_tex,
                     wlr_box src_box,
-                    pixman_region32_t *damage,
+                    const wf_region& damage,
                     const wf_framebuffer& target_fb);
     void render(uint32_t src_tex,
                 wlr_box src_box,
@@ -158,7 +158,7 @@ class wayfire_kawase_blur
     void get_options(struct blur_options*);
     void pre_render(uint32_t src_tex,
                     wlr_box src_box,
-                    pixman_region32_t *damage,
+                    const wf_region& damage,
                     const wf_framebuffer& target_fb);
     void render(uint32_t src_tex,
                 wlr_box src_box,
@@ -178,7 +178,7 @@ class wayfire_bokeh_blur
     void get_options(struct blur_options*);
     void pre_render(uint32_t src_tex,
                     wlr_box src_box,
-                    pixman_region32_t *damage,
+                    const wf_region& damage,
                     const wf_framebuffer& target_fb);
     void render(uint32_t src_tex,
                 wlr_box src_box,
