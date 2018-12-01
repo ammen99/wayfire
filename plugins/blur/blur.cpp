@@ -126,6 +126,15 @@ class wayfire_blur : public wayfire_plugin_t
 
         blur_option_changed = [=] ()
         {
+            if (!method.compare("box"))
+                box.get_options(&options);
+	    else if (!method.compare("gaussian"))
+                gauss.get_options(&options);
+	    else if (!method.compare("kawase"))
+                kawase.get_options(&options);
+	    else if (!method.compare("bokeh"))
+                bokeh.get_options(&options);
+
             output->workspace->for_each_view([=] (wayfire_view view) {
                 if (view->get_transformer(transformer_name))
                 {

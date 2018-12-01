@@ -85,6 +85,7 @@ wayfire_kawase_blur::init(wayfire_config_section *section, wf_option_callback *b
     get_options(options);
 
     OpenGL::render_begin();
+
     auto vs = OpenGL::compile_shader(kawase_vertex_shader, GL_VERTEX_SHADER);
     auto fs = OpenGL::compile_shader(kawase_fragment_shader, GL_FRAGMENT_SHADER);
 
@@ -105,6 +106,7 @@ wayfire_kawase_blur::init(wayfire_config_section *section, wf_option_callback *b
     /* won't be really deleted until program is deleted as well */
     GL_CALL(glDeleteShader(vs));
     GL_CALL(glDeleteShader(fs));
+
     OpenGL::render_end();
 }
 
