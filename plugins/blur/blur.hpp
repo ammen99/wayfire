@@ -1,8 +1,12 @@
 #include <core.hpp>
 #include <render-manager.hpp>
 
-
-/* The design of blur takes extra consideration due to the fact that
+/* The MIT License (MIT)
+ * 
+ * Copyright (c) 2018 Iliya Bozhinov
+ * Copyright (c) 2018 Scott Moreau
+ * 
+ * The design of blur takes extra consideration due to the fact that
  * the results of blurred pixels rely on surrounding pixel values.
  * This means that when damage happens for only part of the scene (1),
  * blurring this area can result to artifacts because of sampling
