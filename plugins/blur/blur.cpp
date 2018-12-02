@@ -7,17 +7,17 @@
 
 #include "blur.hpp"
 
-static std::string method;
-static wayfire_box_blur box;
-static wayfire_gaussian_blur gauss;
-static wayfire_kawase_blur kawase;
-static wayfire_bokeh_blur bokeh;
-static struct blur_options options;
-
-class wf_blur : public wf_view_transformer_t
+using blur_algorithm_provider = std::function<nonstd::observer_ptr<wf_blur_base>()>;
+class wf_blur_transformer : public wf_view_transformer_t
 {
+    blur_algorithm_provider provider;
     public:
-        // the first two functions are for input transform, blur doesn't need it
+
+        wf_blur_transformer(blur_algorithm_provider blur_algorithm_provider)
+        {
+            provider = blur_algorithm_provider;
+        }
+
         virtual wf_point local_to_transformed_point(wf_geometry view,
             wf_point point)
         {
@@ -30,7 +30,6 @@ class wf_blur : public wf_view_transformer_t
             return point;
         }
 
-        // again, nothing to transform when blurring
         virtual wlr_box get_bounding_box(wf_geometry view, wlr_box region)
         {
             return region;
@@ -38,66 +37,17 @@ class wf_blur : public wf_view_transformer_t
 
         uint32_t get_z_order() { return 1e9; }
 
-        /* src_tex        the internal FBO texture,
-         *
-         * src_box        box of the view that has to be repainted, contains other transforms
-         *
-         * scissor_box    the subbox of the FB which the transform renderer must update,
-         *                drawing outside of it will cause artifacts
-         *
-         * target_fb      the framebuffer the transform should render to.
-         *                it can be part of the screen, so it's geometry is
-         *                given in output-local coordinates */
-
-        /* The above is copied from the docs
-         * Now, the purpose of this function is to render src_tex
-         *
-         * The view has geometry src_box
-         * It is in output-local coordinates
-         * The target_fb.geometry is also in output-local coords
-         *
-         * You need to repaint ONLY inside scissor_box, just use it like view-3d.cpp#205
-         *
-         * target_fb contains some very useful values. First of all, you'd need
-         * target_fb.tex (that is the texture of the screen as it has been rendered up to now)
-         * You can copy this texture, or feed it to your shader, etc.
-         * When you want to DRAW on it, use target_fb.bind(), that should be your last step
-         *
-         * as we both have 1920x1080 monitors without any transform or scaling (or I'm wrong?)
-         * I suggest hardcoding it just to see if it works, and then we'll figure out what else
-         * is there to be done. */
-
-        virtual void pre_render(uint32_t src_tex,
-                                        wlr_box src_box,
-                                        const wf_region& damage,
-                                        const wf_framebuffer& target_fb)
+        virtual void pre_render(uint32_t src_tex, wlr_box src_box, const wf_region& damage,
+            const wf_framebuffer& target_fb)
         {
-            if (!method.compare("box"))
-                box.pre_render(src_tex, src_box, damage, target_fb);
-            else if (!method.compare("gaussian"))
-                gauss.pre_render(src_tex, src_box, damage, target_fb);
-            else if (!method.compare("kawase"))
-                kawase.pre_render(src_tex, src_box, damage, target_fb);
-            else if (!method.compare("bokeh"))
-                bokeh.pre_render(src_tex, src_box, damage, target_fb);
+            provider()->pre_render(src_tex, src_box, damage, target_fb);
         }
 
-        virtual void render_with_damage(uint32_t src_tex,
-                                        wlr_box src_box,
-                                        wlr_box scissor_box,
-                                        const wf_framebuffer& target_fb)
+        virtual void render_with_damage(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
+            const wf_framebuffer& target_fb)
         {
-            if (!method.compare("box"))
-                box.render(src_tex, src_box, scissor_box, target_fb);
-            else if (!method.compare("gaussian"))
-                gauss.render(src_tex, src_box, scissor_box, target_fb);
-            else if (!method.compare("kawase"))
-                kawase.render(src_tex, src_box, scissor_box, target_fb);
-            else if (!method.compare("bokeh"))
-                bokeh.render(src_tex, src_box, scissor_box, target_fb);
+            provider()->render(src_tex, src_box, scissor_box, target_fb);
         }
-
-        virtual ~wf_blur() {}
 };
 
 class wayfire_blur : public wayfire_plugin_t
@@ -105,14 +55,15 @@ class wayfire_blur : public wayfire_plugin_t
     button_callback btn;
 
     signal_callback_t workspace_stream_pre, workspace_stream_post;
-    wf_option_callback blur_option_changed, blur_method_changed;
-    const std::string transformer_name = "blur";
-    wayfire_config_section *section;
-    wf_region padded_region;
-    std::string last_method;
-    wf_option method_opt;
 
-    wf_framebuffer_base saved_pixels;
+    wf_option method_opt;
+    wf_option_callback blur_method_changed;
+    std::unique_ptr<wf_blur_base> blur_algorithm;
+
+    const std::string transformer_name = "blur";
+
+    wf_region padded_region;
+    wf_framebuffer_base saved_pixels; // the pixels from padded_region
 
     public:
     void init(wayfire_config *config)
@@ -120,60 +71,15 @@ class wayfire_blur : public wayfire_plugin_t
         grab_interface->name = "blur";
         grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
 
-        section = config->get_section("blur");
+        auto section = config->get_section("blur");
+
         method_opt = section->get_option("method", "kawase");
-        method = last_method = method_opt->as_string();
-
-        blur_option_changed = [=] ()
-        {
-            if (!method.compare("box"))
-                box.get_options(&options);
-	    else if (!method.compare("gaussian"))
-                gauss.get_options(&options);
-	    else if (!method.compare("kawase"))
-                kawase.get_options(&options);
-	    else if (!method.compare("bokeh"))
-                bokeh.get_options(&options);
-
-            output->workspace->for_each_view([=] (wayfire_view view) {
-                if (view->get_transformer(transformer_name))
-                {
-                     view->damage();
-                }
-            }, WF_ALL_LAYERS);
+        blur_method_changed = [=] () {
+            blur_algorithm = create_blur_from_name(output, method_opt->as_string());
+            blur_algorithm->damage_all_workspaces();
         };
 
-        blur_method_changed = [=] ()
-        {
-	    method = method_opt->as_string();
-
-            if (!last_method.compare("box"))
-                box.fini();
-	    else if (!last_method.compare("gaussian"))
-                gauss.fini();
-	    else if (!last_method.compare("kawase"))
-                kawase.fini();
-	    else if (!last_method.compare("bokeh"))
-                bokeh.fini();
-
-            if (!method.compare("box"))
-                box.init(section, &blur_option_changed, &options);
-	    else if (!method.compare("gaussian"))
-                gauss.init(section, &blur_option_changed, &options);
-	    else if (!method.compare("kawase"))
-                kawase.init(section, &blur_option_changed, &options);
-	    else if (!method.compare("bokeh"))
-                bokeh.init(section, &blur_option_changed, &options);
-
-            output->workspace->for_each_view([=] (wayfire_view view) {
-                if (view->get_transformer(transformer_name))
-                {
-                     view->damage();
-                }
-            }, WF_ALL_LAYERS);
-
-	    last_method = method;
-        };
+        blur_method_changed(); // create initial blur algorithm
         method_opt->add_updated_handler(&blur_method_changed);
 
         btn = [=] (uint32_t, int, int)
@@ -185,7 +91,8 @@ class wayfire_blur : public wayfire_plugin_t
                 return;
 
             auto view = core->find_view(focus->get_main_surface());
-            view->add_transformer(nonstd::make_unique<wf_blur> (),
+            view->add_transformer(nonstd::make_unique<wf_blur_transformer> (
+                    [=] () {return nonstd::make_observer(blur_algorithm.get()); }),
                 transformer_name);
         };
         output->add_button(new_static_option("<super> <alt> BTN_LEFT"), &btn);
@@ -207,12 +114,7 @@ class wayfire_blur : public wayfire_plugin_t
             /* As long as the padding is big enough to cover the
              * furthest sampled pixel by the shader, there should
              * be no visual artifacts. */
-            int padding = options.iterations *
-                          options.offset *
-                          options.degrade *
-                          ((method.compare("kawase") &&
-                          method.compare("bokeh")) ? 4.0 : 1.0);
-
+            int padding = blur_algorithm->calculate_blur_radius();
             wayfire_surface_t::set_opaque_shrink_constraint("blur",
                 padding);
 
@@ -303,27 +205,11 @@ class wayfire_blur : public wayfire_plugin_t
         };
 
         output->render->connect_signal("workspace-stream-post", &workspace_stream_post);
-
-        if (!method.compare("box"))
-            box.init(section, &blur_option_changed, &options);
-	else if (!method.compare("gaussian"))
-            gauss.init(section, &blur_option_changed, &options);
-	else if (!method.compare("kawase"))
-            kawase.init(section, &blur_option_changed, &options);
-	else if (!method.compare("bokeh"))
-            bokeh.init(section, &blur_option_changed, &options);
     }
 
     void fini()
     {
-        if (!last_method.compare("box"))
-            box.fini();
-        else if (!last_method.compare("gaussian"))
-            gauss.fini();
-        else if (!last_method.compare("kawase"))
-            kawase.fini();
-        else if (!last_method.compare("bokeh"))
-            bokeh.fini();
+        blur_algorithm = nullptr; // call blur algorithm destructor
 
         OpenGL::render_begin();
         saved_pixels.release();

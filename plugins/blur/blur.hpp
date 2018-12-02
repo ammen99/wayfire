@@ -2,10 +2,10 @@
 #include <render-manager.hpp>
 
 /* The MIT License (MIT)
- * 
+ *
  * Copyright (c) 2018 Iliya Bozhinov
  * Copyright (c) 2018 Scott Moreau
- * 
+ *
  * The design of blur takes extra consideration due to the fact that
  * the results of blurred pixels rely on surrounding pixel values.
  * This means that when damage happens for only part of the scene (1),
@@ -28,165 +28,109 @@
  * before swapping buffers. As long as the padding is enough to cover
  * the maximum sample offset that the shader uses, there should be a
  * seamless experience.
- * 
+ *
  * 1)
- * ...................................................................
- * |                                                                 |
- * |                                                                 |
- * |                                                                 |
- * |           ..................................                    |
- * |           |                                |..                  |
- * |           |                                | |                  |
- * |           |         Damage region          | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           |                                | |                  |
- * |           ```|```````````````````````````````|                  |
- * |              `````````````````````````````````                  |
- * |                                                                 |
- * |                                                                 |
- * |                                                                 |
- * ```````````````````````````````````````````````````````````````````
- * 
+ * .................................................................
+ * |                                                               |
+ * |                                                               |
+ * |           ..................................                  |
+ * |           |                                |..                |
+ * |           |                                | |                |
+ * |           |         Damage region          | |                |
+ * |           |                                | |                |
+ * |           |                                | |                |
+ * |           |                                | |                |
+ * |           |                                | |                |
+ * |           ```|```````````````````````````````|                |
+ * |              `````````````````````````````````                |
+ * |                                                               |
+ * |                                                               |
+ * `````````````````````````````````````````````````````````````````
+ *
  * 2)
- * ...................................................................
- * |                                                                 |
- * |                                                                 |
- * |         ......................................                  |
- * |         | .................................. |..<-- Padding     |
- * |         | |                                |.. |                |
- * |         | |                                | | |                |
- * |         | |            Padded              | | |                |
- * |         | |         Damage region          | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | |                                | | |                |
- * |         | ```|```````````````````````````````| |                |
- * |         ```| ````````````````````````````````` |<-- Padding     |
- * |            `````````````````````````````````````                |
- * |                                                                 |
- * |                                                                 |
- * ```````````````````````````````````````````````````````````````````
- * 
+ * .................................................................
+ * |                                                               |
+ * |         ......................................                |
+ * |         | .................................. |..<-- Padding   |
+ * |         | |                                |.. |              |
+ * |         | |                                | | |              |
+ * |         | |            Padded              | | |              |
+ * |         | |         Damage region          | | |              |
+ * |         | |                                | | |              |
+ * |         | |                                | | |              |
+ * |         | |                                | | |              |
+ * |         | |                                | | |              |
+ * |         | ```|```````````````````````````````| |              |
+ * |         ```| ````````````````````````````````` |<-- Padding   |
+ * |            `````````````````````````````````````              |
+ * `````````````````````````````````````````````````````````````````
+ *
  * 3)
- * ...................................................................
- * |                                                                 |
- * |       x1|                                      |x2              |
- * |   y1__  ...................................... .                |
- * |         |                                    |..                |
- * |         |                                      |                |
- * |         |                                      |                |
- * |         |                                      |                |
- * |         |                                      |                |
- * |         |                   ^                  |                |
- * |         |                                      |                |
- * |         |         <- Padded extents ->         |                |
- * |         |                                      |                |
- * |         |                   v                  |                |
- * |         |                                      |                |
- * |         |                                      |                |
- * |         |                                      |                |
- * |         |                                      |                |
- * |   y2__  ```|                                   |                |
- * |         `  `````````````````````````````````````                |
- * |                                                                 |
- * |                                                                 |
- * ```````````````````````````````````````````````````````````````````
+ * .................................................................
+ * |                                                               |
+ * |       x1|                                      |x2            |
+ * |   y1__  ...................................... .              |
+ * |         |                                    |..              |
+ * |         |                                      |              |
+ * |         |                   ^                  |              |
+ * |         |                                      |              |
+ * |         |         <- Padded extents ->         |              |
+ * |         |                                      |              |
+ * |         |                   v                  |              |
+ * |         |                                      |              |
+ * |   y2__  ```|                                   |              |
+ * |         `  `````````````````````````````````````              |
+ * |                                                               |
+ * `````````````````````````````````````````````````````````````````
  */
-
-struct blur_options
+struct wf_blur_default_option_values
 {
-    float offset;
-    int iterations, degrade;
+    std::string algorithm_name;
+    std::string offset, degrade, iterations;
 };
 
-class wayfire_box_blur
+class wf_blur_base
 {
+    protected:
+    // used to store temporary results in blur algorithms, cleaned up in base
+    // destructor
     wf_framebuffer_base fb[2];
+    // the program created by the given algorithm, cleaned up in base destructor
+    GLuint program;
+
+    // used to get individual algorithm options from config
+    // should be set by the constructor
+    std::string algorithm_name;
+
+    wf_option offset_opt, degrade_opt, iterations_opt;
+    wf_option_callback options_changed;
+
+    wayfire_output *output;
+
+    // renders the in texture to the out framebuffer.
+    // assumes a properly bound and initialized GL program
+    void render_iteration(wf_framebuffer_base& in, wf_framebuffer_base& out,
+        int width, int height);
 
     public:
-    void init(wayfire_config_section*,
-              wf_option_callback*,
-              struct blur_options*);
-    void get_options(struct blur_options*);
-    void pre_render(uint32_t src_tex,
-                    wlr_box src_box,
-                    const wf_region& damage,
-                    const wf_framebuffer& target_fb);
-    void render(uint32_t src_tex,
-                wlr_box src_box,
-                wlr_box scissor_box,
-                const wf_framebuffer& target_fb);
-    void fini();
+    wf_blur_base(wayfire_output *output,
+        const wf_blur_default_option_values& values);
+    virtual ~wf_blur_base();
+
+    virtual int calculate_blur_radius();
+    void damage_all_workspaces();
+
+    virtual void pre_render(uint32_t src_tex, wlr_box src_box,
+        const wf_region& damage, const wf_framebuffer& target_fb) = 0;
+
+    virtual void render(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
+                const wf_framebuffer& target_fb) = 0;
 };
 
-class wayfire_gaussian_blur
-{
-    wf_framebuffer_base fb[2];
+std::unique_ptr<wf_blur_base> create_box_blur(wayfire_output *output);
+std::unique_ptr<wf_blur_base> create_bokeh_blur(wayfire_output *output);
+std::unique_ptr<wf_blur_base> create_kawase_blur(wayfire_output *output);
+std::unique_ptr<wf_blur_base> create_gaussian_blur(wayfire_output *output);
 
-    public:
-    void init(wayfire_config_section*,
-              wf_option_callback*,
-              struct blur_options*);
-    void get_options(struct blur_options*);
-    void pre_render(uint32_t src_tex,
-                    wlr_box src_box,
-                    const wf_region& damage,
-                    const wf_framebuffer& target_fb);
-    void render(uint32_t src_tex,
-                wlr_box src_box,
-                wlr_box scissor_box,
-                const wf_framebuffer& target_fb);
-    void fini();
-};
-
-class wayfire_kawase_blur
-{
-    wf_framebuffer_base fb[2];
-
-    public:
-    void init(wayfire_config_section*,
-              wf_option_callback*,
-              struct blur_options*);
-    void get_options(struct blur_options*);
-    void pre_render(uint32_t src_tex,
-                    wlr_box src_box,
-                    const wf_region& damage,
-                    const wf_framebuffer& target_fb);
-    void render(uint32_t src_tex,
-                wlr_box src_box,
-                wlr_box scissor_box,
-                const wf_framebuffer& target_fb);
-    void fini();
-};
-
-class wayfire_bokeh_blur
-{
-    wf_framebuffer_base fb[2];
-
-    public:
-    void init(wayfire_config_section*,
-              wf_option_callback*,
-              struct blur_options*);
-    void get_options(struct blur_options*);
-    void pre_render(uint32_t src_tex,
-                    wlr_box src_box,
-                    const wf_region& damage,
-                    const wf_framebuffer& target_fb);
-    void render(uint32_t src_tex,
-                wlr_box src_box,
-                wlr_box scissor_box,
-                const wf_framebuffer& target_fb);
-    void fini();
-};
+std::unique_ptr<wf_blur_base> create_blur_from_name(wayfire_output *output,
+    std::string algorithm_name);
