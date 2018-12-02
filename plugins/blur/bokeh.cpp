@@ -70,7 +70,7 @@ void main()
 
 static const wf_blur_default_option_values bokeh_defaults = {
     .algorithm_name = "bokeh",
-    .offset = "1",
+    .offset = "5",
     .degrade = "1",
     .iterations = "15"
 };

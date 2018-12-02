@@ -71,8 +71,8 @@ void main()
 static const wf_blur_default_option_values box_defaults = {
     .algorithm_name = "box",
     .offset = "2",
-    .degrade = "2",
-    .iterations = "1"
+    .degrade = "1",
+    .iterations = "2"
 };
 
 class wf_box_blur : public wf_blur_base
