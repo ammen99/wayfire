@@ -97,6 +97,10 @@ class wf_blur_base
     wf_framebuffer_base fb[2];
     // the program created by the given algorithm, cleaned up in base destructor
     GLuint program;
+    // the program used by wf_blur_base to combine the blurred, unblurred and
+    // view texture
+    GLuint blend_program;
+    GLuint blend_posID, blend_mvpID, blend_texID[2]; // for blend_program
 
     // used to get individual algorithm options from config
     // should be set by the constructor
@@ -134,7 +138,7 @@ class wf_blur_base
         const wf_region& damage, const wf_framebuffer& target_fb);
 
     virtual void render(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
-        const wf_framebuffer& target_fb) = 0;
+        const wf_framebuffer& target_fb);
 };
 
 std::unique_ptr<wf_blur_base> create_box_blur(wayfire_output *output);

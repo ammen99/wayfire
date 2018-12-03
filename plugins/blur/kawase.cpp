@@ -141,53 +141,6 @@ class wf_dual_kawase_blur : public wf_blur_base
         OpenGL::render_end();
         return 0;
     }
-
-    void render(uint32_t src_tex, wlr_box _src_box, wlr_box scissor_box,
-        const wf_framebuffer& target_fb)
-    {
-        wlr_box fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
-        auto src_box = target_fb.framebuffer_box_from_geometry_box(_src_box);
-        int fb_h = fb_geom.height;
-        src_box.x -= fb_geom.x;
-        src_box.y -= fb_geom.y;
-
-        int x = src_box.x, y = src_box.y, w = src_box.width, h = src_box.height;
-
-        OpenGL::render_begin(target_fb);
-
-        /* Use shader and enable vertex and texcoord data */
-        GL_CALL(glUseProgram(program));
-        GL_CALL(glEnableVertexAttribArray(posID));
-        GL_CALL(glEnableVertexAttribArray(texcoordID));
-
-        /* Blend blurred background with window texture src_tex */
-        GL_CALL(glUniform1i(modeID, 2));
-        GL_CALL(glUniformMatrix4fv(mvpID, 1, GL_FALSE, &glm::inverse(target_fb.transform)[0][0]));
-        GL_CALL(glActiveTexture(GL_TEXTURE0 + 0));
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, src_tex));
-        GL_CALL(glActiveTexture(GL_TEXTURE0 + 1));
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, fb[1].tex));
-        GL_CALL(glEnable(GL_BLEND));
-        GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
-
-        /* Render it to target_fb */
-        target_fb.bind();
-
-        GL_CALL(glViewport(x, fb_h - y - h, w, h));
-        target_fb.scissor(scissor_box);
-
-        GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
-
-        /* Disable stuff */
-        GL_CALL(glUseProgram(0));
-        GL_CALL(glDisable(GL_BLEND));
-        GL_CALL(glActiveTexture(GL_TEXTURE0));
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-        GL_CALL(glDisableVertexAttribArray(posID));
-        GL_CALL(glDisableVertexAttribArray(texcoordID));
-
-        OpenGL::render_end();
-    }
 };
 
 std::unique_ptr<wf_blur_base> create_kawase_blur(wayfire_output *output)

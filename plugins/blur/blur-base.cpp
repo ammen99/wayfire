@@ -3,6 +3,38 @@
 #include <output.hpp>
 #include <workspace-manager.hpp>
 
+static const char* blur_blend_vertex_shader = R"(
+#version 100
+
+attribute mediump vec2 position;
+varying mediump vec2 uvpos[2];
+
+uniform mat4 mvp;
+
+void main() {
+
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+    uvpos[0] = (position.xy + vec2(1.0, 1.0)) / 2.0;
+    uvpos[1] = vec4(mvp * vec4(uvpos[0] - 0.5, 0.0, 1.0)).xy + 0.5;
+})";
+
+static const char* blur_blend_fragment_shader = R"(
+#version 100
+precision mediump float;
+
+uniform sampler2D window_texture;
+uniform sampler2D bg_texture;
+
+varying mediump vec2 uvpos[2];
+
+void main()
+{
+    vec4 bp = texture2D(bg_texture, uvpos[0]);
+    vec4 wp = texture2D(window_texture, uvpos[1]);
+    vec4 c = clamp(4.0 * wp.a, 0.0, 1.0) * bp;
+    gl_FragColor = wp + (1.0 - wp.a) * c;
+})";
+
 wf_blur_base::wf_blur_base(wayfire_output *output,
     const wf_blur_default_option_values& defaults)
 {
@@ -21,6 +53,18 @@ wf_blur_base::wf_blur_base(wayfire_output *output,
     this->offset_opt->add_updated_handler(&options_changed);
     this->degrade_opt->add_updated_handler(&options_changed);
     this->iterations_opt->add_updated_handler(&options_changed);
+
+    OpenGL::render_begin();
+    blend_program = OpenGL::create_program_from_source(
+        blur_blend_vertex_shader, blur_blend_fragment_shader);
+
+    blend_posID    = GL_CALL(glGetAttribLocation(blend_program, "position"));
+
+    blend_mvpID    = GL_CALL(glGetUniformLocation(blend_program, "mvp"));
+    blend_texID[0] = GL_CALL(glGetUniformLocation(blend_program, "window_texture"));
+    blend_texID[1] = GL_CALL(glGetUniformLocation(blend_program, "bg_texture"));
+
+    OpenGL::render_end();
 }
 
 wf_blur_base::~wf_blur_base()
@@ -33,13 +77,12 @@ wf_blur_base::~wf_blur_base()
     fb[0].release();
     fb[1].release();
     GL_CALL(glDeleteProgram(program));
+    GL_CALL(glDeleteProgram(blend_program));
     OpenGL::render_end();
 }
 
 int wf_blur_base::calculate_blur_radius()
 {
-    log_info("got %d %d %d", offset_opt->as_cached_int() , degrade_opt->as_cached_int()
-        , iterations_opt->as_cached_int());
     return offset_opt->as_double() * degrade_opt->as_int() * iterations_opt->as_int();
 }
 
@@ -87,9 +130,6 @@ wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
     OpenGL::render_begin(source);
     result.allocate(rounded_width, rounded_height);
 
-    log_info("blit from " Prwg " to " Prwg ", rounded is %dx%d", Ewg(source_box), Ewg(subbox),
-        rounded_width, rounded_height);
-
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, result.fb));
     GL_CALL(glBlitFramebuffer(
@@ -110,15 +150,20 @@ void wf_blur_base::pre_render(uint32_t src_tex, wlr_box src_box,
     int scaled_height = damage_box.height / degrade_opt->as_int();
 
     int r = blur_fb0(scaled_width, scaled_height);
+
+    /* Make sure the result is always fb[1], because that's what is used in render() */
+    if (r != 0)
+        std::swap(fb[0], fb[1]);
+
     /* we subtract target_fb's position to so that
      * view box is relative to framebuffer */
     auto view_box = target_fb.framebuffer_box_from_geometry_box(
         src_box + wf_point{-target_fb.geometry.x, -target_fb.geometry.y});
 
     OpenGL::render_begin();
-    fb[1 - r].allocate(view_box.width, view_box.height);
-    fb[1 - r].bind();
-    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[r].fb));
+    fb[1].allocate(view_box.width, view_box.height);
+    fb[1].bind();
+    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[0].fb));
 
     /* Blit the blurred texture into an fb which has the size of the view,
      * so that the view texture and the blurred background can be combined
@@ -132,6 +177,59 @@ void wf_blur_base::pre_render(uint32_t src_tex, wlr_box src_box,
             local_box.x + local_box.width,
             view_box.height - local_box.y,
             GL_COLOR_BUFFER_BIT, GL_LINEAR));
+
+    OpenGL::render_end();
+}
+
+void wf_blur_base::render(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
+    const wf_framebuffer& target_fb)
+{
+    wlr_box fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
+    auto view_box = target_fb.framebuffer_box_from_geometry_box(src_box);
+    view_box.x -= fb_geom.x;
+    view_box.y -= fb_geom.y;
+
+    OpenGL::render_begin(target_fb);
+
+    /* Use shader and enable vertex and texcoord data */
+    GL_CALL(glUseProgram(blend_program));
+    GL_CALL(glEnableVertexAttribArray(blend_posID));
+    static const float vertexData[] = {
+        -1.0f, -1.0f,
+        1.0f, -1.0f,
+        1.0f,  1.0f,
+        -1.0f,  1.0f
+    };
+
+    GL_CALL(glVertexAttribPointer(blend_posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
+
+    /* Blend blurred background with window texture src_tex */
+    GL_CALL(glUniformMatrix4fv(blend_mvpID, 1, GL_FALSE, &glm::inverse(target_fb.transform)[0][0]));
+    GL_CALL(glUniform1i(blend_texID[0], 0));
+    GL_CALL(glUniform1i(blend_texID[1], 1));
+
+    GL_CALL(glActiveTexture(GL_TEXTURE0 + 0));
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, src_tex));
+    GL_CALL(glActiveTexture(GL_TEXTURE0 + 1));
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, fb[1].tex));
+
+    GL_CALL(glEnable(GL_BLEND));
+    GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
+
+    /* Render it to target_fb */
+    target_fb.bind();
+    GL_CALL(glViewport(view_box.x, fb_geom.height - view_box.y - view_box.height,
+            view_box.width, view_box.height));
+    target_fb.scissor(scissor_box);
+
+    GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
+
+    /* Disable stuff */
+    GL_CALL(glUseProgram(0));
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0)); // texture 1
+    GL_CALL(glActiveTexture(GL_TEXTURE0));
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
+    GL_CALL(glDisableVertexAttribArray(blend_posID));
 
     OpenGL::render_end();
 }
