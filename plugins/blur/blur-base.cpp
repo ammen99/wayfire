@@ -67,6 +67,41 @@ void wf_blur_base::render_iteration(wf_framebuffer_base& in,
     GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
 }
 
+wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
+    const wf_framebuffer& source, const wf_region& region)
+{
+    auto subbox = source.framebuffer_box_from_damage_box(
+        wlr_box_from_pixman_box(region.get_extents()));
+
+    auto source_box = source.framebuffer_box_from_geometry_box(
+        source.geometry);
+
+    /* Scaling down might cause issues like flickering or some discrepancies
+     * between the source and final image.
+     * To make things a bit more stable, we first blit to a size which
+     * is divisble by degrade */
+    int degrade = degrade_opt->as_int();
+    int rounded_width = subbox.width - subbox.width % degrade;
+    int rounded_height = subbox.height - subbox.height % degrade;
+
+    OpenGL::render_begin(source);
+    result.allocate(rounded_width, rounded_height);
+
+    log_info("blit from " Prwg " to " Prwg ", rounded is %dx%d", Ewg(source_box), Ewg(subbox),
+        rounded_width, rounded_height);
+
+    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, result.fb));
+    GL_CALL(glBlitFramebuffer(
+            subbox.x, source_box.height - subbox.y - subbox.height,
+            subbox.x + subbox.width, source_box.height - subbox.y,
+            0, 0, rounded_width, rounded_height,
+            GL_COLOR_BUFFER_BIT, GL_LINEAR));
+
+    OpenGL::render_end();
+    return subbox;
+}
+
 std::unique_ptr<wf_blur_base> create_blur_from_name(wayfire_output *output,
     std::string algorithm_name)
 {

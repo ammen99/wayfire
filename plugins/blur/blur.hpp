@@ -112,6 +112,11 @@ class wf_blur_base
     void render_iteration(wf_framebuffer_base& in, wf_framebuffer_base& out,
         int width, int height);
 
+    // copy the source pixels from region, storing into result
+    // returns the result geometry, in framebuffer coords
+    wlr_box copy_region(wf_framebuffer_base& result,
+        const wf_framebuffer& source, const wf_region& region);
+
     public:
     wf_blur_base(wayfire_output *output,
         const wf_blur_default_option_values& values);
