@@ -53,7 +53,7 @@ void main()
         bp += texture2D(bg_texture, vec2(blurcoord[7].x, uv.y)) * 0.0162162162;
         bp += texture2D(bg_texture, vec2(blurcoord[8].x, uv.y)) * 0.0162162162;
         gl_FragColor = vec4(bp.rgb, 1.0);
-    } else if (mode == 1) {
+    } else {
         vec4 bp = vec4(0.0);
         bp += texture2D(bg_texture, vec2(uv.x, blurcoord[0].y)) * 0.2270270270;
         bp += texture2D(bg_texture, vec2(uv.x, blurcoord[1].y)) * 0.1945945946;

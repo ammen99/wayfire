@@ -49,7 +49,7 @@ void main()
             bp += texture2D(bg_texture, uv);
         }
         gl_FragColor = vec4(bp.rgb / 9.0, 1.0);
-    } else if (mode == 1) {
+    } else {
         vec4 bp = vec4(0.0);
         for(int i = 0; i < 9; i++) {
             vec2 uv = vec2(uv.x, blurcoord[i].y);
