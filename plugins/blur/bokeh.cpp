@@ -101,31 +101,10 @@ class wf_bokeh_blur : public wf_blur_base
         OpenGL::render_end();
     }
 
-    void pre_render(uint32_t src_tex, wlr_box _src_box, const wf_region& damage,
-        const wf_framebuffer& target_fb)
+    int blur_fb0(int width, int height)
     {
         int iterations = iterations_opt->as_int();
         float offset = offset_opt->as_double();
-
-        wlr_box fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
-
-        wlr_box b = wlr_box_from_pixman_box(damage.get_extents());
-        b = target_fb.framebuffer_box_from_damage_box(b);
-
-        auto src_box = target_fb.framebuffer_box_from_geometry_box(_src_box);
-        int fb_h = fb_geom.height;
-
-        src_box.x -= fb_geom.x;
-        src_box.y -= fb_geom.y;
-
-        int x = src_box.x, y = src_box.y, w = src_box.width, h = src_box.height;
-        int bx = b.x, by = b.y, bw = b.width, bh = b.height;
-
-        int sw = bw * (1.0 / degrade_opt->as_int());
-        int sh = bh * (1.0 / degrade_opt->as_int());
-
-        int pw = sw * degrade_opt->as_int();
-        int ph = sh * degrade_opt->as_int();
 
         static const float vertexData[] = {
             -1.0f, -1.0f,
@@ -140,23 +119,7 @@ class wf_bokeh_blur : public wf_blur_base
             0.0f, 1.0f
         };
 
-        OpenGL::render_begin(target_fb);
-
-        /* The damage region we recieve as an argument to this function
-         * contains last and current damage. We take the bounding box
-         * of this region for blurring. At this point, target_fb contains
-         * the scene rendered up until the view for which this function is
-         * called. To save resources, the texture can be blurred at a
-         * smaller size and then scaled back up. This causes discrepancies
-         * between odd and even sizes so to even things out, we upscale
-         * by one pixel in the odd size case when doing the initial blit. */
-        fb[0].allocate(pw, ph);
-        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, target_fb.fb));
-        GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb[0].fb));
-        /* The target_fb origin is at bottom left and the y is flipped so we have
-         * to take these into account when blitting */
-        GL_CALL(glBlitFramebuffer(bx, fb_h - by - bh, bx + bw, fb_h - by, 0, 0, pw, ph, GL_COLOR_BUFFER_BIT, GL_LINEAR));
-
+        OpenGL::render_begin();
         /* Upload data to shader */
         GL_CALL(glUseProgram(program));
         GL_CALL(glUniformMatrix4fv(mvpID, 1, GL_FALSE, &glm::mat4(1.0)[0][0]));
@@ -164,7 +127,7 @@ class wf_bokeh_blur : public wf_blur_base
         GL_CALL(glVertexAttribPointer(texcoordID, 2, GL_FLOAT, GL_FALSE, 0, texCoords));
         GL_CALL(glEnableVertexAttribArray(posID));
         GL_CALL(glEnableVertexAttribArray(texcoordID));
-        GL_CALL(glUniform2f(halfpixelID, 0.5f / sw, 0.5f / sh));
+        GL_CALL(glUniform2f(halfpixelID, 0.5f / width, 0.5f / height));
         GL_CALL(glUniform1f(offsetID, offset));
         GL_CALL(glUniform1i(iterID, iterations));
         GL_CALL(glUniform1i(texID[0], 0));
@@ -172,17 +135,7 @@ class wf_bokeh_blur : public wf_blur_base
 
         GL_CALL(glUniform1i(modeID, 0));
 
-        render_iteration(fb[0], fb[1], sw, sh);
-
-        fb[0].allocate(w, h);
-        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[1].fb));
-        GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb[0].fb));
-        GL_CALL(glBlitFramebuffer(0, 0, sw, sh,
-                bx - x,
-                h - (by - y) - bh,
-                (bx + bw) - x,
-                h - (by - y),
-                GL_COLOR_BUFFER_BIT, GL_LINEAR));
+        render_iteration(fb[0], fb[1], width, height);
 
         /* Disable stuff */
         GL_CALL(glUseProgram(0));
@@ -192,6 +145,7 @@ class wf_bokeh_blur : public wf_blur_base
         GL_CALL(glDisableVertexAttribArray(texcoordID));
 
         OpenGL::render_end();
+        return 1;
     }
 
     void render(uint32_t src_tex, wlr_box _src_box, wlr_box scissor_box,

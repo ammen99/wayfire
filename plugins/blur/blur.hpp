@@ -117,6 +117,11 @@ class wf_blur_base
     wlr_box copy_region(wf_framebuffer_base& result,
         const wf_framebuffer& source, const wf_region& region);
 
+    // blur fb[0]
+    // width and height are the scaled dimensions of the buffer
+    // returns the index of the fb where the result is stored (0 or 1)
+    virtual int blur_fb0(int width, int height) = 0;
+
     public:
     wf_blur_base(wayfire_output *output,
         const wf_blur_default_option_values& values);
@@ -126,10 +131,10 @@ class wf_blur_base
     void damage_all_workspaces();
 
     virtual void pre_render(uint32_t src_tex, wlr_box src_box,
-        const wf_region& damage, const wf_framebuffer& target_fb) = 0;
+        const wf_region& damage, const wf_framebuffer& target_fb);
 
     virtual void render(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
-                const wf_framebuffer& target_fb) = 0;
+        const wf_framebuffer& target_fb) = 0;
 };
 
 std::unique_ptr<wf_blur_base> create_box_blur(wayfire_output *output);

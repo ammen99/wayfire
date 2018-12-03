@@ -91,18 +91,8 @@ class wf_dual_kawase_blur : public wf_blur_base
         OpenGL::render_end();
     }
 
-    void pre_render(uint32_t src_tex, wlr_box src_box, const wf_region& damage,
-        const wf_framebuffer& target_fb)
+    int blur_fb0(int width, int height)
     {
-        auto damage_box = copy_region(fb[0], target_fb, damage);
-        int scaled_width = damage_box.width / degrade_opt->as_int();
-        int scaled_height = damage_box.height / degrade_opt->as_int();
-
-        /* we subtract target_fb's position to so that
-         * view box is relative to framebuffer */
-        auto view_box = target_fb.framebuffer_box_from_geometry_box(
-            src_box + wf_point{-target_fb.geometry.x, -target_fb.geometry.y});
-
         int iterations = iterations_opt->as_int();
         float offset = offset_opt->as_double();
 
@@ -128,7 +118,7 @@ class wf_dual_kawase_blur : public wf_blur_base
         GL_CALL(glEnableVertexAttribArray(posID));
         GL_CALL(glEnableVertexAttribArray(texcoordID));
 
-        GL_CALL(glUniform2f(halfpixelID, 0.5f / scaled_width, 0.5f / scaled_height));
+        GL_CALL(glUniform2f(halfpixelID, 0.5f / width, 0.5f / height));
         GL_CALL(glUniform1f(offsetID, offset));
         GL_CALL(glUniform1i(texID[0], 0));
         GL_CALL(glUniform1i(texID[1], 1));
@@ -136,38 +126,20 @@ class wf_dual_kawase_blur : public wf_blur_base
         /* Downsample */
         GL_CALL(glUniform1i(modeID, 0));
         for (int i = 0; i < iterations; i++)
-            render_iteration(fb[i % 2], fb[1 - i % 2], scaled_width, scaled_height);
+            render_iteration(fb[i % 2], fb[1 - i % 2], width, height);
 
         /* Upsample */
         GL_CALL(glUniform1i(modeID, 1));
         for (int i = iterations - 1; i >= 0; i--)
-            render_iteration(fb[1 - i % 2], fb[i % 2], scaled_width, scaled_height);
+            render_iteration(fb[1 - i % 2], fb[i % 2], width, height);
 
-        fb[1].allocate(view_box.width, view_box.height);
-        fb[1].bind();
-        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[0].fb));
-
-        /* Blit the blurred texture into an fb which has the size of the view,
-         * so that the view texture and the blurred background can be combined
-         * together in render()
-         *
-         * local_geometry is damage_box relative to view box */
-        wlr_box local_box = damage_box + wf_point{-view_box.x, -view_box.y};
-        GL_CALL(glBlitFramebuffer(0, 0, scaled_width, scaled_height,
-                local_box.x,
-                view_box.height - local_box.y - local_box.height,
-                local_box.x + local_box.width,
-                view_box.height - local_box.y,
-                GL_COLOR_BUFFER_BIT, GL_LINEAR));
-
-        /* Disable stuff */
         GL_CALL(glUseProgram(0));
         GL_CALL(glActiveTexture(GL_TEXTURE0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CALL(glDisableVertexAttribArray(posID));
         GL_CALL(glDisableVertexAttribArray(texcoordID));
-
         OpenGL::render_end();
+        return 0;
     }
 
     void render(uint32_t src_tex, wlr_box _src_box, wlr_box scissor_box,

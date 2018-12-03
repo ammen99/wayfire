@@ -102,6 +102,40 @@ wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
     return subbox;
 }
 
+void wf_blur_base::pre_render(uint32_t src_tex, wlr_box src_box,
+    const wf_region& damage, const wf_framebuffer& target_fb)
+{
+    auto damage_box = copy_region(fb[0], target_fb, damage);
+    int scaled_width = damage_box.width / degrade_opt->as_int();
+    int scaled_height = damage_box.height / degrade_opt->as_int();
+
+    int r = blur_fb0(scaled_width, scaled_height);
+    /* we subtract target_fb's position to so that
+     * view box is relative to framebuffer */
+    auto view_box = target_fb.framebuffer_box_from_geometry_box(
+        src_box + wf_point{-target_fb.geometry.x, -target_fb.geometry.y});
+
+    OpenGL::render_begin();
+    fb[1 - r].allocate(view_box.width, view_box.height);
+    fb[1 - r].bind();
+    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[r].fb));
+
+    /* Blit the blurred texture into an fb which has the size of the view,
+     * so that the view texture and the blurred background can be combined
+     * together in render()
+     *
+     * local_geometry is damage_box relative to view box */
+    wlr_box local_box = damage_box + wf_point{-view_box.x, -view_box.y};
+    GL_CALL(glBlitFramebuffer(0, 0, scaled_width, scaled_height,
+            local_box.x,
+            view_box.height - local_box.y - local_box.height,
+            local_box.x + local_box.width,
+            view_box.height - local_box.y,
+            GL_COLOR_BUFFER_BIT, GL_LINEAR));
+
+    OpenGL::render_end();
+}
+
 std::unique_ptr<wf_blur_base> create_blur_from_name(wayfire_output *output,
     std::string algorithm_name)
 {
