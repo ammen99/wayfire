@@ -107,9 +107,6 @@ class wayfire_blur : public wayfire_plugin_t
         {
             auto& damage = static_cast<wf_stream_signal*>(data)->raw_damage;
             const auto& target_fb = static_cast<wf_stream_signal*>(data)->fb;
-            wlr_box fb_geom;
-
-            fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
 
             /* As long as the padding is big enough to cover the
              * furthest sampled pixel by the shader, there should
@@ -128,18 +125,17 @@ class wayfire_blur : public wayfire_plugin_t
                     (rect.y2 - rect.y1) + 2 * padding
                 };
             }
-            auto fb_g = target_fb.damage_box_from_geometry_box(target_fb.geometry);
 
             /* Keep rects on screen */
-            expanded_damage &= fb_g;
+            expanded_damage &= output->render->get_damage_box();
 
             /* Compute padded region and store result in padded_region. */
             padded_region = expanded_damage ^ damage;
 
             OpenGL::render_begin(target_fb);
-
             /* Initialize a place to store padded region pixels. */
-            saved_pixels.allocate(fb_geom.width, fb_geom.height);
+            saved_pixels.allocate(target_fb.viewport_width,
+                target_fb.viewport_height);
             saved_pixels.bind();
 
             /* Setup framebuffer I/O. target_fb contains the pixels
@@ -154,8 +150,8 @@ class wayfire_blur : public wayfire_plugin_t
                         wlr_box_from_pixman_box(rect)));
 
                 GL_CALL(glBlitFramebuffer(
-                        box.x1, fb_geom.height - box.y2,
-                        box.x2, fb_geom.height - box.y1,
+                        box.x1, target_fb.viewport_height - box.y2,
+                        box.x2, target_fb.viewport_height - box.y1,
                         box.x1, box.y1, box.x2, box.y2,
                         GL_COLOR_BUFFER_BIT, GL_LINEAR));
             }
@@ -174,10 +170,6 @@ class wayfire_blur : public wayfire_plugin_t
         workspace_stream_post = [=] (signal_data *data)
         {
             const auto& target_fb = static_cast<wf_stream_signal*>(data)->fb;
-            wlr_box fb_geom;
-
-            fb_geom = target_fb.framebuffer_box_from_geometry_box(target_fb.geometry);
-
             OpenGL::render_begin(target_fb);
             /* Setup framebuffer I/O. target_fb contains the frame
              * rendered with expanded damage and artifacts on the edges.
@@ -194,8 +186,8 @@ class wayfire_blur : public wayfire_plugin_t
                         wlr_box_from_pixman_box(rect)));
 
                 GL_CALL(glBlitFramebuffer(box.x1, box.y1, box.x2, box.y2,
-                        box.x1, fb_geom.height - box.y2,
-                        box.x2, fb_geom.height - box.y1,
+                        box.x1, target_fb.viewport_height - box.y2,
+                        box.x2, target_fb.viewport_height - box.y1,
                         GL_COLOR_BUFFER_BIT, GL_LINEAR));
             }
 
