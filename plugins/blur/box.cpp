@@ -6,16 +6,15 @@ R"(
 #version 100
 
 attribute mediump vec2 position;
-attribute mediump vec2 texcoord;
 uniform vec2 size;
 uniform float offset;
 
-varying highp vec2 blurcoord[10];
-
-uniform mat4 mvp;
+varying highp vec2 blurcoord[9];
 
 void main() {
     gl_Position = vec4(position.xy, 0.0, 1.0);
+
+    vec2 texcoord = (position.xy + vec2(1.0, 1.0)) / 2.0;
 
     blurcoord[0] = texcoord;
     blurcoord[1] = texcoord + vec2(1.0 * offset) / size;
@@ -26,7 +25,6 @@ void main() {
     blurcoord[6] = texcoord - vec2(3.0 * offset) / size;
     blurcoord[7] = texcoord + vec2(4.0 * offset) / size;
     blurcoord[8] = texcoord - vec2(4.0 * offset) / size;
-    blurcoord[9] = vec4(mvp * vec4(texcoord - 0.5, 0.0, 1.0)).xy + 0.5;
 }
 )";
 
@@ -35,11 +33,10 @@ R"(
 #version 100
 precision mediump float;
 
-uniform sampler2D window_texture;
 uniform sampler2D bg_texture;
 uniform int mode;
 
-varying highp vec2 blurcoord[10];
+varying highp vec2 blurcoord[9];
 
 void main()
 {
@@ -59,11 +56,6 @@ void main()
             bp += texture2D(bg_texture, uv);
         }
         gl_FragColor = vec4(bp.rgb / 9.0, 1.0);
-    } else {
-        vec4 wp = texture2D(window_texture, blurcoord[9]);
-        vec4 bp = texture2D(bg_texture, uv);
-        vec4 c = clamp(4.0 * wp.a, 0.0, 1.0) * bp;
-        gl_FragColor = wp + (1.0 - wp.a) * c;
     }
 }
 )";
@@ -77,8 +69,7 @@ static const wf_blur_default_option_values box_defaults = {
 
 class wf_box_blur : public wf_blur_base
 {
-    GLuint posID, mvpID, texcoordID,
-           modeID, sizeID, offsetID, texID[2];
+    GLuint posID, modeID, sizeID, offsetID;
 
     public:
     wf_box_blur(wayfire_output *output) : wf_blur_base(output, box_defaults)
@@ -87,14 +78,9 @@ class wf_box_blur : public wf_blur_base
         program = OpenGL::create_program_from_source(
             box_vertex_shader, box_fragment_shader);
 
-        posID      = GL_CALL(glGetAttribLocation(program, "position"));
-        texcoordID = GL_CALL(glGetAttribLocation(program, "texcoord"));
-
-        mvpID    = GL_CALL(glGetUniformLocation(program, "mvp"));
+        posID    = GL_CALL(glGetAttribLocation(program, "position"));
         sizeID   = GL_CALL(glGetUniformLocation(program, "size"));
         modeID   = GL_CALL(glGetUniformLocation(program, "mode"));
-        texID[0] = GL_CALL(glGetUniformLocation(program, "window_texture"));
-        texID[1] = GL_CALL(glGetUniformLocation(program, "bg_texture"));
         offsetID = GL_CALL(glGetUniformLocation(program, "offset"));
         OpenGL::render_end();
     }
@@ -110,27 +96,16 @@ class wf_box_blur : public wf_blur_base
             1.0f,  1.0f,
             -1.0f,  1.0f
         };
-        static const float texCoords[] = {
-            0.0f, 0.0f,
-            1.0f, 0.0f,
-            1.0f, 1.0f,
-            0.0f, 1.0f
-        };
 
         OpenGL::render_begin();
         /* Enable our shader and pass some data to it. The shader accepts two textures
          * and does box blur on the background texture in two passes, one horizontal
          * and one vertical */
         GL_CALL(glUseProgram(program));
-        GL_CALL(glUniform1i(texID[0], 0));
-        GL_CALL(glUniform1i(texID[1], 1));
         GL_CALL(glUniform2f(sizeID, width, height));
         GL_CALL(glUniform1f(offsetID, offset));
 
-        GL_CALL(glUniformMatrix4fv(mvpID, 1, GL_FALSE, &glm::mat4(1.0)[0][0]));
         GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
-        GL_CALL(glVertexAttribPointer(texcoordID, 2, GL_FLOAT, GL_FALSE, 0, texCoords));
-        GL_CALL(glEnableVertexAttribArray(texcoordID));
         GL_CALL(glEnableVertexAttribArray(posID));
 
         for (i = 0; i < iterations; i++) {
@@ -146,9 +121,7 @@ class wf_box_blur : public wf_blur_base
         /* Disable stuff */
         GL_CALL(glUseProgram(0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-        GL_CALL(glActiveTexture(GL_TEXTURE0));
         GL_CALL(glDisableVertexAttribArray(posID));
-        GL_CALL(glDisableVertexAttribArray(texcoordID));
 
         OpenGL::render_end();
         return 0;

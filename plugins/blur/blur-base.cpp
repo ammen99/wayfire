@@ -105,7 +105,6 @@ void wf_blur_base::render_iteration(wf_framebuffer_base& in,
     out.allocate(width, height);
     out.bind();
 
-    GL_CALL(glActiveTexture(GL_TEXTURE0 + 1));
     GL_CALL(glBindTexture(GL_TEXTURE_2D, in.tex));
     GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
 }
