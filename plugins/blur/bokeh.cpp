@@ -33,25 +33,24 @@ mat2 rot = mat2(cos(GOLDEN_ANGLE), sin(GOLDEN_ANGLE), -sin(GOLDEN_ANGLE), cos(GO
 
 void main()
 {
-    if (mode == 0) {
-        float radius = offset;
-        vec3 acc = vec3(0), div = acc;
-        float r = 1.0;
-        vec2 vangle = vec2(radius / sqrt(float(iterations)), radius / sqrt(float(iterations)));
+    float radius = offset;
+    vec3 acc = vec3(0), div = acc;
+    float r = 1.0;
+    vec2 vangle = vec2(radius / sqrt(float(iterations)), radius / sqrt(float(iterations)));
 	for (int j = 0; j < iterations; j++)
-        {
-            r += 1.0 / r;
+    {
+        r += 1.0 / r;
 	    vangle = rot * vangle;
-            vec3 col = texture2D(bg_texture, uv + (r - 1.0) * vangle * halfpixel * 2.0).rgb;
-            vec3 bokeh = pow(col, vec3(4.0));
-            acc += col * bokeh;
-            div += bokeh;
+        vec3 col = texture2D(bg_texture, uv + (r - 1.0) * vangle * halfpixel * 2.0).rgb;
+        vec3 bokeh = pow(col, vec3(4.0));
+        acc += col * bokeh;
+        div += bokeh;
 	}
+
 	if (iterations == 0)
-            gl_FragColor = texture2D(bg_texture, uv);
-        else
-            gl_FragColor = vec4(acc / div, 1.0);
-    }
+        gl_FragColor = texture2D(bg_texture, uv);
+    else
+        gl_FragColor = vec4(acc / div, 1.0);
 }
 )";
 

@@ -3,9 +3,7 @@
 
 static const char* kawase_vertex_shader = R"(
 #version 100
-
 attribute mediump vec2 position;
-attribute mediump vec2 texcoord;
 
 varying mediump vec2 uv;
 
