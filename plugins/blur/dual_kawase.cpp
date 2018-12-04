@@ -8,7 +8,6 @@ attribute mediump vec2 position;
 varying mediump vec2 uv;
 
 void main() {
-
     gl_Position = vec4(position.xy, 0.0, 1.0);
     uv = (position.xy + vec2(1.0, 1.0)) / 2.0;
 })";
@@ -25,12 +24,12 @@ varying mediump vec2 uv;
 
 void main()
 {
-	vec4 sum = texture2D(bg_texture, uv) * 4.0;
-	sum += texture2D(bg_texture, uv - halfpixel.xy * offset);
-	sum += texture2D(bg_texture, uv + halfpixel.xy * offset);
-	sum += texture2D(bg_texture, uv + vec2(halfpixel.x, -halfpixel.y) * offset);
-	sum += texture2D(bg_texture, uv - vec2(halfpixel.x, -halfpixel.y) * offset);
-	gl_FragColor = sum / 8.0;
+    vec4 sum = texture2D(bg_texture, uv) * 4.0;
+    sum += texture2D(bg_texture, uv - halfpixel.xy * offset);
+    sum += texture2D(bg_texture, uv + halfpixel.xy * offset);
+    sum += texture2D(bg_texture, uv + vec2(halfpixel.x, -halfpixel.y) * offset);
+    sum += texture2D(bg_texture, uv - vec2(halfpixel.x, -halfpixel.y) * offset);
+    gl_FragColor = sum / 8.0;
 })";
 
 static const char* dual_kawase_fragment_shader_down_up = R"(
@@ -45,15 +44,15 @@ varying mediump vec2 uv;
 
 void main()
 {
-        vec4 sum = texture2D(bg_texture, uv + vec2(-halfpixel.x * 2.0, 0.0) * offset);
-        sum += texture2D(bg_texture, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
-        sum += texture2D(bg_texture, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
-        sum += texture2D(bg_texture, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
-        sum += texture2D(bg_texture, uv + vec2(halfpixel.x * 2.0, 0.0) * offset);
-        sum += texture2D(bg_texture, uv + vec2(halfpixel.x, -halfpixel.y) * offset) * 2.0;
-        sum += texture2D(bg_texture, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
-        sum += texture2D(bg_texture, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
-        gl_FragColor = sum / 12.0;
+    vec4 sum = texture2D(bg_texture, uv + vec2(-halfpixel.x * 2.0, 0.0) * offset);
+    sum += texture2D(bg_texture, uv + vec2(-halfpixel.x, halfpixel.y) * offset) * 2.0;
+    sum += texture2D(bg_texture, uv + vec2(0.0, halfpixel.y * 2.0) * offset);
+    sum += texture2D(bg_texture, uv + vec2(halfpixel.x, halfpixel.y) * offset) * 2.0;
+    sum += texture2D(bg_texture, uv + vec2(halfpixel.x * 2.0, 0.0) * offset);
+    sum += texture2D(bg_texture, uv + vec2(halfpixel.x, -halfpixel.y) * offset) * 2.0;
+    sum += texture2D(bg_texture, uv + vec2(0.0, -halfpixel.y * 2.0) * offset);
+    sum += texture2D(bg_texture, uv + vec2(-halfpixel.x, -halfpixel.y) * offset) * 2.0;
+    gl_FragColor = sum / 12.0;
 })";
 
 static const wf_blur_default_option_values dual_kawase_defaults = {
@@ -82,7 +81,7 @@ class wf_dual_kawase_blur : public wf_blur_base
         offsetIDDown    = GL_CALL(glGetUniformLocation(programDown, "offset"));
         halfpixelIDDown = GL_CALL(glGetUniformLocation(programDown, "halfpixel"));
 
-	programUp = OpenGL::create_program_from_source(dual_kawase_vertex_shader,
+    programUp = OpenGL::create_program_from_source(dual_kawase_vertex_shader,
             dual_kawase_fragment_shader_down_up);
 
         posIDUp       = GL_CALL(glGetAttribLocation( programUp, "position"));
@@ -105,11 +104,11 @@ class wf_dual_kawase_blur : public wf_blur_base
             -1.0f,  1.0f
         };
 
-	int sampleWidth, sampleHeight;
+    int sampleWidth, sampleHeight;
 
         OpenGL::render_begin();
 
-	/* Downsample */
+    /* Downsample */
         GL_CALL(glUseProgram(programDown));
         GL_CALL(glVertexAttribPointer(posIDDown, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
         GL_CALL(glEnableVertexAttribArray(posIDDown));
@@ -117,29 +116,29 @@ class wf_dual_kawase_blur : public wf_blur_base
         GL_CALL(glUniform1f(offsetIDDown, offset));
 
         for (int i = 0; i < iterations; i++){
-	    sampleWidth = width / (1 << i);
-	    sampleHeight = height / (1 << i);
+        sampleWidth = width / (1 << i);
+        sampleHeight = height / (1 << i);
 
-	    GL_CALL(glUniform2f(halfpixelIDDown, 0.5f / sampleWidth, 0.5f / sampleHeight));
+        GL_CALL(glUniform2f(halfpixelIDDown, 0.5f / sampleWidth, 0.5f / sampleHeight));
             render_iteration(fb[i % 2], fb[1 - i % 2], sampleWidth, sampleHeight);
-	}
-	
-	GL_CALL(glDisableVertexAttribArray(posIDDown));
+    }
+    
+    GL_CALL(glDisableVertexAttribArray(posIDDown));
 
         /* Upsample */
-	GL_CALL(glUseProgram(programUp));
+    GL_CALL(glUseProgram(programUp));
         GL_CALL(glVertexAttribPointer(posIDUp, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
         GL_CALL(glEnableVertexAttribArray(posIDUp));
 
         GL_CALL(glUniform1f(offsetIDUp, offset));
 
         for (int i = iterations - 1; i >= 0; i--) {
-	    sampleWidth = width / (1 << i);
-	    sampleHeight = height / (1 << i);
+        sampleWidth = width / (1 << i);
+        sampleHeight = height / (1 << i);
 
-	    GL_CALL(glUniform2f(halfpixelIDUp, 0.5f / sampleWidth, 0.5f / sampleHeight));
+        GL_CALL(glUniform2f(halfpixelIDUp, 0.5f / sampleWidth, 0.5f / sampleHeight));
             render_iteration(fb[1 - i % 2], fb[i % 2], sampleWidth, sampleHeight);
-	}
+    }
 
         GL_CALL(glUseProgram(0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
