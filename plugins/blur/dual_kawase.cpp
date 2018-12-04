@@ -81,7 +81,7 @@ class wf_dual_kawase_blur : public wf_blur_base
         offsetIDDown    = GL_CALL(glGetUniformLocation(programDown, "offset"));
         halfpixelIDDown = GL_CALL(glGetUniformLocation(programDown, "halfpixel"));
 
-        programUp = OpenGL::create_program_from_source(dual_kawase_vertex_shader,
+    programUp = OpenGL::create_program_from_source(dual_kawase_vertex_shader,
             dual_kawase_fragment_shader_down_up);
 
         posIDUp       = GL_CALL(glGetAttribLocation( programUp, "position"));
@@ -147,6 +147,22 @@ class wf_dual_kawase_blur : public wf_blur_base
         OpenGL::render_end();
 
         return 0;
+    }
+
+    virtual int calculate_blur_radius()
+    {
+        switch(iterations_opt->as_int()) {
+            case 1: return 10;
+            case 2: return 20;
+            case 3: return 50;
+            case 4: return 150;
+            case 5: return 400;
+            /* Downsample size / 32 (5 iterations) should be enough to cover all cases
+               Except maybe for higher than 4k resolutions
+               Realistically we would never use this radius
+            */
+            default: return 1000;
+        }
     }
 };
 
