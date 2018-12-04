@@ -55,6 +55,7 @@ class wayfire_blur : public wayfire_plugin_t
 {
     button_callback btn;
 
+    effect_hook_t frame_pre_paint;
     signal_callback_t workspace_stream_pre, workspace_stream_post;
 
     wf_option method_opt;
@@ -100,6 +101,25 @@ class wayfire_blur : public wayfire_plugin_t
         };
         output->add_button(new_static_option("<super> <alt> BTN_LEFT"), &btn);
 
+        frame_pre_paint = [=] ()
+        {
+            int padding = blur_algorithm->calculate_blur_radius();
+            wayfire_surface_t::set_opaque_shrink_constraint("blur",
+                padding);
+
+            auto damage = output->render->get_scheduled_damage();
+            for (const auto& rect : damage)
+            {
+                output->render->damage(wlr_box{
+                        rect.x1 - padding,
+                        rect.y1 - padding,
+                        (rect.x2 - rect.x1) + 2 * padding,
+                        (rect.y2 - rect.y1) + 2 * padding
+                });
+            }
+        };
+        output->render->add_effect(&frame_pre_paint, WF_OUTPUT_EFFECT_PRE);
+
         /* workspace_stream_pre is called before rendering each frame
          * when rendering a workspace. It gives us a chance to pad
          * damage and take a snapshot of the padded area. The padded
@@ -115,8 +135,6 @@ class wayfire_blur : public wayfire_plugin_t
              * furthest sampled pixel by the shader, there should
              * be no visual artifacts. */
             int padding = blur_algorithm->calculate_blur_radius();
-            wayfire_surface_t::set_opaque_shrink_constraint("blur",
-                padding);
 
             wf_region expanded_damage;
             for (const auto& rect : damage)
@@ -213,6 +231,7 @@ class wayfire_blur : public wayfire_plugin_t
 
         output->rem_binding(&btn);
         method_opt->rem_updated_handler(&blur_method_changed);
+        output->render->rem_effect(&frame_pre_paint, WF_OUTPUT_EFFECT_PRE);
         output->render->disconnect_signal("workspace-stream-pre", &workspace_stream_pre);
         output->render->disconnect_signal("workspace-stream-post", &workspace_stream_post);
 
