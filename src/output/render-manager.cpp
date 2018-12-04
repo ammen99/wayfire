@@ -146,6 +146,14 @@ render_manager::~render_manager()
     }
 }
 
+wf_region render_manager::get_scheduled_damage()
+{
+    if (!output->destroyed)
+        return output_damage->frame_damage;
+
+    return wf_region{};
+}
+
 void render_manager::damage_whole()
 {
     if (!output->destroyed)
