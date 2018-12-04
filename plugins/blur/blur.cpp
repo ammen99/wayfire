@@ -75,7 +75,7 @@ class wayfire_blur : public wayfire_plugin_t
 
         auto section = config->get_section("blur");
 
-        method_opt = section->get_option("method", "kawase");
+        method_opt = section->get_option("method", "dual-kawase");
         blur_method_changed = [=] () {
             blur_algorithm = create_blur_from_name(output, method_opt->as_string());
             blur_algorithm->damage_all_workspaces();

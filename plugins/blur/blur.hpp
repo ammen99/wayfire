@@ -143,7 +143,7 @@ class wf_blur_base
 
 std::unique_ptr<wf_blur_base> create_box_blur(wayfire_output *output);
 std::unique_ptr<wf_blur_base> create_bokeh_blur(wayfire_output *output);
-std::unique_ptr<wf_blur_base> create_kawase_blur(wayfire_output *output);
+std::unique_ptr<wf_blur_base> create_dual_kawase_blur(wayfire_output *output);
 std::unique_ptr<wf_blur_base> create_gaussian_blur(wayfire_output *output);
 
 std::unique_ptr<wf_blur_base> create_blur_from_name(wayfire_output *output,

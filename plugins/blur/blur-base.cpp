@@ -240,12 +240,12 @@ std::unique_ptr<wf_blur_base> create_blur_from_name(wayfire_output *output,
         return create_box_blur(output);
     if (algorithm_name == "bokeh")
         return create_bokeh_blur(output);
-    if (algorithm_name == "kawase")
-        return create_kawase_blur(output);
+    if (algorithm_name == "dual_kawase")
+        return create_dual_kawase_blur(output);
     if (algorithm_name == "gaussian")
         return create_gaussian_blur(output);
 
-    log_error ("Unrecognized blur algorithm %s. Using default kawase blur.",
+    log_error ("Unrecognized blur algorithm %s. Using default dual kawase blur.",
         algorithm_name.c_str());
-    return create_kawase_blur(output);
+    return create_dual_kawase_blur(output);
 }
