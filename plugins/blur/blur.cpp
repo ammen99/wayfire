@@ -70,7 +70,7 @@ class wayfire_blur : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "blur";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->abilities_mask = WF_ABILITY_NONE;
 
         auto section = config->get_section("blur");
 
@@ -82,7 +82,6 @@ class wayfire_blur : public wayfire_plugin_t
 
         /* Create initial blur algorithm */
         blur_method_changed();
-
         method_opt->add_updated_handler(&blur_method_changed);
 
         btn = [=] (uint32_t, int, int)
@@ -206,6 +205,16 @@ class wayfire_blur : public wayfire_plugin_t
 
     void fini()
     {
+        output->workspace->for_each_view([=] (wayfire_view view) {
+            if (view->get_transformer(transformer_name))
+                view->pop_transformer(transformer_name);
+        }, WF_ALL_LAYERS);
+
+        output->rem_binding(&btn);
+        method_opt->rem_updated_handler(&blur_method_changed);
+        output->render->disconnect_signal("workspace-stream-pre", &workspace_stream_pre);
+        output->render->disconnect_signal("workspace-stream-post", &workspace_stream_post);
+
         /* Call blur algorithm destructor */
         blur_algorithm = nullptr;
 
