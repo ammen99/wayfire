@@ -1,5 +1,4 @@
 #include "blur.hpp"
-#include "debug.hpp"
 
 static const char* kawase_vertex_shader = R"(
 #version 100
@@ -69,7 +68,6 @@ class wf_dual_kawase_blur : public wf_blur_base
         modeID       = GL_CALL(glGetUniformLocation(program, "mode"));
         offsetID     = GL_CALL(glGetUniformLocation(program, "offset"));
         halfpixelID  = GL_CALL(glGetUniformLocation(program, "halfpixel"));
-
         OpenGL::render_end();
     }
 
@@ -78,21 +76,21 @@ class wf_dual_kawase_blur : public wf_blur_base
         int iterations = iterations_opt->as_int();
         float offset = offset_opt->as_double();
 
-        /* Upload data to shader */
         static const float vertexData[] = {
             -1.0f, -1.0f,
-            1.0f, -1.0f,
-            1.0f,  1.0f,
+             1.0f, -1.0f,
+             1.0f,  1.0f,
             -1.0f,  1.0f
         };
 
         OpenGL::render_begin();
+        /* Upload data to shader */
         GL_CALL(glUseProgram(program));
-        GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
-        GL_CALL(glEnableVertexAttribArray(posID));
-
         GL_CALL(glUniform2f(halfpixelID, 0.5f / width, 0.5f / height));
         GL_CALL(glUniform1f(offsetID, offset));
+
+        GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
+        GL_CALL(glEnableVertexAttribArray(posID));
 
         /* Downsample */
         GL_CALL(glUniform1i(modeID, 0));
@@ -105,10 +103,10 @@ class wf_dual_kawase_blur : public wf_blur_base
             render_iteration(fb[1 - i % 2], fb[i % 2], width, height);
 
         GL_CALL(glUseProgram(0));
-        GL_CALL(glActiveTexture(GL_TEXTURE0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CALL(glDisableVertexAttribArray(posID));
         OpenGL::render_end();
+
         return 0;
     }
 };

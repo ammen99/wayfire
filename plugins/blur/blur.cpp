@@ -62,8 +62,9 @@ class wayfire_blur : public wayfire_plugin_t
 
     const std::string transformer_name = "blur";
 
+    /* the pixels from padded_region */
+    wf_framebuffer_base saved_pixels;
     wf_region padded_region;
-    wf_framebuffer_base saved_pixels; // the pixels from padded_region
 
     public:
     void init(wayfire_config *config)
@@ -79,7 +80,9 @@ class wayfire_blur : public wayfire_plugin_t
             blur_algorithm->damage_all_workspaces();
         };
 
-        blur_method_changed(); // create initial blur algorithm
+        /* Create initial blur algorithm */
+        blur_method_changed();
+
         method_opt->add_updated_handler(&blur_method_changed);
 
         btn = [=] (uint32_t, int, int)
@@ -136,10 +139,11 @@ class wayfire_blur : public wayfire_plugin_t
             /* Initialize a place to store padded region pixels. */
             saved_pixels.allocate(target_fb.viewport_width,
                 target_fb.viewport_height);
-            saved_pixels.bind();
 
             /* Setup framebuffer I/O. target_fb contains the pixels
-             * from last frame at this point. fbo is a scratch buffer. */
+             * from last frame at this point. We are writing them
+             * to saved_pixels, bound as GL_DRAW_FRAMEBUFFER */
+            saved_pixels.bind();
             GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, target_fb.fb));
 
             /* Copy pixels in padded_region from target_fb to saved_pixels. */
@@ -158,6 +162,7 @@ class wayfire_blur : public wayfire_plugin_t
 
             /* This effectively makes damage the same as expanded_damage. */
             damage |= expanded_damage;
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
             OpenGL::render_end();
         };
 
@@ -173,12 +178,11 @@ class wayfire_blur : public wayfire_plugin_t
             OpenGL::render_begin(target_fb);
             /* Setup framebuffer I/O. target_fb contains the frame
              * rendered with expanded damage and artifacts on the edges.
-             * fbo has the the padded region of pixels to overwrite the
+             * saved_pixels has the the padded region of pixels to overwrite the
              * artifacts that blurring has left behind. */
             GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, saved_pixels.fb));
-            GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, target_fb.fb));
 
-            /* Copy pixels back in padded_region from saved_pixels to target_fb. */
+            /* Copy pixels back from saved_pixels to target_fb. */
             for (const auto& rect : padded_region)
             {
                 pixman_box32_t box = pixman_box_from_wlr_box(
@@ -193,6 +197,7 @@ class wayfire_blur : public wayfire_plugin_t
 
             /* Reset stuff */
             padded_region.clear();
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
             OpenGL::render_end();
         };
 
@@ -201,7 +206,8 @@ class wayfire_blur : public wayfire_plugin_t
 
     void fini()
     {
-        blur_algorithm = nullptr; // call blur algorithm destructor
+        /* Call blur algorithm destructor */
+        blur_algorithm = nullptr;
 
         OpenGL::render_begin();
         saved_pixels.release();

@@ -1,5 +1,4 @@
 #include "blur.hpp"
-#include "debug.hpp"
 
 static const char* box_vertex_shader =
 R"(
@@ -92,15 +91,15 @@ class wf_box_blur : public wf_blur_base
 
         static const float vertexData[] = {
             -1.0f, -1.0f,
-            1.0f, -1.0f,
-            1.0f,  1.0f,
+             1.0f, -1.0f,
+             1.0f,  1.0f,
             -1.0f,  1.0f
         };
 
         OpenGL::render_begin();
-        /* Enable our shader and pass some data to it. The shader accepts two textures
-         * and does box blur on the background texture in two passes, one horizontal
-         * and one vertical */
+        /* Enable our shader and pass some data to it. The shader
+         * does box blur on the background texture in two passes,
+         * one horizontal and one vertical */
         GL_CALL(glUseProgram(program));
         GL_CALL(glUniform2f(sizeID, width, height));
         GL_CALL(glUniform1f(offsetID, offset));
@@ -122,8 +121,8 @@ class wf_box_blur : public wf_blur_base
         GL_CALL(glUseProgram(0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CALL(glDisableVertexAttribArray(posID));
-
         OpenGL::render_end();
+
         return 0;
     }
 

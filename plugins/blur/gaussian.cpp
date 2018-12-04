@@ -87,8 +87,7 @@ class wf_gaussian_blur : public wf_blur_base
         program = OpenGL::create_program_from_source(
             gaussian_vertex_shader, gaussian_fragment_shader);
 
-        posID      = GL_CALL(glGetAttribLocation(program, "position"));
-
+        posID     = GL_CALL(glGetAttribLocation(program, "position"));
         sizeID    = GL_CALL(glGetUniformLocation(program, "size"));
         modeID    = GL_CALL(glGetUniformLocation(program, "mode"));
         offsetID  = GL_CALL(glGetUniformLocation(program, "offset"));
@@ -102,14 +101,15 @@ class wf_gaussian_blur : public wf_blur_base
 
         static const float vertexData[] = {
             -1.0f, -1.0f,
-            1.0f, -1.0f,
-            1.0f,  1.0f,
+             1.0f, -1.0f,
+             1.0f,  1.0f,
             -1.0f,  1.0f
         };
 
-        /* Enable our shader and pass some data to it. The shader accepts two textures
-         * and does gaussian blur on the background texture in two passes, one horizontal
-         * and one vertical */
+        OpenGL::render_begin();
+        /* Enable our shader and pass some data to it. The shader does
+         * gaussian blur on the background texture in two passes, one
+         * horizontal and one vertical */
         GL_CALL(glUseProgram(program));
         GL_CALL(glUniform2f(sizeID, width, height));
         GL_CALL(glUniform1f(offsetID, offset));
@@ -132,8 +132,8 @@ class wf_gaussian_blur : public wf_blur_base
         GL_CALL(glUseProgram(0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CALL(glDisableVertexAttribArray(posID));
-
         OpenGL::render_end();
+
         return 0;
     }
 

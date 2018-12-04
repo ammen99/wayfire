@@ -129,15 +129,14 @@ wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
     OpenGL::render_begin(source);
     result.allocate(rounded_width, rounded_height);
 
-    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, result.fb));
     GL_CALL(glBlitFramebuffer(
             subbox.x, source_box.height - subbox.y - subbox.height,
             subbox.x + subbox.width, source_box.height - subbox.y,
             0, 0, rounded_width, rounded_height,
             GL_COLOR_BUFFER_BIT, GL_LINEAR));
-
     OpenGL::render_end();
+
     return subbox;
 }
 
@@ -176,7 +175,7 @@ void wf_blur_base::pre_render(uint32_t src_tex, wlr_box src_box,
             local_box.x + local_box.width,
             view_box.height - local_box.y,
             GL_COLOR_BUFFER_BIT, GL_LINEAR));
-
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
     OpenGL::render_end();
 }
 
@@ -195,8 +194,8 @@ void wf_blur_base::render(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box
     GL_CALL(glEnableVertexAttribArray(blend_posID));
     static const float vertexData[] = {
         -1.0f, -1.0f,
-        1.0f, -1.0f,
-        1.0f,  1.0f,
+         1.0f, -1.0f,
+         1.0f,  1.0f,
         -1.0f,  1.0f
     };
 
@@ -225,7 +224,8 @@ void wf_blur_base::render(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box
 
     /* Disable stuff */
     GL_CALL(glUseProgram(0));
-    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0)); // texture 1
+    /* GL_CALL(glActiveTexture(GL_TEXTURE0 + 1)); */
+    GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
     GL_CALL(glActiveTexture(GL_TEXTURE0));
     GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
     GL_CALL(glDisableVertexAttribArray(blend_posID));

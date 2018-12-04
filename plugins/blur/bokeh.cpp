@@ -63,7 +63,7 @@ static const wf_blur_default_option_values bokeh_defaults = {
 
 class wf_bokeh_blur : public wf_blur_base
 {
-    GLuint modeID, posID, offsetID, iterID, halfpixelID;
+    GLuint posID, offsetID, iterID, halfpixelID;
 
     public:
     wf_bokeh_blur(wayfire_output* output) : wf_blur_base(output, bokeh_defaults)
@@ -73,10 +73,8 @@ class wf_bokeh_blur : public wf_blur_base
         program = OpenGL::create_program_from_source(bokeh_vertex_shader,
             bokeh_fragment_shader);
 
-        posID      = GL_CALL(glGetAttribLocation(program, "position"));
-
+        posID        = GL_CALL(glGetAttribLocation(program, "position"));
         iterID       = GL_CALL(glGetUniformLocation(program, "iterations"));
-        modeID       = GL_CALL(glGetUniformLocation(program, "mode"));
         offsetID     = GL_CALL(glGetUniformLocation(program, "offset"));
         halfpixelID  = GL_CALL(glGetUniformLocation(program, "halfpixel"));
         OpenGL::render_end();
@@ -89,21 +87,20 @@ class wf_bokeh_blur : public wf_blur_base
 
         static const float vertexData[] = {
             -1.0f, -1.0f,
-            1.0f, -1.0f,
-            1.0f,  1.0f,
+             1.0f, -1.0f,
+             1.0f,  1.0f,
             -1.0f,  1.0f
         };
 
         OpenGL::render_begin();
         /* Upload data to shader */
         GL_CALL(glUseProgram(program));
-        GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
-        GL_CALL(glEnableVertexAttribArray(posID));
         GL_CALL(glUniform2f(halfpixelID, 0.5f / width, 0.5f / height));
         GL_CALL(glUniform1f(offsetID, offset));
         GL_CALL(glUniform1i(iterID, iterations));
 
-        GL_CALL(glUniform1i(modeID, 0));
+        GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
+        GL_CALL(glEnableVertexAttribArray(posID));
 
         render_iteration(fb[0], fb[1], width, height);
 
@@ -111,8 +108,8 @@ class wf_bokeh_blur : public wf_blur_base
         GL_CALL(glUseProgram(0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CALL(glDisableVertexAttribArray(posID));
-
         OpenGL::render_end();
+
         return 1;
     }
 };

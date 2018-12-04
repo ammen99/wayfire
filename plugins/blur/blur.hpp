@@ -92,18 +92,18 @@ struct wf_blur_default_option_values
 class wf_blur_base
 {
     protected:
-    // used to store temporary results in blur algorithms, cleaned up in base
-    // destructor
+    /* used to store temporary results in blur algorithms, cleaned up in base
+     * destructor */
     wf_framebuffer_base fb[2];
-    // the program created by the given algorithm, cleaned up in base destructor
+    /* the program created by the given algorithm, cleaned up in base destructor */
     GLuint program;
-    // the program used by wf_blur_base to combine the blurred, unblurred and
-    // view texture
+    /* the program used by wf_blur_base to combine the blurred, unblurred and
+     * view texture */
     GLuint blend_program;
-    GLuint blend_posID, blend_mvpID, blend_texID[2]; // for blend_program
+    GLuint blend_posID, blend_mvpID, blend_texID[2];
 
-    // used to get individual algorithm options from config
-    // should be set by the constructor
+    /* used to get individual algorithm options from config
+     * should be set by the constructor */
     std::string algorithm_name;
 
     wf_option offset_opt, degrade_opt, iterations_opt;
@@ -111,19 +111,19 @@ class wf_blur_base
 
     wayfire_output *output;
 
-    // renders the in texture to the out framebuffer.
-    // assumes a properly bound and initialized GL program
+    /* renders the in texture to the out framebuffer.
+     * assumes a properly bound and initialized GL program */
     void render_iteration(wf_framebuffer_base& in, wf_framebuffer_base& out,
         int width, int height);
 
-    // copy the source pixels from region, storing into result
-    // returns the result geometry, in framebuffer coords
+    /* copy the source pixels from region, storing into result
+     * returns the result geometry, in framebuffer coords */
     wlr_box copy_region(wf_framebuffer_base& result,
         const wf_framebuffer& source, const wf_region& region);
 
-    // blur fb[0]
-    // width and height are the scaled dimensions of the buffer
-    // returns the index of the fb where the result is stored (0 or 1)
+    /* blur fb[0]
+     * width and height are the scaled dimensions of the buffer
+     * returns the index of the fb where the result is stored (0 or 1) */
     virtual int blur_fb0(int width, int height) = 0;
 
     public:
