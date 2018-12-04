@@ -37,13 +37,14 @@ class wf_blur_transformer : public wf_view_transformer_t
 
         uint32_t get_z_order() { return 1e9; }
 
-        virtual void pre_render(uint32_t src_tex, wlr_box src_box, const wf_region& damage,
+        virtual void render_with_damage(uint32_t src_tex, wlr_box src_box, const wf_region& damage,
             const wf_framebuffer& target_fb)
         {
             provider()->pre_render(src_tex, src_box, damage, target_fb);
+            wf_view_transformer_t::render_with_damage(src_tex, src_box, damage, target_fb);
         }
 
-        virtual void render_with_damage(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
+        virtual void render_box(uint32_t src_tex, wlr_box src_box, wlr_box scissor_box,
             const wf_framebuffer& target_fb)
         {
             provider()->render(src_tex, src_box, scissor_box, target_fb);
