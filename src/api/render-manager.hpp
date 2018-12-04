@@ -124,6 +124,10 @@ class render_manager : public wf_signal_provider_t
          */
         void rem_post(post_hook_t*);
 
+        /* Returns the damage scheduled for the next frame, if not in a frame
+         * Otherwise, undefined result */
+        wf_region get_scheduled_damage();
+
         void damage_whole();
         void damage(const wlr_box& box);
         void damage(const wf_region& region);

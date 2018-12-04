@@ -129,6 +129,7 @@ wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
     OpenGL::render_begin(source);
     result.allocate(rounded_width, rounded_height);
 
+    GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, result.fb));
     GL_CALL(glBlitFramebuffer(
             subbox.x, source_box.height - subbox.y - subbox.height,
