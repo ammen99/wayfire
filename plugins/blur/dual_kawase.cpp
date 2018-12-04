@@ -81,7 +81,7 @@ class wf_dual_kawase_blur : public wf_blur_base
         offsetIDDown    = GL_CALL(glGetUniformLocation(programDown, "offset"));
         halfpixelIDDown = GL_CALL(glGetUniformLocation(programDown, "halfpixel"));
 
-    programUp = OpenGL::create_program_from_source(dual_kawase_vertex_shader,
+        programUp = OpenGL::create_program_from_source(dual_kawase_vertex_shader,
             dual_kawase_fragment_shader_down_up);
 
         posIDUp       = GL_CALL(glGetAttribLocation( programUp, "position"));
