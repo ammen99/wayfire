@@ -100,8 +100,8 @@ class wf_dual_kawase_blur : public wf_blur_base
         /* Upload data to shader */
         static const float vertexData[] = {
             -1.0f, -1.0f,
-            1.0f, -1.0f,
-            1.0f,  1.0f,
+             1.0f, -1.0f,
+             1.0f,  1.0f,
             -1.0f,  1.0f
         };
 
@@ -123,7 +123,8 @@ class wf_dual_kawase_blur : public wf_blur_base
 	    GL_CALL(glUniform2f(halfpixelIDDown, 0.5f / sampleWidth, 0.5f / sampleHeight));
             render_iteration(fb[i % 2], fb[1 - i % 2], sampleWidth, sampleHeight);
 	}
-
+	
+	GL_CALL(glDisableVertexAttribArray(posIDDown));
 
         /* Upsample */
 	GL_CALL(glUseProgram(programUp));
@@ -141,10 +142,8 @@ class wf_dual_kawase_blur : public wf_blur_base
 	}
 
         GL_CALL(glUseProgram(0));
-        GL_CALL(glActiveTexture(GL_TEXTURE0));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         GL_CALL(glDisableVertexAttribArray(posIDUp));
-	GL_CALL(glDisableVertexAttribArray(posIDDown));
 
         OpenGL::render_end();
 
