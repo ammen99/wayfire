@@ -343,8 +343,8 @@ modelStepObject ( Object	    *object,
 	object->force.x -= friction * object->velocity.x;
 	object->force.y -= friction * object->velocity.y;
 
-	object->velocity.x += object->force.x / wobbly_settings_get_mass();
-	object->velocity.y += object->force.y / wobbly_settings_get_mass();
+	object->velocity.x += object->force.x / WOBBLY_MASS;
+	object->velocity.y += object->force.y / WOBBLY_MASS;
 
 	object->position.x += object->velocity.x;
 	object->position.y += object->velocity.y;

@@ -9,10 +9,14 @@
 
 #include <GLES2/gl2.h>
 
+#define MINIMAL_FRICTION 0.1
+#define MAXIMAL_FRICTION 10.0
+#define MINIMAL_SPRING_K 0.1
+#define MAXIMAL_SPRING_K 10.0
+#define WOBBLY_MASS 15.0
 
-int wobbly_settings_get_friction();
-int wobbly_settings_get_spring_k();
-int wobbly_settings_get_mass();
+double wobbly_settings_get_friction();
+double wobbly_settings_get_spring_k();
 
 struct wobbly_surface
 {

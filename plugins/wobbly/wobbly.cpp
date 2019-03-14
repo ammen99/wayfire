@@ -100,31 +100,29 @@ void main()
 
 namespace wobbly_settings
 {
-    wf_option friction, spring_k, mass, resolution;
+    wf_option friction, spring_k, resolution;
 
     void init(wayfire_config *config)
     {
         auto section = config->get_section("wobbly");
         friction = section->get_option("friction", "3");
         spring_k = section->get_option("spring_k", "8");
-        mass = section->get_option("mass", "50");
         resolution = section->get_option("grid_resolution", "6");
     };
 };
 
 extern "C"
 {
-    int wobbly_settings_get_friction()
+    double wobbly_settings_get_friction()
     {
-        return wobbly_settings::friction->as_cached_int();
+        return clamp(wobbly_settings::friction->as_cached_double(),
+            MINIMAL_FRICTION, MAXIMAL_FRICTION);
     }
-    int wobbly_settings_get_spring_k()
+
+    double wobbly_settings_get_spring_k()
     {
-        return wobbly_settings::spring_k->as_cached_int();
-    }
-    int wobbly_settings_get_mass()
-    {
-        return wobbly_settings::mass->as_cached_int();
+        return clamp(wobbly_settings::spring_k->as_cached_double(),
+            MINIMAL_SPRING_K, MAXIMAL_SPRING_K);
     }
 }
 

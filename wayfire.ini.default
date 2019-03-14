@@ -99,7 +99,6 @@ toggle = <super> KEY_F
 [wobbly]
 spring_k = 1
 friction = 1
-mass = 10
 grid_resolution = 7
 
 # bind a certain input device to an output
