@@ -111,4 +111,11 @@ int64_t timespec_to_msec(const timespec& ts);
 /* Returns current time in msec, using CLOCK_MONOTONIC as a base */
 uint32_t get_current_time();
 
+/* Ensure that value is in the interval [min, max] */
+template<class T>
+T clamp(T value, T min, T max)
+{
+    return std::min(std::max(value, min), max);
+}
+
 #endif /* end of include guard: WF_UTIL_HPP */

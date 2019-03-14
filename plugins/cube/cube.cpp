@@ -538,8 +538,7 @@ class wayfire_cube : public wayfire_plugin_t
         double current_off_y = animation.duration.progress(animation.offset_y);
         double off_y = current_off_y + ydiff * YVelocity->as_cached_double();
 
-        off_y = std::min(std::max(off_y, -1.5), 1.5); // clamp between -1.5 and 1.5
-
+        off_y = clamp(off_y, -1.5, 1.5);
         animation.offset_y = {current_off_y, off_y};
         animation.offset_z = {animation.duration.progress(animation.offset_z), animation.offset_z.end};
 

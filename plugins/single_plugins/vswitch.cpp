@@ -23,16 +23,6 @@ class vswitch_view_transformer : public wf_2D_view
 };
 const std::string vswitch_view_transformer::name = "vswitch-transformer";
 
-static double clamp(double x, double s, double e)
-{
-    if (x < s)
-        return s;
-    if (x > e)
-        return e;
-
-    return x;
-}
-
 class vswitch : public wayfire_plugin_t
 {
     private:
@@ -123,8 +113,8 @@ class vswitch : public wayfire_plugin_t
          * of the workspace grid */
         GetTuple(vx, vy, output->workspace->get_current_workspace());
         GetTuple(vw, vh, output->workspace->get_workspace_grid_size());
-        int tvx = clamp(vx + dx.end + x, 0, vw - 1);
-        int tvy = clamp(vy + dy.end + y, 0, vh - 1);
+        int tvx = clamp(vx + dx.end + x, 0.0, vw - 1.0);
+        int tvy = clamp(vy + dy.end + y, 0.0, vh - 1.0);
 
         dx = {duration.progress(dx), 1.0 * tvx - vx};
         dy = {duration.progress(dy), 1.0 * tvy - vy};
