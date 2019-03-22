@@ -311,6 +311,9 @@ class wayfire_grid : public wayfire_plugin_t
         auto ev = static_cast<reserved_workarea_signal*> (data);
         output->workspace->for_each_view([=] (wayfire_view view)
         {
+            if (!view->is_mapped())
+                return;
+
             auto data = view->get_data_safe<wf_grid_slot_data>();
 
             /* Detect if the view was maximized outside of the grid plugin */
