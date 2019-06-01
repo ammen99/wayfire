@@ -14,58 +14,39 @@
 #include "snap_signal.hpp"
 #include "../wobbly/wobbly-signal.hpp"
 
-class wf_move_mirror_view : public wayfire_mirror_view_t
+class wf_move_mirror_view : public wf::mirror_view_t
 {
     int _dx, _dy;
+    wf_geometry geometry;
     public:
+
     wf_move_mirror_view(wayfire_view view, int dx, int dy) :
-        wayfire_mirror_view_t(view), _dx(dx), _dy(dy) { }
-
-    virtual wf_point get_output_position()
+        wf::mirror_view_t(view), _dx(dx), _dy(dy)
     {
-        if (!original_view)
-            return {geometry.x, geometry.y};
-
-        geometry = original_view->get_bounding_box() + wf_point{_dx, _dy};
-        return {geometry.x, geometry.y};
+        get_output()->workspace->add_view(self(), wf::LAYER_WORKSPACE);
+        emit_map_state_change(this);
     }
 
     virtual wf_geometry get_output_geometry()
     {
-        if (original_view)
-            geometry = original_view->get_bounding_box() + wf_point{_dx, _dy};
+        if (base_view)
+            geometry = base_view->get_bounding_box() + wf_point{_dx, _dy};
+
         return geometry;
     }
 
-    virtual wf_geometry get_wm_geometry()
-    {
-        if (original_view)
-            geometry = original_view->get_bounding_box() + wf_point{_dx, _dy};
-        return geometry;
-    }
-
-    virtual void map()
-    {
-        _is_mapped = true;
-        output->workspace->add_view(self(), wf::LAYER_WORKSPACE);
-        emit_map_state_change(this);
-    }
-
-    /* By default show animation. If move doesn't want it, it will reset this flag.
-     * Plus, we wantn to show animation if the view itself is destroyed (and in this
-     * case unmap comes not from move, but from the mirror-view implementation) */
+    /* By default show animation. If move doesn't want it, it will reset this
+     * flag.  Plus, we want to show animation if the view itself is destroyed
+     * (and in this case unmap comes not from move, but from the mirror-view
+     * implementation) */
     bool show_animation = true;
 
-    virtual void unmap()
+    virtual void close()
     {
-        _is_mapped = false;
-        damage();
-
-        /* We emit unmap signal so that the animate plugin can hook it up */
         if (show_animation)
-            emit_view_unmap(self());
+            emit_view_pre_unmap(self());
 
-        emit_map_state_change(this);
+        wf::mirror_view_t::close();
     }
 };
 
@@ -75,7 +56,7 @@ struct move_snap_preview_animation
     wf_transition alpha;
 };
 
-class wf_move_snap_preview : public wayfire_color_rect_view_t
+class wf_move_snap_preview : public wf::color_rect_view_t
 {
     wf::effect_hook_t pre_paint;
 
@@ -87,28 +68,23 @@ class wf_move_snap_preview : public wayfire_color_rect_view_t
     wf_duration duration;
     move_snap_preview_animation animation;
 
-    wf_move_snap_preview(wf_geometry start_geometry)
+    wf_move_snap_preview(wf::output_t *output, wf_geometry start_geometry)
+        : wf::color_rect_view_t()
     {
+        set_output(output);
+
         animation.start_geometry = animation.end_geometry = start_geometry;
         animation.alpha = {0, 1};
 
         duration = wf_duration{new_static_option("200")};
         pre_paint = [=] () { update_animation(); };
-        output->render->add_effect(&pre_paint, wf::OUTPUT_EFFECT_PRE);
+        get_output()->render->add_effect(&pre_paint, wf::OUTPUT_EFFECT_PRE);
 
         set_color(base_color);
         set_border_color(base_border);
         set_border(base_border_w);
-    }
 
-    virtual void map()
-    {
-        if (_is_mapped)
-            return;
-        _is_mapped = true;
-
-        output->workspace->add_view(self(), wf::LAYER_TOP);
-        emit_map_state_change(this);
+        get_output()->workspace->add_view(self(), wf::LAYER_TOP);
     }
 
     void set_target_geometry(wf_geometry target, float alpha = -1)
@@ -158,21 +134,12 @@ class wf_move_snap_preview : public wayfire_color_rect_view_t
 
         /* The end of unmap animation, just exit */
         if (!duration.running() && animation.alpha.end <= 0.01)
-        {
-            unmap();
-            destroy();
-        }
+            close();
     }
 
-    virtual void unmap()
+    virtual ~wf_move_snap_preview()
     {
-        if (!_is_mapped)
-            return;
-
-        _is_mapped = false;
-        output->render->rem_effect(&pre_paint);
-
-        emit_map_state_change(this);
+        get_output()->render->rem_effect(&pre_paint);
     }
 };
 
@@ -211,7 +178,7 @@ class wayfire_move : public wayfire_plugin_t
                 was_client_request = false;
                 auto view = wf::get_core().get_cursor_focus_view();
 
-                if (view && view->role != WF_VIEW_ROLE_SHELL_VIEW)
+                if (view && view->role != wf::VIEW_ROLE_SHELL_VIEW)
                     initiate(view);
             };
 
@@ -221,7 +188,7 @@ class wayfire_move : public wayfire_plugin_t
                 was_client_request = false;
                 auto view = wf::get_core().get_touch_focus_view();
 
-                if (view && view->role != WF_VIEW_ROLE_SHELL_VIEW)
+                if (view && view->role != wf::VIEW_ROLE_SHELL_VIEW)
                     initiate(view);
             };
 
@@ -307,7 +274,7 @@ class wayfire_move : public wayfire_plugin_t
 
         void initiate(wayfire_view view)
         {
-            if (!view || view->destroyed)
+            if (!view || !view->is_mapped())
                 return;
 
             auto current_ws = output->workspace->get_current_workspace();
@@ -369,7 +336,7 @@ class wayfire_move : public wayfire_plugin_t
             delete_mirror_views(true);
 
             /* Don't do snapping, etc for shell views */
-            if (view->role == WF_VIEW_ROLE_SHELL_VIEW)
+            if (view->role == wf::VIEW_ROLE_SHELL_VIEW)
                 return;
 
             /* Snap the view */
@@ -455,14 +422,13 @@ class wayfire_move : public wayfire_plugin_t
                     return;
 
                 GetTuple(ix, iy, get_input_coords());
-                auto preview = new wf_move_snap_preview({ix, iy, 1, 1});
+                auto preview = new wf_move_snap_preview(output, {ix, iy, 1, 1});
 
-                wf::get_core().add_view(std::unique_ptr<wayfire_view_t> (preview));
+                wf::get_core().add_view(
+                    std::unique_ptr<wf::view_interface_t> (preview));
 
                 preview->set_output(output);
                 preview->set_target_geometry(query.out_geometry, 1);
-                preview->map();
-
                 slot.preview = nonstd::make_observer(preview);
             }
         }
@@ -520,7 +486,7 @@ class wayfire_move : public wayfire_plugin_t
             int dx = old_g.x - new_g.x;
             int dy = old_g.y - new_g.y;
 
-            view->move(wm_g.x + dx, wm_g.y + dy, true);
+            view->move(wm_g.x + dx, wm_g.y + dy);
             translate_wobbly(view, dx, dy);
 
             view->set_moving(false);
@@ -557,10 +523,7 @@ class wayfire_move : public wayfire_plugin_t
 
             view->show_animation = show_animation;
             if (!already_unmapped)
-            {
-                view->unmap();
-                view->destroy();
-            }
+                view->close();
 
             wo->erase_data(get_data_name());
         }
@@ -594,14 +557,13 @@ class wayfire_move : public wayfire_plugin_t
             auto mirror = new wf_move_mirror_view(view, base_output.x - mirror_output.x,
                 base_output.y - mirror_output.y);
 
-            wf::get_core().add_view(std::unique_ptr<wayfire_view_t> (mirror));
+            wf::get_core().add_view(
+                std::unique_ptr<wf::view_interface_t> (mirror));
 
             auto wo_state = wo->get_data_safe<wf_move_output_state> (get_data_name());
             wo_state->view = nonstd::make_observer(mirror);
 
             mirror->set_output(wo);
-            mirror->map();
-
             mirror->connect_signal("unmap", &handle_mirror_view_unmapped);
         }
 

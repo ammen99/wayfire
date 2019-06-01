@@ -11,7 +11,8 @@ extern "C"
 #undef static
 }
 
-#include "priv-view.hpp"
+#include "surface-impl.hpp"
+#include "subsurface.hpp"
 #include "opengl.hpp"
 #include "../core/core-impl.hpp"
 #include "output.hpp"
@@ -19,247 +20,266 @@ extern "C"
 #include "render-manager.hpp"
 #include "signal-definitions.hpp"
 
-wayfire_surface_t::wayfire_surface_t(wayfire_surface_t* parent)
+/****************************
+ * surface_interface_t functions
+ ****************************/
+wf::surface_interface_t::surface_interface_t(surface_interface_t *parent)
 {
-    inc_keep_count();
-    this->parent_surface = parent;
+    this->priv = std::make_unique<impl>();
+    take_ref();
+    this->priv->parent_surface = parent;
 
     if (parent)
     {
-        set_output(parent->output);
-        parent->surface_children.push_back(this);
+        set_output(parent->get_output());
+        parent->priv->surface_children.insert(
+            parent->priv->surface_children.begin(), this);
+    }
+}
+
+wf::surface_interface_t::~surface_interface_t()
+{
+    if (priv->parent_surface)
+    {
+        auto& container = priv->parent_surface->priv->surface_children;
+        auto it = std::remove(container.begin(), container.end(), this);
+        container.erase(it, container.end());
     }
 
+    for (auto c : priv->surface_children)
+        c->priv->parent_surface = nullptr;
+}
+
+void wf::surface_interface_t::take_ref()
+{
+    ++priv->ref_cnt;
+}
+
+void wf::surface_interface_t::unref()
+{
+    --priv->ref_cnt;
+    if (priv->ref_cnt <= 0)
+        destruct();
+}
+
+wf::surface_interface_t *wf::surface_interface_t::get_main_surface()
+{
+    if (priv->parent_surface)
+        return priv->parent_surface->get_main_surface();
+
+    return this;
+}
+
+std::vector<wf::surface_iterator_t> wf::surface_interface_t::enumerate_surfaces(
+    wf_point surface_origin)
+{
+    std::vector<wf::surface_iterator_t> result;
+    for (auto& child : priv->surface_children)
+    {
+        if (child->is_mapped())
+        {
+            auto child_surfaces = child->enumerate_surfaces(
+                child->get_offset() + surface_origin);
+
+            result.insert(result.end(),
+                child_surfaces.begin(), child_surfaces.end());
+        }
+    }
+
+    if (is_mapped())
+        result.push_back({this, surface_origin});
+
+    return result;
+}
+
+wf::output_t *wf::surface_interface_t::get_output()
+{
+    return priv->output;
+}
+
+void wf::surface_interface_t::set_output(wf::output_t* output)
+{
+    priv->output = output;
+    for (auto& c : priv->surface_children)
+        c->set_output(output);
+}
+
+/* Static method */
+int wf::surface_interface_t::impl::active_shrink_constraint = 0;
+
+void wf::surface_interface_t::set_opaque_shrink_constraint(
+    std::string constraint_name, int value)
+{
+    static std::map<std::string, int> shrink_constraints;
+
+    shrink_constraints[constraint_name] = value;
+
+    impl::active_shrink_constraint = 0;
+    for (auto& constr : shrink_constraints)
+    {
+        impl::active_shrink_constraint =
+            std::max(impl::active_shrink_constraint, constr.second);
+    }
+}
+
+int wf::surface_interface_t::get_active_shrink_constraint()
+{
+    return impl::active_shrink_constraint;
+}
+
+void wf::surface_interface_t::destruct()
+{
+    delete this;
+}
+
+/****************************
+ * surface_interface_t functions for surfaces which are
+ * backed by a wlr_surface
+ ****************************/
+void wf::surface_interface_t::send_frame_done(const timespec& time)
+{
+    if (priv->wsurface)
+        wlr_surface_send_frame_done(priv->wsurface, &time);
+}
+
+bool wf::surface_interface_t::accepts_input(int32_t sx, int32_t sy)
+{
+    if (!priv->wsurface)
+        return false;
+
+    return wlr_surface_point_accepts_input(priv->wsurface, sx, sy);
+}
+
+void wf::surface_interface_t::subtract_opaque(wf_region& region, int x, int y)
+{
+    if (!priv->wsurface)
+        return;
+
+    wf_region opaque{&priv->wsurface->opaque_region};
+    opaque += wf_point{x, y};
+    opaque *= get_output()->handle->scale;
+
+    /* region scaling uses std::ceil/std::floor, so the resulting region
+     * encompasses the opaque region. However, in the case of opaque region, we
+     * don't want any pixels that aren't actually opaque. So in case of
+     * different scales, we just shrink by 1 to compensate for the ceil/floor
+     * discrepancy */
+    int ceil_factor = 0;
+    if (get_output()->handle->scale != (float)priv->wsurface->current.scale)
+        ceil_factor = 1;
+
+    opaque.expand_edges(-get_active_shrink_constraint() - ceil_factor);
+    region ^= opaque;
+}
+
+wl_client* wf::surface_interface_t::get_client()
+{
+    if (priv->wsurface)
+        return wl_resource_get_client(priv->wsurface->resource);
+
+    return nullptr;
+}
+
+wf::wlr_surface_base_t::wlr_surface_base_t(surface_interface_t *self)
+{
+    _as_si = self;
     handle_new_subsurface = [&] (void* data)
     {
         auto sub = static_cast<wlr_subsurface*> (data);
-        if (sub->surface->data)
+        if (sub->data)
+        {
+            log_error("Creating the same subsurface twice!");
+            return;
+        }
+
+        // parent isn't mapped yet
+        if (!sub->parent->data)
             return;
 
-        auto it = std::find_if(surface_children.begin(), surface_children.end(),
-            [=] (wayfire_surface_t *surface) { return surface->surface == sub->surface; });
-
-        if (it == surface_children.end())
-        {
-            auto surf = new wayfire_surface_t(this);
-            surf->map(sub->surface);
-        } else
-        {
-            log_error("adding same subsurface twice!");
-        }
+        // will be deleted by destruct()
+        new subsurface_implementation_t(sub, _as_si);
     };
 
     on_new_subsurface.set_callback(handle_new_subsurface);
     on_commit.set_callback([&] (void*) { commit(); });
 }
 
-wayfire_surface_t::~wayfire_surface_t()
-{
-    if (parent_surface)
-    {
-        auto it = parent_surface->surface_children.begin();
-        while(it != parent_surface->surface_children.end())
-        {
-            if (*it == this)
-                it = parent_surface->surface_children.erase(it);
-            else
-                ++it;
-        }
-    }
+wf::wlr_surface_base_t::~wlr_surface_base_t() {}
 
-    for (auto c : surface_children)
-        c->parent_surface = nullptr;
+
+
+wf_point wf::wlr_surface_base_t::get_window_offset()
+{
+    return {0, 0};
 }
 
-wayfire_surface_t *wayfire_surface_t::get_main_surface()
+bool wf::wlr_surface_base_t::_is_mapped() const
 {
-    return this->parent_surface ? this->parent_surface->get_main_surface() : this;
+    return surface;
 }
 
-bool wayfire_surface_t::is_subsurface()
+wf_surface_size_t wf::wlr_surface_base_t::_get_size() const
 {
-    return wlr_surface_is_subsurface(surface);
-}
+    if (!_is_mapped())
+        return {0, 0};
 
-void wayfire_surface_t::get_child_position(int &x, int &y)
-{
-    auto sub = wlr_subsurface_from_wlr_surface(surface);
-    assert(sub);
-
-    x = sub->current.x;
-    y = sub->current.y;
-}
-
-void wayfire_surface_t::get_child_offset(int &x, int &y)
-{
-    x = 0;
-    y = 0;
-};
-
-void wayfire_surface_t::send_frame_done(const timespec& time)
-{
-    wlr_surface_send_frame_done(surface, &time);
-}
-
-bool wayfire_surface_t::accepts_input(int32_t sx, int32_t sy)
-{
-    if (!surface)
-        return false;
-
-    return wlr_surface_point_accepts_input(surface, sx, sy);
-}
-
-int wayfire_surface_t::maximal_shrink_constraint = 0;
-std::map<std::string, int> wayfire_surface_t::shrink_constraints;
-void wayfire_surface_t::set_opaque_shrink_constraint(std::string name, int value)
-{
-    shrink_constraints[name] = value;
-
-    maximal_shrink_constraint = 0;
-    for (auto& constr : shrink_constraints)
-    {
-        maximal_shrink_constraint =
-            std::max(maximal_shrink_constraint, constr.second);
-    }
-}
-
-void wayfire_surface_t::subtract_opaque(wf_region& region, int x, int y)
-{
-    if (!surface)
-        return;
-
-    wf_region opaque{&surface->opaque_region};
-    opaque += wf_point{x, y};
-    opaque *= output->handle->scale;
-    /* region scaling uses std::ceil/std::floor, so the resulting region
-     * encompasses the opaque region. However, in the case of opaque region, we
-     * don't want any pixels that aren't actually opaque. So in case of different
-     * scales, we just shrink by 1 to compensate for the ceil/floor discrepancy */
-    int ceil_factor = 0;
-    if (output->handle->scale != (float)surface->current.scale)
-        ceil_factor = 1;
-
-    opaque.expand_edges(-maximal_shrink_constraint - ceil_factor);
-    region ^= opaque;
-}
-
-wl_client* wayfire_surface_t::get_client()
-{
-    if (surface)
-        return wl_resource_get_client(surface->resource);
-
-    return nullptr;
-}
-
-bool wayfire_surface_t::is_mapped()
-{
-    return !destroyed && surface;
-}
-
-wf_point wayfire_surface_t::get_relative_position(const wf_point& arg)
-{
-    if (!is_mapped())
-        return arg;
-
-    wf_point result = arg;
-
-    /* The root of each surface tree is a view */
-    auto view = dynamic_cast<wayfire_view_t*> (get_main_surface());
-    assert(view);
-
-    auto transformed = view->get_relative_position(result);
-
-    auto output_position = get_output_position();
-    auto view_position = view->get_output_position();
-
-    return {transformed.x + view_position.x - output_position.x,
-        transformed.y + view_position.y - output_position.y};
-}
-
-wf_point wayfire_surface_t::get_output_position()
-{
-    auto pos = parent_surface->get_output_position();
-
-    int dx, dy;
-    get_child_position(dx, dy);
-    pos.x += dx; pos.y += dy;
-
-    return pos;
-}
-
-wf_geometry wayfire_surface_t::get_output_geometry()
-{
-    if (!is_mapped())
-        return geometry;
-
-    auto pos = get_output_position();
     return {
-        pos.x, pos.y,
         surface->current.width,
-        surface->current.height
+        surface->current.height,
     };
 }
 
-void emit_map_state_change(wayfire_surface_t *surface)
+void wf::emit_map_state_change(wf::surface_interface_t *surface)
 {
     std::string state = surface->is_mapped() ? "_surface_mapped" : "_surface_unmapped";
 
     _surface_map_state_changed_signal data;
     data.surface = surface;
-    if (surface->get_output())
-        surface->get_output()->emit_signal(state, &data);
-
     wf::get_core().emit_signal(state, &data);
 }
 
-void wayfire_surface_t::map(wlr_surface *surface)
+void wf::wlr_surface_base_t::map(wlr_surface *surface)
 {
     assert(!this->surface && surface);
     this->surface = surface;
 
-    /* force surface_send_enter() */
-    set_output(output);
+    _as_si->priv->wsurface = surface;
+
+    /* force surface_send_enter(), and also check whether parent surface
+     * output hasn't changed while we were unmapped */
+    wf::output_t *output = _as_si->priv->parent_surface ?
+        _as_si->priv->parent_surface->get_output() : _as_si->get_output();
+    _as_si->set_output(output);
 
     on_new_subsurface.connect(&surface->events.new_subsurface);
     on_commit.connect(&surface->events.commit);
 
-    /* map by default if this is a subsurface, only toplevels/popups have map/unmap events */
-    if (wlr_surface_is_subsurface(surface))
-    {
-        auto sub = wlr_subsurface_from_wlr_surface(surface);
-        on_destroy.set_callback([&] (void*) { destroyed = 1; unmap(); dec_keep_count(); });
-        on_destroy.connect(&sub->events.destroy);
-    }
+    surface->data = _as_si;
 
-    surface->data = this;
-    damage();
-
+    /* Handle subsurfaces which were created before this surface was mapped */
     wlr_subsurface *sub;
     wl_list_for_each(sub, &surface->subsurfaces, parent_link)
         handle_new_subsurface(sub);
 
-    if (wf::get_core_impl().uses_csd.count(surface))
-        this->has_client_decoration = wf::get_core_impl().uses_csd[surface];
-
-    if (is_subsurface())
-        emit_map_state_change(this);
+    emit_map_state_change(_as_si);
 }
 
-void wayfire_surface_t::unmap()
+void wf::wlr_surface_base_t::unmap()
 {
     assert(this->surface);
-    damage();
+    damage_surface_box({.x = 0, .y = 0,
+        .width = _get_size().width, .height = _get_size().height});
 
     this->surface->data = NULL;
     this->surface = nullptr;
-    emit_map_state_change(this);
+    emit_map_state_change(_as_si);
 
     on_new_subsurface.disconnect();
     on_destroy.disconnect();
     on_commit.disconnect();
 }
 
-wlr_buffer* wayfire_surface_t::get_buffer()
+wlr_buffer* wf::wlr_surface_base_t::get_buffer()
 {
     if (surface && wlr_surface_has_buffer(surface))
         return surface->buffer;
@@ -267,137 +287,67 @@ wlr_buffer* wayfire_surface_t::get_buffer()
     return nullptr;
 }
 
-void wayfire_surface_t::inc_keep_count()
-{
-    ++keep_count;
-}
-
-void wayfire_surface_t::dec_keep_count()
-{
-    --keep_count;
-    if (!keep_count)
-        destruct();
-}
-
-void wayfire_surface_t::damage(const wf_region& dmg)
+void wf::wlr_surface_base_t::damage_surface_region(
+    const wf_region& dmg)
 {
     for (const auto& rect : dmg)
-        damage(wlr_box_from_pixman_box(rect));
+        damage_surface_box(wlr_box_from_pixman_box(rect));
 }
 
-void wayfire_surface_t::damage(const wlr_box& box)
+void wf::wlr_surface_base_t::damage_surface_box(const wlr_box& box)
 {
-    if (parent_surface)
-        parent_surface->damage(box);
-}
+    auto parent =
+        dynamic_cast<wlr_surface_base_t*> (_as_si->priv->parent_surface);
 
-void wayfire_surface_t::damage()
-{
-    /* TODO: bounding box damage */
-    damage(geometry);
-}
-
-void wayfire_surface_t::update_output_position()
-{
-    wf_geometry rect = get_output_geometry();
-
-    /* TODO: recursively damage children? */
-    if (is_subsurface() && rect != geometry)
+    /* wlr_view_t overrides damage_surface_box and applies it to the output */
+    if (parent)
     {
-        damage(geometry);
-        damage(rect);
-
-        geometry = rect;
+        wlr_box parent_box = box;
+        parent_box.x += _as_si->get_offset().x;
+        parent_box.y += _as_si->get_offset().y;
+        parent->damage_surface_box(parent_box);
     }
 }
 
-void wayfire_surface_t::apply_surface_damage(int x, int y)
+void wf::wlr_surface_base_t::apply_surface_damage()
 {
-    if (!output || !is_mapped())
+    if (!_as_si->get_output() || !_is_mapped())
         return;
 
     wf_region dmg;
     wlr_surface_get_effective_damage(surface, dmg.to_pixman());
 
     if (surface->current.scale != 1 ||
-        surface->current.scale != output->handle->scale)
+        surface->current.scale != _as_si->get_output()->handle->scale)
         dmg.expand_edges(1);
 
-    dmg += wf_point{x, y};
-    damage(dmg);
+    damage_surface_region(dmg);
 }
 
-void wayfire_surface_t::commit()
+void wf::wlr_surface_base_t::commit()
 {
-    update_output_position();
-    auto pos = get_output_position();
-    apply_surface_damage(pos.x, pos.y);
-
-    if (output)
+    apply_surface_damage();
+    if (_as_si->get_output())
     {
         /* we schedule redraw, because the surface might expect
          * a frame callback */
-        output->render->schedule_redraw();
-    }
-
-    buffer_age++;
-    auto parent = this->parent_surface;
-    while (parent)
-    {
-        parent->buffer_age++;
-        parent = parent->parent_surface;
+        _as_si->get_output()->render->schedule_redraw();
     }
 }
 
-void wayfire_surface_t::set_output(wf::output_t *out)
+void wf::wlr_surface_base_t::update_output(wf::output_t *old_output,
+    wf::output_t *new_output)
 {
-    if (output && surface)
-        wlr_surface_send_leave(surface, output->handle);
+    /* We should send send_leave only if the output is different from the last. */
+    if (old_output && old_output != new_output && surface)
+        wlr_surface_send_leave(surface, old_output->handle);
 
-    if (out && surface)
-        wlr_surface_send_enter(surface, out->handle);
-
-    output = out;
-    for (auto c : surface_children)
-        c->set_output(out);
+    if (new_output && surface)
+        wlr_surface_send_enter(surface, new_output->handle);
 }
 
-void wayfire_surface_t::for_each_surface_recursive(wf_surface_iterator_callback call,
-                                                   int x, int y, bool reverse)
-{
-    if (!is_mapped())
-        return;
-
-    auto handle_child = [&] (wayfire_surface_t *child)
-    {
-        if (!child->is_mapped())
-            return;
-
-        int dx, dy;
-        child->get_child_position(dx, dy);
-        child->for_each_surface_recursive(call, x + dx, y + dy, reverse);
-    };
-
-    if (reverse)
-    {
-        call(this, x, y);
-        for (auto& c : surface_children)
-            handle_child(c);
-    } else
-    {
-        for (auto& c : wf::reverse(surface_children))
-            handle_child(c);
-        call(this, x, y);
-    }
-}
-
-void wayfire_surface_t::for_each_surface(wf_surface_iterator_callback call, bool reverse)
-{
-    auto pos = get_output_position();
-    for_each_surface_recursive(call, pos.x, pos.y, reverse);
-}
-
-void wayfire_surface_t::_wlr_render_box(const wf_framebuffer& fb, int x, int y, const wlr_box& scissor)
+void wf::wlr_surface_base_t::_wlr_render_box(
+    const wf_framebuffer& fb, int x, int y, const wlr_box& scissor)
 {
     if (!get_buffer())
         return;
@@ -416,7 +366,7 @@ void wayfire_surface_t::_wlr_render_box(const wf_framebuffer& fb, int x, int y, 
     OpenGL::render_begin(fb);
     auto sbox = scissor; wlr_renderer_scissor(wf::get_core().renderer, &sbox);
     wlr_render_texture_with_matrix(wf::get_core().renderer,
-        get_buffer()->texture, matrix, alpha);
+        get_buffer()->texture, matrix, 1.0);
 
 #ifdef WAYFIRE_GRAPHICS_DEBUG
     float scissor_proj[9];
@@ -430,7 +380,8 @@ void wayfire_surface_t::_wlr_render_box(const wf_framebuffer& fb, int x, int y, 
     OpenGL::render_end();
 }
 
-void wayfire_surface_t::simple_render(const wf_framebuffer& fb, int x, int y, const wf_region& damage)
+void wf::wlr_surface_base_t::_simple_render(const wf_framebuffer& fb,
+    int x, int y, const wf_region& damage)
 {
     for (const auto& rect : damage)
     {
@@ -439,11 +390,11 @@ void wayfire_surface_t::simple_render(const wf_framebuffer& fb, int x, int y, co
     }
 }
 
-void wayfire_surface_t::render_fb(const wf_region& damage, const wf_framebuffer& fb)
+wf::wlr_child_surface_base_t::wlr_child_surface_base_t(
+    surface_interface_t *parent, surface_interface_t *self) :
+      wf::surface_interface_t(parent),
+      wlr_surface_base_t(self)
 {
-    if (!is_mapped() || !wlr_surface_has_buffer(surface))
-        return;
-
-    auto obox = get_output_geometry();
-    simple_render(fb, obox.x - fb.geometry.x, obox.y - fb.geometry.y, damage);
 }
+
+wf::wlr_child_surface_base_t::~wlr_child_surface_base_t() { }

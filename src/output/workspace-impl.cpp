@@ -42,6 +42,7 @@ class output_layer_manager_t
         if (!view_layer)
             return;
 
+        view->damage();
         auto& layer_container = layers[layer_index_from_mask(view_layer)];
 
         auto it = std::remove(
@@ -154,7 +155,7 @@ class output_viewport_manager_t
         GetTuple(tx, ty, vp);
 
         auto g = output->get_relative_geometry();
-        if (view->role != WF_VIEW_ROLE_SHELL_VIEW)
+        if (view->role != VIEW_ROLE_SHELL_VIEW)
         {
             g.x += (tx - current_vx) * g.width;
             g.y += (ty - current_vy) * g.height;
@@ -291,7 +292,7 @@ class output_viewport_manager_t
 
         for (auto& view : wf::reverse(views))
         {
-            if (view->is_mapped() && !view->destroyed)
+            if (view->is_mapped())
                 output->focus_view(view);
         }
     }
@@ -478,7 +479,7 @@ class workspace_manager::impl
     {
         /* A view which is fullscreen should go directly to the fullscreen layer
          * when it is raised */
-        if ((current_target & MIDDLE_LAYERS) & view->fullscreen) {
+        if ((current_target & MIDDLE_LAYERS) && view->fullscreen) {
             return LAYER_FULLSCREEN;
         } else {
             return current_target;
@@ -534,7 +535,12 @@ class workspace_manager::impl
         /* First lower fullscreen layer, then make the view on top of all lowered
          * fullscreen views */
         check_lower_fullscreen_layer(view, target_layer);
-        layer_manager.bring_to_front(view);
+        if (view_layer == target_layer) {
+            layer_manager.bring_to_front(view);
+        } else {
+            layer_manager.add_view_to_layer(view,
+                static_cast<layer_t>(target_layer));
+        }
 
         check_autohide_panels();
     }

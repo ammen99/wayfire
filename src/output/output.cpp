@@ -158,29 +158,27 @@ std::tuple<int, int> wf::output_t::get_cursor_position() const
  * Because we don't want to deactivate views when for ex. a panel gets focus,
  * we don't deactivate the current view when this is the case. However, when the focus
  * goes back to the toplevel layer, we need to ensure the proper view is activated. */
-void wf::output_impl_t::set_active_view(wayfire_view v, wlr_seat *seat)
+void wf::output_impl_t::set_active_view(wayfire_view v)
 {
     if (v && !v->is_mapped())
-        return set_active_view(nullptr, seat);
-
-    if (seat == nullptr)
-        seat = wf::get_core().get_current_seat();
+        return set_active_view(nullptr);
 
     bool refocus = (active_view == v);
 
     /* don't deactivate view if the next focus is not a toplevel */
-    if (v == nullptr || v->role == WF_VIEW_ROLE_TOPLEVEL)
+    if (v == nullptr || v->role == VIEW_ROLE_TOPLEVEL)
     {
         if (active_view && active_view->is_mapped() && !refocus)
-            active_view->activate(false);
+            active_view->set_activated(false);
 
         /* make sure to deactivate the lastly activated toplevel */
         if (last_active_toplevel && v != last_active_toplevel)
-            last_active_toplevel->activate(false);
+            last_active_toplevel->set_activated(false);
     }
 
     active_view = v;
 
+    auto seat = wf::get_core().get_current_seat();
     /* If the output isn't focused, we shouldn't touch focus */
     if (wf::get_core().get_active_output() == this)
     {
@@ -189,7 +187,7 @@ void wf::output_impl_t::set_active_view(wayfire_view v, wlr_seat *seat)
             wf::get_core_impl().input->set_keyboard_focus(active_view, seat);
 
             if (!refocus)
-                active_view->activate(true);
+                active_view->set_activated(true);
         } else
         {
             wf::get_core_impl().input->set_keyboard_focus(NULL, seat);
@@ -197,7 +195,7 @@ void wf::output_impl_t::set_active_view(wayfire_view v, wlr_seat *seat)
         }
     }
 
-    if (!active_view || active_view->role == WF_VIEW_ROLE_TOPLEVEL)
+    if (!active_view || active_view->role == VIEW_ROLE_TOPLEVEL)
         last_active_toplevel = active_view;
 }
 
@@ -235,7 +233,7 @@ bool wf::output_t::ensure_visible(wayfire_view v)
     return true;
 }
 
-void wf::output_t::focus_view(wayfire_view v, wlr_seat *seat)
+void wf::output_t::focus_view(wayfire_view v)
 {
     if (v && workspace->get_view_layer(v) < wf::get_core().get_focused_layer())
     {
@@ -247,7 +245,7 @@ void wf::output_t::focus_view(wayfire_view v, wlr_seat *seat)
     {
         /* We can't really focus the view, it isn't mapped or is NULL.
          * But at least we can bring it to front */
-        set_active_view(nullptr, seat);
+        set_active_view(nullptr);
         if (v)
             workspace->bring_to_front(v);
 
@@ -262,7 +260,7 @@ void wf::output_t::focus_view(wayfire_view v, wlr_seat *seat)
         if (v->minimized)
             v->minimize_request(false);
 
-        set_active_view(v, seat);
+        set_active_view(v);
         workspace->bring_to_front(v);
 
         focus_view_signal data;

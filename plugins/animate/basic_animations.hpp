@@ -37,7 +37,6 @@ class fade_animation : public animation_base
 
     ~fade_animation()
     {
-        view->alpha = 1.0f;
         view->pop_transformer(name);
     }
 };
@@ -112,6 +111,5 @@ class zoom_animation : public animation_base
     ~zoom_animation()
     {
         view->pop_transformer(nonstd::make_observer(our_transform));
-        view->alpha = 1.0;
     }
 };

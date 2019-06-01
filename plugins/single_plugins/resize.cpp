@@ -177,7 +177,7 @@ class wayfire_resize : public wayfire_plugin_t
 
     void initiate(wayfire_view view, uint32_t forced_edges = 0)
     {
-        if (!view || view->role == WF_VIEW_ROLE_SHELL_VIEW || view->destroyed)
+        if (!view || view->role == wf::VIEW_ROLE_SHELL_VIEW || !view->is_mapped())
             return;
 
         auto current_ws = output->workspace->get_current_workspace();

@@ -19,7 +19,7 @@ class wayfire_place_window : public wayfire_plugin_t
         {
             auto view = get_signaled_view(data);
 
-            if (view->role != WF_VIEW_ROLE_TOPLEVEL ||
+            if (view->role != wf::VIEW_ROLE_TOPLEVEL ||
                 view->parent || view->fullscreen ||
                 view->maximized)
                 return;

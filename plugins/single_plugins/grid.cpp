@@ -11,6 +11,11 @@
 #include "snap_signal.hpp"
 #include "../wobbly/wobbly-signal.hpp"
 
+extern "C"
+{
+#include <wlr/util/edges.h>
+}
+
 const std::string grid_view_id = "grid-view";
 
 class wayfire_grid_view_cdata : public wf::custom_data_t
@@ -84,8 +89,11 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
 
         if (type == "wobbly")
         {
-            snap_wobbly(view, geometry);
+            /* Order is important here: first we set the view geometry, and
+             * after that we set the snap request. Otherwise the wobbly plugin
+             * will think the view actually moved */
             set_end_state(geometry, tiled_edges);
+            snap_wobbly(view, geometry);
 
             if (!tiled_edges) // release snap, so subsequent size changes don't bother us
                 snap_wobbly(view, geometry, false);
@@ -235,7 +243,7 @@ class wayfire_grid : public wayfire_plugin_t
             bindings[i] = [=] (wf_activator_source, uint32_t)
             {
                 auto view = output->get_active_view();
-                if (!view || view->role != WF_VIEW_ROLE_TOPLEVEL)
+                if (!view || view->role != wf::VIEW_ROLE_TOPLEVEL)
                     return;
 
                 handle_slot(view, i, false);

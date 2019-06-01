@@ -27,7 +27,7 @@ class output_impl_t : public output_t
     virtual bool deactivate_plugin(wayfire_grab_interface owner);
     virtual bool is_plugin_active(owner_t owner_name) const;
     virtual wayfire_view get_active_view() const;
-    virtual void set_active_view(wayfire_view v, wlr_seat *seat = nullptr);
+    virtual void set_active_view(wayfire_view v);
 
     /**
      * Cancel all active grab interfaces.

@@ -25,7 +25,8 @@ class wf_wrot : public wayfire_plugin_t
         void init(wayfire_config *config)
         {
             grab_interface->name = "wrot";
-            grab_interface->abilities_mask = WF_ABILITY_GRAB_INPUT | WF_ABILITY_CHANGE_VIEW_GEOMETRY;
+            grab_interface->abilities_mask =
+                WF_ABILITY_GRAB_INPUT | WF_ABILITY_CHANGE_VIEW_GEOMETRY;
 
             call = [=] (uint32_t, int x, int y)
             {
@@ -33,7 +34,7 @@ class wf_wrot : public wayfire_plugin_t
                     return;
 
                 current_view = wf::get_core().get_cursor_focus_view();
-                if (!current_view || current_view->role != WF_VIEW_ROLE_TOPLEVEL)
+                if (!current_view || current_view->role != wf::VIEW_ROLE_TOPLEVEL)
                 {
                     output->deactivate_plugin(grab_interface);
                     return;

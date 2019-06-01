@@ -33,9 +33,13 @@ extern "C"
 }
 
 class wayfire_config;
-class wayfire_view_t;
-class wayfire_surface_t;
-using wayfire_view = nonstd::observer_ptr<wayfire_view_t>;
+
+namespace wf
+{
+class surface_interface_t;
+class view_interface_t;
+}
+using wayfire_view = nonstd::observer_ptr<wf::view_interface_t>;
 
 namespace wf
 {
@@ -128,12 +132,12 @@ class compositor_core_t : public wf::object_base_t
     /**
      * @return The surface which has the cursor focus, or null if none.
      */
-    virtual wayfire_surface_t *get_cursor_focus() = 0;
+    virtual wf::surface_interface_t *get_cursor_focus() = 0;
 
     /**
      * @return The surface which has touch focus, or null if none.
      */
-    virtual wayfire_surface_t *get_touch_focus() = 0;
+    virtual wf::surface_interface_t *get_touch_focus() = 0;
 
     /** @return The view whose surface is cursor focus */
     wayfire_view get_cursor_focus_view();
@@ -151,7 +155,7 @@ class compositor_core_t : public wf::object_base_t
      * its keep_count drops to zero, hence a plugin using this doesn't have to
      * erase the view manually (instead it should just drop the keep_count)
      */
-    virtual void add_view(std::unique_ptr<wayfire_view_t> view) = 0;
+    virtual void add_view(std::unique_ptr<wf::view_interface_t> view) = 0;
 
     /**
      * Focus the given view and its output (if necessary).

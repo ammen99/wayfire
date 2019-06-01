@@ -2,6 +2,7 @@
 #define TOUCH_HPP
 
 #include <map>
+#include "util.hpp"
 #include "view.hpp"
 
 extern "C"
@@ -49,8 +50,8 @@ struct wf_touch
     void input_grabbed();
 
     int count_touch_down = 0;
-    wayfire_surface_t *grabbed_surface = nullptr;
-    void start_touch_down_grab(wayfire_surface_t *surface);
+    wf::surface_interface_t *grabbed_surface = nullptr;
+    void start_touch_down_grab(wf::surface_interface_t *surface);
     void end_touch_down_grab();
 };
 

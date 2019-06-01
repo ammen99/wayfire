@@ -1,10 +1,11 @@
-#include "priv-view.hpp"
 #include "debug.hpp"
 #include "core.hpp"
 #include "output.hpp"
 #include "workspace-manager.hpp"
+#include "decorator.hpp"
 #include "output-layout.hpp"
 #include "../core/core-impl.hpp"
+#include "view-impl.hpp"
 
 extern "C"
 {
@@ -21,10 +22,11 @@ extern "C"
 
 #if WLR_HAS_XWAYLAND
 
-class wayfire_xwayland_view_base : public wayfire_view_t
+class wayfire_xwayland_view_base : public wf::wlr_view_t
 {
     protected:
-    wf::wl_listener_wrapper on_destroy, on_unmap, on_map, on_configure;
+    wf::wl_listener_wrapper on_destroy, on_unmap, on_map, on_configure,
+        on_set_title, on_set_app_id;
 
     wlr_xwayland_surface *xw;
     int last_server_width = 0;
@@ -33,13 +35,13 @@ class wayfire_xwayland_view_base : public wayfire_view_t
     signal_callback_t output_geometry_changed = [this] (signal_data*)
     {
         if (is_mapped())
-            move(geometry.x, geometry.y, false);
+            move(geometry.x, geometry.y);
     };
 
     public:
 
     wayfire_xwayland_view_base(wlr_xwayland_surface *xww)
-        : wayfire_view_t(), xw(xww)
+        : wlr_view_t(), xw(xww)
     {
         on_map.set_callback([&] (void*) { map(xw->surface); });
         on_unmap.set_callback([&] (void*) { unmap(); });
@@ -48,58 +50,79 @@ class wayfire_xwayland_view_base : public wayfire_view_t
             auto ev = static_cast<wlr_xwayland_surface_configure_event*> (data);
             configure_request({ev->x, ev->y, ev->width, ev->height});
         });
+        on_set_title.set_callback([&] (void*) {
+            handle_title_changed(nonull(xw->title));
+        });
+        on_set_app_id.set_callback([&] (void*) {
+            handle_app_id_changed(nonull(xw->class_t));
+        });
+
+        handle_title_changed(nonull(xw->title));
+        handle_app_id_changed(nonull(xw->class_t));
 
         on_map.connect(&xw->events.map);
         on_unmap.connect(&xw->events.unmap);
         on_destroy.connect(&xw->events.destroy);
         on_configure.connect(&xw->events.request_configure);
+        on_set_title.connect(&xw->events.set_title);
+        on_set_app_id.connect(&xw->events.set_class);
     }
 
     virtual void destroy() override
     {
-        if (output)
-            output->disconnect_signal("output-configuration-changed", &output_geometry_changed);
+        if (get_output())
+        {
+            get_output()->disconnect_signal(
+                "output-configuration-changed", &output_geometry_changed);
+        }
 
         on_map.disconnect();
         on_unmap.disconnect();
         on_destroy.disconnect();
         on_configure.disconnect();
+        on_set_title.disconnect();
+        on_set_app_id.disconnect();
 
-        wayfire_view_t::destroy();
+        wf::wlr_view_t::destroy();
     }
 
     virtual void configure_request(wf_geometry configure_geometry)
     {
-        /* Wayfire positions views relative to their output, but Xwayland windows
-         * have a global positioning. So, we need to make sure that we always
-         * transform between output-local coordinates and global coordinates */
-        if (output)
+        /* Wayfire positions views relative to their output, but Xwayland
+         * windows have a global positioning. So, we need to make sure that we
+         * always transform between output-local coordinates and global
+         * coordinates */
+        if (get_output())
         {
-            auto og = output->get_layout_geometry();
+            auto og = get_output()->get_layout_geometry();
             configure_geometry.x -= og.x;
             configure_geometry.y -= og.y;
         }
 
-        if (frame)
-            configure_geometry = frame->expand_wm_geometry(configure_geometry);
+        if (view_impl->frame)
+        {
+            configure_geometry =
+                view_impl->frame->expand_wm_geometry(configure_geometry);
+        }
+
         set_geometry(configure_geometry);
     }
-
-    virtual bool is_subsurface() override { return false; }
-    virtual std::string get_title()  override { return nonull(xw->title);   }
-    virtual std::string get_app_id() override { return nonull(xw->class_t); }
 
     virtual void close() override
     {
         wlr_xwayland_surface_close(xw);
-        wayfire_view_t::close();
+        wf::wlr_view_t::close();
     }
 
     void send_configure(int width, int height)
     {
+        if (!is_mapped())
+            return;
+
         if (width < 0 || height < 0)
         {
-            /* such a configure request would freeze xwayland. This is most probably a bug */
+            /* such a configure request would freeze xwayland.
+             * This is most probably a bug somewhere in the compositor. */
             log_error("Configuring a xwayland surface with width/height <0");
             return;
         }
@@ -109,18 +132,15 @@ class wayfire_xwayland_view_base : public wayfire_view_t
         int configure_x = output_geometry.x;
         int configure_y = output_geometry.y;
 
-        if (output)
+        if (get_output())
         {
-            auto real_output = output->get_layout_geometry();
+            auto real_output = get_output()->get_layout_geometry();
             configure_x += real_output.x;
             configure_y += real_output.y;
         }
 
-        if (_is_mapped)
-        {
-            wlr_xwayland_surface_configure(xw,
-                configure_x, configure_y, width, height);
-        }
+        wlr_xwayland_surface_configure(xw,
+            configure_x, configure_y, width, height);
     }
 
     void send_configure()
@@ -128,16 +148,29 @@ class wayfire_xwayland_view_base : public wayfire_view_t
         send_configure(last_server_width, last_server_height);
     }
 
+    void move(int x, int y) override
+    {
+        wf::wlr_view_t::move(x, y);
+        if (!view_impl->in_continuous_move)
+            send_configure();
+    }
+
     virtual void set_output(wf::output_t *wo) override
     {
-        if (output)
-            output->disconnect_signal("output-configuration-changed", &output_geometry_changed);
+        if (get_output())
+        {
+            get_output()->disconnect_signal("output-configuration-changed",
+                &output_geometry_changed);
+        }
 
-        wayfire_view_t::set_output(wo);
+        wlr_view_t::set_output(wo);
 
         if (wo)
-            wo->connect_signal("output-configuration-changed", &output_geometry_changed);
-
+        {
+            wo->connect_signal("output-configuration-changed",
+                &output_geometry_changed);
+        }
+        /* Update the real position */
         send_configure();
     }
 };
@@ -149,26 +182,19 @@ class wayfire_unmanaged_xwayland_view : public wayfire_xwayland_view_base
 
     int global_x, global_y;
 
-    void commit();
-    void map(wlr_surface *surface);
-    void unmap();
-    void activate(bool active);
-    void move(int x, int y, bool s);
-    void resize(int w, int h, bool s);
-    void set_geometry(wf_geometry g);
-    wlr_surface *get_keyboard_focus_surface();
+    void commit() override;
+    void map(wlr_surface *surface)override;
+    void unmap()override;
 
-    virtual bool should_be_decorated() { return false; }
     ~wayfire_unmanaged_xwayland_view() { }
 };
 
 class wayfire_xwayland_view : public wayfire_xwayland_view_base
 {
     wf::wl_listener_wrapper on_request_move, on_request_resize,
-        on_request_maximize, on_request_fullscreen,
-        on_set_parent, on_set_title, on_set_app_id;
+        on_request_maximize, on_request_fullscreen, on_set_parent;
 
-    public:
+  public:
     wayfire_xwayland_view(wlr_xwayland_surface *xww)
         : wayfire_xwayland_view_base(xww)
     {
@@ -181,32 +207,26 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             maximize_request(xw->maximized_horz && xw->maximized_vert);
         });
         on_request_fullscreen.set_callback([&] (void*) {
-            fullscreen_request(output, xw->fullscreen);
+            fullscreen_request(get_output(), xw->fullscreen);
         });
 
-        on_set_title.set_callback([&] (void*) { handle_title_changed(); });
-        on_set_app_id.set_callback([&] (void*) { handle_app_id_changed(); });
         on_set_parent.set_callback([&] (void*) {
             auto parent = xw->parent ?
-                wf_view_from_void(xw->parent->data)->self() : nullptr;
+                wf::wf_view_from_void(xw->parent->data)->self() : nullptr;
             set_toplevel_parent(parent);
         });
 
-        on_set_title.connect(&xw->events.set_title);
-        on_set_app_id.connect(&xw->events.set_class);
         on_set_parent.connect(&xw->events.set_parent);
         on_request_move.connect(&xw->events.request_move);
         on_request_resize.connect(&xw->events.request_resize);
         on_request_maximize.connect(&xw->events.request_maximize);
         on_request_fullscreen.connect(&xw->events.request_fullscreen);
 
-        xw->data = this;
+        xw->data = dynamic_cast<wf::view_interface_t*> (this);
     }
 
-    virtual void destroy()
+    virtual void destroy() override
     {
-        on_set_title.disconnect();
-        on_set_app_id.disconnect();
         on_set_parent.disconnect();
         on_request_move.disconnect();
         on_request_resize.disconnect();
@@ -216,19 +236,21 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         wayfire_xwayland_view_base::destroy();
     }
 
-    void map(wlr_surface *surface)
+    void map(wlr_surface *surface) override
     {
         /* override-redirect status changed between creation and MapNotify */
         if (xw->override_redirect)
         {
-            auto xsurface = xw; // keep the xsurface in stack, because destroy will likely free this
+            /* Copy the xsurface in stack, since the destroy() will likely
+             * delete this */
+            auto xsurface = xw;
             destroy();
 
             auto view = std::make_unique<wayfire_unmanaged_xwayland_view> (xsurface);
-            auto raw = view.get();
+            auto view_ptr = view.get();
 
             wf::get_core().add_view(std::move(view));
-            raw->map(xsurface->surface);
+            view_ptr->map(xsurface->surface);
             return;
         }
 
@@ -236,23 +258,17 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             maximize_request(true);
 
         if (xw->fullscreen)
-            fullscreen_request(output, true);
+            fullscreen_request(get_output(), true);
 
-        if (xw->parent)
-        {
-            auto parent = wf_view_from_void(xw->parent->data)->self();
-            set_toplevel_parent(parent);
-        }
-
-        auto real_output = output->get_layout_geometry();
+        auto real_output = get_output()->get_layout_geometry();
         if (!maximized && !fullscreen && !parent)
-            move(xw->x - real_output.x, xw->y - real_output.y, false);
+            move(xw->x - real_output.x, xw->y - real_output.y);
 
-        wayfire_view_t::map(surface);
+        wf::wlr_view_t::map(surface);
         create_toplevel();
     }
 
-    void commit()
+    void commit() override
     {
         if (!xw->has_alpha)
         {
@@ -261,7 +277,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
                 0, 0, surface->current.width, surface->current.height);
         }
 
-        wayfire_view_t::commit();
+        wf::wlr_view_t::commit();
 
         /* Avoid loops where the client wants to have a certain size but the
          * compositor keeps trying to resize it */
@@ -269,51 +285,42 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         last_server_height = geometry.height;
     }
 
-    bool is_subsurface() { return false; }
-
-    virtual bool should_be_decorated()
+    virtual bool should_be_decorated() override
     {
-        return !(xw->decorations & (WLR_XWAYLAND_SURFACE_DECORATIONS_NO_TITLE |
-                                    WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER));
+        return !(xw->decorations &
+            (WLR_XWAYLAND_SURFACE_DECORATIONS_NO_TITLE |
+             WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER));
     }
 
-    void activate(bool active)
+    void set_activated(bool active) override
     {
         wlr_xwayland_surface_activate(xw, active);
-        wayfire_view_t::activate(active);
+        wf::wlr_view_t::set_activated(active);
     }
 
-    void move(int x, int y, bool s)
+    void set_moving(bool moving) override
     {
-        wayfire_view_t::move(x, y, s);
-        if (!destroyed && !in_continuous_move)
-            send_configure();
-    }
-
-    void set_moving(bool moving)
-    {
-        wayfire_view_t::set_moving(moving);
+        wf::wlr_view_t::set_moving(moving);
 
         /* We don't send updates while in continuous move, because that means
          * too much configure requests. Instead, we set it at the end */
-        if (!in_continuous_move)
+        if (!view_impl->in_continuous_move)
             send_configure();
     }
 
-    void resize(int w, int h, bool s)
+    void resize(int w, int h) override
     {
-        damage();
-        if (frame)
-            frame->calculate_resize_size(w, h);
+        if (view_impl->frame)
+            view_impl->frame->calculate_resize_size(w, h);
 
         last_server_width = w;
         last_server_height = h;
         send_configure(w, h);
     }
 
-    virtual void request_native_size()
+    virtual void request_native_size() override
     {
-        if (!_is_mapped)
+        if (!is_mapped())
             return;
 
         if (xw->size_hints->base_width > 0 && xw->size_hints->base_height > 0)
@@ -324,28 +331,23 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         }
     }
 
-    /* TODO: bad with decoration */
-    void set_geometry(wf_geometry g)
+    void set_maximized(bool maxim) override
     {
-        damage();
-
-        wayfire_view_t::move(g.x, g.y, false);
-        resize(g.width, g.height, false);
-    }
-
-    void set_maximized(bool maxim)
-    {
-        wayfire_view_t::set_maximized(maxim);
+        wf::wlr_view_t::set_maximized(maxim);
         wlr_xwayland_surface_set_maximized(xw, maxim);
     }
 
-    virtual void toplevel_send_app_id()
+    virtual void toplevel_send_app_id() override
     {
         if (!toplevel_handle)
             return;
 
+        /* Xwayland windows have two "app-id"s - the class and the instance.
+         * Some apps' icons can be found by looking up the class, for others
+         * the instance. So, just like the workaround for gtk-shell, we can
+         * send both the instance and the class to clients, so that they can
+         * find the appropriate icons. */
         std::string app_id;
-
         auto default_app_id = get_app_id();
         auto instance_app_id = nonull(xw->instance);
 
@@ -358,56 +360,52 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             app_id = default_app_id;
         }
 
-        wlr_foreign_toplevel_handle_v1_set_app_id(toplevel_handle, app_id.c_str());
+        wlr_foreign_toplevel_handle_v1_set_app_id(
+            toplevel_handle, app_id.c_str());
     }
 
-    void set_fullscreen(bool full)
+    void set_fullscreen(bool full) override
     {
-        wayfire_view_t::set_fullscreen(full);
+        wf::wlr_view_t::set_fullscreen(full);
         wlr_xwayland_surface_set_fullscreen(xw, full);
     }
 };
 
-wayfire_unmanaged_xwayland_view::wayfire_unmanaged_xwayland_view(wlr_xwayland_surface *xww)
+wayfire_unmanaged_xwayland_view::
+wayfire_unmanaged_xwayland_view(wlr_xwayland_surface *xww)
     : wayfire_xwayland_view_base(xww)
 {
     log_info("new unmanaged xwayland surface %s class: %s instance: %s",
              nonull(xw->title), nonull(xw->class_t), nonull(xw->instance));
 
     xw->data = this;
-    role = WF_VIEW_ROLE_UNMANAGED;
+    role = wf::VIEW_ROLE_UNMANAGED;
 }
 
 void wayfire_unmanaged_xwayland_view::commit()
 {
+    /* Xwayland O-R views manage their position on their own. So we need to
+     * update their position on each commit, if the position changed. */
     if (global_x != xw->x || global_y != xw->y)
     {
         geometry.x = global_x = xw->x;
         geometry.y = global_y = xw->y;
 
-        if (output)
+        if (get_output())
         {
-            auto real_output = output->get_layout_geometry();
+            auto real_output = get_output()->get_layout_geometry();
             geometry.x -= real_output.x;
             geometry.y -= real_output.y;
         }
 
-        wayfire_view_t::move(geometry.x, geometry.y, false);
+        wf::wlr_view_t::move(geometry.x, geometry.y);
     }
 
-    wayfire_surface_t::commit();
-
-    auto old_geometry = geometry;
-    if (update_size())
-    {
-        damage(old_geometry);
-        damage();
-    }
+    wlr_view_t::commit();
 }
 
 void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
 {
-    _is_mapped = true;
     /* move to the output where our center is
      * FIXME: this is a bad idea, because a dropdown menu might get sent to
      * an incorrect output. However, no matter how we calculate the real
@@ -433,84 +431,53 @@ void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
 
     global_x = xw->x;
     global_y = xw->y;
-    wayfire_view_t::move(xw->x - real_output_geometry.x,
-        xw->y - real_output_geometry.y, false);
+    wf::wlr_view_t::move(xw->x - real_output_geometry.x,
+        xw->y - real_output_geometry.y);
 
-    if (wo != output)
+    if (wo != get_output())
     {
-        if (output)
-            output->workspace->remove_view(self());
+        if (get_output())
+            get_output()->workspace->remove_view(self());
 
         set_output(wo);
     }
 
     damage();
 
-    wayfire_surface_t::map(surface);
     /* We update the keyboard focus before emitting the map event, so that
      * plugins can detect that this view can have keyboard focus */
-    _keyboard_focus_enabled = wlr_xwayland_or_surface_wants_focus(xw);
+    view_impl->keyboard_focus_enabled = wlr_xwayland_or_surface_wants_focus(xw);
 
-    output->workspace->add_view(self(), wf::LAYER_XWAYLAND);
-    emit_view_map(self());
+    get_output()->workspace->add_view(self(), wf::LAYER_XWAYLAND);
+    wf::wlr_view_t::map(surface);
+
     if (wlr_xwayland_or_surface_wants_focus(xw))
     {
-        auto wa = output->workspace->get_workarea();
+        /* Clients that need to interact with the user, just make sure that
+         * they are not below a panel or similar */
+        auto wa = get_output()->workspace->get_workarea();
         move(xw->x + wa.x - real_output_geometry.x,
-            xw->y + wa.y - real_output_geometry.y, false);
+            xw->y + wa.y - real_output_geometry.y);
 
-        output->focus_view(self());
+        /* And focus them, since they are a new window */
+        get_output()->focus_view(self());
     }
 }
 
 void wayfire_unmanaged_xwayland_view::unmap()
 {
-    _is_mapped = false;
-    emit_view_unmap(self());
-    wayfire_surface_t::unmap();
-}
+    /* O-R focuseable views are treated like normal windows, i.e they have the
+     * pre-unmap event and have unmap animations */
+    if (view_impl->keyboard_focus_enabled)
+        emit_view_pre_unmap(self());
 
-void wayfire_unmanaged_xwayland_view::activate(bool active)
-{
-    wayfire_view_t::activate(active);
-    wlr_xwayland_surface_activate(xw, active);
-}
-
-void wayfire_unmanaged_xwayland_view::move(int x, int y, bool s)
-{
-    damage();
-    geometry.x = x;
-    geometry.y = y;
-    send_configure();
-}
-
-void wayfire_unmanaged_xwayland_view::resize(int w, int h, bool s)
-{
-    damage();
-    geometry.width = w;
-    geometry.height = h;
-    send_configure();
-}
-
-void wayfire_unmanaged_xwayland_view::set_geometry(wf_geometry g)
-{
-    damage();
-    geometry = g;
-    send_configure();
-}
-
-wlr_surface *wayfire_unmanaged_xwayland_view::get_keyboard_focus_surface()
-{
-    if (wlr_xwayland_or_surface_wants_focus(xw))
-        return wayfire_view_t::get_keyboard_focus_surface();
-
-    return nullptr;
+    wf::wlr_view_t::unmap();
 }
 
 static wlr_xwayland *xwayland_handle = nullptr;
 #endif
 
-void init_xwayland()
+void wf::init_xwayland()
 {
 #if WLR_HAS_XWAYLAND
     static wf::wl_listener_wrapper on_created;
@@ -542,7 +509,7 @@ void init_xwayland()
 #endif
 }
 
-void xwayland_set_seat(wlr_seat *seat)
+void wf::xwayland_set_seat(wlr_seat *seat)
 {
 #if WLR_HAS_XWAYLAND
     if (xwayland_handle)
@@ -553,7 +520,7 @@ void xwayland_set_seat(wlr_seat *seat)
 #endif
 }
 
-std::string xwayland_get_display()
+std::string wf::xwayland_get_display()
 {
 #if WLR_HAS_XWAYLAND
     return std::to_string(xwayland_handle ? xwayland_handle->display : -1);

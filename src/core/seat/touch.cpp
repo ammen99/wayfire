@@ -8,7 +8,6 @@
 #include "workspace-manager.hpp"
 #include "compositor-surface.hpp"
 #include "output-layout.hpp"
-#include "../../view/priv-view.hpp"
 
 constexpr static int MIN_FINGERS = 3;
 constexpr static int MIN_SWIPE_DISTANCE = 100;
@@ -284,7 +283,7 @@ void wf_touch::add_device(wlr_input_device *device)
     wlr_cursor_attach_input_device(cursor, device);
 }
 
-void wf_touch::start_touch_down_grab(wayfire_surface_t *surface)
+void wf_touch::start_touch_down_grab(wf::surface_interface_t *surface)
 {
     grabbed_surface = surface;
 }
@@ -303,7 +302,7 @@ void wf_touch::end_touch_down_grab()
 }
 
 /* input_manager touch functions */
-void input_manager::set_touch_focus(wayfire_surface_t *surface,
+void input_manager::set_touch_focus(wf::surface_interface_t *surface,
     uint32_t time, int id, int x, int y)
 {
     bool focus_compositor_surface = wf_compositor_surface_from_surface(surface);
@@ -311,7 +310,7 @@ void input_manager::set_touch_focus(wayfire_surface_t *surface,
 
     wlr_surface *next_focus = NULL;
     if (surface && !focus_compositor_surface)
-        next_focus = surface->surface;
+        next_focus = surface->priv->wsurface;
 
     // create a new touch point, we have a valid new focus
     if (!had_focus && next_focus)
@@ -373,7 +372,7 @@ void input_manager::handle_touch_down(uint32_t time, int32_t id,
     {
         focus = our_touch->grabbed_surface;
         /* XXX: we assume the output won't change ever since grab started */
-        auto local = our_touch->grabbed_surface->get_relative_position({ox, oy});
+        auto local = get_surface_relative_coords(focus, {ox, oy});
         lx = local.x;
         ly = local.y;
     }
@@ -411,14 +410,14 @@ void input_manager::handle_touch_motion(uint32_t time, int32_t id,
     }
 
     int lx, ly;
-    wayfire_surface_t *surface = nullptr;
+    wf::surface_interface_t *surface = nullptr;
     /* Same as cursor motion handling: make sure we send to the grabbed surface,
      * except if we need this for DnD */
     if (our_touch->grabbed_surface && !drag_icon)
     {
         surface = our_touch->grabbed_surface;
         auto og = surface->get_output()->get_layout_geometry();
-        auto local = surface->get_relative_position({x - og.x, y - og.y});
+        auto local = get_surface_relative_coords(surface, {x - og.x, y - og.y});
 
         lx = local.x;
         ly = local.y;

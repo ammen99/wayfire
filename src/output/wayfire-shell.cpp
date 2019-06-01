@@ -8,6 +8,7 @@
 #include "wayfire-shell.hpp"
 #include "wayfire-shell-protocol.h"
 #include "signal-definitions.hpp"
+#include "../view/view-impl.hpp"
 
 struct wayfire_shell_output
 {
@@ -254,18 +255,18 @@ class wayfire_shell_wm_surface : public wf::custom_data_t
         switch(new_mode)
         {
             case ZWF_WM_SURFACE_V1_KEYBOARD_FOCUS_MODE_NO_FOCUS:
-                view->set_keyboard_focus_enabled(false);
+                view->view_impl->keyboard_focus_enabled = false;
                 view->get_output()->refocus(nullptr);
                 break;
 
             case ZWF_WM_SURFACE_V1_KEYBOARD_FOCUS_MODE_CLICK_TO_FOCUS:
-                view->set_keyboard_focus_enabled(true);
+                view->view_impl->keyboard_focus_enabled = true;
                 break;
 
             case ZWF_WM_SURFACE_V1_KEYBOARD_FOCUS_MODE_EXCLUSIVE_FOCUS:
                 /* Notice: using output here is safe, because we do not allow
                  * exclusive focus for outputless surfaces */
-                view->set_keyboard_focus_enabled(true);
+                view->view_impl->keyboard_focus_enabled = true;
                 layer_focus_request = wf::get_core().focus_layer(
                     output->workspace->get_view_layer(view), layer_focus_request);
                 output->focus_view(view);
@@ -321,7 +322,7 @@ wm_surface_from_view(wayfire_view view)
 static wayfire_view view_from_resource(wl_resource *resource)
 {
     // TODO: assert(wl_resource_instance_of)
-    return static_cast<wayfire_view_t*> (
+    return static_cast<wf::view_interface_t*> (
         wl_resource_get_user_data(resource))->self();
 }
 
@@ -377,7 +378,7 @@ static void zwf_shell_manager_get_wm_surface(struct wl_client *client,
         wf::get_core().output_layout->find_output(
             wlr_output_from_resource(output)) : nullptr;
 
-    auto view = wl_surface_to_wayfire_view(surface);
+    auto view = wf::wl_surface_to_wayfire_view(surface);
 
     if (!view)
     {
@@ -391,7 +392,7 @@ static void zwf_shell_manager_get_wm_surface(struct wl_client *client,
     auto wfo = wl_resource_create(client, &zwf_wm_surface_v1_interface, 1, id);
     wl_resource_set_implementation(wfo, &zwf_wm_surface_v1_implementation, view.get(), NULL);
 
-    view->set_role(WF_VIEW_ROLE_SHELL_VIEW);
+    view->set_role(wf::VIEW_ROLE_SHELL_VIEW);
     if (wo)
     {
         view->get_output()->workspace->remove_view(view);
@@ -419,7 +420,7 @@ static void zwf_shell_manager_get_wm_surface(struct wl_client *client,
     }
 
     view->get_output()->workspace->add_view(view, (wf::layer_t)layer);
-    view->activate(true);
+    view->set_activated(true);
 }
 
 static void zwf_output_inhibit_output(struct wl_client *client,

@@ -43,8 +43,8 @@ struct wf_cursor
     wf_option mouse_scroll_speed;
     wf_option touchpad_scroll_speed;
 
-    wayfire_surface_t *grabbed_surface = nullptr;
-    void start_held_grab(wayfire_surface_t *surface);
+    wf::surface_interface_t *grabbed_surface = nullptr;
+    void start_held_grab(wf::surface_interface_t *surface);
     void end_held_grab();
 };
 

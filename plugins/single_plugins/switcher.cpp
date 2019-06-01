@@ -50,7 +50,7 @@ struct SwitcherView
     int position;
 
     /* Make animation start values the current progress of duration */
-    void refresh_start(const wf_duration& duration)
+    void refresh_start(wf_duration& duration)
     {
         attribs.off_x.start = duration.progress(attribs.off_x);
         attribs.off_y.start = duration.progress(attribs.off_y);
@@ -591,9 +591,8 @@ class WayfireSwitcher : public wayfire_plugin_t
             {0.0, 1.0, 0.0});
 
         transform->color[3] = duration.progress(sv.attribs.alpha);
-        sv.view->render_fb(
-            output->render->get_target_framebuffer().get_damage_region(),
-            output->render->get_target_framebuffer());
+        sv.view->render_transformed(output->render->get_target_framebuffer(),
+            output->render->get_target_framebuffer().get_damage_region());
 
         transform->translation = glm::mat4();
         transform->scaling = glm::mat4();
@@ -609,14 +608,14 @@ class WayfireSwitcher : public wayfire_plugin_t
 
         dim_background(background_dim_duration.progress());
         for (auto view : get_background_views())
-            view->render_fb(fb.get_damage_region(), fb);
+            view->render_transformed(fb, fb.get_damage_region());
 
         /* Render in the reverse order because we don't use depth testing */
         for (auto& view : wf::reverse(views))
             render_view(view, fb);
 
         for (auto view : get_overlay_views())
-            view->render_fb(fb.get_damage_region(), fb);
+            view->render_transformed(fb, fb.get_damage_region());
 
         if (!duration.running())
         {
@@ -782,7 +781,8 @@ class WayfireSwitcher : public wayfire_plugin_t
         arrange_view(sv, empty_slot);
 
         /* directly show it on the target position */
-        sv.refresh_start({new_static_option("0")});
+        wf_duration immediate = new_static_option("0");
+        sv.refresh_start(immediate);
         sv.attribs.alpha = {0, 1};
 
         views.push_back(sv);

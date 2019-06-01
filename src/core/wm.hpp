@@ -3,7 +3,6 @@
 #include "plugin.hpp"
 #include "view.hpp"
 
-
 class wayfire_close : public wayfire_plugin_t {
     activator_callback callback;
     public:
@@ -20,7 +19,7 @@ class wayfire_focus : public wayfire_plugin_t {
     wayfire_view last_focus;
     void send_done(wayfire_view view);
     void set_last_focus(wayfire_view view);
-    void check_focus_surface(wayfire_surface_t *surface);
+    void check_focus_surface(wf::surface_interface_t *surface);
 
     public:
         void init(wayfire_config*) override;

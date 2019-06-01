@@ -5,7 +5,6 @@
 #include "output-layout.hpp"
 #include "debug.hpp"
 #include "signal-definitions.hpp"
-#include "../../view/priv-view.hpp"
 
 extern "C"
 {
@@ -13,7 +12,7 @@ extern "C"
 }
 
 wf_drag_icon::wf_drag_icon(wlr_drag_icon *ic)
-    : wayfire_surface_t(nullptr), icon(ic)
+    : wf::wlr_child_surface_base_t(nullptr, this), icon(ic)
 {
     on_map.set_callback([&] (void*) { this->map(icon->surface); });
     on_unmap.set_callback([&] (void*) { this->unmap(); });
@@ -29,7 +28,7 @@ wf_drag_icon::wf_drag_icon(wlr_drag_icon *ic)
     on_destroy.connect(&icon->events.destroy);
 }
 
-wf_point wf_drag_icon::get_output_position()
+wf_point wf_drag_icon::get_offset()
 {
     auto pos = icon->drag->grab_type == WLR_DRAG_GRAB_KEYBOARD_TOUCH ?
         wf::get_core().get_touch_position(icon->drag->touch_id) :
@@ -43,27 +42,30 @@ wf_point wf_drag_icon::get_output_position()
         y += icon->surface->sy;
     }
 
-    if (output)
-    {
-        auto og = output->get_layout_geometry();
-        x -= og.x;
-        y -= og.y;
-    }
-
     return {x, y};
 }
 
-void wf_drag_icon::damage(const wlr_box& box)
+void wf_drag_icon::damage()
+{
+    wlr_box box = {0, 0, get_size().width, get_size().height};
+    damage_surface_box(box);
+}
+
+void wf_drag_icon::damage_surface_box(const wlr_box& box)
 {
     if (!is_mapped())
         return;
 
+    wlr_box damage = box;
+    damage.x += get_offset().x;
+    damage.y += get_offset().y;
+
     for (auto& output : wf::get_core().output_layout->get_outputs())
     {
         auto output_geometry = output->get_layout_geometry();
-        if (output_geometry & box)
+        if (output_geometry & damage)
         {
-            auto local = box;
+            auto local = damage;
             local.x -= output_geometry.x;
             local.y -= output_geometry.y;
 
@@ -98,7 +100,7 @@ void input_manager::validate_drag_request(wlr_seat_request_start_drag_event *ev)
 void input_manager::update_drag_icon()
 {
     if (drag_icon && drag_icon->is_mapped())
-        drag_icon->update_output_position();
+        drag_icon->damage();
 }
 
 void input_manager::create_seat()
@@ -309,4 +311,13 @@ void wf_input_device_internal::update_options()
         libinput_device_config_accel_set_speed(dev,
             config.mouse_cursor_speed->as_cached_double());
     }
+}
+
+wf_point get_surface_relative_coords(wf::surface_interface_t *surface,
+    const wf_point& point)
+{
+    auto view =
+        dynamic_cast<wf::view_interface_t*> (surface->get_main_surface());
+    auto local = view->global_to_local_point(point, surface);
+    return local;
 }

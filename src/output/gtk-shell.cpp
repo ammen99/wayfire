@@ -2,10 +2,10 @@
 #include "gtk-shell-protocol.h"
 
 #include "view.hpp"
-#include "../view/priv-view.hpp"
 #include "../core/core-impl.hpp"
 #include "core.hpp"
 #include "debug.hpp"
+#include <map>
 
 struct wf_gtk_shell {
     std::map<wl_resource*, std::string> surface_app_id;

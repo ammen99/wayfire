@@ -81,7 +81,7 @@ class input_manager
 
         // returns the surface under the given global coordinates
         // if no such surface (return NULL), lx and ly are undefined
-        wayfire_surface_t* input_surface_at(int x, int y,
+        wf::surface_interface_t* input_surface_at(int x, int y,
             int& lx, int& ly);
 
         void validate_drag_request(wlr_seat_request_start_drag_event *ev);
@@ -105,15 +105,15 @@ class input_manager
         void handle_input_destroyed(wlr_input_device *dev);
 
         void update_cursor_position(uint32_t time_msec, bool real_update = true);
-        void update_cursor_focus(wayfire_surface_t *surface, int lx, int ly);
-        void set_touch_focus(wayfire_surface_t *surface, uint32_t time, int id, int lx, int ly);
+        void update_cursor_focus(wf::surface_interface_t *surface, int lx, int ly);
+        void set_touch_focus(wf::surface_interface_t *surface, uint32_t time, int id, int lx, int ly);
 
         wl_client *exclusive_client = NULL;
 
         wlr_seat *seat = nullptr;
         std::unique_ptr<wf_cursor> cursor;
 
-        wayfire_surface_t* cursor_focus = nullptr, *touch_focus = nullptr;
+        wf::surface_interface_t* cursor_focus = nullptr, *touch_focus = nullptr;
 
         std::unique_ptr<wf_touch> our_touch;
         std::unique_ptr<wf_drag_icon> drag_icon;
@@ -130,7 +130,7 @@ class input_manager
         void ungrab_input();
         bool input_grabbed();
 
-        bool can_focus_surface(wayfire_surface_t *surface);
+        bool can_focus_surface(wf::surface_interface_t *surface);
         void set_exclusive_focus(wl_client *client);
 
         void toggle_session();

@@ -36,10 +36,10 @@ extern "C"
 #include "seat/input-manager.hpp"
 #include "seat/input-inhibit.hpp"
 #include "seat/touch.hpp"
+#include "../view/view-impl.hpp"
 #include "../output/wayfire-shell.hpp"
 #include "../output/output-impl.hpp"
 #include "../output/gtk-shell.hpp"
-#include "view/priv-view.hpp"
 #include "config.h"
 #include "img.hpp"
 #include "output-layout.hpp"
@@ -57,7 +57,9 @@ struct wf_server_decoration_t
         bool use_csd = decor->mode == WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT;
         wf::get_core_impl().uses_csd[decor->surface] = use_csd;
 
-        auto wf_surface = wf_surface_from_void(decor->surface->data);
+        auto wf_surface = dynamic_cast<wf::wlr_view_t*> (
+            wf::wf_surface_from_void(decor->surface->data));
+
         if (wf_surface)
             wf_surface->has_client_decoration = use_csd;
     };
@@ -96,6 +98,7 @@ void wf::compositor_core_impl_t::init(wayfire_config *conf)
     compositor = wlr_compositor_create(display, renderer);
     init_desktop_apis();
     input = std::make_unique<input_manager>();
+    log_info("input is %p", input.get());
 
     protocols.screenshooter = wlr_screenshooter_create(display);
     protocols.screencopy = wlr_screencopy_manager_v1_create(display);
@@ -189,7 +192,7 @@ std::tuple<int, int> wf::compositor_core_impl_t::get_touch_position(int id)
     return std::make_tuple(invalid_coordinate, invalid_coordinate);
 }
 
-wayfire_surface_t *wf::compositor_core_impl_t::get_cursor_focus()
+wf::surface_interface_t* wf::compositor_core_impl_t::get_cursor_focus()
 {
     return input->cursor_focus;
 }
@@ -197,13 +200,13 @@ wayfire_surface_t *wf::compositor_core_impl_t::get_cursor_focus()
 wayfire_view wf::compositor_core_t::get_cursor_focus_view()
 {
     auto focus = get_cursor_focus();
-    auto view = dynamic_cast<wayfire_view_t*> (
+    auto view = dynamic_cast<wf::view_interface_t*> (
         focus ? focus->get_main_surface() : nullptr);
 
     return view ? view->self() : nullptr;
 }
 
-wayfire_surface_t *wf::compositor_core_impl_t::get_touch_focus()
+wf::surface_interface_t *wf::compositor_core_impl_t::get_touch_focus()
 {
     return input->touch_focus;
 }
@@ -211,7 +214,7 @@ wayfire_surface_t *wf::compositor_core_impl_t::get_touch_focus()
 wayfire_view wf::compositor_core_t::get_touch_focus_view()
 {
     auto focus = get_touch_focus();
-    auto view = dynamic_cast<wayfire_view_t*> (
+    auto view = dynamic_cast<wf::view_interface_t*> (
         focus ? focus->get_main_surface() : nullptr);
 
     return view ? view->self() : nullptr;
@@ -329,7 +332,8 @@ void wf::compositor_core_impl_t::unfocus_layer(int request)
     }
 }
 
-void wf::compositor_core_impl_t::add_view(std::unique_ptr<wayfire_view_t> view)
+void wf::compositor_core_impl_t::add_view(
+    std::unique_ptr<wf::view_interface_t> view)
 {
     views.push_back(std::move(view));
     assert(active_output);
@@ -343,7 +347,7 @@ void wf::compositor_core_impl_t::focus_view(wayfire_view v)
     if (v->get_output() != active_output)
         focus_output(v->get_output());
 
-    active_output->focus_view(v, get_current_seat());
+    active_output->focus_view(v);
 }
 
 void wf::compositor_core_impl_t::erase_view(wayfire_view v)
@@ -354,8 +358,7 @@ void wf::compositor_core_impl_t::erase_view(wayfire_view v)
         v->get_output()->workspace->remove_view(v);
 
     auto it = std::find_if(views.begin(), views.end(),
-                           [&v] (const std::unique_ptr<wayfire_view_t>& k)
-                           { return k.get() == v.get(); });
+        [&v] (const auto& view) { return view.get() == v.get(); });
 
     views.erase(it);
 }
@@ -378,9 +381,9 @@ void wf::compositor_core_impl_t::run(std::string command)
             dup2(dev_null, 1);
             dup2(dev_null, 2);
 
-            exit(execl("/bin/sh", "/bin/bash", "-c", command.c_str(), NULL));
+            _exit(execl("/bin/sh", "/bin/bash", "-c", command.c_str(), NULL));
         } else {
-            exit(0);
+            _exit(0);
         }
     }
 }

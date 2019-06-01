@@ -9,19 +9,20 @@ extern "C"
 #include <wlr/types/wlr_switch.h>
 }
 
+#include "../../view/surface-impl.hpp"
 #include "output.hpp"
 #include "input-device.hpp"
 
-struct wf_drag_icon : public wayfire_surface_t
+struct wf_drag_icon : public wf::wlr_child_surface_base_t
 {
     wlr_drag_icon *icon;
     wf::wl_listener_wrapper on_map, on_unmap, on_destroy;
 
     wf_drag_icon(wlr_drag_icon *icon);
+    wf_point get_offset() override;
 
-    bool is_subsurface() { return true ;}
-    wf_point get_output_position();
-    void damage(const wlr_box& rect);
+    void damage();
+    void damage_surface_box(const wlr_box& rect) override;
 };
 
 class wf_input_device_internal : public wf::input_device_t
@@ -50,5 +51,9 @@ class wf_input_device_internal : public wf::input_device_t
         void load(wayfire_config *config);
     } config;
 };
+
+/** Convert the given point to a surface-local point */
+wf_point get_surface_relative_coords(wf::surface_interface_t *surface,
+    const wf_point& point);
 
 #endif /* end of include guard: SEAT_HPP */

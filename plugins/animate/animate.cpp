@@ -58,7 +58,7 @@ struct animation_hook : public wf::custom_data_t
 
         if (type == ANIMATION_TYPE_UNMAP)
         {
-            view->inc_keep_count();
+            view->take_ref();
             view->take_snapshot();
         }
 
@@ -79,22 +79,14 @@ struct animation_hook : public wf::custom_data_t
         if (type == ANIMATION_TYPE_MINIMIZE && !detached)
             view->set_minimized(true);
 
-        /* Special case: we are animating view unmap, and we are the "last"
-         * who have a keep count on it. In this case, we can just descrease keep_count,
-         * which will destroy the view and ourselves */
-        if (view->keep_count == 1 && type == ANIMATION_TYPE_UNMAP)
-            return view->dec_keep_count();
-
         /* Will also delete this */
         view->erase_data(custom_data_id);
     }
 
     ~animation_hook()
     {
-        /* We do not want to decrease keep_count twice, see the special case
-         * above. */
-        if (type == ANIMATION_TYPE_UNMAP && view->keep_count > 0)
-            view->dec_keep_count();
+        if (type == ANIMATION_TYPE_UNMAP)
+            view->unref();
 
         output->render->rem_effect(&update_animation_hook);
         output->disconnect_signal("detach-view", &view_detached);
@@ -135,7 +127,7 @@ class wayfire_animation : public wayfire_plugin_t
             section->get_option("fire_particle_size", "16");
 
         output->connect_signal("map-view", &on_view_mapped);
-        output->connect_signal("unmap-view", &on_view_unmapped);
+        output->connect_signal("pre-unmap-view", &on_view_unmapped);
         output->connect_signal("start-rendering", &on_render_start);
         output->connect_signal("view-minimize-request", &on_minimize_request);
 
@@ -162,8 +154,8 @@ class wayfire_animation : public wayfire_plugin_t
             if (wf::matcher::evaluate(animation_enabled_matcher, view))
                 return anim_type->as_string();
         }
-        else if (view->role == WF_VIEW_ROLE_TOPLEVEL ||
-            (view->role == WF_VIEW_ROLE_UNMANAGED && view->is_focuseable()))
+        else if (view->role == wf::VIEW_ROLE_TOPLEVEL ||
+            (view->role == wf::VIEW_ROLE_UNMANAGED && view->is_focuseable()))
         {
             return anim_type->as_string();
         }
@@ -219,13 +211,13 @@ class wayfire_animation : public wayfire_plugin_t
 
     signal_callback_t on_render_start = [=] (signal_data *data) -> void
     {
-        new wf_system_fade(output, wf_duration{startup_duration});
+        new wf_system_fade(output, startup_duration);
     };
 
     void fini()
     {
         output->disconnect_signal("map-view", &on_view_mapped);
-        output->disconnect_signal("unmap-view", &on_view_unmapped);
+        output->disconnect_signal("pre-unmap-view", &on_view_unmapped);
         output->disconnect_signal("start-rendering", &on_render_start);
         output->disconnect_signal("view-minimize-request", &on_minimize_request);
     }

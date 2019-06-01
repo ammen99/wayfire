@@ -238,7 +238,7 @@ void input_manager::toggle_session()
 
 }
 
-bool input_manager::can_focus_surface(wayfire_surface_t *surface)
+bool input_manager::can_focus_surface(wf::surface_interface_t *surface)
 {
     if (exclusive_client && surface->get_client() != exclusive_client)
         return false;
@@ -246,7 +246,7 @@ bool input_manager::can_focus_surface(wayfire_surface_t *surface)
     return true;
 }
 
-wayfire_surface_t* input_manager::input_surface_at(int x, int y,
+wf::surface_interface_t* input_manager::input_surface_at(int x, int y,
     int& lx, int& ly)
 {
     auto output = wf::get_core().output_layout->get_output_coords_at(x, y, x, y);

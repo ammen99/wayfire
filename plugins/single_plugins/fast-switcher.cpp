@@ -1,4 +1,5 @@
 #include <signal-definitions.hpp>
+#include <view-transform.hpp>
 #include <view.hpp>
 #include <workspace-manager.hpp>
 #include <linux/input-event-codes.h>
@@ -79,6 +80,7 @@ class wayfire_fast_switcher : public wayfire_plugin_t
 
     void view_chosen(int i)
     {
+        set_view_alpha(views[i], 1.0);
         for (int i = views.size() - 1; i >= 0; i--)
             output->workspace->bring_to_front(views[i]);
 
@@ -95,7 +97,27 @@ class wayfire_fast_switcher : public wayfire_plugin_t
         views.erase(views.begin() + i);
 
         if (i <= current_view_index)
-            current_view_index = (current_view_index + views.size() - 1) % views.size();
+        {
+            current_view_index =
+                (current_view_index + views.size() - 1) % views.size();
+            view_chosen(current_view_index);
+        }
+    }
+
+    const std::string transformer_name = "fast-switcher";
+
+    void set_view_alpha(wayfire_view view, float alpha)
+    {
+        if (!view->get_transformer(transformer_name))
+        {
+            view->add_transformer(
+                std::make_unique<wf_2D_view>(view), transformer_name);
+        }
+
+        auto tr = dynamic_cast<wf_2D_view*> (
+            view->get_transformer(transformer_name).get());
+        tr->alpha = alpha;
+        view->damage();
     }
 
     void fast_switch()
@@ -117,11 +139,9 @@ class wayfire_fast_switcher : public wayfire_plugin_t
         current_view_index = 0;
         active = true;
 
+        /* Set all to semi-transparent */
         for (auto view : views)
-        {
-            view->alpha = 0.7;
-            view->damage();
-        }
+            set_view_alpha(view, 0.7);
 
         grab_interface->grab();
         switch_next();
@@ -133,10 +153,7 @@ class wayfire_fast_switcher : public wayfire_plugin_t
     void switch_terminate()
     {
         for (auto view : views)
-        {
-            view->alpha = 1.0;
-            view->damage();
-        }
+            view->pop_transformer(transformer_name);
 
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
@@ -149,19 +166,8 @@ class wayfire_fast_switcher : public wayfire_plugin_t
     void switch_next()
     {
 #define index current_view_index
-        if (views[index]) {
-            views[index]->alpha = 0.7;
-            views[index]->damage();
-        }
-
+        set_view_alpha(views[index], 0.7);
         index = (index + 1) % views.size();
-
-        if (views[index]) {
-            views[index]->alpha = 1.0;
-            views[index]->damage();
-        }
-
-        output->workspace->bring_to_front(views[index]);
 #undef index
         view_chosen(current_view_index);
     }

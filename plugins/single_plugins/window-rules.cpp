@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <signal-definitions.hpp>
 #include <assert.h>
+#include <map>
 
 using std::string;
 

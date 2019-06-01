@@ -1,36 +1,44 @@
 #ifndef XDG_SHELL_HPP
 #define XDG_SHELL_HPP
 
-#include "priv-view.hpp"
+#include "view-impl.hpp"
 extern "C"
 {
 #include <wlr/types/wlr_xdg_shell.h>
+#include <wlr/types/wlr_xdg_shell_v6.h>
 }
 
-class wayfire_xdg_popup : public wayfire_surface_t
+/**
+ * A class for xdg-shell(and -v6) popups. XdgPopupVersion can be either a
+ * `wlr_xdg_popup` or `wlr_xdg_popup_v6`.
+ */
+template<class XdgPopupVersion>
+class wayfire_xdg_popup : public wf::wlr_child_surface_base_t
 {
-    protected:
+  protected:
     wf::wl_listener_wrapper on_destroy, on_new_popup, on_map, on_unmap;
 
-    wlr_xdg_popup *popup;
-    wlr_xdg_surface *xdg_surface;
-    void unconstrain();
+    XdgPopupVersion *popup;
 
-    public:
-    wayfire_xdg_popup(wlr_xdg_popup *popup);
+    void unconstrain();
+    void _do_unconstrain(wlr_box box);
+
+  public:
+    wayfire_xdg_popup(XdgPopupVersion *popup);
     ~wayfire_xdg_popup();
 
-    virtual void get_child_position(int &x, int &y);
-    virtual void get_child_offset(int &x, int &y);
-
-    virtual bool is_subsurface() { return true; }
-    virtual void send_done();
+    virtual wf_point get_offset() override;
+    virtual wf_point get_window_offset() override;
+    void send_done();
 };
 
-void create_xdg_popup(wlr_xdg_popup *popup);
-class wayfire_xdg_view : public wayfire_view_t
+template<class XdgPopupVersion>
+void create_xdg_popup(XdgPopupVersion *popup);
+
+template<class XdgToplevelVersion>
+class wayfire_xdg_view : public wf::wlr_view_t
 {
-    protected:
+  private:
     wf::wl_listener_wrapper on_map, on_unmap, on_destroy, on_new_popup,
                             on_request_move, on_request_resize,
                             on_request_minimize, on_request_maximize,
@@ -38,34 +46,29 @@ class wayfire_xdg_view : public wayfire_view_t
                             on_set_title, on_set_app_id;
 
     wf_point xdg_surface_offset = {0, 0};
+    XdgToplevelVersion *xdg_toplevel;
 
-    public:
-    wlr_xdg_surface *xdg_surface;
+  public:
+    wayfire_xdg_view(XdgToplevelVersion *toplevel);
+    virtual ~wayfire_xdg_view();
 
-    wayfire_xdg_view(wlr_xdg_surface *s);
-    virtual void map(wlr_surface *surface);
+    void map(wlr_surface *surface) final;
+    void commit() final;
 
-    virtual void get_child_offset(int &x, int &y);
+    wf_point get_window_offset() final;
+    wf_geometry get_wm_geometry() final;
 
-    virtual wf_geometry get_wm_geometry();
+    void set_tiled(uint32_t edges) final;
+    void set_activated(bool act) final;
+    void _set_activated(bool act);
+    void set_maximized(bool max) final;
+    void set_fullscreen(bool full) final;
 
-    virtual void activate(bool act);
-    virtual void set_tiled(uint32_t edges);
-    virtual void set_maximized(bool max);
-    virtual void set_fullscreen(bool full);
-    virtual void move(int w, int h, bool send);
-    virtual void resize(int w, int h, bool send);
-    virtual void request_native_size();
+    void resize(int w, int h) final;
+    void request_native_size()override final;
 
-    virtual void on_xdg_geometry_updated();
-    virtual void commit();
-
-    virtual void destroy();
-
-    std::string get_app_id();
-    std::string get_title();
-    virtual void close();
-    ~wayfire_xdg_view();
+    void destroy() final;
+    void close() final;
 };
 
 #endif /* end of include guard: XDG_SHELL_HPP */

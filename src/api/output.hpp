@@ -99,12 +99,12 @@ class output_t : public wf::object_base_t
      * Sets the active view for the given seat, but without changing stacking
      * order.
      */
-    virtual void set_active_view(wayfire_view v, wlr_seat *seat = nullptr) = 0;
+    virtual void set_active_view(wayfire_view v) = 0;
 
     /**
      * Focuses the given view and raises it to the top of the stack.
      */
-    void focus_view(wayfire_view v, wlr_seat *seat = nullptr);
+    void focus_view(wayfire_view v);
 
     /**
      * Switch the workspace so that view becomes visible.

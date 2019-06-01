@@ -13,9 +13,9 @@ namespace wf
     {
         std::string get_view_type(wayfire_view view)
         {
-            if (view->role == WF_VIEW_ROLE_TOPLEVEL)
+            if (view->role == VIEW_ROLE_TOPLEVEL)
                 return "toplevel";
-            if (view->role == WF_VIEW_ROLE_UNMANAGED)
+            if (view->role == VIEW_ROLE_UNMANAGED)
                 return "x-or";
 
             if (!view->get_output())

@@ -29,6 +29,8 @@ class wf_view_transformer_t
          * Higher numbers indicate that this transform should come after other transforms */
         virtual uint32_t get_z_order() = 0;
 
+        // TODO: rename
+        // transformed_to_local_point -> untransform/reverse()
         virtual wf_point local_to_transformed_point(wf_geometry view, wf_point point) = 0;
         virtual wf_point transformed_to_local_point(wf_geometry view, wf_point point) = 0;
 

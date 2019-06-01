@@ -6,7 +6,6 @@
 #include "workspace-manager.hpp"
 
 #include "../view/xdg-shell.hpp"
-#include "../view/xdg-shell-v6.hpp"
 #include "seat/input-inhibit.hpp"
 
 #include <linux/input.h>
@@ -44,7 +43,7 @@ void wayfire_close::init(wayfire_config *config)
 
         output->deactivate_plugin(grab_interface);
         auto view = output->get_active_view();
-        if (view && view->role == WF_VIEW_ROLE_TOPLEVEL) view->close();
+        if (view && view->role == wf::VIEW_ROLE_TOPLEVEL) view->close();
     };
 
     output->add_activator(key, &callback);
@@ -81,11 +80,11 @@ void wayfire_focus::init(wayfire_config *)
     };
 }
 
-void wayfire_focus::check_focus_surface(wayfire_surface_t* focus)
+void wayfire_focus::check_focus_surface(wf::surface_interface_t* focus)
 {
     /* Find the main view */
     auto main_surface = focus ? focus->get_main_surface() : nullptr;
-    auto view = dynamic_cast<wayfire_view_t*> (main_surface);
+    auto view = dynamic_cast<wf::view_interface_t*> (main_surface);
 
     /* Close popups from the lastly focused view */
     if (last_focus.get() != view)
@@ -107,25 +106,20 @@ void wayfire_focus::send_done(wayfire_view view)
     if (!last_focus)
         return;
 
-    std::vector<wayfire_xdg_popup*> popups;
-    std::vector<wayfire_xdg6_popup*> popups_v6;
-
     /* Do not send done while running */
-    last_focus->for_each_surface([&] (wayfire_surface_t* surface, int, int)
+    auto surfaces = view->enumerate_surfaces();
+    for (auto& child : surfaces)
     {
-        auto popup = dynamic_cast<wayfire_xdg_popup*> (surface);
-        auto popup_v6 = dynamic_cast<wayfire_xdg6_popup*> (surface);
+        auto popup =
+            dynamic_cast<wayfire_xdg_popup<wlr_xdg_popup>*> (child.surface);
+        auto popup_v6 =
+            dynamic_cast<wayfire_xdg_popup<wlr_xdg_popup_v6>*> (child.surface);
 
         if (popup)
-            popups.push_back(popup);
+            popup->send_done();
         if (popup_v6)
-            popups_v6.push_back(popup_v6);
-    });
-
-    for (auto popup : popups)
-        popup->send_done();
-    for (auto popup : popups_v6)
-        popup->send_done();
+            popup->send_done();
+    }
 
     set_last_focus(nullptr);
 }

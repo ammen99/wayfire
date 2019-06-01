@@ -21,9 +21,9 @@ extern "C"
 }
 
 #include <wayland-server.h>
-#include "view/priv-view.hpp"
 
 #include "core/core-impl.hpp"
+#include "view/view-impl.hpp"
 #include "output.hpp"
 
 wf_runtime_config runtime_config;
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
     log_info ("running at server %s", server_name);
     setenv("WAYLAND_DISPLAY", server_name, 1);
 
-    xwayland_set_seat(core.get_current_seat());
+    wf::xwayland_set_seat(core.get_current_seat());
     wl_display_run(core.display);
 
     /* Teardown */

@@ -15,6 +15,7 @@ using create_view_signal     = _view_signal;
 using destroy_view_signal    = _view_signal;
 using map_view_signal        = _view_signal;
 using unmap_view_signal      = _view_signal;
+using pre_unmap_view_signal  = _view_signal;
 
 /* Indicates the view is no longer available, for ex. it has been minimized
  * or unmapped */
@@ -73,7 +74,7 @@ struct reserved_workarea_signal : public signal_data
 // TODO: this is a private signal, maybe we should hide it? */
 struct _surface_map_state_changed_signal : public signal_data
 {
-    wayfire_surface_t *surface;
+    wf::surface_interface_t *surface;
 };
 
 /* Part 2: Signals from wf::output_layout_t */

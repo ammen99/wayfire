@@ -79,12 +79,12 @@ bool input_manager::handle_pointer_button(wlr_event_pointer_button *ev)
     return (!callbacks.empty() && get_modifiers());
 }
 
-void input_manager::update_cursor_focus(wayfire_surface_t *focus, int x, int y)
+void input_manager::update_cursor_focus(wf::surface_interface_t *focus, int x, int y)
 {
     if (focus && !can_focus_surface(focus))
         return;
 
-    wayfire_compositor_surface_t *compositor_surface =
+    wf::compositor_surface_t *compositor_surface =
         wf_compositor_surface_from_surface(cursor_focus);
     if (compositor_surface)
         compositor_surface->on_pointer_leave();
@@ -95,7 +95,7 @@ void input_manager::update_cursor_focus(wayfire_surface_t *focus, int x, int y)
     cursor_focus = focus;
     if (focus && !wf_compositor_surface_from_surface(focus))
     {
-        wlr_seat_pointer_notify_enter(seat, focus->surface, x, y);
+        wlr_seat_pointer_notify_enter(seat, focus->priv->wsurface, x, y);
     } else
     {
         wlr_seat_pointer_clear_focus(seat);
@@ -119,7 +119,7 @@ void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
     }
 
     int lx, ly;
-    wayfire_surface_t *new_focus = nullptr;
+    wf::surface_interface_t *new_focus = nullptr;
     /* If we have a grabbed surface, but no drag, we want to continue sending
      * events to the grabbed surface, even if the pointer goes outside of it.
      * This enables Xwayland DnD to work correctly, and also lets the user for
@@ -130,9 +130,8 @@ void input_manager::update_cursor_position(uint32_t time_msec, bool real_update)
     if (cursor->grabbed_surface && !this->drag_icon)
     {
         new_focus = cursor->grabbed_surface;
-        GetTuple(ox, oy,
-            cursor->grabbed_surface->get_output()->get_cursor_position());
-        auto local = cursor->grabbed_surface->get_relative_position({ox, oy});
+        GetTuple(ox, oy, new_focus->get_output()->get_cursor_position());
+        auto local = get_surface_relative_coords(new_focus, {ox, oy});
 
         lx = local.x;
         ly = local.y;
@@ -397,7 +396,7 @@ void wf_cursor::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev)
     }
 }
 
-void wf_cursor::start_held_grab(wayfire_surface_t *surface)
+void wf_cursor::start_held_grab(wf::surface_interface_t *surface)
 {
     grabbed_surface = surface;
 }

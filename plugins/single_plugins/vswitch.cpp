@@ -103,7 +103,7 @@ class vswitch : public wayfire_plugin_t
         if (!is_active())
             start_switch();
 
-        if (view && view->role != WF_VIEW_ROLE_TOPLEVEL)
+        if (view && view->role != wf::VIEW_ROLE_TOPLEVEL)
             view = nullptr;
 
         if (view && !grabbed_view)

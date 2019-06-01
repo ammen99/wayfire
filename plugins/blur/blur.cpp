@@ -200,7 +200,7 @@ class wayfire_blur : public wayfire_plugin_t
         frame_pre_paint = [=] ()
         {
             int padding = blur_algorithm->calculate_blur_radius();
-            wayfire_surface_t::set_opaque_shrink_constraint("blur",
+            wf::surface_interface_t::set_opaque_shrink_constraint("blur",
                 padding);
 
             auto damage = output->render->get_scheduled_damage();

@@ -19,8 +19,6 @@ extern "C"
 #include <wlr/util/region.h>
 }
 
-#include "view/priv-view.hpp"
-
 namespace wf
 {
 /**
@@ -579,9 +577,8 @@ class wf::render_manager::impl
             if (!view->is_mapped())
                 continue;
 
-            view->for_each_surface([=] (wayfire_surface_t *surface, int, int) {
-                surface->send_frame_done(repaint_ended);
-            });
+            for (auto& child : view->enumerate_surfaces())
+                child.surface->send_frame_done(repaint_ended);
         }
     }
 
@@ -602,9 +599,13 @@ class wf::render_manager::impl
      */
     struct damaged_surface_t
     {
-        wayfire_surface_t *surface;
+        wf::surface_interface_t *surface = nullptr;
+        wf::view_interface_t *view = nullptr;
 
-        int x, y; // framebuffer coords for the view
+        /* For views, this is the coordinates the framebuffer should have.
+         * For surfaces, this is the coordinates of the surface inside the
+         * framebuffer */
+        wf_point pos;
         wf_region damage;
     };
     using damaged_surface = std::unique_ptr<damaged_surface_t>;
@@ -626,21 +627,23 @@ class wf::render_manager::impl
     /**
      * Calculate the damaged region of a view which renders with its snapshot
      * and add it to the render list
+     *
+     * @param view_delta The offset of the view so that it has workspace-local
+     * coordinates
      */
     void schedule_snapshotted_view(workspace_stream_repaint_t& repaint,
-        wayfire_view view, int view_dx, int view_dy)
+        wayfire_view view, wf_point view_delta)
     {
         auto ds = damaged_surface(new damaged_surface_t);
 
-        auto bbox = view->get_bounding_box() + wf_point{-view_dx, -view_dy};
+        auto bbox = view->get_bounding_box() + (-view_delta);
         bbox = repaint.fb.damage_box_from_geometry_box(bbox);
 
         ds->damage = repaint.ws_damage & bbox;
         if (!ds->damage.empty())
         {
-            ds->x = view_dx;
-            ds->y = view_dy;
-            ds->surface = view.get();
+            ds->pos = view_delta;
+            ds->view = view.get();
 
             repaint.to_render.push_back(std::move(ds));
         }
@@ -651,7 +654,7 @@ class wf::render_manager::impl
      * push it in the repaint list if needed.
      */
     void schedule_surface(workspace_stream_repaint_t& repaint,
-        wayfire_surface_t *surface, int x, int y, int view_dx, int view_dy)
+        wf::surface_interface_t *surface, wf_point pos)
     {
         if (!surface->is_mapped())
             return;
@@ -659,31 +662,25 @@ class wf::render_manager::impl
         if (repaint.ws_damage.empty())
             return;
 
-        /* make sure all coordinates are in workspace-local coords */
-        x -= view_dx;
-        y -= view_dy;
-
         auto ds = damaged_surface(new damaged_surface_t);
 
-        auto obox = surface->get_output_geometry();
-        obox.x = x;
-        obox.y = y;
-
+        wlr_box obox = {
+            .x = pos.x,
+            .y = pos.y,
+            .width = surface->get_size().width,
+            .height = surface->get_size().height
+        };
         obox = repaint.fb.damage_box_from_geometry_box(obox);
+
         ds->damage = repaint.ws_damage & obox;
         if (!ds->damage.empty())
         {
-            ds->x = view_dx;
-            ds->y = view_dy;
+            ds->pos = pos;
             ds->surface = surface;
 
-            if (ds->surface->alpha >= 0.999f)
-            {
-                /* Subtract opaque region from workspace damage. The views below
-                 * won't be visible, so no need to damage them */
-                ds->surface->subtract_opaque(repaint.ws_damage, x, y);
-            }
-
+            /* Subtract opaque region from workspace damage. The views below
+             * won't be visible, so no need to damage them */
+            ds->surface->subtract_opaque(repaint.ws_damage, pos.x, pos.y);
             repaint.to_render.push_back(std::move(ds));
         }
     }
@@ -694,17 +691,19 @@ class wf::render_manager::impl
      */
     void schedule_drag_icon(workspace_stream_repaint_t& repaint)
     {
-        if (renderer || !wf::get_core_impl().input->drag_icon)
+        auto& drag_icon = wf::get_core_impl().input->drag_icon;
+        if (renderer || !drag_icon || !drag_icon->is_mapped())
             return;
 
-        if (!wf::get_core_impl().input->drag_icon->is_mapped())
-            return;
+        drag_icon->set_output(output);
 
-        wf::get_core_impl().input->drag_icon->set_output(output);
-        wf::get_core_impl().input->drag_icon->for_each_surface(
-            [&] (wayfire_surface_t *surface, int x, int y) {
-                schedule_surface(repaint, surface, x, y, 0, 0);
-            });
+        auto offset = drag_icon->get_offset();
+        auto og = output->get_layout_geometry();
+        offset.x -= og.x;
+        offset.y -= og.y;
+
+        for (auto& child : drag_icon->enumerate_surfaces(offset))
+            schedule_surface(repaint, child.surface, child.position);
     }
 
     /**
@@ -712,11 +711,9 @@ class wf::render_manager::impl
      */
     void unschedule_drag_icon()
     {
-        if (wf::get_core_impl().input->drag_icon &&
-            wf::get_core_impl().input->drag_icon->is_mapped())
-        {
-            wf::get_core_impl().input->drag_icon->set_output(nullptr);
-        }
+        auto& drag_icon = wf::get_core_impl().input->drag_icon;
+        if (drag_icon && drag_icon->is_mapped())
+            drag_icon->set_output(nullptr);
     }
 
     /**
@@ -735,7 +732,7 @@ class wf::render_manager::impl
         while (it != views.end() && !repaint.ws_damage.empty())
         {
             auto view = *it;
-            int view_dx = 0, view_dy = 0;
+            wf_point view_delta{0, 0};
 
             if (!view->is_visible())
             {
@@ -743,30 +740,29 @@ class wf::render_manager::impl
                 continue;
             }
 
-            if (view->role != WF_VIEW_ROLE_SHELL_VIEW)
-            {
-                view_dx = repaint.ws_dx;
-                view_dy = repaint.ws_dy;
-            }
+            if (view->role != VIEW_ROLE_SHELL_VIEW)
+                view_delta = {repaint.ws_dx, repaint.ws_dy};
 
             /* We use the snapshot of a view if either condition is happening:
              * 1. The view has a transform
              * 2. The view is visible, but not mapped
              *    => it is snapshotted and kept alive by some plugin */
-
             if (view->has_transformer() || !view->is_mapped())
             {
                 /* Snapshotted views include all of their subsurfaces, so we
                  * handle them separately */
-                schedule_snapshotted_view(repaint, view, view_dx, view_dy);
+                schedule_snapshotted_view(repaint, view, view_delta);
             }
             else
             {
-                /* Iterate over all subsurfaces/menus of a "regular" view */
-                view->for_each_surface(
-                    [&] (wayfire_surface_t *surface, int x, int y) {
-                        schedule_surface(repaint, surface, x, y, view_dx, view_dy);
-                    });
+                /* Make sure view position is relative to the workspace
+                 * being rendered */
+                auto obox = view->get_output_geometry();
+                obox.x -= view_delta.x;
+                obox.y -= view_delta.y;
+
+                for (auto& child : view->enumerate_surfaces({obox.x, obox.y}))
+                    schedule_surface(repaint, child.surface, child.position);
             }
 
             ++it;
@@ -812,8 +808,8 @@ class wf::render_manager::impl
         GetTuple(x, y, stream.ws);
         GetTuple(cx, cy, output->workspace->get_current_workspace());
 
-        repaint.ws_dx = g.x + (x - cx) * g.width,
-        repaint.ws_dy = g.y + (y - cy) * g.height;
+        repaint.ws_dx = (x - cx) * g.width,
+        repaint.ws_dy = (y - cy) * g.height;
 
         return repaint;
     }
@@ -835,12 +831,22 @@ class wf::render_manager::impl
 
     void render_views(workspace_stream_repaint_t& repaint)
     {
+        wf_geometry fb_geometry = repaint.fb.geometry;
+
         for (auto& ds : wf::reverse(repaint.to_render))
         {
-            repaint.fb.geometry.x = ds->x;
-            repaint.fb.geometry.y = ds->y;
-
-            ds->surface->render_fb(ds->damage, repaint.fb);
+            if (ds->view)
+            {
+                repaint.fb.geometry.x = ds->pos.x;
+                repaint.fb.geometry.y = ds->pos.y;
+                ds->view->render_transformed(repaint.fb, ds->damage);
+            }
+            else
+            {
+                repaint.fb.geometry = fb_geometry;
+                ds->surface->simple_render(repaint.fb,
+                    ds->pos.x, ds->pos.y, ds->damage);
+            }
         }
     }
 

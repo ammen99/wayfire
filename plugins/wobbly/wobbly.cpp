@@ -238,8 +238,15 @@ class wf_wobbly : public wf_view_transformer_t
 
         if (snapped_geometry.width <= 0 && !has_active_grab)
         {
+            /* We temporarily don't want to receive updates on the view's
+             * geometry, because we usually adjust the model based on the
+             * view's movements. However in this case, we are syncing the
+             * view geometry with the model. If we then updated the model
+             * based on the view geometry, we'd get a feedback loop */
+            view->disconnect_signal("geometry-changed", &this->view_geometry_changed);
             auto wm = view->get_wm_geometry();
-            view->move(model->x + wm.x - bbox.x, model->y + wm.y - bbox.y, false);
+            view->move(model->x + wm.x - bbox.x, model->y + wm.y - bbox.y);
+            view->connect_signal("geometry-changed", &this->view_geometry_changed);
         }
 
         if (!has_active_grab && model->synced)
@@ -340,7 +347,8 @@ class wf_wobbly : public wf_view_transformer_t
 
     void snap(wf_geometry geometry)
     {
-        wobbly_force_geometry(model.get(), geometry.x, geometry.y, geometry.width, geometry.height);
+        wobbly_force_geometry(model.get(),
+            geometry.x, geometry.y, geometry.width, geometry.height);
         snapped_geometry = geometry;
     }
 

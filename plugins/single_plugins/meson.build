@@ -17,4 +17,4 @@ zoom          = shared_module('zoom',          'zoom.cpp',          include_dire
 alpha         = shared_module('alpha',         'alpha.cpp',         include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [wlroots, pixman, wfconfig], install: true, install_dir: 'lib/wayfire/')
 
 idle          = shared_module('idle',           'idle.cpp',                         include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [wlroots, pixman, wfconfig], install: true, install_dir: 'lib/wayfire/')
-cvtest        = shared_module('cvtest',         'compositor-view-test.cpp',         include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [wlroots, pixman, wfconfig], install: true, install_dir: 'lib/wayfire/')
+#cvtest        = shared_module('cvtest',         'compositor-view-test.cpp',         include_directories: [wayfire_api_inc, wayfire_conf_inc], dependencies: [wlroots, pixman, wfconfig], install: true, install_dir: 'lib/wayfire/')
