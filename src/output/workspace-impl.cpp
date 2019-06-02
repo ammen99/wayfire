@@ -122,7 +122,7 @@ class output_viewport_manager_t
     {
         this->output = output;
 
-        auto section = wf::get_core().config->get_section("config");
+        auto section = wf::get_core().config->get_section("core");
 
         vwidth  = *section->get_option("vwidth", "3");
         vheight = *section->get_option("vheight", "3");
