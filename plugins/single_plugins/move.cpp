@@ -20,9 +20,10 @@ class wf_move_mirror_view : public wf::mirror_view_t
     wf_geometry geometry;
     public:
 
-    wf_move_mirror_view(wayfire_view view, int dx, int dy) :
+    wf_move_mirror_view(wayfire_view view, wf::output_t *output, int dx, int dy) :
         wf::mirror_view_t(view), _dx(dx), _dy(dy)
     {
+        set_output(output);
         get_output()->workspace->add_view(self(), wf::LAYER_WORKSPACE);
         emit_map_state_change(this);
     }
@@ -554,7 +555,8 @@ class wayfire_move : public wayfire_plugin_t
             auto base_output = output->get_layout_geometry();
             auto mirror_output = wo->get_layout_geometry();
 
-            auto mirror = new wf_move_mirror_view(view, base_output.x - mirror_output.x,
+            auto mirror = new wf_move_mirror_view(view, wo,
+                base_output.x - mirror_output.x,
                 base_output.y - mirror_output.y);
 
             wf::get_core().add_view(
@@ -562,8 +564,6 @@ class wayfire_move : public wayfire_plugin_t
 
             auto wo_state = wo->get_data_safe<wf_move_output_state> (get_data_name());
             wo_state->view = nonstd::make_observer(mirror);
-
-            mirror->set_output(wo);
             mirror->connect_signal("unmap", &handle_mirror_view_unmapped);
         }
 
@@ -595,10 +595,9 @@ class wayfire_move : public wayfire_plugin_t
             for (auto& wo : wf::get_core().output_layout->get_outputs())
             {
                 if (wo == output) // skip the same output
-                    return;
+                    continue;
 
                 auto og = output->get_layout_geometry();
-
                 /* A view is visible on the other output as well */
                 if (og & current_geometry)
                     ensure_mirror_view(wo);
