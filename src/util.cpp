@@ -322,6 +322,19 @@ uint32_t get_current_time()
     return timespec_to_msec(ts);
 }
 
+wf_geometry clamp(wf_geometry window, wf_geometry output)
+{
+    window.width = clamp(window.width, 0, output.width);
+    window.height = clamp(window.height, 0, output.height);
+
+    window.x = clamp(window.x,
+        output.x, output.x + output.width - window.width);
+    window.y = clamp(window.y,
+        output.y, output.y + output.height - window.height);
+
+    return window;
+}
+
 static void handle_wrapped_listener(wl_listener *listener, void *data)
 {
     wf::wl_listener_wrapper::wrapper *wrap = wl_container_of(listener, wrap, listener);

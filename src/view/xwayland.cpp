@@ -97,6 +97,12 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             auto og = get_output()->get_layout_geometry();
             configure_geometry.x -= og.x;
             configure_geometry.y -= og.y;
+
+            /* It is possible the client requests to position itself on another
+             * output. However, we want to make sure that the view stays on its
+             * output, since this is how Wayland works */
+            configure_geometry =
+                clamp(configure_geometry, get_output()->get_relative_geometry());
         }
 
         if (view_impl->frame)
@@ -262,7 +268,11 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
         auto real_output = get_output()->get_layout_geometry();
         if (!maximized && !fullscreen && !parent)
-            move(xw->x - real_output.x, xw->y - real_output.y);
+        {
+            int desired_x = xw->x - real_output.x;
+            int desired_y = xw->y - real_output.y;
+            move(desired_x, desired_y);
+        }
 
         wf::wlr_view_t::map(surface);
         create_toplevel();

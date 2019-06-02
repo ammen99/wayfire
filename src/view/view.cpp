@@ -433,7 +433,7 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
 
 bool wf::view_interface_t::is_visible()
 {
-    return (is_mapped() || view_impl->offscreen_buffer.valid());
+    return (is_mapped() || has_transformer()) && priv->ref_cnt;
 }
 
 void wf::view_interface_t::damage()

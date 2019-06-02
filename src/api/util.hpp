@@ -83,6 +83,12 @@ T clamp(T value, T min, T max)
     return std::min(std::max(value, min), max);
 }
 
+/**
+ * Return the closest geometry to window which is completely inside the output.
+ * The returned geometry might be smaller, but never bigger than window.
+ */
+wf_geometry clamp(wf_geometry window, wf_geometry output);
+
 namespace wf
 {
     /**
