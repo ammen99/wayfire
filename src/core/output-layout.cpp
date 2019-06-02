@@ -163,6 +163,7 @@ namespace wf
 
         for (auto& view : views)
         {
+            view->surface_interface_t::set_output(to);
             to->workspace->add_view(view, view->minimized ?
                 wf::LAYER_MINIMIZED : wf::LAYER_WORKSPACE);
             to->workspace->move_to_workspace(view,
