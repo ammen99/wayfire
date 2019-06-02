@@ -453,7 +453,7 @@ class workspace_manager::impl
     void check_autohide_panels()
     {
         auto fs_views = viewport_manager.get_views_on_workspace(
-            viewport_manager.get_current_workspace(), MIDDLE_LAYERS, true);
+            viewport_manager.get_current_workspace(), wf::LAYER_FULLSCREEN, true);
 
         if (fs_views.size() && !sent_autohide)
         {
