@@ -5,12 +5,6 @@
 #include "seat.hpp"
 #include "util.hpp"
 
-extern "C"
-{
-#include <wlr/types/wlr_keyboard.h>
-#include <wlr/types/wlr_input_device.h>
-}
-
 struct wf_keyboard
 {
     wf::wl_listener_wrapper on_key, on_modifier;

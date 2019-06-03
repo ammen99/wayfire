@@ -1,9 +1,24 @@
 #ifndef OUTPUT_HPP
 #define OUTPUT_HPP
 
-#include "plugin.hpp"
+#include "geometry.hpp"
 #include "object.hpp"
-#include "view.hpp"
+#include "bindings.hpp"
+#include <config.hpp>
+
+extern "C"
+{
+    struct wlr_output;
+}
+
+namespace wf
+{
+class view_interface_t;
+}
+using wayfire_view = nonstd::observer_ptr<wf::view_interface_t>;
+
+struct wayfire_grab_interface_t;
+using wayfire_grab_interface = wayfire_grab_interface_t*;
 
 namespace wf
 {
@@ -82,7 +97,7 @@ class output_t : public wf::object_base_t
      * @return true if a grab interface with the given name is activated, false
      *              otherwise.
      */
-    virtual bool is_plugin_active(owner_t owner_name) const = 0;
+    virtual bool is_plugin_active(std::string owner_name) const = 0;
 
     /**
      * @return The topmost view in the workspace layer

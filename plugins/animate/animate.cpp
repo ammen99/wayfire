@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include <output.hpp>
 #include <signal-definitions.hpp>
 #include <render-manager.hpp>

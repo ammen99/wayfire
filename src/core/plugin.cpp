@@ -3,7 +3,6 @@
 #include "seat/input-manager.hpp"
 #include "signal-definitions.hpp"
 #include "debug.hpp"
-#include <cmath>
 
 bool wayfire_grab_interface_t::grab()
 {

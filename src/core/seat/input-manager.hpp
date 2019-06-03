@@ -1,7 +1,6 @@
 #ifndef INPUT_MANAGER_HPP
 #define INPUT_MANAGER_HPP
 
-#include <unordered_set>
 #include <map>
 #include <vector>
 #include <chrono>
@@ -13,7 +12,6 @@
 
 extern "C"
 {
-#include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_idle.h>
 #include <wlr/types/wlr_seat.h>
 struct wlr_drag_icon;

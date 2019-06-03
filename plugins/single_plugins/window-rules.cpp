@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include <output.hpp>
 #include <view.hpp>
 #include <cwctype>

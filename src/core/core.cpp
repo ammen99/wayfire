@@ -25,14 +25,11 @@ extern "C"
 }
 
 #include <unistd.h>
-#include <sys/wait.h>
 #include <fcntl.h>
 
 #include "debug.hpp"
 #include "output.hpp"
-#include "signal-definitions.hpp"
 #include "workspace-manager.hpp"
-#include "render-manager.hpp"
 #include "seat/input-manager.hpp"
 #include "seat/input-inhibit.hpp"
 #include "seat/touch.hpp"
@@ -40,7 +37,6 @@ extern "C"
 #include "../output/wayfire-shell.hpp"
 #include "../output/output-impl.hpp"
 #include "../output/gtk-shell.hpp"
-#include "config.h"
 #include "img.hpp"
 #include "output-layout.hpp"
 

@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include "view.hpp"
 #include "view-transform.hpp"
 #include "output.hpp"

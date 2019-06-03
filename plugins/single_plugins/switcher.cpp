@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include <opengl.hpp>
 #include <view-transform.hpp>
 #include <debug.hpp>

@@ -196,4 +196,7 @@ namespace wf
     };
 }
 
+#define GetTuple(x,y,t) auto x = std::get<0>(t); \
+                        auto y = std::get<1>(t)
+
 #endif /* end of include guard: WF_UTIL_HPP */

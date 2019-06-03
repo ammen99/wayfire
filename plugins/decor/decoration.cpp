@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include <view.hpp>
 #include <workspace-manager.hpp>
 #include <output.hpp>

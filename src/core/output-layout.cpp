@@ -5,10 +5,7 @@
 #include "workspace-manager.hpp"
 #include "render-manager.hpp"
 #include "signal-definitions.hpp"
-#include "seat/input-manager.hpp"
-#include "seat/input-inhibit.hpp"
 #include "util.hpp"
-#include "view-transform.hpp"
 #include "../output/output-impl.hpp"
 #include <xf86drmMode.h>
 #include <sstream>

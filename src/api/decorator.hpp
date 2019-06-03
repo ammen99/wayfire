@@ -1,7 +1,7 @@
 #ifndef DECORATOR_HPP
 #define DECORATOR_HPP
 
-#include <view.hpp>
+#include <geometry.hpp>
 
 class wf_decorator_frame_t
 {

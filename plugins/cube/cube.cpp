@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include <opengl.hpp>
 #include <output.hpp>
 #include <core.hpp>

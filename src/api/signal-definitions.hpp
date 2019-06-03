@@ -1,6 +1,7 @@
 #ifndef SIGNAL_DEFINITIONS_HPP
 #define SIGNAL_DEFINITIONS_HPP
 
+#include "view.hpp"
 #include "output.hpp"
 
 /* signal definitions */

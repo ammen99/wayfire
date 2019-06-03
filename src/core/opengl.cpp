@@ -3,17 +3,15 @@
 #include "debug.hpp"
 #include "output.hpp"
 #include "core-impl.hpp"
-#include "render-manager.hpp"
 
 extern "C"
 {
 #define static
 #include <wlr/render/egl.h>
-#include <wlr/render/gles2.h>
+#include <wlr/render/wlr_renderer.h>
 #undef static
+#include <wlr/types/wlr_output.h>
 }
-
-// #include "gldebug.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>
 

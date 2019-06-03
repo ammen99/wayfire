@@ -5,6 +5,7 @@ extern "C"
 {
     struct wlr_backend;
     struct wlr_output_layout;
+#include <wlr/types/wlr_output.h>
 }
 
 #include <map>

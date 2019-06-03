@@ -7,8 +7,6 @@
 
 #include "../view/xdg-shell.hpp"
 #include "seat/input-inhibit.hpp"
-
-#include <linux/input.h>
 #include "signal-definitions.hpp"
 
 void wayfire_exit::init(wayfire_config*)

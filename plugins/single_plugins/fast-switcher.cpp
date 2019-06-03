@@ -1,3 +1,4 @@
+#include <plugin.hpp>
 #include <signal-definitions.hpp>
 #include <view-transform.hpp>
 #include <view.hpp>

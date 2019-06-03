@@ -1,8 +1,5 @@
 #include <cassert>
 #include <algorithm>
-#include <libinput.h>
-
-#include <iostream>
 
 extern "C"
 {

@@ -5,7 +5,6 @@ extern "C"
 {
 #include <xkbcommon/xkbcommon.h>
 #include <wlr/backend/session.h>
-#include <wlr/backend/multi.h>
 }
 
 #include "keyboard.hpp"

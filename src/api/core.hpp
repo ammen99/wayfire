@@ -3,7 +3,6 @@
 
 #include "object.hpp"
 
-#include <memory>
 #include <vector>
 #include <nonstd/observer_ptr.h>
 

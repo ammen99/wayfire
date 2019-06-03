@@ -1,6 +1,11 @@
 #ifndef PLUGIN_H
 #define PLUGIN_H
 
+#include <functional>
+#include "util.hpp"
+#include "config.hpp"
+#include "bindings.hpp"
+
 extern "C"
 {
 #include <wlr/types/wlr_keyboard.h>
@@ -8,30 +13,6 @@ extern "C"
 #include <wlr/types/wlr_touch.h>
 #include <wlr/types/wlr_cursor.h>
 }
-
-#include <functional>
-#include "config.hpp"
-
-struct wf_binding; // opaque handle to a binding, can be used to remove it
-using key_callback = std::function<void(uint32_t)>;
-using button_callback = std::function<void(uint32_t, int32_t, int32_t)>; // button, x, y
-using axis_callback = std::function<void(wlr_event_pointer_axis*)>;
-using touch_callback = std::function<void(int32_t, int32_t)>; // x, y
-using gesture_callback = std::function<void(wf_touch_gesture*)>;
-
-enum wf_activator_source
-{
-    ACTIVATOR_SOURCE_KEYBINDING,
-    ACTIVATOR_SOURCE_BUTTONBINDING,
-    ACTIVATOR_SOURCE_GESTURE,
-};
-
-/* First argument is the source which was used to activate, the second one is
- * the key or button which triggered it, if applicable.
- *
- * Special case: modifier bindings. In that case, the source is a keybinding,
- * but the second argument is 0 */
-using activator_callback = std::function<void(wf_activator_source, uint32_t)>;
 
 namespace wf
 {
@@ -148,6 +129,4 @@ class wayfire_plugin_t {
 /* each dynamic plugin should have the symbol get_plugin_instance() which returns
  * an instance of the plugin */
 typedef wayfire_plugin_t *(*get_plugin_instance_t)();
-#define GetTuple(x,y,t) auto x = std::get<0>(t); \
-                        auto y = std::get<1>(t)
 #endif
