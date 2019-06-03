@@ -60,6 +60,9 @@ bool wf::mirror_view_t::is_mapped() const
 
 wf_surface_size_t wf::mirror_view_t::get_size() const
 {
+    if (!is_mapped())
+        return {0, 0};
+
     auto box = base_view->get_bounding_box();
     return {box.width, box.height};
 }
@@ -104,6 +107,9 @@ void wf::mirror_view_t::move(int x, int y)
 
 wf_geometry wf::mirror_view_t::get_output_geometry()
 {
+    if (!is_mapped())
+        return get_bounding_box();
+
     wf_geometry geometry;
     geometry.x = this->x;
     geometry.y = this->y;
