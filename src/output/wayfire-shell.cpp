@@ -24,9 +24,9 @@ struct wayfire_shell_client
 struct wayfire_shell
 {
     std::map<wl_client*, wayfire_shell_client> clients;
-    std::map<wf::output_t*, signal_callback_t> output_autohide_callback;
+    std::map<wf::output_t*, wf::signal_callback_t> output_autohide_callback;
 
-    signal_callback_t output_added, output_removed;
+    wf::signal_callback_t output_added, output_removed;
     static wayfire_shell& get_instance()
     {
         static wayfire_shell shell;
@@ -115,7 +115,7 @@ class wayfire_shell_wm_surface : public wf::custom_data_t
         }
     }
 
-    signal_callback_t on_view_output_changed = [=] (signal_data *data)
+    wf::signal_callback_t on_view_output_changed = [=] (wf::signal_data_t *data)
     {
         if (margin.margins_set || exclusive_zone_size)
         {
@@ -208,7 +208,7 @@ class wayfire_shell_wm_surface : public wf::custom_data_t
         view->move(x, y);
     };
 
-    signal_callback_t on_geometry_changed = [=] (signal_data *data)
+    wf::signal_callback_t on_geometry_changed = [=] (wf::signal_data_t *data)
     {
         auto wm = view->get_wm_geometry();
 
@@ -536,7 +536,7 @@ void zwf_output_send_autohide(wayfire_shell *shell, wf::output_t *output, int va
 static void wayfire_shell_handle_output_created(wf::output_t *output)
 {
     auto& shell = wayfire_shell::get_instance();
-    shell.output_autohide_callback[output] = [=] (signal_data *flag)
+    shell.output_autohide_callback[output] = [=] (wf::signal_data_t *flag)
     {
         zwf_output_send_autohide(&wayfire_shell::get_instance(), output, bool(flag));
     };
@@ -559,10 +559,10 @@ wayfire_shell* wayfire_shell_create(wl_display *display)
     }
 
     auto& shell = wayfire_shell::get_instance();
-    shell.output_added = [=] (signal_data *data) {
+    shell.output_added = [=] (wf::signal_data_t *data) {
         wayfire_shell_handle_output_created(get_signaled_output(data));
     };
-    shell.output_removed = [=] (signal_data *data) {
+    shell.output_removed = [=] (wf::signal_data_t *data) {
         wayfire_shell_handle_output_destroyed( get_signaled_output(data));
     };
 

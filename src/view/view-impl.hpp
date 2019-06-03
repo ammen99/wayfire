@@ -1,6 +1,7 @@
 #ifndef VIEW_IMPL_HPP
 #define VIEW_IMPL_HPP
 
+#include <nonstd/safe-list.hpp>
 #include <view.hpp>
 #include <opengl.hpp>
 

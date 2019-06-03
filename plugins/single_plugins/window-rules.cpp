@@ -227,7 +227,7 @@ class wayfire_window_rules : public wayfire_plugin_t
         return result;
     }
 
-    signal_callback_t created, maximized, fullscreened;
+    wf::signal_callback_t created, maximized, fullscreened;
 
     std::map<std::string, std::vector<rule_func>> rules_list;
 
@@ -241,14 +241,14 @@ class wayfire_window_rules : public wayfire_plugin_t
             rules_list[rule.signal].push_back(rule.func);
         }
 
-        created = [=] (signal_data *data)
+        created = [=] (wf::signal_data_t *data)
         {
             for (const auto& rule : rules_list["created"])
                 rule(get_signaled_view(data));
         };
         output->connect_signal("map-view", &created);
 
-        maximized = [=] (signal_data *data)
+        maximized = [=] (wf::signal_data_t *data)
         {
             auto conv = static_cast<view_maximized_signal*> (data);
             assert(conv);
@@ -261,7 +261,7 @@ class wayfire_window_rules : public wayfire_plugin_t
         };
         output->connect_signal("view-maximized", &maximized);
 
-        fullscreened = [=] (signal_data *data)
+        fullscreened = [=] (wf::signal_data_t *data)
         {
             auto conv = static_cast<view_fullscreen_signal*> (data);
             assert(conv);

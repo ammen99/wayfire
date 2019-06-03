@@ -122,7 +122,7 @@ class vswitch : public wayfire_plugin_t
         duration.start();
     }
 
-    signal_callback_t on_set_workspace_request = [=] (signal_data *data)
+    wf::signal_callback_t on_set_workspace_request = [=] (wf::signal_data_t *data)
     {
         if (is_active())
             return;

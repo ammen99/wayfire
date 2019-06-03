@@ -80,7 +80,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
     wayfire_view view;
     wf_option font_option;
-    signal_callback_t title_set;
+    wf::signal_callback_t title_set;
 
     const int text_field_width = 500;
     int width = 100, height = 100;
@@ -98,7 +98,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
     {
         this->font_option = font;
         this->view = view;
-        title_set = [=] (signal_data *data)
+        title_set = [=] (wf::signal_data_t *data)
         {
             if (get_signaled_view(data) == view)
                 notify_view_resized(view->get_wm_geometry());

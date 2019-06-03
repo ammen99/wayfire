@@ -11,6 +11,7 @@
 #include <workspace-manager.hpp>
 
 #include <animation.hpp>
+#include <nonstd/reverse.hpp>
 
 #include <algorithm>
 #include <exception>
@@ -82,7 +83,7 @@ class WayfireSwitcher : public wayfire_plugin_t
     wf::effect_hook_t damage;
     wf::render_hook_t switcher_renderer;
 
-    signal_callback_t view_removed;
+    wf::signal_callback_t view_removed;
 
     bool active = false;
     public:
@@ -150,7 +151,7 @@ class WayfireSwitcher : public wayfire_plugin_t
 
         grab_interface->callbacks.cancel = [=] () {deinit_switcher();};
 
-        view_removed = [=] (signal_data *data)
+        view_removed = [=] (wf::signal_data_t *data)
         {
             handle_view_removed(get_signaled_view(data));
         };

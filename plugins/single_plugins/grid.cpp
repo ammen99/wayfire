@@ -26,7 +26,7 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
     wayfire_view view;
     wf::output_t *output;
     wf::effect_hook_t pre_hook;
-    signal_callback_t unmapped;
+    wf::signal_callback_t unmapped;
 
     uint32_t tiled_edges;
     wf_geometry target, initial;
@@ -55,7 +55,7 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
         };
         output->render->add_effect(&pre_hook, wf::OUTPUT_EFFECT_PRE);
 
-        unmapped = [=] (signal_data *data)
+        unmapped = [=] (wf::signal_data_t *data)
         {
             if (get_signaled_view(data) == view)
                 destroy();
@@ -349,7 +349,7 @@ class wayfire_grid : public wayfire_plugin_t
         return area;
     }
 
-    signal_callback_t on_workarea_changed = [=] (signal_data *data)
+    wf::signal_callback_t on_workarea_changed = [=] (wf::signal_data_t *data)
     {
         auto ev = static_cast<reserved_workarea_signal*> (data);
         for (auto& view : output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
@@ -386,28 +386,28 @@ class wayfire_grid : public wayfire_plugin_t
         }
     };
 
-    signal_callback_t on_snap_query = [=] (signal_data *data)
+    wf::signal_callback_t on_snap_query = [=] (wf::signal_data_t *data)
     {
-        auto query = static_cast<snap_query_signal*> (data);
+        auto query = dynamic_cast<snap_query_signal*> (data);
         assert(query);
 
         query->out_geometry = get_slot_dimensions(query->slot,
             output->workspace->get_workarea());
     };
 
-    signal_callback_t on_snap_signal = [=] (signal_data *ddata)
+    wf::signal_callback_t on_snap_signal = [=] (wf::signal_data_t *ddata)
     {
-        snap_signal *data = static_cast<snap_signal*>(ddata);
+        snap_signal *data = dynamic_cast<snap_signal*>(ddata);
         handle_slot(data->view, data->slot, false);
     };
 
-    signal_callback_t on_maximize_signal = [=] (signal_data *ddata)
+    wf::signal_callback_t on_maximize_signal = [=] (wf::signal_data_t *ddata)
     {
         auto data = static_cast<view_maximized_signal*> (ddata);
         handle_slot(data->view, data->state ? 5 : 0, true);
     };
 
-    signal_callback_t on_fullscreen_signal = [=] (signal_data *ev)
+    wf::signal_callback_t on_fullscreen_signal = [=] (wf::signal_data_t *ev)
     {
         auto data = static_cast<view_fullscreen_signal*> (ev);
         static const std::string fs_data_name = "grid-saved-fs";

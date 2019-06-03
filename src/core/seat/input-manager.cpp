@@ -116,7 +116,7 @@ input_manager::input_manager()
     input_device_created.connect(&wf::get_core().backend->events.new_input);
 
     create_seat();
-    surface_map_state_changed = [=] (signal_data *data)
+    surface_map_state_changed = [=] (wf::signal_data_t *data)
     {
         auto ev = static_cast<_surface_map_state_changed_signal*> (data);
         if (ev && cursor->grabbed_surface == ev->surface && !ev->surface->is_mapped())
@@ -139,7 +139,7 @@ input_manager::input_manager()
     wf::get_core().connect_signal("_surface_mapped", &surface_map_state_changed);
     wf::get_core().connect_signal("_surface_unmapped", &surface_map_state_changed);
 
-    config_updated = [=] (signal_data *)
+    config_updated = [=] (wf::signal_data_t *)
     {
         for (auto& dev : input_devices)
             dev->update_options();

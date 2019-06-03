@@ -65,8 +65,8 @@ class wayfire_blur : public wayfire_plugin_t
     button_callback button_toggle;
 
     wf::effect_hook_t frame_pre_paint;
-    signal_callback_t workspace_stream_pre, workspace_stream_post,
-                      view_attached, view_detached;
+    wf::signal_callback_t workspace_stream_pre, workspace_stream_post,
+        view_attached, view_detached;
 
     const std::string normal_mode = "normal";
     const std::string toggle_mode = "toggle";
@@ -169,7 +169,7 @@ class wayfire_blur : public wayfire_plugin_t
          * Additionally, we don't blur windows in the background layers,
          * as they usually are fully opaque, and there is actually nothing
          * behind them which can be blurred. */
-        view_attached = [=] (signal_data *data)
+        view_attached = [=] (wf::signal_data_t *data)
         {
             auto view = get_signaled_view(data);
             if (mode_opt->as_string() == normal_mode &&
@@ -184,7 +184,7 @@ class wayfire_blur : public wayfire_plugin_t
         /* If a view is detached, we remove its blur transformer.
          * If it is just moved to another output, the blur plugin
          * on the other output will add its own transformer there */
-        view_detached = [=] (signal_data *data)
+        view_detached = [=] (wf::signal_data_t *data)
         {
             auto view = get_signaled_view(data);
             pop_transformer(view);
@@ -222,7 +222,7 @@ class wayfire_blur : public wayfire_plugin_t
          * damage will be used to render the scene as normal. Then
          * workspace_stream_post is called so we can copy the padded
          * pixels back. */
-        workspace_stream_pre = [=] (signal_data *data)
+        workspace_stream_pre = [=] (wf::signal_data_t *data)
         {
             auto& damage = static_cast<wf::stream_signal_t*>(data)->raw_damage;
             const auto& target_fb = static_cast<wf::stream_signal_t*>(data)->fb;
@@ -286,7 +286,7 @@ class wayfire_blur : public wayfire_plugin_t
          * when rendering a workspace. It gives us a chance to copy
          * the pixels back to the framebuffer that we saved in
          * workspace_stream_pre. */
-        workspace_stream_post = [=] (signal_data *data)
+        workspace_stream_post = [=] (wf::signal_data_t *data)
         {
             const auto& target_fb = static_cast<wf::stream_signal_t*>(data)->fb;
             OpenGL::render_begin(target_fb);

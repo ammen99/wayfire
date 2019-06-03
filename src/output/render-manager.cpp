@@ -8,6 +8,8 @@
 #include "debug.hpp"
 #include "../main.hpp"
 #include <algorithm>
+#include <nonstd/reverse.hpp>
+#include <nonstd/safe-list.hpp>
 
 extern "C"
 {

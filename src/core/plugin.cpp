@@ -45,7 +45,7 @@ bool wayfire_grab_interface_t::is_grabbed()
 void wayfire_plugin_t::fini() {}
 wayfire_plugin_t::~wayfire_plugin_t() {}
 
-wayfire_view get_signaled_view(signal_data *data)
+wayfire_view get_signaled_view(wf::signal_data_t *data)
 {
     auto conv = static_cast<_view_signal*> (data);
     if (!conv)
@@ -57,7 +57,7 @@ wayfire_view get_signaled_view(signal_data *data)
     return conv->view;
 }
 
-bool get_signaled_state(signal_data *data)
+bool get_signaled_state(wf::signal_data_t *data)
 {
     auto conv = static_cast<_view_state_signal*> (data);
 
@@ -70,7 +70,7 @@ bool get_signaled_state(signal_data *data)
     return conv->state;
 }
 
-wf::output_t *get_signaled_output(signal_data *data)
+wf::output_t *get_signaled_output(wf::signal_data_t *data)
 {
     auto result = static_cast<_output_signal*> (data);
     return result ? result->output : nullptr;

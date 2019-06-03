@@ -130,7 +130,8 @@ class wf_wobbly : public wf_view_transformer_t
 {
     wayfire_view view;
     wf::effect_hook_t pre_hook;
-    signal_callback_t view_removed, view_geometry_changed, view_output_changed;
+    wf::signal_callback_t view_removed, view_geometry_changed,
+        view_output_changed;
     wayfire_grab_interface iface;
 
     std::unique_ptr<wobbly_surface> model;
@@ -171,16 +172,16 @@ class wf_wobbly : public wf_view_transformer_t
         };
         view->get_output()->render->add_effect(&pre_hook, wf::OUTPUT_EFFECT_PRE);
 
-        view_removed = [=] (signal_data *data) {
+        view_removed = [=] (wf::signal_data_t *data) {
             destroy_self();
         };
 
-        view_geometry_changed = [=] (signal_data *data) {
+        view_geometry_changed = [=] (wf::signal_data_t *data) {
             auto sig = static_cast<view_geometry_changed_signal*> (data);
             update_view_geometry(sig->old_geometry);
         };
 
-        view_output_changed = [=] (signal_data *data) {
+        view_output_changed = [=] (wf::signal_data_t *data) {
             auto sig = static_cast<_output_signal*> (data);
 
             if (!view->get_output())
@@ -394,7 +395,7 @@ class wf_wobbly : public wf_view_transformer_t
 
 class wayfire_wobbly : public wayfire_plugin_t
 {
-    signal_callback_t wobbly_changed;
+    wf::signal_callback_t wobbly_changed;
     public:
         void init(wayfire_config *config)
         {
@@ -402,7 +403,7 @@ class wayfire_wobbly : public wayfire_plugin_t
             grab_interface->abilities_mask = 0;
             grab_interface->name = "wobbly";
 
-            wobbly_changed = [=] (signal_data *data)
+            wobbly_changed = [=] (wf::signal_data_t *data)
             {
                 adjust_wobbly(static_cast<wobbly_signal*> (data));
             };

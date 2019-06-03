@@ -17,7 +17,7 @@ static const std::string iface_name = "_input_inhibitor";
 static std::map<wf::output_t*, wayfire_grab_interface> iface_map;
 
 /* output added/removed */
-static signal_callback_t on_output_changed = [] (signal_data *data)
+static wf::signal_callback_t on_output_changed = [] (wf::signal_data_t *data)
 {
     auto wo = get_signaled_output(data);
 

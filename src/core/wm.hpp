@@ -13,8 +13,8 @@ class wayfire_close : public wayfire_plugin_t {
 class wayfire_focus : public wayfire_plugin_t {
     button_callback on_button;
     touch_callback on_touch;
-    signal_callback_t on_view_disappear,
-                      on_view_output_change;
+    wf::signal_callback_t on_view_disappear,
+        on_view_output_change;
 
     wayfire_view last_focus;
     void send_done(wayfire_view view);
@@ -34,7 +34,7 @@ class wayfire_exit : public wayfire_plugin_t {
 };
 
 class wayfire_handle_focus_parent : public wayfire_plugin_t {
-    signal_callback_t focus_event;
+    wf::signal_callback_t focus_event;
 
     void focus_view(wayfire_view view);
     wayfire_view last_view = nullptr;

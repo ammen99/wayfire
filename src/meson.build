@@ -2,6 +2,7 @@ wayfire_sources = ['main.cpp',
                    'util.cpp',
 
                    'core/output-layout.cpp',
+                   'core/object.cpp',
                    'core/opengl.cpp',
                    'core/plugin.cpp',
                    'core/core.cpp',

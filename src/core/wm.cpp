@@ -69,11 +69,11 @@ void wayfire_focus::init(wayfire_config *)
     };
     output->add_touch(new_static_option(""), &on_touch);
 
-    on_view_disappear = [=] (signal_data *data) {
+    on_view_disappear = [=] (wf::signal_data_t *data) {
         set_last_focus(nullptr);
     };
 
-    on_view_output_change = [=] (signal_data *data)
+    on_view_output_change = [=] (wf::signal_data_t *data)
     {
         if (get_signaled_output(data) != this->output)
             send_done(last_focus); // will also reset last_focus
@@ -157,7 +157,7 @@ void wayfire_handle_focus_parent::focus_view(wayfire_view view)
 
 void wayfire_handle_focus_parent::init(wayfire_config*)
 {
-    focus_event = [&] (signal_data *data)
+    focus_event = [&] (wf::signal_data_t *data)
     {
         auto view = get_signaled_view(data);
         if (!view || intercept_recursion)

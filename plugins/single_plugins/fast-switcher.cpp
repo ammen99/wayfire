@@ -14,7 +14,7 @@ class wayfire_fast_switcher : public wayfire_plugin_t
     key_callback init_binding;
     wf_option activate_key;
 
-    signal_callback_t destroyed;
+    wf::signal_callback_t destroyed;
 
     size_t current_view_index;
     std::vector<wayfire_view> views; // all views on current viewport
@@ -49,7 +49,7 @@ class wayfire_fast_switcher : public wayfire_plugin_t
             switch_terminate();
         };
 
-        destroyed = [=] (signal_data *data)
+        destroyed = [=] (wf::signal_data_t *data)
         {
             cleanup_view(get_signaled_view(data));
         };

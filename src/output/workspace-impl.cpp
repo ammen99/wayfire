@@ -8,6 +8,7 @@
 #include <opengl.hpp>
 #include <list>
 #include <algorithm>
+#include <nonstd/reverse.hpp>
 
 namespace wf
 {
@@ -426,7 +427,7 @@ class workspace_manager::impl
         workarea_manager.reflow_reserved_areas();
     };
 
-    signal_callback_t view_changed_viewport = [=] (signal_data *data)
+    signal_callback_t view_changed_viewport = [=] (signal_data_t *data)
     {
         check_autohide_panels();
     };
@@ -458,13 +459,13 @@ class workspace_manager::impl
         if (fs_views.size() && !sent_autohide)
         {
             sent_autohide = 1;
-            output->emit_signal("autohide-panels", reinterpret_cast<signal_data*> (1));
+            output->emit_signal("autohide-panels", reinterpret_cast<signal_data_t*> (1));
             log_debug("autohide panels");
         }
         else if (fs_views.empty() && sent_autohide)
         {
             sent_autohide = 0;
-            output->emit_signal("autohide-panels", reinterpret_cast<signal_data*> (0));
+            output->emit_signal("autohide-panels", reinterpret_cast<signal_data_t*> (0));
             log_debug("restore panels");
         }
     }

@@ -34,7 +34,7 @@ struct wf_cursor
                             on_pinch_begin, on_pinch_update, on_pinch_end,
                             on_frame;
 
-    signal_callback_t config_reloaded;
+    wf::signal_callback_t config_reloaded;
 
     wlr_cursor *cursor = NULL;
     wlr_xcursor_manager *xcursor = NULL;

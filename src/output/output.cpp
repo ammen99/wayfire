@@ -32,7 +32,7 @@ wf::output_impl_t::output_impl_t(wlr_output *handle)
 {
     plugin = std::make_unique<plugin_manager> (this, wf::get_core().config);
 
-    view_disappeared_cb = [=] (signal_data *data) { refocus(get_signaled_view(data)); };
+    view_disappeared_cb = [=] (wf::signal_data_t *data) { refocus(get_signaled_view(data)); };
     connect_signal("view-disappeared", &view_disappeared_cb);
     connect_signal("detach-view", &view_disappeared_cb);
 }

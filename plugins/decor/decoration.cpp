@@ -8,14 +8,14 @@
 class wayfire_decoration : public wayfire_plugin_t
 {
     wf_option font;
-    signal_callback_t view_created;
+    wf::signal_callback_t view_created;
 
     public:
     void init(wayfire_config *config)
     {
         font = config->get_section("decoration")->get_option("font", "serif");
 
-        view_created = [=] (signal_data *data)
+        view_created = [=] (wf::signal_data_t *data)
         {
             new_view(get_signaled_view(data));
         };

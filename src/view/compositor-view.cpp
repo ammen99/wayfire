@@ -21,13 +21,13 @@ wf::mirror_view_t::mirror_view_t(wayfire_view base_view)
 {
     this->base_view = base_view;
 
-    base_view_unmapped = [=] (signal_data*) {
+    base_view_unmapped = [=] (wf::signal_data_t*) {
         close();
     };
 
     base_view->connect_signal("unmap", &base_view_unmapped);
 
-    base_view_damaged = [=] (signal_data* ) {
+    base_view_damaged = [=] (wf::signal_data_t* ) {
         damage();
     };
 

@@ -15,7 +15,7 @@ namespace wf
             virtual ~view_matcher() = default;
         };
 
-        struct match_signal : public signal_data
+        struct match_signal : public signal_data_t
         {
             std::unique_ptr<view_matcher> result;
             wf_option expression;
@@ -33,7 +33,7 @@ namespace wf
             return std::move(data.result);
         }
 
-        struct match_evaluate_signal : public signal_data
+        struct match_evaluate_signal : public signal_data_t
         {
             nonstd::observer_ptr<view_matcher> matcher;
             wayfire_view view;

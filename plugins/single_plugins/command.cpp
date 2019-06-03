@@ -192,7 +192,7 @@ class wayfire_command : public wayfire_plugin_t
         bindings.clear();
     }
 
-    signal_callback_t reload_config;
+    wf::signal_callback_t reload_config;
 
     void init(wayfire_config *config)
     {
@@ -206,7 +206,7 @@ class wayfire_command : public wayfire_plugin_t
 
         setup_bindings_from_config(config);
 
-        reload_config = [=] (signal_data*)
+        reload_config = [=] (wf::signal_data_t*)
         {
             clear_bindings();
             setup_bindings_from_config(wf::get_core().config);

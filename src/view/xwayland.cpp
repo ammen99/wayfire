@@ -32,7 +32,8 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
     int last_server_width = 0;
     int last_server_height = 0;
 
-    signal_callback_t output_geometry_changed = [this] (signal_data*)
+    wf::signal_callback_t output_geometry_changed =
+        [this] (wf::signal_data_t*)
     {
         if (is_mapped())
             move(geometry.x, geometry.y);

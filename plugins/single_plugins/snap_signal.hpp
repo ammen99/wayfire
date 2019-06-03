@@ -22,14 +22,14 @@ enum slot_type {
 };
 
 /* Query the dimensions of the given slot */
-struct snap_query_signal : public signal_data
+struct snap_query_signal : public wf::signal_data_t
 {
     slot_type slot;
     wf_geometry out_geometry;
 };
 
 /* Do snap the view to the given slot */
-struct snap_signal : public signal_data
+struct snap_signal : public wf::signal_data_t
 {
     wayfire_view view;
     uint32_t slot; // 0 for unsnap

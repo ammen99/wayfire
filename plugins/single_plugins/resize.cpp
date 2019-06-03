@@ -14,7 +14,7 @@ extern "C"
 
 class wayfire_resize : public wayfire_plugin_t
 {
-    signal_callback_t resize_request, view_destroyed;
+    wf::signal_callback_t resize_request, view_destroyed;
 
     button_callback activate_binding;
     touch_callback touch_activate_binding;
@@ -99,7 +99,7 @@ class wayfire_resize : public wayfire_plugin_t
                 this, _1);
         output->connect_signal("resize-request", &resize_request);
 
-        view_destroyed = [=] (signal_data* data)
+        view_destroyed = [=] (wf::signal_data_t* data)
         {
             if (get_signaled_view(data) == view)
             {
@@ -112,7 +112,7 @@ class wayfire_resize : public wayfire_plugin_t
         output->connect_signal("view-disappeared", &view_destroyed);
     }
 
-    void resize_requested(signal_data *data)
+    void resize_requested(wf::signal_data_t *data)
     {
         auto request = static_cast<resize_request_signal*> (data);
         auto view = get_signaled_view(data);

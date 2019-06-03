@@ -267,7 +267,7 @@ wf_cursor::wf_cursor()
     setup_listeners();
     init_xcursor();
 
-    config_reloaded = [=] (signal_data*) {
+    config_reloaded = [=] (wf::signal_data_t*) {
         init_xcursor();
     };
 

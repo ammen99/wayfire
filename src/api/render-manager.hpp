@@ -20,7 +20,7 @@ struct workspace_stream_t
 };
 
 /** Emitted whenever a workspace stream is being started or stopped */
-struct stream_signal_t : public signal_data
+struct stream_signal_t : public wf::signal_data_t
 {
     stream_signal_t(wf_region& damage, const wf_framebuffer& _fb)
         : raw_damage(damage), fb(_fb) { }

@@ -44,7 +44,7 @@ struct animation_hook : public wf::custom_data_t
 
     /* If the view changes outputs, we need to stop animating, because our animations,
      * hooks, etc are bound to the last output. */
-    signal_callback_t view_detached = [=] (signal_data *data)
+    wf::signal_callback_t view_detached = [=] (wf::signal_data_t *data)
     {
         if (get_signaled_view(data) == view)
             stop_hook(true);
@@ -172,7 +172,8 @@ class wayfire_animation : public wayfire_plugin_t
     }
 
     /* TODO: enhance - add more animations */
-    signal_callback_t on_view_mapped = [=] (signal_data *ddata) -> void
+    wf::signal_callback_t on_view_mapped =
+        [=] (wf::signal_data_t *ddata) -> void
     {
         auto view = get_signaled_view(ddata);
         auto animation = get_animation_for_view(open_animation, view);
@@ -185,7 +186,7 @@ class wayfire_animation : public wayfire_plugin_t
             set_animation<FireAnimation> (view, ANIMATION_TYPE_MAP);
     };
 
-    signal_callback_t on_view_unmapped = [=] (signal_data *data) -> void
+    wf::signal_callback_t on_view_unmapped = [=] (wf::signal_data_t *data)
     {
         auto view = get_signaled_view(data);
         auto animation = get_animation_for_view(close_animation, view);
@@ -198,7 +199,7 @@ class wayfire_animation : public wayfire_plugin_t
             set_animation<FireAnimation> (view, ANIMATION_TYPE_UNMAP);
     };
 
-    signal_callback_t on_minimize_request = [=] (signal_data *data) -> void
+    wf::signal_callback_t on_minimize_request = [=] (wf::signal_data_t *data)
     {
         auto ev = static_cast<view_minimize_request_signal*> (data);
         if (ev->state) {
@@ -209,7 +210,7 @@ class wayfire_animation : public wayfire_plugin_t
         }
     };
 
-    signal_callback_t on_render_start = [=] (signal_data *data) -> void
+    wf::signal_callback_t on_render_start = [=] (wf::signal_data_t *data)
     {
         new wf_system_fade(output, startup_duration);
     };

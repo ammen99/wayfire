@@ -79,13 +79,13 @@ namespace wf
 
         class match_core_data : public wf::custom_data_t
         {
-            signal_callback_t on_new_matcher_request = [=] (signal_data *data)
+            signal_callback_t on_new_matcher_request = [=] (signal_data_t *data)
             {
                 auto ev = static_cast<match_signal*> (data);
                 ev->result = std::make_unique<default_view_matcher> (ev->expression);
             };
 
-            signal_callback_t on_matcher_evaluate = [=] (signal_data *data)
+            signal_callback_t on_matcher_evaluate = [=] (signal_data_t *data)
             {
                 auto ev = static_cast<match_evaluate_signal*> (data);
                 auto expr =

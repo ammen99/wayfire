@@ -11,6 +11,7 @@ extern "C"
 {
     struct wlr_egl;
     struct wlr_compositor;
+    struct wlr_surface;
 }
 
 class input_manager;
