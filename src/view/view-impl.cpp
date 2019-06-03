@@ -331,6 +331,7 @@ void wf::wlr_view_t::unmap()
 
 void wf::wlr_view_t::destroy()
 {
+    view_impl->is_alive = false;
     /* Drop the internal reference created in surface_interface_t */
     unref();
 }

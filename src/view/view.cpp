@@ -433,7 +433,23 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
 
 bool wf::view_interface_t::is_visible()
 {
-    return (is_mapped() || has_transformer()) && priv->ref_cnt;
+    if (is_mapped())
+        return true;
+
+    /* If we have an unmapped view, then there are two cases:
+     *
+     * 1. View has been "destroyed". In this case, the view is visible as long
+     * as it has at least one reference (for ex. a plugin which shows unmap
+     * animation)
+     *
+     * 2. View hasn't been "destroyed", just unmapped. Here we need to have at
+     * least 2 references, which would mean that the view is in unmap animation.
+     */
+    if (view_impl->is_alive) {
+        return priv->ref_cnt >= 2;
+    } else {
+        return priv->ref_cnt >= 1;
+    }
 }
 
 void wf::view_interface_t::damage()
@@ -839,6 +855,7 @@ void wf::view_interface_t::damage_raw(const wlr_box& box)
 
 void wf::view_interface_t::destruct()
 {
+    view_impl->is_alive = false;
     view_impl->idle_destruct.run_once(
         [&] () {wf::get_core_impl().erase_view(self());});
 }
