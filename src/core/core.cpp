@@ -246,7 +246,9 @@ void wf::compositor_core_impl_t::focus_output(wf::output_t *wo)
     active_output = wo;
     log_debug("focusing %p", wo);
     if (wo)
+    {
         log_debug("focus output: %s", wo->handle->name);
+    }
 
     /* invariant: input is grabbed only if the current output
      * has an input grab */
