@@ -97,6 +97,13 @@ class wayfire_fast_switcher : public wayfire_plugin_t
 
         views.erase(views.begin() + i);
 
+        if (views.size() < 1)
+        {
+            // last view got destroyed, nothing left to choose
+            output->deactivate_plugin(grab_interface);
+            return;
+        }
+
         if (i <= current_view_index)
         {
             current_view_index =
