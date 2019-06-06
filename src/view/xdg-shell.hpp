@@ -34,6 +34,8 @@ class wayfire_xdg_popup : public wf::wlr_child_surface_base_t
 
 template<class XdgPopupVersion>
 void create_xdg_popup(XdgPopupVersion *popup);
+template<>
+void create_xdg_popup<wlr_xdg_popup>(wlr_xdg_popup* popup);
 
 template<class XdgToplevelVersion>
 class wayfire_xdg_view : public wf::wlr_view_t

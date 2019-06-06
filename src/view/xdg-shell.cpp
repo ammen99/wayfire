@@ -44,7 +44,8 @@ void wayfire_xdg_popup<XdgPopupVersion>::unconstrain()
     _do_unconstrain(box);
 }
 
-template<> void wayfire_xdg_popup<wlr_xdg_popup>::_do_unconstrain(wlr_box box) {
+template<>
+void wayfire_xdg_popup<wlr_xdg_popup>::_do_unconstrain(wlr_box box) {
     wlr_xdg_popup_unconstrain_from_box(popup, &box);
 }
 
@@ -101,7 +102,7 @@ void wayfire_xdg_popup<wlr_xdg_popup>::send_done()
 }
 
 template<class XdgPopupVersion>
-void create_xdg_popup(XdgPopupVersion *popup)
+void create_xdg_popup_templ(XdgPopupVersion *popup)
 {
     auto parent = wf::wf_surface_from_void(popup->parent->data);
     if (!parent)
@@ -111,6 +112,14 @@ void create_xdg_popup(XdgPopupVersion *popup)
     }
 
     new wayfire_xdg_popup<XdgPopupVersion>(popup);
+}
+
+template<class XdgPopupVersion>
+void create_xdg_popup(XdgPopupVersion *popup) { create_xdg_popup_templ(popup); }
+
+// specialized in header
+template<> void create_xdg_popup<wlr_xdg_popup> (wlr_xdg_popup *popup) {
+    create_xdg_popup_templ(popup);
 }
 
 template<class XdgToplevelVersion>
@@ -415,3 +424,8 @@ void wf::init_xdg_shell()
         on_xdg6_created.connect(&xdg_handle_v6->events.new_surface);
     }
 }
+
+template class wayfire_xdg_popup<wlr_xdg_popup_v6>;
+template class wayfire_xdg_popup<wlr_xdg_popup>;
+template class wayfire_xdg_view<wlr_xdg_toplevel_v6>;
+template class wayfire_xdg_view<wlr_xdg_toplevel>;
