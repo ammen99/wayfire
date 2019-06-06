@@ -101,7 +101,8 @@ void plugin_manager::destroy_plugin(wayfire_plugin& p)
 
 wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
 {
-    void *handle = dlopen(path.c_str(), RTLD_NOW);
+    // RTLD_GLOBAL is required for RTTI/dynamic_cast across plugins
+    void *handle = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if(handle == NULL)
     {
         log_error("error loading plugin: %s", dlerror());

@@ -49,8 +49,9 @@ conf_data.set('WF_SRC_DIR', meson.source_root())
 conf_data.set('INSTALL_PREFIX', get_option('prefix'))
 
 # needed to dlopen() plugins
+# -E is for RTTI/dynamic_cast across plugins
 add_project_arguments(['-DWLR_USE_UNSTABLE'], language: ['cpp', 'c'])
-add_project_link_arguments(['-rdynamic'], language:'cpp')
+add_project_link_arguments(['-rdynamic', '-Wl,-E'], language: 'cpp')
 
 if get_option('buildtype') == 'debug' or get_option('enable_debug_output')
   conf_data.set('WAYFIRE_DEBUG_ENABLED', true)
