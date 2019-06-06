@@ -231,7 +231,11 @@ void wayfire_xdg_view<XdgToplevelVersion>::commit()
     if (xdg_g.x != xdg_surface_offset.x || xdg_g.y != xdg_surface_offset.y)
     {
         xdg_surface_offset = {xdg_g.x, xdg_g.y};
-        move(wm.x, wm.y);
+        /* Note that we just changed the xdg_surface offset, which means we
+         * also changed the wm geometry. Plugins which depend on the
+         * geometry-changed signal however need to receive the appropriate
+         * old geometry */
+        set_position(wm.x, wm.y, wm, true);
     }
 }
 

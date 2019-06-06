@@ -117,16 +117,18 @@ void wf::wlr_view_t::subtract_opaque(wf_region& region, int x, int y)
     maximal_shrink_constraint = saved_shrink_constraint;
 }
 
-void wf::wlr_view_t::set_position(int x, int y, bool send_signal)
+void wf::wlr_view_t::set_position(int x, int y,
+    wf_geometry old_geometry, bool send_signal)
 {
     auto obox = get_output_geometry();
     auto wm   = get_wm_geometry();
 
     view_geometry_changed_signal data;
     data.view = self();
-    data.old_geometry = wm;
+    data.old_geometry = old_geometry;
 
     damage_raw(last_bounding_box);
+    /* obox.x - wm.x is the current difference in the output and wm geometry */
     geometry.x = x + obox.x - wm.x;
     geometry.y = y + obox.y - wm.y;
 
@@ -148,7 +150,7 @@ void wf::wlr_view_t::set_position(int x, int y, bool send_signal)
 
 void wf::wlr_view_t::move(int x, int y)
 {
-    set_position(x, y, true);
+    set_position(x, y, get_wm_geometry(), true);
 }
 
 void wf::wlr_view_t::adjust_anchored_edge(wf_surface_size_t new_size)
@@ -161,7 +163,8 @@ void wf::wlr_view_t::adjust_anchored_edge(wf_surface_size_t new_size)
         if (view_impl->edges & WLR_EDGE_TOP)
             wm.y += geometry.height - new_size.height;
 
-        set_position(wm.x, wm.y, false);
+        set_position(wm.x, wm.y,
+            get_wm_geometry(), false);
     }
 }
 

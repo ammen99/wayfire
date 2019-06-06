@@ -124,8 +124,11 @@ class wlr_view_t :
     /** The output geometry of the view */
     wf_geometry geometry {100, 100, 0, 0};
 
-    /** Set the view position and optionally send the geometry changed signal */
-    virtual void set_position(int x, int y, bool send_geometry_signal);
+    /** Set the view position and optionally send the geometry changed signal
+     * @param old_geometry The geometry to report as previous, in case the
+     * signal is sent. */
+    virtual void set_position(int x, int y, wf_geometry old_geometry,
+        bool send_geometry_signal);
     /** Update the view size to the actual dimensions of its surface */
     virtual void update_size();
 
