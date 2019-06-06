@@ -658,7 +658,7 @@ bool wf::view_interface_t::intersects_region(const wlr_box& region)
 bool wf::view_interface_t::render_transformed(const wf_framebuffer& framebuffer,
     const wf_region& damage)
 {
-    if (!has_transformer())
+    if (!is_mapped() && !view_impl->offscreen_buffer.valid())
         return false;
 
     take_snapshot();
@@ -716,8 +716,13 @@ bool wf::view_interface_t::render_transformed(const wf_framebuffer& framebuffer,
         obox = transformed_box;
     });
 
-    /* Pretty "exotic" case: the last transformer was deleted before we could
-     * use it. In this case, just manually display the view */
+    /* This can happen in two ways:
+     * 1. The view is unmapped, and no snapshot
+     * 2. The last transform was deleted while iterating, so now the last
+     *    transform is invalid in the list
+     *
+     * In both cases, we simply render whatever contents we have to the
+     * framebuffer. */
     if (final_transform == nullptr)
     {
         OpenGL::render_begin(framebuffer);

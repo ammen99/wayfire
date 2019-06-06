@@ -335,7 +335,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      *        coordinate system as the framebuffer.
      *
      * @return true if the render operation was successful, and false if the
-     *              view has no transformers (in which case nothing is done)
+                    view is both unmapped and has no snapshot.
      */
     bool render_transformed(const wf_framebuffer& framebuffer,
         const wf_region& damage);
