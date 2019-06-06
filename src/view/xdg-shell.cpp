@@ -208,9 +208,6 @@ wf_geometry get_xdg_geometry<wlr_xdg_toplevel_v6>(wlr_xdg_toplevel_v6 *toplevel)
 template<class XdgToplevelVersion>
 void wayfire_xdg_view<XdgToplevelVersion>::map(wlr_surface *surface)
 {
-    auto xdg_geometry = get_xdg_geometry(xdg_toplevel);
-    xdg_surface_offset = {xdg_geometry.x, xdg_geometry.y};
-
     if (xdg_toplevel->client_pending.maximized)
         maximize_request(true);
 
@@ -231,7 +228,6 @@ void wayfire_xdg_view<XdgToplevelVersion>::commit()
      * so that the apparent wm geometry doesn't change */
     auto wm = get_wm_geometry();
     auto xdg_g = get_xdg_geometry(xdg_toplevel);
-
     if (xdg_g.x != xdg_surface_offset.x || xdg_g.y != xdg_surface_offset.y)
     {
         xdg_surface_offset = {xdg_g.x, xdg_g.y};
