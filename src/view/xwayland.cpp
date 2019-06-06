@@ -230,6 +230,8 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         on_request_fullscreen.connect(&xw->events.request_fullscreen);
 
         xw->data = dynamic_cast<wf::view_interface_t*> (this);
+        // set initial parent
+        on_set_parent.emit(nullptr);
     }
 
     virtual void destroy() override

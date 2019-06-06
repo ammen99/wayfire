@@ -179,6 +179,8 @@ wayfire_xdg_view<XdgToplevelVersion>::wayfire_xdg_view(XdgToplevelVersion *top)
     on_request_fullscreen.connect(&xdg_toplevel->events.request_fullscreen);
 
     xdg_toplevel->base->data = dynamic_cast<view_interface_t*> (this);
+    // set initial parent
+    on_set_parent.emit(nullptr);
 }
 
 template<class XdgToplevelVersion>
