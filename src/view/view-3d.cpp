@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #define PI 3.14159265359
 
 wlr_box wf_view_transformer_t::get_bounding_box(wf_geometry view, wlr_box region)

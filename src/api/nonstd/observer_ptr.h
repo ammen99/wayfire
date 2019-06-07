@@ -11,7 +11,6 @@
 #define NONSTD_OBSERVER_PTR_H_INCLUDED
 
 #include <cassert>
-#include <algorithm>
 #include <functional>
 
 #define  observer_ptr_VERSION "0.2.0"
@@ -307,20 +306,6 @@ bool operator>=( observer_ptr<W1> p1, observer_ptr<W2> p2 )
 }
 
 } // namespace nonstd
-
-#if nop_CPP11_OR_GREATER
-
-namespace std
-{
-
-template< class T >
-struct hash< ::nonstd::observer_ptr<T> >
-{
-    size_t operator()(::nonstd::observer_ptr<T> p ) { return hash<T*>()( p.get() ); }
-};
-
-}
-#endif
 
 // #undef ...
 

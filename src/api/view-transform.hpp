@@ -1,10 +1,6 @@
 #ifndef VIEW_TRANSFORM_HPP
 #define VIEW_TRANSFORM_HPP
 
-#define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "view.hpp"
 #include "opengl.hpp"
 #include "debug.hpp"

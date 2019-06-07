@@ -4,6 +4,7 @@
 #include <thread>
 #include <output.hpp>
 #include <core.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 wf_option FireAnimation::fire_particles;
 wf_option FireAnimation::fire_particle_size;
