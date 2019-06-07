@@ -4,7 +4,7 @@
 #include <workspace-manager.hpp>
 #include <signal-definitions.hpp>
 
-class wayfire_place_window : public wayfire_plugin_t
+class wayfire_place_window : public wf::plugin_interface_t
 {
     wf::signal_callback_t created_cb;
     wf::signal_callback_t workarea_changed_cb;
@@ -108,10 +108,4 @@ class wayfire_place_window : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_place_window();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_place_window);

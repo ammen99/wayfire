@@ -14,6 +14,7 @@ extern "C"
 #include <wlr/types/wlr_matrix.h>
 #include <wlr/render/wlr_renderer.h>
 #undef static
+#include <wlr/types/wlr_output.h>
 }
 
 /* animates wake from suspend/startup by fading in the whole output */

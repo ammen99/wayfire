@@ -36,7 +36,7 @@ static int repeat_once_handler(void *callback)
  * the user released the key. In the config file, repeatable bindings have the
  * prefix repeatable_ */
 
-class wayfire_command : public wayfire_plugin_t
+class wayfire_command : public wf::plugin_interface_t
 {
     std::vector<activator_callback> bindings;
 
@@ -198,7 +198,7 @@ class wayfire_command : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "command";
-        grab_interface->abilities_mask = WF_ABILITY_GRAB_INPUT;
+        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
         grab_interface->callbacks.pointer.button = on_button;
         grab_interface->callbacks.keyboard.key = on_key;
         grab_interface->callbacks.cancel = [=]() {reset_repeat();};
@@ -223,10 +223,4 @@ class wayfire_command : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_command();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_command);

@@ -67,7 +67,7 @@ struct SwitcherView
     }
 };
 
-class WayfireSwitcher : public wayfire_plugin_t
+class WayfireSwitcher : public wf::plugin_interface_t
 {
     wf_duration duration;
     wf_duration background_dim_duration;
@@ -93,7 +93,7 @@ class WayfireSwitcher : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "switcher";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         switcher_renderer = [=] (const wf_framebuffer& buffer) { render_output(buffer); };
 
@@ -794,10 +794,4 @@ class WayfireSwitcher : public wayfire_plugin_t
     // TODO:!!! fini
 };
 
-extern "C"
-{
-    wayfire_plugin_t* newInstance()
-    {
-        return new WayfireSwitcher();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(WayfireSwitcher);

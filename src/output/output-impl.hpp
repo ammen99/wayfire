@@ -1,7 +1,6 @@
 #include "output.hpp"
 #include "plugin-loader.hpp"
 
-#include <unordered_map>
 #include <unordered_set>
 #include <nonstd/safe-list.hpp>
 
@@ -10,7 +9,7 @@ namespace wf
 class output_impl_t : public output_t
 {
   private:
-    std::unordered_multiset<wayfire_grab_interface> active_plugins;
+    std::unordered_multiset<wf::plugin_grab_interface_t*> active_plugins;
     std::unique_ptr<plugin_manager> plugin;
 
     wayfire_view active_view, last_active_toplevel;
@@ -23,11 +22,11 @@ class output_impl_t : public output_t
     /**
      * Implementations of the public APIs
      */
-    virtual bool activate_plugin(wayfire_grab_interface owner);
-    virtual bool deactivate_plugin(wayfire_grab_interface owner);
-    virtual bool is_plugin_active(owner_t owner_name) const;
-    virtual wayfire_view get_active_view() const;
-    virtual void set_active_view(wayfire_view v);
+    bool activate_plugin(const plugin_grab_interface_uptr& owner) override;
+    bool deactivate_plugin(const plugin_grab_interface_uptr& owner) override;
+    bool is_plugin_active(std::string owner_name) const override;
+    wayfire_view get_active_view() const override;
+    void set_active_view(wayfire_view v) override;
 
     /**
      * Cancel all active grab interfaces.
@@ -37,7 +36,7 @@ class output_impl_t : public output_t
     /**
      * @return The currently active input grab interface, or nullptr if none
      */
-    wayfire_grab_interface get_input_grab_interface();
+    plugin_grab_interface_t* get_input_grab_interface();
 };
 }
 

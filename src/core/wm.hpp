@@ -5,14 +5,14 @@
 #include "bindings.hpp"
 #include "view.hpp"
 
-class wayfire_close : public wayfire_plugin_t {
+class wayfire_close : public wf::plugin_interface_t {
     activator_callback callback;
     public:
         void init(wayfire_config*) override;
         void fini() override;
 };
 
-class wayfire_focus : public wayfire_plugin_t {
+class wayfire_focus : public wf::plugin_interface_t {
     button_callback on_button;
     touch_callback on_touch;
     wf::signal_callback_t on_view_disappear,
@@ -28,14 +28,14 @@ class wayfire_focus : public wayfire_plugin_t {
         void fini() override;
 };
 
-class wayfire_exit : public wayfire_plugin_t {
+class wayfire_exit : public wf::plugin_interface_t {
     key_callback key;
     public:
         void init(wayfire_config*) override;
         void fini() override;
 };
 
-class wayfire_handle_focus_parent : public wayfire_plugin_t {
+class wayfire_handle_focus_parent : public wf::plugin_interface_t {
     wf::signal_callback_t focus_event;
 
     void focus_view(wayfire_view view);

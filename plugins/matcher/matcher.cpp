@@ -105,7 +105,7 @@ namespace wf
             }
         };
 
-        class matcher_plugin : public wayfire_plugin_t
+        class matcher_plugin : public wf::plugin_interface_t
         {
             public:
             void init(wayfire_config *conf) override
@@ -119,10 +119,4 @@ namespace wf
     }
 }
 
-extern "C"
-{
-    wayfire_plugin_t* newInstance()
-    {
-        return new wf::matcher::matcher_plugin;
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wf::matcher::matcher_plugin);

@@ -5,7 +5,7 @@
 #include <output-layout.hpp>
 #include <linux/input-event-codes.h>
 
-class wayfire_output_manager : public wayfire_plugin_t
+class wayfire_output_manager : public wf::plugin_interface_t
 {
     activator_callback switch_output, switch_output_with_window;
     wf::wl_idle_call idle_next_output;
@@ -14,7 +14,7 @@ class wayfire_output_manager : public wayfire_plugin_t
         void init(wayfire_config *config)
         {
             grab_interface->name = "oswitch";
-            grab_interface->abilities_mask = WF_ABILITY_NONE;
+            grab_interface->capabilities = 0;
 
             auto section = config->get_section("oswitch");
 
@@ -64,9 +64,4 @@ class wayfire_output_manager : public wayfire_plugin_t
         }
 };
 
-extern "C" {
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_output_manager();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_output_manager);

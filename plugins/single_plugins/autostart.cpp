@@ -3,7 +3,7 @@
 
 class wayfire_autostart_core_data : public wf::custom_data_t { };
 
-class wayfire_autostart : public wayfire_plugin_t
+class wayfire_autostart : public wf::plugin_interface_t
 {
     public:
     void init(wayfire_config *config)
@@ -20,10 +20,4 @@ class wayfire_autostart : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_autostart();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_autostart);

@@ -145,7 +145,7 @@ class wf_move_snap_preview : public wf::color_rect_view_t
     }
 };
 
-class wayfire_move : public wayfire_plugin_t
+class wayfire_move : public wf::plugin_interface_t
 {
     wf::signal_callback_t move_request, view_destroyed;
     button_callback activate_binding;
@@ -170,7 +170,8 @@ class wayfire_move : public wayfire_plugin_t
         void init(wayfire_config *config)
         {
             grab_interface->name = "move";
-            grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY | WF_ABILITY_GRAB_INPUT;
+            grab_interface->capabilities =
+                wf::CAPABILITY_GRAB_INPUT | wf::CAPABILITY_MANAGE_DESKTOP;
 
             auto section = config->get_section("move");
             wf_option button = section->get_option("activate", "<super> BTN_LEFT");
@@ -645,10 +646,4 @@ class wayfire_move : public wayfire_plugin_t
         }
 };
 
-extern "C" {
-    wayfire_plugin_t* newInstance()
-    {
-        return new wayfire_move();
-    }
-}
-
+DECLARE_WAYFIRE_PLUGIN(wayfire_move);

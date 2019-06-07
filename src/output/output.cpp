@@ -282,7 +282,7 @@ wayfire_view wf::output_impl_t::get_active_view() const
     return active_view;
 }
 
-bool wf::output_impl_t::activate_plugin(wayfire_grab_interface owner)
+bool wf::output_impl_t::activate_plugin(const plugin_grab_interface_uptr& owner)
 {
     if (!owner)
         return false;
@@ -290,45 +290,47 @@ bool wf::output_impl_t::activate_plugin(wayfire_grab_interface owner)
     if (wf::get_core().get_active_output() != this)
         return false;
 
-    if (active_plugins.find(owner) != active_plugins.end())
+    if (active_plugins.find(owner.get()) != active_plugins.end())
     {
         log_debug("output %s: activate plugin %s again", handle->name, owner->name.c_str());
-        active_plugins.insert(owner);
+        active_plugins.insert(owner.get());
         return true;
     }
 
     for(auto act_owner : active_plugins)
     {
-        bool compatible = (act_owner->abilities_mask & owner->abilities_mask) == 0;
+        bool compatible =
+            ((act_owner->capabilities & owner->capabilities) == 0);
         if (!compatible)
             return false;
     }
 
-    active_plugins.insert(owner);
+    active_plugins.insert(owner.get());
     log_debug("output %s: activate plugin %s", handle->name, owner->name.c_str());
     return true;
 }
 
-bool wf::output_impl_t::deactivate_plugin(wayfire_grab_interface owner)
+bool wf::output_impl_t::deactivate_plugin(
+    const plugin_grab_interface_uptr& owner)
 {
-    auto it = active_plugins.find(owner);
+    auto it = active_plugins.find(owner.get());
     if (it == active_plugins.end())
         return true;
 
     active_plugins.erase(it);
     log_debug("output %s: deactivate plugin %s", handle->name, owner->name.c_str());
 
-    if (active_plugins.count(owner) == 0)
+    if (active_plugins.count(owner.get()) == 0)
     {
         owner->ungrab();
-        active_plugins.erase(owner);
+        active_plugins.erase(owner.get());
         return true;
     }
 
     return false;
 }
 
-bool wf::output_impl_t::is_plugin_active(owner_t name) const
+bool wf::output_impl_t::is_plugin_active(std::string name) const
 {
     for (auto act : active_plugins)
         if (act && act->name == name)
@@ -337,7 +339,7 @@ bool wf::output_impl_t::is_plugin_active(owner_t name) const
     return false;
 }
 
-wayfire_grab_interface wf::output_impl_t::get_input_grab_interface()
+wf::plugin_grab_interface_t* wf::output_impl_t::get_input_grab_interface()
 {
     for (auto p : active_plugins)
         if (p && p->is_grabbed())
@@ -348,8 +350,7 @@ wayfire_grab_interface wf::output_impl_t::get_input_grab_interface()
 
 void wf::output_impl_t::break_active_plugins()
 {
-    std::vector<wayfire_grab_interface> ifaces;
-
+    std::vector<wf::plugin_grab_interface_t*> ifaces;
     for (auto p : active_plugins)
     {
         if (p->callbacks.cancel)

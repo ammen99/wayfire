@@ -14,7 +14,7 @@
 #include "view-change-viewport-signal.hpp"
 #include "../wobbly/wobbly-signal.hpp"
 
-class wayfire_expo : public wayfire_plugin_t
+class wayfire_expo : public wf::plugin_interface_t
 {
     private:
 
@@ -52,7 +52,7 @@ class wayfire_expo : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "expo";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         auto section = config->get_section("expo");
         auto toggle_binding = section->get_option("toggle",
@@ -504,8 +504,4 @@ class wayfire_expo : public wayfire_plugin_t
     }
 };
 
-extern "C" {
-    wayfire_plugin_t *newInstance() {
-        return new wayfire_expo();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_expo);

@@ -10,7 +10,7 @@
  * It works similarly to the alt-esc binding in Windows or GNOME
  */
 
-class wayfire_fast_switcher : public wayfire_plugin_t
+class wayfire_fast_switcher : public wf::plugin_interface_t
 {
     key_callback init_binding;
     wf_option activate_key;
@@ -26,7 +26,7 @@ class wayfire_fast_switcher : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "fast-switcher";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         auto section = config->get_section("fast-switcher");
 
@@ -188,10 +188,4 @@ class wayfire_fast_switcher : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t* newInstance()
-    {
-        return new wayfire_fast_switcher();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_fast_switcher);

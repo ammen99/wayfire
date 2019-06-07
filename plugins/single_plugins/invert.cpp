@@ -34,7 +34,7 @@ void main()
 }
 )";
 
-class wayfire_invert_screen : public wayfire_plugin_t
+class wayfire_invert_screen : public wf::plugin_interface_t
 {
     wf::post_hook_t hook;
     activator_callback toggle_cb;
@@ -138,10 +138,4 @@ class wayfire_invert_screen : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_invert_screen();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_invert_screen);

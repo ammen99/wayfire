@@ -6,7 +6,7 @@
 #include <signal-definitions.hpp>
 
 #include "deco-subsurface.hpp"
-class wayfire_decoration : public wayfire_plugin_t
+class wayfire_decoration : public wf::plugin_interface_t
 {
     wf_option font;
     wf::signal_callback_t view_created;
@@ -14,6 +14,9 @@ class wayfire_decoration : public wayfire_plugin_t
     public:
     void init(wayfire_config *config)
     {
+        grab_interface->name = "simple-decoration";
+        grab_interface->capabilities = wf::CAPABILITY_VIEW_DECORATOR;
+
         font = config->get_section("decoration")->get_option("font", "serif");
 
         view_created = [=] (wf::signal_data_t *data)
@@ -24,10 +27,19 @@ class wayfire_decoration : public wayfire_plugin_t
         output->connect_signal("map-view", &view_created);
     }
 
+    wf::wl_idle_call idle_deactivate;
     void new_view(wayfire_view view)
     {
         if (view->should_be_decorated())
-            init_view(view, font);
+        {
+            if (output->activate_plugin(grab_interface))
+            {
+                init_view(view, font);
+                idle_deactivate.run_once([this] () {
+                    output->deactivate_plugin(grab_interface);
+                });
+            }
+        }
     }
 
     void fini()
@@ -39,11 +51,4 @@ class wayfire_decoration : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_decoration;
-    }
-}
-
+DECLARE_WAYFIRE_PLUGIN(wayfire_decoration);

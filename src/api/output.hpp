@@ -17,13 +17,13 @@ class view_interface_t;
 }
 using wayfire_view = nonstd::observer_ptr<wf::view_interface_t>;
 
-struct wayfire_grab_interface_t;
-using wayfire_grab_interface = wayfire_grab_interface_t*;
-
 namespace wf
 {
 class render_manager;
 class workspace_manager;
+
+class plugin_grab_interface_t;
+using plugin_grab_interface_uptr = std::unique_ptr<plugin_grab_interface_t>;
 
 class output_t : public wf::object_base_t
 {
@@ -83,7 +83,7 @@ class output_t : public wf::object_base_t
      *
      * @return true if the plugin was successfully activated, false otherwise.
      */
-    virtual bool activate_plugin(wayfire_grab_interface owner) = 0;
+    virtual bool activate_plugin(const plugin_grab_interface_uptr& owner) = 0;
 
     /**
      * Deactivates a plugin once, i.e if the plugin was activated more than
@@ -91,7 +91,7 @@ class output_t : public wf::object_base_t
      *
      * @return true if the plugin remains activated, false otherwise.
      */
-    virtual bool deactivate_plugin(wayfire_grab_interface owner) = 0;
+    virtual bool deactivate_plugin(const plugin_grab_interface_uptr& owner) = 0;
 
     /**
      * @return true if a grab interface with the given name is activated, false

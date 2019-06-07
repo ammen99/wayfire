@@ -94,7 +94,7 @@ struct animation_hook : public wf::custom_data_t
     }
 };
 
-class wayfire_animation : public wayfire_plugin_t
+class wayfire_animation : public wf::plugin_interface_t
 {
     wf_option open_animation, close_animation;
     wf_option duration, startup_duration;
@@ -108,7 +108,7 @@ class wayfire_animation : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "animate";
-        grab_interface->abilities_mask = WF_ABILITY_CUSTOM_RENDERING;
+        grab_interface->capabilities = 0;
 
         auto section     = config->get_section("animate");
         open_animation   = section->get_option("open_animation", "fade");
@@ -225,10 +225,4 @@ class wayfire_animation : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_animation();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_animation);

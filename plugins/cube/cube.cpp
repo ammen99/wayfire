@@ -23,7 +23,7 @@
 #include <GLES3/gl32.h>
 #endif
 
-class wayfire_cube : public wayfire_plugin_t
+class wayfire_cube : public wf::plugin_interface_t
 {
     button_callback activate_binding;
     activator_callback rotate_left, rotate_right;
@@ -84,7 +84,7 @@ class wayfire_cube : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "cube";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         auto section = config->get_section("cube");
 
@@ -589,10 +589,4 @@ class wayfire_cube : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_cube();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_cube);

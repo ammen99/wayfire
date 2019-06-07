@@ -102,7 +102,7 @@ class wayfire_idle_core : public wf::custom_data_t
     }
 };
 
-class wayfire_idle_inhibit : public wayfire_plugin_t
+class wayfire_idle_inhibit : public wf::plugin_interface_t
 {
     bool enabled = true;
     activator_callback toggle;
@@ -126,10 +126,4 @@ class wayfire_idle_inhibit : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_idle_inhibit;
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_idle_inhibit);

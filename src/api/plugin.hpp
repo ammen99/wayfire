@@ -8,125 +8,183 @@
 
 extern "C"
 {
-#include <wlr/types/wlr_keyboard.h>
-#include <wlr/types/wlr_pointer.h>
-#include <wlr/types/wlr_touch.h>
-#include <wlr/types/wlr_cursor.h>
-}
-
-namespace wf
-{
-class output_t;
+#include <wlr/types/wlr_input_device.h>
 }
 
 class wayfire_config;
-using owner_t = std::string;
-
-/* In the current model, plugins can add as much keybindings as they want
- * and receive events for them. However, some plugins cannot be active at
- * the same * time - consider expo and cube as examples. As plugins are
- * basically isolated except for signals, there must be a way for them
- * to signal which other plugins might run. This is the role of "abilities".
- * Each plugin specifies what it needs(to have a custom renderer, or to
- * record screen). If there is already a running plugin which has overridden
- * these, * the output->activate_plugin() function will fail and thus
- * the plugin will know that it shouldn't run */
-
-/* base abilities */
-enum wayfire_grab_abilities
+namespace wf
 {
-    WF_ABILITY_CHANGE_VIEW_GEOMETRY = 1 << 0,
-    WF_ABILITY_RECORD_SCREEN        = 1 << 1,
-    WF_ABILITY_CUSTOM_RENDERING     = 1 << 2,
-    WF_ABILITY_GRAB_INPUT           = 1 << 3
+class output_t;
+
+/**
+ * Plugins can set their capabilities to indicate what kind of plugin they are.
+ * At any point, only one plugin with a given capability can be active on its
+ * output (although multiple plugins with the same capability can be loaded).
+ */
+enum plugin_capabilities_t
+{
+    /** The plugin provides view decorations */
+    CAPABILITY_VIEW_DECORATOR  = 1 << 0,
+    /** The plugin grabs input.
+     * Required in order to use plugin_grab_interface_t::grab() */
+    CAPABILITY_GRAB_INPUT      = 1 << 1,
+    /** The plugin uses custom renderer */
+    CAPABILITY_CUSTOM_RENDERER = 1 << 2,
+    /** The plugin manages the whole desktop, for ex. switches workspaces. */
+    CAPABILITY_MANAGE_DESKTOP  = 1 << 3,
+
+    /* Compound capabilities */
+
+    /** The plugin manages the whole compositor state */
+    CAPABILITY_MANAGE_COMPOSITOR = CAPABILITY_GRAB_INPUT |
+        CAPABILITY_MANAGE_DESKTOP | CAPABILITY_CUSTOM_RENDERER,
 };
 
-/* some more "high-level" ability names */
-#define WF_ABILITY_CONTROL_WM (WF_ABILITY_CHANGE_VIEW_GEOMETRY | \
-        WF_ABILITY_CUSTOM_RENDERING | WF_ABILITY_GRAB_INPUT)
+/**
+ * The plugin grab interface is what the plugins use to announce themselves to
+ * the core and other plugins as active, and to request to grab input.
+ */
+struct plugin_grab_interface_t
+{
+  private:
+    bool grabbed = false;
 
-#define WF_ABILITY_ALL (WF_ABILITY_RECORD_SCREEN | WF_ABILITY_CUSTOM_RENDERING | \
-        WF_ABILITY_CHANGE_VIEW_GEOMETRY | WF_ABILITY_GRAB_INPUT)
+  public:
+    /** The name of the plugin. Not important */
+    std::string name;
+    /** The plugin capabilities. A bitmask of the values specified above */
+    uint32_t capabilities;
+    /** The output the grab interface is on */
+    wf::output_t * const output;
 
-#define WF_ABILITY_NONE (0)
+    plugin_grab_interface_t(wf::output_t *_output);
 
-/* owners are used to acquire screen grab and to activate */
-struct wayfire_grab_interface_t {
-    private:
-        bool grabbed = false;
-        friend class input_manager;
-
-    public:
-    owner_t name;
-    uint32_t abilities_mask = 0;
-    wf::output_t *output;
-
-    wayfire_grab_interface_t(wf::output_t *_output) : output(_output) {}
-
+    /**
+     * Grab the input on the output. Requires CAPABILITY_GRAB_INPUT.
+     * On successful grab, core will reset keyboard/pointer/touch focus.
+     *
+     * @return True if input was successfully grabbed.
+     */
     bool grab();
+    /** @return If the grab interface is grabbed */
     bool is_grabbed();
+    /** Ungrab input, if it is grabbed. */
     void ungrab();
 
-    struct {
-        struct {
+    /**
+     * When grabbed, core will redirect all input events to the grabbing plugin.
+     * The grabbing plugin can subscribe to different input events by setting
+     * the callbacks below.
+     */
+    struct
+    {
+        struct
+        {
             std::function<void(wlr_event_pointer_axis*)> axis;
             std::function<void(uint32_t, uint32_t)> button; // button, state
-            std::function<void(int32_t, int32_t)> motion;
+            std::function<void(int32_t, int32_t)> motion; // x, y
             std::function<void(wlr_event_pointer_motion*)> relative_motion;
         } pointer;
 
-        struct {
+        struct
+        {
             std::function<void(uint32_t,uint32_t)> key; // button, state
             std::function<void(uint32_t,uint32_t)> mod; // modifier, state
         } keyboard;
 
-        struct {
+        struct
+        {
             std::function<void(int32_t, int32_t, int32_t)> down; // id, x, y
             std::function<void(int32_t)> up; // id
             std::function<void(int32_t, int32_t, int32_t)> motion; // id, x, y
         } touch;
 
-        /* each plugin might be deactivated forcefully, for example when the desktop is locked.
-         * Plugins MUST honor this signal and exit their grabs/renderers immediately
+        /**
+         * Each plugin might be deactivated forcefully, for example when the
+         * desktop is locked. Plugins MUST honor this signal and exit their
+         * grabs/renderers immediately.
          *
-         * Note this is emitted for all active plugins, not only those that have grabs */
+         * Note that cancel() is emitted even when the plugin is just activated
+         * without grabbing input.
+         */
         std::function<void()> cancel;
     } callbacks;
 };
+using plugin_grab_interface_uptr = std::unique_ptr<plugin_grab_interface_t>;
 
-using wayfire_grab_interface = wayfire_grab_interface_t*;
-class wayfire_plugin_t {
-    public:
-        /* the output this plugin is running on
-         * each output has an instance of each plugin, so that the two monitors act independently
-         * in the future there should be an option for mirroring displays */
-        wf::output_t *output;
+class plugin_interface_t
+{
+  public:
+    /**
+     * The output this plugin is running on. Initialized by core.
+     * Each output has its own set of plugin instances. This way, a plugin
+     * rarely if ever needs to care about multi-monitor setups.
+     */
+    wf::output_t *output;
 
-        wayfire_grab_interface grab_interface;
+    /**
+     * The grab interface of the plugin, initialized by core.
+     */
+    std::unique_ptr<plugin_grab_interface_t> grab_interface;
 
-        /* should read configuration data, attach hooks / keybindings, etc */
-        virtual void init(wayfire_config *config) = 0;
-        virtual void fini();
+    /**
+     * The init method is the entry of the plugin. In the init() method, the
+     * plugin should register all bindings it provides, connect to signals, etc.
+     */
+    virtual void init(wayfire_config *config) = 0;
 
-        /* override this function if the plugin cannot be safely unloaded at runtime -
-         * it will remain active even if it is removed from the config file. Please note
-         * however that they should still provide fini() and free their data - they will
-         * be destroyed once their output has been destroyed. However, non-unloadable plugins
-         * are generally destroyed after all unloadable ones */
-        virtual bool is_unloadable() { return true; }
+    /**
+     * The fini method is called when a plugin is unloaded. It should clean up
+     * all global state it has set (for ex. signal callbacks, bindings, ...),
+     * because the plugin will be freed after this.
+     */
+    virtual void fini();
 
-        /* used to determine if the plugin provides some special features like workspace implementations */
-        virtual bool is_internal() { return false; }
+    /**
+     * A plugin can request that it is never unloaded, even if it is removed
+     * from the config's plugin list.
+     *
+     * Note that unloading a plugin is sometimes unavoidable, for ex. when the
+     * output the plugin is running on is destroyed. So non-unloadable plugins
+     * should still provide proper fini() methods.
+     */
+    virtual bool is_unloadable() { return true; }
 
-        /* grab_interface is already freed in destructor, so you might want to use fini() */
-        virtual ~wayfire_plugin_t();
+    virtual ~plugin_interface_t();
 
-        /* used by the plugin loader, shouldn't be modified by plugins */
-        bool dynamic = false;
-        void *handle;
+    /** Handle to the plugin's .so file, used by the plugin loader */
+    void *handle = NULL;
 };
+}
 
-/* each dynamic plugin should have the symbol get_plugin_instance() which returns
- * an instance of the plugin */
-typedef wayfire_plugin_t *(*get_plugin_instance_t)();
+/**
+ * Each plugin must provide a function which instantiates the plugin's class
+ * and returns the instance.
+ *
+ * This function must have the name newInstance() and should be declared with
+ * extern "C" so that the loader can find it.
+ */
+using wayfire_plugin_load_func = wf::plugin_interface_t* (*)();
+
+/** The version of Wayfire's API/ABI */
+constexpr uint32_t WAYFIRE_API_ABI_VERSION = 20190706;
+
+/**
+ * Each plugin must also provide a function which returns the Wayfire API/ABI
+ * that it was compiled with.
+ *
+ * This function must have the name getWayfireVersion() and should be declared
+ * with extern "C" so that the loader can find it.
+ */
+using wayfire_plugin_version_func = uint32_t (*)();
+
+/** A macro to declare the necessary functions, given the plugin class name */
+
+#define DECLARE_WAYFIRE_PLUGIN(PluginClass) \
+extern "C" \
+{\
+    wf::plugin_interface_t* newInstance() { return new PluginClass; } \
+    uint32_t getWayfireVersion() { return WAYFIRE_API_ABI_VERSION; } \
+}
+
 #endif

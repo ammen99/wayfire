@@ -31,17 +31,18 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
 
     uint32_t tiled_edges;
     wf_geometry target, initial;
-    wayfire_grab_interface iface;
+    const wf::plugin_grab_interface_uptr& iface;
     wf_option animation_type;
 
     public:
 
-    wayfire_grid_view_cdata(wayfire_view view, wayfire_grab_interface iface,
-                      wf_option animation_type, wf_option animation_duration)
+    wayfire_grid_view_cdata(wayfire_view view,
+        const wf::plugin_grab_interface_uptr& _iface,
+        wf_option animation_type, wf_option animation_duration)
+        : iface(_iface)
     {
         this->view = view;
         this->output = view->get_output();
-        this->iface = iface;
         this->animation_type = animation_type;
         duration = wf_duration(animation_duration);
 
@@ -161,7 +162,7 @@ class wf_grid_slot_data : public wf::custom_data_t
 };
 
 nonstd::observer_ptr<wayfire_grid_view_cdata> ensure_grid_view(wayfire_view view,
-        wayfire_grab_interface iface, wf_option animation_type,
+        const wf::plugin_grab_interface_uptr& iface, wf_option animation_type,
         wf_option animation_duration)
 {
     if (!view->has_data<wayfire_grid_view_cdata>())
@@ -200,7 +201,7 @@ static uint32_t get_tiled_edges_for_slot(uint32_t slot)
     return edges;
 }
 
-class wayfire_grid : public wayfire_plugin_t
+class wayfire_grid : public wf::plugin_interface_t
 {
     std::vector<std::string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
     std::vector<std::string> default_keys = {
@@ -231,7 +232,7 @@ class wayfire_grid : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "grid";
-        grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
 
         auto section = config->get_section("grid");
         animation_duration = section->get_option("duration", "300");
@@ -459,10 +460,4 @@ class wayfire_grid : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_grid;
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_grid);

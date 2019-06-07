@@ -4,9 +4,12 @@
 #include "signal-definitions.hpp"
 #include "debug.hpp"
 
-bool wayfire_grab_interface_t::grab()
+wf::plugin_grab_interface_t::plugin_grab_interface_t(wf::output_t *wo)
+    : output(wo) { }
+
+bool wf::plugin_grab_interface_t::grab()
 {
-    if (!(abilities_mask & WF_ABILITY_GRAB_INPUT))
+    if (!(capabilities & CAPABILITY_GRAB_INPUT))
     {
         log_error ("attempt to grab iface %s without input grabbing ability", name.c_str());
         return false;
@@ -26,7 +29,7 @@ bool wayfire_grab_interface_t::grab()
         return true;
 }
 
-void wayfire_grab_interface_t::ungrab()
+void wf::plugin_grab_interface_t::ungrab()
 {
     if (!grabbed)
         return;
@@ -36,13 +39,13 @@ void wayfire_grab_interface_t::ungrab()
         wf::get_core_impl().input->ungrab_input();
 }
 
-bool wayfire_grab_interface_t::is_grabbed()
+bool wf::plugin_grab_interface_t::is_grabbed()
 {
     return grabbed;
 }
 
-void wayfire_plugin_t::fini() {}
-wayfire_plugin_t::~wayfire_plugin_t() {}
+void wf::plugin_interface_t::fini() {}
+wf::plugin_interface_t::~plugin_interface_t() {}
 
 wayfire_view get_signaled_view(wf::signal_data_t *data)
 {

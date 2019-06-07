@@ -30,7 +30,7 @@ void wayfire_exit::fini()
 
 void wayfire_close::init(wayfire_config *config)
 {
-    grab_interface->abilities_mask = WF_ABILITY_GRAB_INPUT;
+    grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
     auto key = config->get_section("core")
         ->get_option("close_top_view", "<super> KEY_Q | <alt> KEY_FN_F4");
 
@@ -55,7 +55,7 @@ void wayfire_close::fini()
 void wayfire_focus::init(wayfire_config *)
 {
     grab_interface->name = "_wf_focus";
-    grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY;
+    grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
 
     on_button = [=] (uint32_t button, int x, int y) {
         this->check_focus_surface(wf::get_core().get_cursor_focus());

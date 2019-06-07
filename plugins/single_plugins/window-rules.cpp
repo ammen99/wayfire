@@ -51,10 +51,8 @@ static bool ends_with(string x, string y)
 }
 
 
-class wayfire_window_rules : public wayfire_plugin_t
+class wayfire_window_rules : public wf::plugin_interface_t
 {
-
-
     using verification_func = std::function<bool(wayfire_view, std::string)>;
 
     struct verificator
@@ -284,10 +282,4 @@ class wayfire_window_rules : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t* newInstance()
-    {
-        return new wayfire_window_rules;
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_window_rules);

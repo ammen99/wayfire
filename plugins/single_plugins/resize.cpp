@@ -13,7 +13,7 @@ extern "C"
 
 #include "../wobbly/wobbly-signal.hpp"
 
-class wayfire_resize : public wayfire_plugin_t
+class wayfire_resize : public wf::plugin_interface_t
 {
     wf::signal_callback_t resize_request, view_destroyed;
 
@@ -32,7 +32,8 @@ class wayfire_resize : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "resize";
-        grab_interface->abilities_mask = WF_ABILITY_CHANGE_VIEW_GEOMETRY | WF_ABILITY_GRAB_INPUT;
+        grab_interface->capabilities =
+            wf::CAPABILITY_GRAB_INPUT | wf::CAPABILITY_MANAGE_DESKTOP;
 
         auto button = config->get_section("resize")
             ->get_option("activate", "<super> BTN_RIGHT");
@@ -297,9 +298,4 @@ class wayfire_resize : public wayfire_plugin_t
     }
 };
 
-extern "C" {
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_resize();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_resize);

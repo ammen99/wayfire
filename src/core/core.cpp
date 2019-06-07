@@ -235,8 +235,7 @@ void wf::compositor_core_impl_t::focus_output(wf::output_t *wo)
 
     wo->ensure_pointer();
 
-    wayfire_grab_interface old_grab = nullptr;
-
+    wf::plugin_grab_interface_t *old_grab = nullptr;
     if (active_output)
     {
         auto output_impl = dynamic_cast<wf::output_impl_t*> (active_output);
@@ -260,7 +259,7 @@ void wf::compositor_core_impl_t::focus_output(wf::output_t *wo)
     }
 
     auto output_impl = dynamic_cast<wf::output_impl_t*> (wo);
-    wayfire_grab_interface iface = output_impl->get_input_grab_interface();
+    wf::plugin_grab_interface_t *iface = output_impl->get_input_grab_interface();
     if (!iface) {
         wo->refocus();
     } else {

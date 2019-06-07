@@ -24,7 +24,7 @@ class vswitch_view_transformer : public wf_2D_view
 };
 const std::string vswitch_view_transformer::name = "vswitch-transformer";
 
-class vswitch : public wayfire_plugin_t
+class vswitch : public wf::plugin_interface_t
 {
     private:
         activator_callback callback_left, callback_right, callback_up, callback_down;
@@ -50,7 +50,7 @@ class vswitch : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "vswitch";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
         grab_interface->callbacks.cancel = [=] () {stop_switch();};
 
         callback_left  = [=] (wf_activator_source, uint32_t) { add_direction(-1,  0); };
@@ -253,10 +253,4 @@ class vswitch : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t* newInstance()
-    {
-        return new vswitch();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(vswitch);

@@ -61,7 +61,7 @@ class wf_blur_transformer : public wf_view_transformer_t
         }
 };
 
-class wayfire_blur : public wayfire_plugin_t
+class wayfire_blur : public wf::plugin_interface_t
 {
     button_callback button_toggle;
 
@@ -111,7 +111,7 @@ class wayfire_blur : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "blur";
-        grab_interface->abilities_mask = WF_ABILITY_NONE;
+        grab_interface->capabilities = 0;
 
         auto section = config->get_section("blur");
 
@@ -341,10 +341,4 @@ class wayfire_blur : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_blur();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_blur);

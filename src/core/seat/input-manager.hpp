@@ -57,7 +57,7 @@ using wf_binding_ptr = std::unique_ptr<wf_binding>;
 class input_manager
 {
     private:
-        wayfire_grab_interface active_grab = nullptr;
+      wf::plugin_grab_interface_t* active_grab = nullptr;
         bool session_active = true;
 
         wf::wl_listener_wrapper input_device_created, request_start_drag, start_drag,
@@ -124,7 +124,7 @@ class input_manager
 
         void set_keyboard_focus(wayfire_view view, wlr_seat *seat);
 
-        bool grab_input(wayfire_grab_interface);
+        bool grab_input(wf::plugin_grab_interface_t*);
         void ungrab_input();
         bool input_grabbed();
 

@@ -29,7 +29,7 @@
 #include "view-transform.hpp"
 #include "workspace-manager.hpp"
 
-class wayfire_alpha : public wayfire_plugin_t
+class wayfire_alpha : public wf::plugin_interface_t
 {
     wf_option modifier, min_value;
 
@@ -37,7 +37,7 @@ class wayfire_alpha : public wayfire_plugin_t
     void init(wayfire_config *config)
     {
         grab_interface->name = "alpha";
-        grab_interface->abilities_mask = WF_ABILITY_CONTROL_WM;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
 
         auto section = config->get_section("alpha");
         modifier = section->get_option("modifier", "<alt>");
@@ -127,10 +127,4 @@ class wayfire_alpha : public wayfire_plugin_t
     }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_alpha();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_alpha);

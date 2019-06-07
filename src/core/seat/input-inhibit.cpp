@@ -14,7 +14,7 @@ extern "C"
 #include "../output/output-impl.hpp"
 
 static const std::string iface_name = "_input_inhibitor";
-static std::map<wf::output_t*, wayfire_grab_interface> iface_map;
+static std::map<wf::output_t*, wf::plugin_grab_interface_uptr> iface_map;
 
 /* output added/removed */
 static wf::signal_callback_t on_output_changed = [] (wf::signal_data_t *data)
@@ -42,15 +42,15 @@ wlr_input_inhibit_manager* create_input_inhibit()
 
 void inhibit_output(wf::output_t *output)
 {
-    wayfire_grab_interface iface = new wayfire_grab_interface_t(output);
+    iface_map[output] = std::make_unique<wf::plugin_grab_interface_t> (output);
+    auto iface = iface_map[output].get();
+
     iface->name = iface_name;
-    iface->abilities_mask = WF_ABILITY_ALL;
+    iface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
     auto output_impl = dynamic_cast<wf::output_impl_t*> (output);
     output_impl->break_active_plugins();
-    output_impl->activate_plugin(iface);
-
-    iface_map[output] = iface;
+    output_impl->activate_plugin(iface_map[output]);
 }
 
 bool is_output_inhibited(wf::output_t *output)
@@ -63,9 +63,9 @@ void uninhibit_output(wf::output_t *output)
     if (!output->is_plugin_active(iface_name))
         return;
 
-    auto iface = iface_map[output];
+    auto& iface = iface_map[output];
     assert(iface);
 
-    iface_map.erase(output);
     output->deactivate_plugin(iface);
+    iface_map.erase(output);
 }

@@ -15,7 +15,7 @@ static double vlen(double x1, double y1) // length of vector centered at the ori
     return std::sqrt(x1 * x1 + y1 * y1);
 }
 
-class wf_wrot : public wayfire_plugin_t
+class wf_wrot : public wf::plugin_interface_t
 {
     button_callback call;
 
@@ -26,8 +26,7 @@ class wf_wrot : public wayfire_plugin_t
         void init(wayfire_config *config)
         {
             grab_interface->name = "wrot";
-            grab_interface->abilities_mask =
-                WF_ABILITY_GRAB_INPUT | WF_ABILITY_CHANGE_VIEW_GEOMETRY;
+            grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
 
             call = [=] (uint32_t, int x, int y)
             {
@@ -109,10 +108,4 @@ class wf_wrot : public wayfire_plugin_t
         }
 };
 
-extern "C"
-{
-wayfire_plugin_t *newInstance()
-{
-    return new wf_wrot;
-}
-}
+DECLARE_WAYFIRE_PLUGIN(wf_wrot);

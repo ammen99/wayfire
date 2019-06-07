@@ -168,9 +168,9 @@ uint32_t input_manager::get_modifiers()
     return mods;
 }
 
-bool input_manager::grab_input(wayfire_grab_interface iface)
+bool input_manager::grab_input(wf::plugin_grab_interface_t* iface)
 {
-    if (!iface || !iface->grabbed || !session_active)
+    if (!iface || !iface->is_grabbed() || !session_active)
         return false;
 
     assert(!active_grab); // cannot have two active input grabs!

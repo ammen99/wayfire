@@ -97,7 +97,7 @@ void main()
 }
 )";
 
-class wayfire_fisheye : public wayfire_plugin_t
+class wayfire_fisheye : public wf::plugin_interface_t
 {
     wf::post_hook_t hook;
     activator_callback toggle_cb;
@@ -191,7 +191,7 @@ class wayfire_fisheye : public wayfire_plugin_t
             GL_CALL(glActiveTexture(GL_TEXTURE0));
 
             GL_CALL(glUniform2f(mouseID, x, y));
-            GL_CALL(glUniform2f(resID, output->handle->width, output->handle->height));
+            GL_CALL(glUniform2f(resID, dest.viewport_width, dest.viewport_height));
             GL_CALL(glUniform1f(radiusID, radius->as_double()));
             GL_CALL(glUniform1f(zoomID, current_zoom));
 
@@ -235,10 +235,4 @@ class wayfire_fisheye : public wayfire_plugin_t
         }
 };
 
-extern "C"
-{
-    wayfire_plugin_t *newInstance()
-    {
-        return new wayfire_fisheye();
-    }
-}
+DECLARE_WAYFIRE_PLUGIN(wayfire_fisheye);
