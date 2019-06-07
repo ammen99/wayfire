@@ -1,27 +1,22 @@
-#ifndef DRIVER_H
-#define DRIVER_H
+#ifndef WF_OPENGL_HPP
+#define WF_OPENGL_HPP
 
 #include <GLES3/gl3.h>
-#include <GLES3/gl3ext.h>
 
 #include <config.hpp>
 #include <util.hpp>
 #include <nonstd/noncopyable.hpp>
 
-extern "C"
-{
-#include <wlr/types/wlr_box.h>
-}
+#include <geometry.hpp>
 
 #define GLM_FORCE_RADIANS
-#include <glm/glm.hpp>
-#include <map>
+#include <glm/mat4x4.hpp>
+#include <glm/vec4.hpp>
 
 namespace wf
 {
     class output_t;
 }
-using wf_geometry = wlr_box;
 
 void gl_call(const char*, uint32_t, const char*);
 
@@ -35,8 +30,7 @@ void gl_call(const char*, uint32_t, const char*);
 
 #define TEXTURE_TRANSFORM_INVERT_X     (1 << 0)
 #define TEXTURE_TRANSFORM_INVERT_Y     (1 << 1)
-#define TEXTURE_TRANSFORM_USE_COLOR    (1 << 2)
-#define TEXTURE_USE_TEX_GEOMETRY       (1 << 4)
+#define TEXTURE_USE_TEX_GEOMETRY       (1 << 2)
 
 struct gl_geometry
 {
@@ -128,19 +122,6 @@ struct wf_framebuffer : public wf_framebuffer_base
 
 namespace OpenGL
 {
-    /* NOT API
-     * Initialize OpenGL helper functions */
-    void init();
-    /* NOT API
-     * Destroys the default GL program and resources */
-    void fini();
-    /* NOT API
-     * Indicate we have started repainting the given output */
-    void bind_output(wf::output_t *output);
-    /* NOT API
-     * Indicate the output frame has been finished */
-    void unbind_output(wf::output_t *output);
-
     /* "Begin" rendering to the given framebuffer and the given viewport.
      * All rendering operations should happen between render_begin and render_end, because
      * that's the only time we're guaranteed we have a valid GLES context
@@ -184,4 +165,4 @@ namespace OpenGL
 glm::mat4 get_output_matrix_from_transform(wl_output_transform transform);
 glm::mat4 output_get_projection(wf::output_t *output);
 
-#endif
+#endif // WF_OPENGL_HPP

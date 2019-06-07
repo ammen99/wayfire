@@ -4,7 +4,7 @@
 #include "util.hpp"
 #include "workspace-manager.hpp"
 #include "../core/seat/input-manager.hpp"
-#include "opengl.hpp"
+#include "../core/opengl-priv.hpp"
 #include "debug.hpp"
 #include "../main.hpp"
 #include <algorithm>

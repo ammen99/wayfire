@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <map>
 extern "C"
 {
 #include <wlr/types/wlr_surface.h>

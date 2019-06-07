@@ -28,6 +28,7 @@ extern "C"
 #include <fcntl.h>
 
 #include "debug.hpp"
+#include "opengl-priv.hpp"
 #include "output.hpp"
 #include "workspace-manager.hpp"
 #include "seat/input-manager.hpp"

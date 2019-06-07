@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <getopt.h>
+#include <map>
 
 #include <sys/inotify.h>
 #include <unistd.h>

@@ -1,5 +1,5 @@
 #include <fstream>
-#include "opengl.hpp"
+#include "opengl-priv.hpp"
 #include "debug.hpp"
 #include "output.hpp"
 #include "core-impl.hpp"
