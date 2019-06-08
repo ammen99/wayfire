@@ -104,18 +104,39 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
         return nullptr;
     }
 
+    /* Check plugin version */
+    auto version_func_ptr = dlsym(handle, "getWayfireVersion");
+    if (version_func_ptr == NULL)
+    {
+        log_error("%s: missing getWayfireVersion()", path.c_str());
+        dlclose(handle);
+        return nullptr;
+    }
 
-    auto initptr = dlsym(handle, "newInstance");
-    if(initptr == NULL)
+    auto version_func =
+        union_cast<void*, wayfire_plugin_version_func> (version_func_ptr);
+    int32_t plugin_abi_version = version_func();
+
+    if (version_func() != WAYFIRE_API_ABI_VERSION)
+    {
+        log_error("%s: API/ABI version mismatch: Wayfire is %d, plugin built "
+            "with %d", path.c_str(), WAYFIRE_API_ABI_VERSION, plugin_abi_version);
+        dlclose(handle);
+        return nullptr;
+    }
+
+    auto new_instance_func_ptr = dlsym(handle, "newInstance");
+    if(new_instance_func_ptr == NULL)
     {
         log_error("%s: missing newInstance(). %s", path.c_str(), dlerror());
         return nullptr;
     }
 
     log_debug("loading plugin %s", path.c_str());
-    auto init = union_cast<void*, wayfire_plugin_load_func> (initptr);
+    auto new_instance_func =
+        union_cast<void*, wayfire_plugin_load_func> (new_instance_func_ptr);
 
-    auto ptr = wayfire_plugin(init());
+    auto ptr = wayfire_plugin(new_instance_func());
     ptr->handle = handle;
     return ptr;
 }

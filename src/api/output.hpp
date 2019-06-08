@@ -22,7 +22,7 @@ namespace wf
 class render_manager;
 class workspace_manager;
 
-class plugin_grab_interface_t;
+struct plugin_grab_interface_t;
 using plugin_grab_interface_uptr = std::unique_ptr<plugin_grab_interface_t>;
 
 class output_t : public wf::object_base_t
