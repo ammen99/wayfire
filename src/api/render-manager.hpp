@@ -1,35 +1,16 @@
 #ifndef RENDER_MANAGER_HPP
 #define RENDER_MANAGER_HPP
 
-#include "opengl.hpp"
+#include "output.hpp"
 #include "object.hpp"
+
+struct wf_framebuffer_base;
+struct wf_framebuffer;
+struct wf_region;
 
 namespace wf
 {
-/** A workspace stream is a way for plugins to obtain the contents of a
- * given workspace.  */
-struct workspace_stream_t
-{
-    std::tuple<int, int> ws;
-    wf_framebuffer_base buffer;
-    bool running = false;
-
-    float scale_x, scale_y;
-    /* The background color of the stream, when there is no view above it */
-    wf_color background = {0.0f, 0.0f, 0.0f, 1.0f};
-};
-
-/** Emitted whenever a workspace stream is being started or stopped */
-struct stream_signal_t : public wf::signal_data_t
-{
-    stream_signal_t(wf_region& damage, const wf_framebuffer& _fb)
-        : raw_damage(damage), fb(_fb) { }
-
-    /* Raw damage, can be adjusted by the signal handlers. */
-    wf_region& raw_damage;
-    const wf_framebuffer& fb;
-};
-
+struct workspace_stream_t;
 /** Render hooks can be used to override Wayfire's built-in rendering. The
  * plugin which sets the hook gains full control over what and how is drawn
  * to the screen. Workspace streams however are not affected.

@@ -2,6 +2,7 @@
 #include <view.hpp>
 #include <output.hpp>
 #include <view-transform.hpp>
+#include <workspace-stream.hpp>
 #include <workspace-manager.hpp>
 #include <signal-definitions.hpp>
 

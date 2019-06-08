@@ -451,16 +451,3 @@ glm::mat4 get_output_matrix_from_transform(wl_output_transform transform)
 
     return rotation_matrix * scale;
 }
-
-glm::mat4 output_get_projection(wf::output_t *output)
-{
-    auto rotation = get_output_matrix_from_transform(output->handle->transform);
-
-    int w, h;
-    wlr_output_effective_resolution(output->handle, &w, &h);
-
-    auto center_translate = glm::translate(glm::mat4(1.0), {-w / 2.0f, -h/2.0f, 0.0f});
-    auto flip_y = glm::scale(glm::mat4(1.0), {2. / w, -2. / h, 1});
-
-    return rotation * flip_y * center_translate;
-}

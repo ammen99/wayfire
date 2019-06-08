@@ -1,4 +1,5 @@
 #include "render-manager.hpp"
+#include "workspace-stream.hpp"
 #include "output.hpp"
 #include "../core/core-impl.hpp"
 #include "util.hpp"

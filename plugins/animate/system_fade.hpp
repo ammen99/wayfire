@@ -3,6 +3,7 @@
 
 #include <core.hpp>
 #include <output.hpp>
+#include <opengl.hpp>
 #include <render-manager.hpp>
 
 #include "animate.hpp"

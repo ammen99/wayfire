@@ -4,6 +4,7 @@
 #include <opengl.hpp>
 #include <core.hpp>
 #include <render-manager.hpp>
+#include <workspace-stream.hpp>
 #include <workspace-manager.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

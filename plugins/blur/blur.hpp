@@ -1,9 +1,10 @@
 #include <core.hpp>
+#include <opengl.hpp>
 #include <render-manager.hpp>
 
 /* The MIT License (MIT)
  *
- * Copyright (c) 2018 Iliya Bozhinov
+ * Copyright (c) 2018 Ilia Bozhinov
  * Copyright (c) 2018 Scott Moreau
  *
  * The design of blur takes extra consideration due to the fact that

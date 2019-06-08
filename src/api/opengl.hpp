@@ -13,11 +13,6 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-namespace wf
-{
-    class output_t;
-}
-
 void gl_call(const char*, uint32_t, const char*);
 
 #ifndef __STRING
@@ -163,6 +158,5 @@ namespace OpenGL
 
 /* utils */
 glm::mat4 get_output_matrix_from_transform(wl_output_transform transform);
-glm::mat4 output_get_projection(wf::output_t *output);
 
 #endif // WF_OPENGL_HPP

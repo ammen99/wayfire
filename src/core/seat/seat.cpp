@@ -1,4 +1,5 @@
 #include "seat.hpp"
+#include "opengl.hpp"
 #include "../core-impl.hpp"
 #include "input-manager.hpp"
 #include "render-manager.hpp"

@@ -2,6 +2,7 @@
 #include <opengl.hpp>
 #include <output.hpp>
 #include <core.hpp>
+#include <workspace-stream.hpp>
 #include <render-manager.hpp>
 #include <workspace-manager.hpp>
 

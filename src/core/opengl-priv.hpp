@@ -2,6 +2,7 @@
 #define WF_OPENGL_PRIV_HPP
 
 #include <opengl.hpp>
+#include <output.hpp>
 
 namespace OpenGL
 {

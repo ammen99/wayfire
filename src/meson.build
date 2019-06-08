@@ -72,6 +72,7 @@ install_headers(['api/compositor-surface.hpp',
                  'api/view-transform.hpp',
                  'api/view.hpp',
                  'api/workspace-manager.hpp',
+                 'api/workspace-stream.hpp',
                  'api/input-device.hpp',
                  'api/output-layout.hpp'],
                 subdir: 'wayfire')

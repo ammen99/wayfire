@@ -2,6 +2,7 @@
 #define WF_CUBE_BACKGROUND_SKYDOME
 
 #include "cube-background.hpp"
+#include "output.hpp"
 #include <vector>
 
 class wf_cube_background_skydome : public wf_cube_background_base
