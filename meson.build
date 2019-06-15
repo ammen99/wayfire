@@ -1,13 +1,13 @@
 project(
 	'wayfire',
-    'c',
+	'c',
 	'cpp',
 	version: '0.1',
 	license: 'MIT',
 	meson_version: '>=0.43.0',
 	default_options: [
 		'cpp_std=c++14',
-        'c_std=c11',
+		'c_std=c11',
 		'warning_level=2',
 		'werror=false',
 	],
@@ -100,7 +100,7 @@ summary = [
 	'debug output: @0@'.format(conf_data.get('WAYFIRE_DEBUG_ENABLED')),
 	'     imageio: @0@'.format(conf_data.get('BUILD_WITH_IMAGEIO')),
 	'      gles32: @0@'.format(conf_data.get('USE_GLES32')),
-    'graphics dbg: @0@'.format(conf_data.get('WAYFIRE_GRAPHICS_DEBUG')),
+	'graphics dbg: @0@'.format(conf_data.get('WAYFIRE_GRAPHICS_DEBUG')),
 	'----------------',
 	''
 ]
