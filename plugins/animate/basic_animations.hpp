@@ -15,7 +15,7 @@ class fade_animation : public animation_base
 
     public:
 
-    void init(wayfire_view view, wf_option dur, wf_animation_type type)
+    void init(wayfire_view view, wf_option dur, wf_animation_type type) override
     {
         this->view = view;
         duration = wf_duration(dur);
@@ -28,7 +28,7 @@ class fade_animation : public animation_base
         view->add_transformer(std::make_unique<wf_2D_view> (view), name);
     }
 
-    bool step()
+    bool step() override
     {
         auto transform = dynamic_cast<wf_2D_view*> (view->get_transformer(name).get());
         transform->alpha = duration.progress(start, end);
@@ -52,7 +52,7 @@ class zoom_animation : public animation_base
 
     public:
 
-    void init(wayfire_view view, wf_option dur, wf_animation_type type)
+    void init(wayfire_view view, wf_option dur, wf_animation_type type) override
     {
         this->view = view;
         duration = wf_duration(dur);
@@ -94,7 +94,7 @@ class zoom_animation : public animation_base
         view->add_transformer(std::unique_ptr<wf_2D_view> (our_transform));
     }
 
-    bool step()
+    bool step() override
     {
         float c = duration.progress(zoom);
 

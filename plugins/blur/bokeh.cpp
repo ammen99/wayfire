@@ -81,7 +81,7 @@ class wf_bokeh_blur : public wf_blur_base
         OpenGL::render_end();
     }
 
-    int blur_fb0(int width, int height)
+    int blur_fb0(int width, int height) override
     {
         int iterations = iterations_opt->as_int();
         float offset = offset_opt->as_double();
@@ -118,7 +118,7 @@ class wf_bokeh_blur : public wf_blur_base
         return 1;
     }
 
-    virtual int calculate_blur_radius()
+    int calculate_blur_radius() override
     {
         return 100 * wf_blur_base::offset_opt->as_double() * wf_blur_base::degrade_opt->as_int();
     }

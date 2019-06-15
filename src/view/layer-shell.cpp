@@ -51,11 +51,11 @@ class wayfire_layer_shell_view : public wf::wlr_view_t
     wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf);
     virtual ~wayfire_layer_shell_view() {}
 
-    void map(wlr_surface *surface);
-    void unmap();
-    void commit();
-    void close();
-    virtual void destroy();
+    void map(wlr_surface *surface) override;
+    void unmap() override;
+    void commit() override;
+    void close() override;
+    void destroy() override;
 
     void configure(wf_geometry geometry);
 };

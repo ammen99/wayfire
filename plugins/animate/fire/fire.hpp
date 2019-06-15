@@ -20,8 +20,8 @@ class FireAnimation : public animation_base
     static wf_option fire_particles, fire_particle_size;
 
     ~FireAnimation();
-    virtual void init(wayfire_view view, wf_option duration, wf_animation_type type);
-    virtual bool step(); /* return true if continue, false otherwise */
+    void init(wayfire_view view, wf_option duration, wf_animation_type type) override;
+    bool step() override; /* return true if continue, false otherwise */
 };
 
 #endif /* end of include guard: FIRE_ANIMATION_HPP */

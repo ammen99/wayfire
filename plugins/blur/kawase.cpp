@@ -86,7 +86,7 @@ class wf_kawase_blur : public wf_blur_base
         OpenGL::render_end();
     }
 
-    int blur_fb0(int width, int height)
+    int blur_fb0(int width, int height) override
     {
         int iterations = iterations_opt->as_int();
         float offset = offset_opt->as_double();
@@ -146,7 +146,7 @@ class wf_kawase_blur : public wf_blur_base
         return 0;
     }
 
-    virtual int calculate_blur_radius()
+    int calculate_blur_radius() override
     {
         return pow(2, iterations_opt->as_int() + 1) * offset_opt->as_double() * degrade_opt->as_int();
     }

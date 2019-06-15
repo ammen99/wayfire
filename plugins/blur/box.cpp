@@ -126,7 +126,7 @@ class wf_box_blur : public wf_blur_base
         GL_CALL(glDisableVertexAttribArray(posID[i]));
     }
 
-    int blur_fb0(int width, int height)
+    int blur_fb0(int width, int height) override
     {
         int i, iterations = iterations_opt->as_int();
 
@@ -157,7 +157,7 @@ class wf_box_blur : public wf_blur_base
         return 0;
     }
 
-    virtual int calculate_blur_radius()
+    int calculate_blur_radius() override
     {
         return 4 * wf_blur_base::calculate_blur_radius();
     }
