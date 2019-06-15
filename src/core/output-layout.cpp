@@ -158,20 +158,24 @@ namespace wf
         for (auto& view : views)
             from->workspace->remove_view(view);
 
-        for (auto& view : views)
+        /* views would be empty if !to, but clang-analyzer detects null deref */
+        if (to)
         {
-            view->surface_interface_t::set_output(to);
-            to->workspace->add_view(view, view->minimized ?
-                wf::LAYER_MINIMIZED : wf::LAYER_WORKSPACE);
-            to->workspace->move_to_workspace(view,
-                to->workspace->get_current_workspace());
-            to->focus_view(view);
+            for (auto& view : views)
+            {
+                view->surface_interface_t::set_output(to);
+                to->workspace->add_view(view, view->minimized ?
+                    wf::LAYER_MINIMIZED : wf::LAYER_WORKSPACE);
+                to->workspace->move_to_workspace(view,
+                    to->workspace->get_current_workspace());
+                to->focus_view(view);
 
-            if (view->maximized)
-                view->maximize_request(true);
+                if (view->maximized)
+                    view->maximize_request(true);
 
-            if (view->fullscreen)
-                view->fullscreen_request(to, true);
+                if (view->fullscreen)
+                    view->fullscreen_request(to, true);
+            }
         }
 
         /* just remove all other views - backgrounds, panels, etc.
