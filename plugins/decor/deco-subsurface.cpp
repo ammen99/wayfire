@@ -82,7 +82,6 @@ class simple_decoration_surface : public wf::surface_interface_t,
     wf_option font_option;
     wf::signal_callback_t title_set;
 
-    const int text_field_width = 500;
     int width = 100, height = 100;
 
     bool active = true; // when views are mapped, they are usually activated
