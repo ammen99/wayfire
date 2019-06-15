@@ -104,7 +104,6 @@ class wayfire_idle_core : public wf::custom_data_t
 
 class wayfire_idle_inhibit : public wf::plugin_interface_t
 {
-    bool enabled = true;
     activator_callback toggle;
     void init(wayfire_config *config)
     {
