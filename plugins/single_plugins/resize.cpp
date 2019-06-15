@@ -273,15 +273,6 @@ class wayfire_resize : public wf::plugin_interface_t
         height = std::max(height, 1);
         width  = std::max(width,  1);
         view->resize(width, height);
-
-        auto og = view->get_output_geometry();
-        int anchor_x = og.x;
-        int anchor_y = og.y;
-
-        if (edges & WLR_EDGE_LEFT)
-            anchor_x += og.width;
-        if (edges & WLR_EDGE_TOP)
-            anchor_y += og.height;
     }
 
     void fini()
