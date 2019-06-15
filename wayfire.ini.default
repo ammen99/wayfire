@@ -12,6 +12,9 @@ vheight = 2
 # Send close request to the currently focused view
 close_top_view = <super> KEY_Q | <alt> KEY_FN_F4
 
+# start Xwayland, which provides support for running X applications
+xwayland = 1
+
 # apps that should run on startup. any backgrounds/panels belong here
 # by default, wayfire tries to run the clients from
 # https://github.com/WayfireWM/wf-shell

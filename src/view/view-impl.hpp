@@ -186,9 +186,9 @@ void init_xwayland();
 void init_layer_shell();
 
 void xwayland_set_seat(wlr_seat *seat);
-std::string xwayland_get_display();
+int xwayland_get_display();
 
-void init_desktop_apis();
+void init_desktop_apis(wayfire_config *conf);
 }
 
 #endif /* end of include guard: VIEW_IMPL_HPP */

@@ -533,11 +533,11 @@ void wf::xwayland_set_seat(wlr_seat *seat)
 #endif
 }
 
-std::string wf::xwayland_get_display()
+int wf::xwayland_get_display()
 {
 #if WLR_HAS_XWAYLAND
-    return std::to_string(xwayland_handle ? xwayland_handle->display : -1);
+    return xwayland_handle ? xwayland_handle->display : -1;
 #else
-    return "-1";
+    return -1;
 #endif
 }

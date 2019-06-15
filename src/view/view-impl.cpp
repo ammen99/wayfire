@@ -472,11 +472,12 @@ void wf::wlr_view_t::desktop_state_updated()
     toplevel_send_state();
 }
 
-void wf::init_desktop_apis()
+void wf::init_desktop_apis(wayfire_config *conf)
 {
     init_xdg_shell();
     init_layer_shell();
-    init_xwayland();
+    if (conf->get_section("core")->get_option("xwayland", "1")->as_int())
+        init_xwayland();
 }
 
 extern "C"

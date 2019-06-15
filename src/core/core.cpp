@@ -93,7 +93,7 @@ void wf::compositor_core_impl_t::init(wayfire_config *conf)
      * init_desktop_apis() should come before input */
     output_layout = std::make_unique<wf::output_layout_t> (backend);
     compositor = wlr_compositor_create(display, renderer);
-    init_desktop_apis();
+    init_desktop_apis(conf);
     input = std::make_unique<input_manager>();
     log_info("input is %p", input.get());
 
@@ -372,8 +372,10 @@ void wf::compositor_core_impl_t::run(std::string command)
             setenv("_JAVA_AWT_WM_NONREPARENTING", "1", 1);
             setenv("WAYLAND_DISPLAY", wayland_display.c_str(), 1);
 #if WLR_HAS_XWAYLAND
-            auto xdisp = ":" + xwayland_get_display();
-            setenv("DISPLAY", xdisp.c_str(), 1);
+            if (xwayland_get_display() >= 0) {
+                auto xdisp = ":" + std::to_string(xwayland_get_display());
+                setenv("DISPLAY", xdisp.c_str(), 1);
+            }
 #endif
             int dev_null = open("/dev/null", O_WRONLY);
             dup2(dev_null, 1);
