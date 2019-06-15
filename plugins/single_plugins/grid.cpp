@@ -5,6 +5,7 @@
 #include <workspace-manager.hpp>
 #include <render-manager.hpp>
 #include <algorithm>
+#include <cmath>
 #include <linux/input-event-codes.h>
 #include "signal-definitions.hpp"
 #include <animation.hpp>

@@ -9,6 +9,7 @@
 #include <output-layout.hpp>
 #include <debug.hpp>
 
+#include <cmath>
 #include <linux/input.h>
 #include <signal-definitions.hpp>
 

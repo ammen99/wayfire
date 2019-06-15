@@ -1,6 +1,7 @@
 #ifndef WF_UTIL_HPP
 #define WF_UTIL_HPP
 
+#include <algorithm>
 #include <functional>
 #include <pixman.h>
 #include <nonstd/noncopyable.hpp>
