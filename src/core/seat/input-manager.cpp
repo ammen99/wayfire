@@ -181,9 +181,12 @@ bool input_manager::grab_input(wf::plugin_grab_interface_t* iface)
     active_grab = iface;
 
     auto kbd = wlr_seat_get_keyboard(seat);
-    auto mods = kbd->modifiers;
-    mods.depressed = 0;
-    wlr_seat_keyboard_send_modifiers(seat, &mods);
+    if (kbd)
+    {
+        auto mods = kbd->modifiers;
+        mods.depressed = 0;
+        wlr_seat_keyboard_send_modifiers(seat, &mods);
+    }
 
     set_keyboard_focus(NULL, seat);
     update_cursor_focus(nullptr, 0, 0);
