@@ -380,3 +380,152 @@ void wf::tablet_t::handle_proximity(wlr_event_tablet_tool_proximity *ev)
         impl.seat->lpointer->set_enable_focus(false);
     }
 }
+
+/* ------------------------ Tablet pad implementation ----------------------- */
+wf::tablet_pad_t::tablet_pad_t(wlr_input_device *pad) :
+    input_device_impl_t(pad)
+{
+    auto& core = wf::get_core();
+    this->pad_v2 = wlr_tablet_pad_create(core.protocols.tablet_v2,
+        core.get_current_seat(), pad);
+
+    on_input_devices_changed = [=] (void*)
+    {
+        select_default_tool();
+    };
+
+    wf::get_core().connect_signal("input-device-added",
+        &on_input_devices_changed);
+    wf::get_core().connect_signal("input-device-removed",
+        &on_input_devices_changed);
+
+    on_keyboard_focus_changed = [=] (void*)
+    {
+        update_focus();
+    };
+
+    wf::get_core().connect_signal("keyboard-focus-changed",
+        &on_keyboard_focus_changed);
+
+    select_default_tool();
+
+    on_attach.set_callback([=] (void *data)
+    {
+        auto tablet = static_cast<wlr_tablet_tool*>(data);
+        attach_to_tablet((tablet_t*)tablet->data);
+    });
+
+    on_button.set_callback([=] (void *data)
+    {
+        auto ev = static_cast<wlr_event_tablet_pad_button*>(data);
+        wlr_tablet_v2_tablet_pad_notify_mode(pad_v2,
+            ev->group, ev->mode, ev->time_msec);
+        wlr_tablet_v2_tablet_pad_notify_button(pad_v2,
+            ev->button, ev->time_msec,
+            (zwp_tablet_pad_v2_button_state)ev->state);
+    });
+
+    on_strip.set_callback([=] (void *data)
+    {
+        auto ev = static_cast<wlr_event_tablet_pad_strip*>(data);
+        wlr_tablet_v2_tablet_pad_notify_strip(pad_v2, ev->strip, ev->position,
+            ev->source == WLR_TABLET_PAD_STRIP_SOURCE_FINGER, ev->time_msec);
+    });
+
+    on_ring.set_callback([=] (void *data)
+    {
+        auto ev = static_cast<wlr_event_tablet_pad_ring*>(data);
+        wlr_tablet_v2_tablet_pad_notify_ring(pad_v2, ev->ring, ev->position,
+            ev->source == WLR_TABLET_PAD_RING_SOURCE_FINGER, ev->time_msec);
+    });
+
+    on_attach.connect(&pad->tablet_pad->events.attach_tablet);
+    on_button.connect(&pad->tablet_pad->events.button);
+    on_strip.connect(&pad->tablet_pad->events.strip);
+    on_ring.connect(&pad->tablet_pad->events.ring);
+}
+
+wf::tablet_pad_t::~tablet_pad_t()
+{
+    wf::get_core().disconnect_signal("input-device-added",
+        &on_input_devices_changed);
+    wf::get_core().disconnect_signal("input-device-removed",
+        &on_input_devices_changed);
+    wf::get_core().disconnect_signal("keyboard-focus-changed",
+        &on_keyboard_focus_changed);
+}
+
+void wf::tablet_pad_t::update_focus()
+{
+    auto active_output = wf::get_core().get_active_output();
+    auto focus_view    =
+        active_output ? active_output->get_active_view() : nullptr;
+    auto focus_surface = focus_view ? focus_view->priv->wsurface : nullptr;
+    update_focus(focus_surface);
+}
+
+void wf::tablet_pad_t::update_focus(wlr_surface *focus_surface)
+{
+    if (focus_surface == old_focus)
+    {
+        return;
+    }
+
+    if (focus_surface && attached_to)
+    {
+        wlr_tablet_v2_tablet_pad_notify_enter(pad_v2,
+            attached_to->tablet_v2, focus_surface);
+    } else
+    {
+        wlr_tablet_v2_tablet_pad_notify_leave(pad_v2, old_focus);
+    }
+
+    old_focus = focus_surface;
+}
+
+void wf::tablet_pad_t::attach_to_tablet(tablet_t *tablet)
+{
+    update_focus(nullptr);
+    this->attached_to = nonstd::make_observer(tablet);
+    update_focus();
+}
+
+static libinput_device_group *get_group(wlr_input_device *dev)
+{
+    if (wlr_input_device_is_libinput(dev))
+    {
+        auto hnd = wlr_libinput_get_device_handle(dev);
+        return libinput_device_get_device_group(hnd);
+    }
+
+    return nullptr;
+}
+
+void wf::tablet_pad_t::select_default_tool()
+{
+    auto devices = wf::get_core().get_input_devices();
+    for (auto& dev : devices)
+    {
+        /* Remain as-is */
+        if (dev == attached_to)
+        {
+            return;
+        }
+
+        if (dev->get_wlr_handle()->type != WLR_INPUT_DEVICE_TABLET_TOOL)
+        {
+            continue;
+        }
+
+        auto pad_gr = get_group(this->get_wlr_handle());
+        auto tab_gr = get_group(dev->get_wlr_handle());
+
+        if (pad_gr && tab_gr && (pad_gr == tab_gr))
+        {
+            attach_to_tablet(static_cast<tablet_t*>(dev.get()));
+            return;
+        }
+    }
+
+    attach_to_tablet(nullptr);
+}

@@ -82,9 +82,10 @@ struct tablet_t : public input_device_impl_t
     /** Handle a proximity event */
     void handle_proximity(wlr_event_tablet_tool_proximity *ev);
 
+    wlr_tablet_v2_tablet *tablet_v2;
+
   private:
     wlr_tablet *handle;
-    wlr_tablet_v2_tablet *tablet_v2;
     wlr_cursor *cursor;
 
     /**
@@ -93,7 +94,34 @@ struct tablet_t : public input_device_impl_t
      */
     tablet_tool_t *ensure_tool(wlr_tablet_tool *tool);
 };
-}
 
+struct tablet_pad_t : public input_device_impl_t
+{
+  public:
+    tablet_pad_t(wlr_input_device *pad);
+    ~tablet_pad_t();
+
+  private:
+    wlr_tablet_v2_tablet_pad *pad_v2;
+
+    /** The tablet this pad is attached to. */
+    nonstd::observer_ptr<tablet_t> attached_to;
+
+    wf::wl_listener_wrapper on_attach, on_button, on_strip, on_ring;
+    signal_callback_t on_input_devices_changed, on_keyboard_focus_changed;
+
+    /** Attach the pad to the given tablet. */
+    void attach_to_tablet(tablet_t *tablet);
+    /** Auto-select the tool to attach to, from the available devices */
+    void select_default_tool();
+
+    wlr_surface *old_focus = nullptr;
+
+    /** Update the cursor focus */
+    void update_focus(wlr_surface *focus);
+    /** Update the cursor focus to the focused view */
+    void update_focus();
+};
+}
 
 #endif /* end of include guard: WF_SEAT_TABLET_HPP */

@@ -103,6 +103,7 @@ extern "C"
     #include <wlr/types/wlr_tablet_v2.h>
 #endif
 #include <wlr/types/wlr_tablet_tool.h>
+#include <wlr/types/wlr_tablet_pad.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
 #include <wlr/types/wlr_switch.h>
