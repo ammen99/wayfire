@@ -13,7 +13,7 @@ struct wm_focus_request : public wf::signal_data_t
 class wayfire_close : public wf::plugin_interface_t {
     activator_callback callback;
     public:
-        void init(wayfire_config*) override;
+        void init() override;
         void fini() override;
 };
 
@@ -29,14 +29,14 @@ class wayfire_focus : public wf::plugin_interface_t {
     void check_focus_surface(wf::surface_interface_t *surface);
 
     public:
-        void init(wayfire_config*) override;
+        void init() override;
         void fini() override;
 };
 
 class wayfire_exit : public wf::plugin_interface_t {
     key_callback key;
     public:
-        void init(wayfire_config*) override;
+        void init() override;
         void fini() override;
 };
 
@@ -44,7 +44,7 @@ class wayfire_handle_focus_parent : public wf::plugin_interface_t {
     wf::signal_callback_t focus_event, pending_focus_unmap;
     wf::wl_idle_call idle_focus;
   public:
-    void init(wayfire_config *config) override;
+    void init() override;
     void fini() override;
 };
 

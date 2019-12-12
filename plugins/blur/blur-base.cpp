@@ -265,7 +265,7 @@ std::unique_ptr<wf_blur_base> create_blur_from_name(wf::output_t *output,
     if (algorithm_name == "gaussian")
         return create_gaussian_blur(output);
 
-    log_error ("Unrecognized blur algorithm %s. Using default kawase blur.",
+    LOGE ("Unrecognized blur algorithm %s. Using default kawase blur.",
         algorithm_name.c_str());
     return create_kawase_blur(output);
 }

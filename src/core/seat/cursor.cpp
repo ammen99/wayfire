@@ -95,17 +95,14 @@ void wf_cursor::setup_listeners()
 
 void wf_cursor::init_xcursor()
 {
-    auto section = wf::get_core().config->get_section("input");
-
-    auto theme = section->get_option("cursor_theme", "default")->as_string();
-    auto size = section->get_option("cursor_size", "24");
-
+    std::string theme = wf::option_wrapper_t<std::string> ("input/cursor_theme");
+    int size = wf::option_wrapper_t<int> ("input/cursor_size");
     auto theme_ptr = (theme == "default") ? NULL : theme.c_str();
 
     if (xcursor)
         wlr_xcursor_manager_destroy(xcursor);
 
-    xcursor = wlr_xcursor_manager_create(theme_ptr, size->as_int());
+    xcursor = wlr_xcursor_manager_create(theme_ptr, size);
     wlr_xcursor_manager_load(xcursor, 1);
 
     set_cursor("default");

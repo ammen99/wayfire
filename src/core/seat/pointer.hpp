@@ -5,7 +5,7 @@
 #include <nonstd/observer_ptr.h>
 #include <surface.hpp>
 #include <util.hpp>
-#include <config.hpp>
+#include <option-wrapper.hpp>
 #include "surface-map-state.hpp"
 
 extern "C"
@@ -120,9 +120,6 @@ class LogicalPointer
     /** Figure out the global position of the given point.
      * @param relative The point relative to the cursor focus */
     wf_pointf get_absolute_position_from_relative(wf_pointf relative);
-
-    wf_option mouse_scroll_speed;
-    wf_option touchpad_scroll_speed;
 
     /** Check whether an implicit grab should start/end */
     void check_implicit_grab();

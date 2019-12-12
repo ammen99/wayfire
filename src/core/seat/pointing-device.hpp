@@ -14,18 +14,18 @@ struct pointing_device_t : public wf_input_device_internal
 
     static struct config_t
     {
-        wf_option mouse_cursor_speed;
-        wf_option mouse_scroll_speed;
-        wf_option touchpad_cursor_speed;
-        wf_option touchpad_scroll_speed;
-        wf_option touchpad_tap_enabled;
-        wf_option touchpad_click_method;
-        wf_option touchpad_scroll_method;
-        wf_option touchpad_dwt_enabled;
-        wf_option touchpad_dwmouse_enabled;
-        wf_option touchpad_natural_scroll_enabled;
+        wf::option_wrapper_t<double> mouse_cursor_speed;
+        wf::option_wrapper_t<double> mouse_scroll_speed;
+        wf::option_wrapper_t<double> touchpad_cursor_speed;
+        wf::option_wrapper_t<double> touchpad_scroll_speed;
+        wf::option_wrapper_t<std::string> touchpad_click_method;
+        wf::option_wrapper_t<std::string> touchpad_scroll_method;
+        wf::option_wrapper_t<bool> touchpad_tap_enabled;
+        wf::option_wrapper_t<bool> touchpad_dwt_enabled;
+        wf::option_wrapper_t<bool> touchpad_dwmouse_enabled;
+        wf::option_wrapper_t<bool> touchpad_natural_scroll_enabled;
 
-        void load(wayfire_config *config);
+        void load();
     } config;
 };
 }

@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <getopt.h>
 #include <map>
 
@@ -7,9 +8,9 @@
 #include <unistd.h>
 
 #include "debug-func.hpp"
-#include <config.hpp>
 #include "main.hpp"
 #include "nonstd/safe-list.hpp"
+#include <wayfire/config/file.hpp>
 
 extern "C"
 {
@@ -35,13 +36,14 @@ char buf[INOT_BUF_SIZE];
 static std::string config_file;
 static void reload_config(int fd)
 {
-    wf::get_core().config->reload_config();
+    wf::config::load_configuration_options_from_file(
+        wf::get_core().config, config_file);
     inotify_add_watch(fd, config_file.c_str(), IN_MODIFY);
 }
 
 static int handle_config_updated(int fd, uint32_t mask, void *data)
 {
-    log_info("got a reload");
+    LOGD("Reloading configuration file");
 
     /* read, but don't use */
     read(fd, buf, INOT_BUF_SIZE);
@@ -92,7 +94,7 @@ static std::vector<EGLint> generate_config_attribs(EGLint *renderer_attribs)
 }
 
 wlr_renderer *add_egl_depth_renderer(wlr_egl *egl, EGLenum platform,
-                                     void *remote, EGLint *_r_attr, EGLint visual)
+    void *remote, EGLint *_r_attr, EGLint visual)
 {
     bool r;
     auto attribs = generate_config_attribs(_r_attr);
@@ -100,14 +102,14 @@ wlr_renderer *add_egl_depth_renderer(wlr_egl *egl, EGLenum platform,
 
     if (!r)
     {
-        log_error ("Failed to initialize EGL");
+        LOGE("Failed to initialize EGL");
         return NULL;
     }
 
     auto renderer = wlr_gles2_renderer_create(egl);
     if (!renderer)
     {
-        log_error ("Failed to create GLES2 renderer");
+        LOGE("Failed to create GLES2 renderer");
         wlr_egl_finish(egl);
         return NULL;
     }
@@ -133,17 +135,17 @@ static bool drop_permissions(void)
 {
     if (getuid() != geteuid() || getgid() != getegid())
     {
-	if (setuid(getuid()) != 0 || setgid(getgid()) != 0)
-	{
-	    log_error("Unable to drop root, refusing to start");
-	    return false;
-	}
+        if (setuid(getuid()) != 0 || setgid(getgid()) != 0)
+        {
+            LOGE("Unable to drop root, refusing to start");
+            return false;
+        }
     }
     if (setuid(0) != -1)
     {
-	log_error("Unable to drop root (we shouldn't be able to "
-		  "restore it after setuid), refusing to start");
-	return false;
+        LOGE("Unable to drop root (we shouldn't be able to "
+            "restore it after setuid), refusing to start");
+        return false;
     }
     return true;
 }
@@ -152,8 +154,12 @@ int main(int argc, char *argv[])
 {
 #ifdef WAYFIRE_DEBUG_ENABLED
     wlr_log_init(WLR_DEBUG, NULL);
+    wf::log::initialize_logging(std::cout, wf::log::LOG_LEVEL_DEBUG,
+        wf::log::LOG_COLOR_MODE_ON); // TODO: disable color mode when needed
 #else
     wlr_log_init(WLR_ERROR, NULL);
+    wf::log::initialize_logging(std::cout, wf::log::LOG_LEVEL_WARNING,
+        wf::log::LOG_COLOR_MODE_OFF);
 #endif
 
     std::string config_dir = nonull(getenv("XDG_CONFIG_DIR"));
@@ -183,11 +189,11 @@ int main(int argc, char *argv[])
                 runtime_config.no_damage_track = true;
                 break;
             default:
-                log_error("unrecognized command line argument %s", optarg);
+                LOGE("unrecognized command line argument ", optarg);
         }
     }
 
-    log_info("Starting wayfire");
+    LOGI("Starting wayfire");
 
     /* First create display and initialize safe-list's event loop, so that
      * wf objects (which depend on safe-list) can work */
@@ -211,8 +217,9 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    log_info("using config file: %s", config_file.c_str());
-    core.config = new wayfire_config(config_file);
+    LOGI("using config file: ", config_file.c_str());
+    core.config = wf::config::build_configuration(
+        "/home/ilex/build/wcm/metadata/", "", config_file);
 
     int inotify_fd = inotify_init1(IN_CLOEXEC);
     reload_config(inotify_fd);
@@ -224,7 +231,7 @@ int main(int argc, char *argv[])
     auto server_name = wl_display_add_socket_auto(core.display);
     if (!server_name)
     {
-        log_error("failed to create wayland, socket, exiting");
+        LOGE("failed to create wayland, socket, exiting");
         return -1;
     }
 
@@ -233,13 +240,13 @@ int main(int argc, char *argv[])
     core.wayland_display = server_name;
     if (!wlr_backend_start(core.backend))
     {
-        log_error("failed to initialize backend, exiting");
+        LOGE("failed to initialize backend, exiting");
         wlr_backend_destroy(core.backend);
         wl_display_destroy(core.display);
         return -1;
     }
 
-    log_info ("running at server %s", server_name);
+    LOGI("running at server ", server_name);
     setenv("WAYLAND_DISPLAY", server_name, 1);
 
     wf::xwayland_set_seat(core.get_current_seat());

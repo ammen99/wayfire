@@ -88,20 +88,19 @@ void wf_gesture_recognizer::continue_gesture()
 
     uint32_t swipe_dir = 0;
     if (is_left_swipe)
-        swipe_dir |= GESTURE_DIRECTION_LEFT;
+        swipe_dir |= wf::GESTURE_DIRECTION_LEFT;
     if (is_right_swipe)
-        swipe_dir |= GESTURE_DIRECTION_RIGHT;
+        swipe_dir |= wf::GESTURE_DIRECTION_RIGHT;
     if (is_up_swipe)
-        swipe_dir |= GESTURE_DIRECTION_UP;
+        swipe_dir |= wf::GESTURE_DIRECTION_UP;
     if (is_down_swipe)
-        swipe_dir |= GESTURE_DIRECTION_DOWN;
+        swipe_dir |= wf::GESTURE_DIRECTION_DOWN;
 
     if (swipe_dir)
     {
-        wf_touch_gesture gesture;
-        gesture.type = GESTURE_SWIPE;
-        gesture.finger_count = current.size();
-        gesture.direction = swipe_dir;
+        wf::touchgesture_t gesture {
+            wf::GESTURE_TYPE_EDGE_SWIPE, swipe_dir, (int)current.size()
+        };
 
         bool bottom_edge = false, upper_edge = false,
              left_edge = false, right_edge = false;
@@ -122,16 +121,20 @@ void wf_gesture_recognizer::continue_gesture()
 
         uint32_t edge_swipe_dir = 0;
         if (bottom_edge)
-            edge_swipe_dir |= GESTURE_DIRECTION_UP;
+            edge_swipe_dir |= wf::GESTURE_DIRECTION_UP;
         if (upper_edge)
-            edge_swipe_dir |= GESTURE_DIRECTION_DOWN;
+            edge_swipe_dir |= wf::GESTURE_DIRECTION_DOWN;
         if (left_edge)
-            edge_swipe_dir |= GESTURE_DIRECTION_RIGHT;
+            edge_swipe_dir |= wf::GESTURE_DIRECTION_RIGHT;
         if (right_edge)
-            edge_swipe_dir |= GESTURE_DIRECTION_LEFT;
+            edge_swipe_dir |= wf::GESTURE_DIRECTION_LEFT;
 
         if ((edge_swipe_dir & swipe_dir) == swipe_dir)
-            gesture.type = GESTURE_EDGE_SWIPE;
+        {
+            gesture =  {
+                wf::GESTURE_TYPE_SWIPE, swipe_dir, (int)current.size()
+            };
+        }
 
         wf::get_core_impl().input->handle_gesture(gesture);
         gesture_emitted = true;
@@ -162,11 +165,11 @@ void wf_gesture_recognizer::continue_gesture()
     bool outward_pinch = (start_sum_dist - sum_dist <= -MIN_PINCH_DISTANCE);
 
     if (inward_pinch || outward_pinch) {
-        wf_touch_gesture gesture;
-        gesture.type = GESTURE_PINCH;
-        gesture.finger_count = current.size();
-        gesture.direction =
-            (inward_pinch ? GESTURE_DIRECTION_IN : GESTURE_DIRECTION_OUT);
+        wf::touchgesture_t gesture {
+            wf::GESTURE_TYPE_PINCH,
+            (inward_pinch ? wf::GESTURE_DIRECTION_IN : wf::GESTURE_DIRECTION_OUT),
+            (int)current.size(),
+        };
 
         wf::get_core_impl().input->handle_gesture(gesture);
         gesture_emitted = true;
@@ -449,7 +452,11 @@ void input_manager::check_touch_bindings(int x, int y)
     std::vector<touch_callback*> calls;
     for (auto& binding : bindings[WF_BINDING_TOUCH])
     {
-        if (binding->value->as_cached_key().matches({mods, 0}) &&
+        auto as_key = std::dynamic_pointer_cast<
+            wf::config::option_t<wf::keybinding_t>> (binding->value);
+        assert(as_key);
+
+        if (as_key->get_value() == wf::keybinding_t{mods, 0} &&
             binding->output == wf::get_core().get_active_output())
         {
             calls.push_back(binding->call.touch);
@@ -460,14 +467,18 @@ void input_manager::check_touch_bindings(int x, int y)
         (*call)(x, y);
 }
 
-void input_manager::handle_gesture(wf_touch_gesture g)
+void input_manager::handle_gesture(wf::touchgesture_t g)
 {
     std::vector<std::function<void()>> callbacks;
 
     for (auto& binding : bindings[WF_BINDING_GESTURE])
     {
+        auto as_gesture = std::dynamic_pointer_cast<
+            wf::config::option_t<wf::touchgesture_t>> (binding->value);
+        assert(as_gesture);
+
         if (binding->output == wf::get_core().get_active_output() &&
-            binding->value->as_cached_gesture().matches(g))
+            as_gesture->get_value() == g)
         {
             /* We must be careful because the callback might be erased,
              * so force copy the callback into the lambda */
@@ -480,8 +491,12 @@ void input_manager::handle_gesture(wf_touch_gesture g)
 
     for (auto& binding : bindings[WF_BINDING_ACTIVATOR])
     {
+        auto as_activator = std::dynamic_pointer_cast<
+            wf::config::option_t<wf::activatorbinding_t>> (binding->value);
+        assert(as_activator);
+
         if (binding->output == wf::get_core().get_active_output() &&
-            binding->value->matches_gesture(g))
+            as_activator->get_value().has_match(g))
         {
             /* We must be careful because the callback might be erased,
              * so force copy the callback into the lambda */

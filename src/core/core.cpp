@@ -29,7 +29,7 @@ extern "C"
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
 #include "opengl-priv.hpp"
 #include "output.hpp"
 #include "workspace-manager.hpp"
@@ -118,7 +118,7 @@ void wf::compositor_core_impl_t::init()
      * init_desktop_apis() should come before input */
     output_layout = std::make_unique<wf::output_layout_t> (backend);
     compositor = wlr_compositor_create(display, renderer);
-    init_desktop_apis(config);
+    init_desktop_apis();
 
     /* Somehow GTK requires the tablet_v2 to be advertised pretty early */
     protocols.tablet_v2 = wlr_tablet_v2_create(display);
@@ -284,10 +284,10 @@ void wf::compositor_core_impl_t::focus_output(wf::output_t *wo)
     }
 
     active_output = wo;
-    log_debug("focusing %p", wo);
+    LOGD("focusing ", wo);
     if (wo)
     {
-        log_debug("focus output: %s", wo->handle->name);
+        LOGD("focus output: ", wo->handle->name);
     }
 
     /* invariant: input is grabbed only if the current output
@@ -341,7 +341,7 @@ int wf::compositor_core_impl_t::focus_layer(uint32_t layer, int32_t request_uid_
     auto request_uid = request_uid_hint < 0 ?
         ++last_request_uid : request_uid_hint;
     layer_focus_requests.insert({layer, request_uid});
-    log_debug("focusing layer %d", get_focused_layer());
+    LOGD("focusing layer ", get_focused_layer());
 
     active_output->refocus();
     return request_uid;
@@ -362,7 +362,7 @@ void wf::compositor_core_impl_t::unfocus_layer(int request)
         if (freq.second == request)
         {
             layer_focus_requests.erase(freq);
-            log_debug("focusing layer %d", get_focused_layer());
+            LOGD("focusing layer ", get_focused_layer());
 
             active_output->refocus(nullptr);
             return;

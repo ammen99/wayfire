@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <nonstd/reverse.hpp>
 #include <nonstd/safe-list.hpp>
+#include <wayfire/util/log.hpp>
 
 extern "C"
 {
@@ -335,10 +336,9 @@ class wf::render_manager::impl
     std::unique_ptr<effect_hook_manager_t> effects;
     std::unique_ptr<postprocessing_manager_t> postprocessing;
 
-    wf_option background_color_opt;
-    wf_option_callback background_color_opt_changed;
+    wf::option_wrapper_t<wf::color_t> background_color_opt;
     /* The default color which is user configurable */
-    wf_color default_color = {0.0f, 0.0f, 0.0f, 1.0f};
+    wf::color_t default_color = {0.0f, 0.0f, 0.0f, 1.0f};
 
     impl(output_t *o)
         : output(o)
@@ -354,23 +354,12 @@ class wf::render_manager::impl
 
         init_default_streams();
 
-        background_color_opt_changed = [=] ()
-        {
-            auto color = background_color_opt->as_color();
-            update_background_color(color);
-        };
-
-        auto section = wf::get_core().config->get_section("core");
-        background_color_opt = section->get_option("background_color", "0 0 0 1");
-        background_color_opt->add_updated_handler(&background_color_opt_changed);
-        background_color_opt_changed();
+        background_color_opt.load_option("core/background_color");
+        background_color_opt.set_callback([=] () {
+            output_damage->damage_whole_idle();
+        });
 
         output_damage->schedule_repaint();
-    }
-
-    ~impl()
-    {
-        background_color_opt->rem_updated_handler(&background_color_opt_changed);
     }
 
     /* A stream for each workspace */
@@ -393,13 +382,6 @@ class wf::render_manager::impl
         }
     }
 
-    void update_background_color(wf_color color)
-    {
-        default_color = color;
-
-        output_damage->damage_whole_idle();
-    }
-
     render_hook_t renderer;
     void set_renderer(render_hook_t rh)
     {
@@ -416,7 +398,7 @@ class wf::render_manager::impl
 
         if (constant_redraw_counter < 0)
         {
-            log_error("constant_redraw_counter got below 0!");
+            LOGE("constant_redraw_counter got below 0!");
             constant_redraw_counter = 0;
             return;
         }
@@ -842,7 +824,7 @@ class wf::render_manager::impl
         return repaint;
     }
 
-    void clear_empty_areas(workspace_stream_repaint_t& repaint, wf_color color)
+    void clear_empty_areas(workspace_stream_repaint_t& repaint, wf::color_t color)
     {
         OpenGL::render_begin(repaint.fb);
         for (const auto& rect : repaint.ws_damage)

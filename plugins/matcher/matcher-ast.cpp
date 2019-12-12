@@ -72,7 +72,7 @@ namespace wf
                 try {
                     result = std::regex_match(text, std::regex(pattern));
                 } catch (const std::exception& e) {
-                    log_error ("Invalid regular expression: %s", pattern.c_str());
+                    LOGE ("Invalid regular expression: %s", pattern.c_str());
                 }
 
                 return result;

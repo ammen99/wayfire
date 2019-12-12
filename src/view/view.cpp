@@ -1,4 +1,4 @@
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
 #include "../core/core-impl.hpp"
 #include "view-impl.hpp"
 #include "opengl.hpp"
@@ -139,7 +139,7 @@ void wf::view_interface_t::set_resizing(bool resizing, uint32_t edges)
     in_resize += resizing ? 1 : -1;
 
     if (in_resize < 0)
-        log_error("in_continuous_resize counter dropped below 0!");
+        LOGE("in_continuous_resize counter dropped below 0!");
 }
 
 void wf::view_interface_t::set_moving(bool moving)
@@ -148,7 +148,7 @@ void wf::view_interface_t::set_moving(bool moving)
 
     in_move += moving ? 1 : -1;
     if (in_move < 0)
-        log_error("in_continuous_move counter dropped below 0!");
+        LOGE("in_continuous_move counter dropped below 0!");
 }
 
 void wf::view_interface_t::request_native_size()

@@ -3,7 +3,7 @@
 
 #include <GLES3/gl3.h>
 
-#include <config.hpp>
+#include <wayfire/config/types.hpp>
 #include <util.hpp>
 #include <nonstd/noncopyable.hpp>
 
@@ -133,7 +133,7 @@ namespace OpenGL
     void render_end();
 
     /* Clear the currently bound framebuffer with the given color */
-    void clear(wf_color color, uint32_t mask = GL_COLOR_BUFFER_BIT);
+    void clear(wf::color_t color, uint32_t mask = GL_COLOR_BUFFER_BIT);
 
     /* texg arguments are used only when bits has USE_TEX_GEOMETRY
      * if you don't wish to use them, simply pass {} as argument */

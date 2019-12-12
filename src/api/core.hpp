@@ -7,6 +7,7 @@
 #include <limits>
 #include <vector>
 #include <nonstd/observer_ptr.h>
+#include <wayfire/config/config-manager.hpp>
 
 extern "C"
 {
@@ -35,8 +36,6 @@ extern "C"
 #include <wayland-server.h>
 }
 
-class wayfire_config;
-
 namespace wf
 {
 class surface_interface_t;
@@ -56,7 +55,7 @@ class compositor_core_t : public wf::object_base_t
     /**
      * The current configuration used by Wayfire
      */
-    wayfire_config *config;
+    wf::config::config_manager_t config;
 
     /**
      * The wayland display and its event loop

@@ -9,6 +9,7 @@
 #include <list>
 #include <algorithm>
 #include <nonstd/reverse.hpp>
+#include <wayfire/util/log.hpp>
 
 namespace wf
 {
@@ -151,11 +152,8 @@ class output_viewport_manager_t
     output_viewport_manager_t(output_t *output)
     {
         this->output = output;
-
-        auto section = wf::get_core().config->get_section("core");
-
-        vwidth  = *section->get_option("vwidth", "3");
-        vheight = *section->get_option("vheight", "3");
+        vwidth = wf::option_wrapper_t<int> ("core/vwidth");
+        vheight = wf::option_wrapper_t<int> ("core/vheight");
 
         vwidth = clamp(vwidth, 1, 20);
         vheight = clamp(vheight, 1, 20);
@@ -193,7 +191,7 @@ class output_viewport_manager_t
     {
         if (view->get_output() != output)
         {
-            log_error("Cannot ensure view visibility for a view from a different output!");
+            LOGE("Cannot ensure view visibility for a view from a different output!");
             return;
         }
 
@@ -251,7 +249,7 @@ class output_viewport_manager_t
     {
         if(nws.x >= vwidth || nws.y >= vheight || nws.x < 0 || nws.y < 0)
         {
-            log_error("Attempt to set invalid workspace: %d,%d,"
+            LOGE("Attempt to set invalid workspace: %d,%d,"
                 " workspace grid size is %dx%d", nws.x, nws.y, vwidth, vheight);
             return;
         }
@@ -488,13 +486,13 @@ class workspace_manager::impl
         {
             sent_autohide = 1;
             output->emit_signal("autohide-panels", reinterpret_cast<signal_data_t*> (1));
-            log_debug("autohide panels");
+            LOGD("autohide panels");
         }
         else if (fs_views.empty() && sent_autohide)
         {
             sent_autohide = 0;
             output->emit_signal("autohide-panels", reinterpret_cast<signal_data_t*> (0));
-            log_debug("restore panels");
+            LOGD("restore panels");
         }
     }
 
@@ -554,7 +552,7 @@ class workspace_manager::impl
         uint32_t view_layer = layer_manager.get_view_layer(view);
         if (!view_layer)
         {
-            log_error ("trying to bring_to_front a view without a layer!");
+            LOGE ("trying to bring_to_front a view without a layer!");
             return;
         }
 
@@ -578,7 +576,7 @@ class workspace_manager::impl
     {
         if (!view || !below || view == below)
         {
-            log_error("Cannot restack a view on top of itself");
+            LOGE("Cannot restack a view on top of itself");
             return;
         }
 
@@ -586,12 +584,12 @@ class workspace_manager::impl
         uint32_t below_layer = layer_manager.get_view_layer(below);
         if (view_layer == 0 || below_layer == 0 || view_layer != below_layer)
         {
-            log_error("restacking views from different layers(%d vs %d!)",
+            LOGE("restacking views from different layers(%d vs %d!)",
                 view_layer, below_layer);
             return;
         }
 
-        log_info("restack %s on top of %s", view->get_title().c_str(),
+        LOGI("restack %s on top of %s", view->get_title().c_str(),
             below->get_title().c_str());
 
         /* If we restack on top of the front-most view, then this can
@@ -610,7 +608,7 @@ class workspace_manager::impl
     {
         if (!view || !above || view == above)
         {
-            log_error("Cannot restack a view on top of itself");
+            LOGE("Cannot restack a view on top of itself");
             return;
         }
 
@@ -618,7 +616,7 @@ class workspace_manager::impl
         uint32_t below_layer = layer_manager.get_view_layer(above);
         if (view_layer == 0 || below_layer == 0 || view_layer != below_layer)
         {
-            log_error("restacking views from different layers(%d vs %d!)",
+            LOGE("restacking views from different layers(%d vs %d!)",
                 view_layer, below_layer);
             return;
         }

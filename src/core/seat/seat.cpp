@@ -4,7 +4,7 @@
 #include "input-manager.hpp"
 #include "render-manager.hpp"
 #include "output-layout.hpp"
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
 #include "signal-definitions.hpp"
 
 extern "C"
@@ -91,8 +91,8 @@ void input_manager::validate_drag_request(wlr_seat_request_start_drag_event *ev)
         return;
     }
 
-    log_debug("Ignoring start_drag request: "
-        "could not validate pointer or touch serial %" PRIu32, ev->serial);
+    LOGD("Ignoring start_drag request: ",
+        "could not validate pointer or touch serial ", ev->serial);
     wlr_data_source_destroy(ev->drag->source);
 }
 

@@ -2,8 +2,8 @@
 #define PLUGIN_H
 
 #include <functional>
+#include <memory>
 #include "util.hpp"
-#include "config.hpp"
 #include "bindings.hpp"
 
 extern "C"
@@ -131,7 +131,7 @@ class plugin_interface_t
      * The init method is the entry of the plugin. In the init() method, the
      * plugin should register all bindings it provides, connect to signals, etc.
      */
-    virtual void init(wayfire_config *config) = 0;
+    virtual void init() = 0;
 
     /**
      * The fini method is called when a plugin is unloaded. It should clean up

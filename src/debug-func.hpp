@@ -1,12 +1,7 @@
 #include <signal.h>
 #include <execinfo.h>
 #include <cxxabi.h>
-#include <iostream>
-
-extern "C"
-{
-#include <wlr/util/log.h>
-}
+#include <wayfire/util/log.hpp>
 
 #include "api/debug.hpp"
 #include "api/core.hpp"
@@ -15,13 +10,13 @@ extern "C"
 
 void wf_print_trace()
 {
-    log_error ("stack trace");
+    LOGE("stack trace");
 
     void* addrlist[max_frames + 1];
     int addrlen = backtrace(addrlist, sizeof(addrlist) / sizeof(void*));
 
     if (addrlen == 0) {
-        log_error("<empty, possibly corrupt>\n");
+        LOGE("<empty, possibly corrupt>\n");
         return;
     }
 
@@ -53,12 +48,12 @@ void wf_print_trace()
             char *ret = abi::__cxa_demangle(begin_name, funcname, &funcnamesize, &status);
             if(status == 0) {
                 funcname = ret;
-                log_error("%s:%s+%s", nonull(symbollist[i]), nonull(funcname), nonull(begin_offset));
+                LOGE(nonull(symbollist[i]), ":", nonull(funcname), "+", nonull(begin_offset));
             } else {
-                log_error("%s:%s+%s", nonull(symbollist[i]), nonull(begin_name), nonull(begin_offset));
+                LOGE(nonull(symbollist[i]), ":", nonull(begin_name), "+", nonull(begin_offset));
             }
         } else {
-            log_error("%s", nonull(symbollist[i]));
+            LOGE(nonull(symbollist[i]));
         }
     }
 
@@ -67,21 +62,7 @@ void wf_print_trace()
 }
 
 void signalHandle(int sig) {
-    log_error ("crash detected!");
+    LOGE("crash detected!");
     wf_print_trace();
     raise(SIGTRAP);
 }
-
-/* from WLR source code */
-const char *wf_strip_path(const char *filepath)
-{
-    static int srclen = sizeof(WF_SRC_DIR);
-    if (strstr(filepath, WF_SRC_DIR) == filepath) {
-        filepath += srclen;
-    } else if (*filepath == '.') {
-        while (*filepath == '.' || *filepath == '/') {
-            ++filepath;
-        }
-    }
-    return filepath;
-}                                                                                                                                               

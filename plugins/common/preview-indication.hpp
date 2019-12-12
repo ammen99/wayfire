@@ -17,8 +17,8 @@ class preview_indication_view_t : public wf::color_rect_view_t
     wf::effect_hook_t pre_paint;
 
     /* Default colors */
-    const wf_color base_color = {0.5, 0.5, 1, 0.5};
-    const wf_color base_border = {0.25, 0.25, 0.5, 0.8};
+    const wf::color_t base_color = {0.5, 0.5, 1, 0.5};
+    const wf::color_t base_border = {0.25, 0.25, 0.5, 0.8};
     const int base_border_w = 3;
 
     wf_duration duration;

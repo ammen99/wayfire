@@ -12,6 +12,7 @@
 #include "view.hpp"
 #include "core.hpp"
 #include "signal-definitions.hpp"
+#include <option-wrapper.hpp>
 
 extern "C"
 {
@@ -39,7 +40,7 @@ enum wf_binding_type
 
 struct wf_binding
 {
-    wf_option value;
+    std::shared_ptr<wf::config::option_base_t> value;
     wf_binding_type type;
     wf::output_t *output;
 
@@ -142,13 +143,19 @@ class input_manager
         void handle_touch_motion(uint32_t time, int32_t id, wf_pointf pos, bool real_update);
         void handle_touch_up    (uint32_t time, int32_t id);
 
-        void handle_gesture(wf_touch_gesture g);
+        void handle_gesture(wf::touchgesture_t g);
 
         bool check_button_bindings(uint32_t button);
         bool check_axis_bindings(wlr_event_pointer_axis *ev);
         void check_touch_bindings(int32_t x, int32_t y);
 
-        wf_binding* new_binding(wf_binding_type type, wf_option value, wf::output_t *output, void *callback);
+        /**
+         * TODO: figure out a way to not erase the type of the option.
+         */
+        wf_binding* new_binding(wf_binding_type type,
+            std::shared_ptr<wf::config::option_base_t> value,
+            wf::output_t *output, void *callback);
+
         void rem_binding(void *callback);
         void rem_binding(wf_binding *binding);
 };

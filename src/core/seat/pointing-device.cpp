@@ -8,17 +8,21 @@ wf::pointing_device_t::pointing_device_t(wlr_input_device *dev)
 }
 
 wf::pointing_device_t::config_t wf::pointing_device_t::config;
-void wf::pointing_device_t::config_t::load(wayfire_config *config)
+void wf::pointing_device_t::config_t::load()
 {
-    auto section = (*config)["input"];
-    mouse_cursor_speed              = section->get_option("mouse_cursor_speed", "0");
-    touchpad_cursor_speed           = section->get_option("touchpad_cursor_speed", "0");
-    touchpad_tap_enabled            = section->get_option("tap_to_click", "1");
-    touchpad_click_method           = section->get_option("click_method", "default");
-    touchpad_scroll_method          = section->get_option("scroll_method", "default");
-    touchpad_dwt_enabled            = section->get_option("disable_while_typing", "0");
-    touchpad_dwmouse_enabled        = section->get_option("disable_touchpad_while_mouse", "0");
-    touchpad_natural_scroll_enabled = section->get_option("natural_scroll", "0");
+
+    mouse_scroll_speed.load_option("input/mouse_scroll_speed");
+    mouse_cursor_speed.load_option("input/mouse_cursor_speed");
+    touchpad_cursor_speed.load_option("input/touchpad_cursor_speed");
+    touchpad_scroll_speed.load_option("input/touchpad_scroll_speed");
+
+    touchpad_tap_enabled.load_option("input/tap_to_click");
+    touchpad_dwt_enabled.load_option("input/disable_while_typing");
+    touchpad_dwmouse_enabled.load_option("input/disable_touchpad_while_mouse");
+    touchpad_natural_scroll_enabled.load_option("input/natural_scroll");
+
+    touchpad_click_method.load_option("input/click_method");
+    touchpad_scroll_method.load_option("input/scroll_method");
 }
 
 void wf::pointing_device_t::update_options()
@@ -34,59 +38,59 @@ void wf::pointing_device_t::update_options()
     if (libinput_device_config_tap_get_finger_count(dev) > 0)
     {
         libinput_device_config_accel_set_speed(dev,
-            config.touchpad_cursor_speed->as_cached_double());
+            config.touchpad_cursor_speed);
 
         libinput_device_config_tap_set_enabled(dev,
-            config.touchpad_tap_enabled->as_cached_int() ?
+            config.touchpad_tap_enabled ?
             LIBINPUT_CONFIG_TAP_ENABLED : LIBINPUT_CONFIG_TAP_DISABLED);
 
-        if (config.touchpad_click_method->as_string() == "default") {
+        if ((std::string)config.touchpad_click_method == "default") {
             libinput_device_config_click_set_method(dev,
                 libinput_device_config_click_get_default_method(dev));
-        } else if (config.touchpad_click_method->as_string() == "none") {
+        } else if ((std::string)config.touchpad_click_method == "none") {
             libinput_device_config_click_set_method(dev,
                 LIBINPUT_CONFIG_CLICK_METHOD_NONE);
-        } else if (config.touchpad_click_method->as_string() == "button-areas") {
+        } else if ((std::string)config.touchpad_click_method == "button-areas") {
             libinput_device_config_click_set_method(dev,
                 LIBINPUT_CONFIG_CLICK_METHOD_BUTTON_AREAS);
-        } else if (config.touchpad_click_method->as_string() == "clickfinger") {
+        } else if ((std::string)config.touchpad_click_method == "clickfinger") {
             libinput_device_config_click_set_method(dev,
                 LIBINPUT_CONFIG_CLICK_METHOD_CLICKFINGER);
         }
 
-        if (config.touchpad_scroll_method->as_string() == "default") {
+        if ((std::string)config.touchpad_scroll_method == "default") {
             libinput_device_config_scroll_set_method(dev,
                 libinput_device_config_scroll_get_default_method(dev));
-        } else if (config.touchpad_scroll_method->as_string() == "none") {
+        } else if ((std::string)config.touchpad_scroll_method == "none") {
             libinput_device_config_scroll_set_method(dev,
                 LIBINPUT_CONFIG_SCROLL_NO_SCROLL);
-        } else if (config.touchpad_scroll_method->as_string() == "two-finger") {
+        } else if ((std::string)config.touchpad_scroll_method == "two-finger") {
             libinput_device_config_scroll_set_method(dev,
                 LIBINPUT_CONFIG_SCROLL_2FG);
-        } else if (config.touchpad_scroll_method->as_string() == "edge") {
+        } else if ((std::string)config.touchpad_scroll_method == "edge") {
             libinput_device_config_scroll_set_method(dev,
                 LIBINPUT_CONFIG_SCROLL_EDGE);
-        } else if (config.touchpad_scroll_method->as_string() == "on-button-down") {
+        } else if ((std::string)config.touchpad_scroll_method == "on-button-down") {
             libinput_device_config_scroll_set_method(dev,
                 LIBINPUT_CONFIG_SCROLL_ON_BUTTON_DOWN);
         }
 
         libinput_device_config_dwt_set_enabled(dev,
-            config.touchpad_dwt_enabled->as_cached_int() ?
+            config.touchpad_dwt_enabled ?
             LIBINPUT_CONFIG_DWT_ENABLED : LIBINPUT_CONFIG_DWT_DISABLED);
 
         libinput_device_config_send_events_set_mode(dev,
-            config.touchpad_dwmouse_enabled->as_cached_int() ?
+            config.touchpad_dwmouse_enabled ?
             LIBINPUT_CONFIG_SEND_EVENTS_DISABLED_ON_EXTERNAL_MOUSE
                 : LIBINPUT_CONFIG_SEND_EVENTS_ENABLED);
 
         if (libinput_device_config_scroll_has_natural_scroll(dev) > 0)
         {
             libinput_device_config_scroll_set_natural_scroll_enabled(dev,
-                    (bool)config.touchpad_natural_scroll_enabled->as_cached_int());
+                    (bool)config.touchpad_natural_scroll_enabled);
         }
     } else {
         libinput_device_config_accel_set_speed(dev,
-            config.mouse_cursor_speed->as_cached_double());
+            config.mouse_cursor_speed);
     }
 }

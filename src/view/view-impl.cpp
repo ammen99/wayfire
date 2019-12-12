@@ -1,11 +1,11 @@
 #include "core.hpp"
 #include "../core/core-impl.hpp"
 #include "../output/gtk-shell.hpp"
-#include "debug.hpp"
 #include "view-impl.hpp"
 #include "decorator.hpp"
 #include "signal-definitions.hpp"
 #include "workspace-manager.hpp"
+#include <wayfire/util/log.hpp>
 
 #include "xdg-shell.hpp"
 
@@ -73,14 +73,14 @@ void wf::wlr_view_t::handle_minimize_hint(wf::surface_interface_t *relative_to,
         dynamic_cast<view_interface_t*> (relative_to);
     if (!relative_to_view)
     {
-        log_error("Setting minimize hint to unknown surface. Wayfire currently"
+        LOGE("Setting minimize hint to unknown surface. Wayfire currently"
             "supports only setting hints relative to views.");
         return;
     }
 
     if (relative_to_view->get_output() != get_output())
     {
-        log_info("Minimize hint set to surface on a different output, "
+        LOGE("Minimize hint set to surface on a different output, "
             "problems might arise");
         /* TODO: translate coordinates in case minimize hint is on another output */
     }
@@ -426,20 +426,14 @@ void wf::wlr_view_t::toplevel_send_app_id()
     auto gtk_shell_app_id = wf_gtk_shell_get_custom_app_id(
         wf::get_core_impl().gtk_shell, surface->resource);
 
-    auto section = wf::get_core().config->get_section("workarounds");
-    auto app_id_mode = section->get_option("app_id_mode", "stock");
+    std::string app_id_mode =
+        wf::option_wrapper_t<std::string> ("workarounds/app_id_mode");
 
-    if (app_id_mode->as_string() == "gtk-shell" &&
-        gtk_shell_app_id.length() > 0)
-    {
+    if (app_id_mode == "gtk-shell" && gtk_shell_app_id.length() > 0) {
         app_id = gtk_shell_app_id;
-    }
-    else if (app_id_mode->as_string() == "full")
-    {
+    } else if (app_id_mode == "full") {
         app_id = default_app_id + " " + gtk_shell_app_id;
-    }
-    else
-    {
+    } else {
         app_id = default_app_id;
     }
 
@@ -476,11 +470,13 @@ void wf::wlr_view_t::desktop_state_updated()
     toplevel_send_state();
 }
 
-void wf::init_desktop_apis(wayfire_config *conf)
+void wf::init_desktop_apis()
 {
     init_xdg_shell();
     init_layer_shell();
-    if (conf->get_section("core")->get_option("xwayland", "1")->as_int())
+
+    wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
+    if (xwayland_enabled == 1)
         init_xwayland();
 }
 
@@ -545,8 +541,6 @@ wayfire_view wf::wl_surface_to_wayfire_view(wl_resource *resource)
         handle = wlr_xwayland_surface_from_wlr_surface(surface)->data;
 #endif
 
-    log_info("data is %p", handle);
     wf::view_interface_t* view = wf::wf_view_from_void(handle);
-    log_info("success? %p", view);
     return view ? view->self() : nullptr;
 }

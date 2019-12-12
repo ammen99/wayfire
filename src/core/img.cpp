@@ -1,6 +1,6 @@
+#include <wayfire/util/log.hpp>
 #include "img.hpp"
 #include "opengl.hpp"
-#include "debug.hpp"
 
 #ifdef BUILD_WITH_IMAGEIO
 #include <png.h>
@@ -157,7 +157,7 @@ namespace image_io {
 
         if(!file)
         {
-            log_error("failed to read JPEG file %s", FileName);
+            LOGE("failed to read JPEG file ", FileName);
             return false;
         }
 
@@ -190,13 +190,13 @@ namespace image_io {
     {
         if (access(name.c_str(), F_OK) == -1) {
             if (!name.empty())
-                log_error("%s() cannot access \"%s\"", __func__, name.c_str());
+                LOGE(__func__, "() cannot access ", name);
             return false;
         }
 
         int len = name.length();
         if (len < 4 || name[len - 4] != '.') {
-            log_error("load_from_file() called with file without extension or with invalid extension!");
+            LOGE("load_from_file() called with file without extension or with invalid extension!");
             return false;
         }
 
@@ -206,7 +206,7 @@ namespace image_io {
 
         auto it = loaders.find(ext);
         if (it == loaders.end()) {
-            log_error("load_from_file() called with unsupported extension %s", ext.c_str());
+            LOGE("load_from_file() called with unsupported extension ", ext);
             return false;
         } else {
             return it->second(name.c_str(), target);
@@ -219,7 +219,7 @@ namespace image_io {
 
         if (it == writers.end())
         {
-            log_error("unsupported image_writer backend");
+            LOGE("unsupported image_writer backend");
         } else
         {
             it->second(name.c_str(), pixels, w, h);
@@ -228,7 +228,7 @@ namespace image_io {
 
     void init()
     {
-        log_debug("init ImageIO");
+        LOGD("init ImageIO");
 #ifdef BUILD_WITH_IMAGEIO
         loaders["png"] = Loader(texture_from_png);
         loaders["jpg"] = Loader(texture_from_jpeg);

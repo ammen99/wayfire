@@ -1,4 +1,5 @@
 #include "debug.hpp"
+#include <wayfire/util/log.hpp>
 #include "core.hpp"
 #include "output.hpp"
 #include "workspace-manager.hpp"
@@ -151,7 +152,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         {
             /* such a configure request would freeze xwayland.
              * This is most probably a bug somewhere in the compositor. */
-            log_error("Configuring a xwayland surface with width/height <0");
+            LOGE("Configuring a xwayland surface with width/height <0");
             return;
         }
 
@@ -225,8 +226,8 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
     wayfire_xwayland_view(wlr_xwayland_surface *xww)
         : wayfire_xwayland_view_base(xww)
     {
-        log_info("new xwayland surface %s class: %s instance: %s",
-            nonull(xw->title), nonull(xw->class_t), nonull(xw->instance));
+        LOGE("new xwayland surface ", xw->title,
+            " class: ", xw->class_t, " instance: ", xw->instance);
 
         on_request_move.set_callback([&] (void*) { move_request(); });
         on_request_resize.set_callback([&] (void*) { resize_request(); });
@@ -402,10 +403,9 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         auto default_app_id = get_app_id();
         auto instance_app_id = nonull(xw->instance);
 
-        auto app_id_mode = (*wf::get_core().config)["workarounds"]
-            ->get_option("app_id_mode", "stock");
-
-        if (app_id_mode->as_string() == "full") {
+        std::string app_id_mode =
+            wf::option_wrapper_t<std::string> ("workarounds/app_id_mode");
+        if (app_id_mode == "full") {
             app_id = default_app_id + " " + instance_app_id;
         } else {
             app_id = default_app_id;
@@ -426,7 +426,7 @@ wayfire_unmanaged_xwayland_view::
 wayfire_unmanaged_xwayland_view(wlr_xwayland_surface *xww)
     : wayfire_xwayland_view_base(xww)
 {
-    log_info("new unmanaged xwayland surface %s class: %s instance: %s",
+    LOGE("new unmanaged xwayland surface %s class: %s instance: %s",
              nonull(xw->title), nonull(xw->class_t), nonull(xw->instance));
 
     xw->data = this;

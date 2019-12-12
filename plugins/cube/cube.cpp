@@ -74,7 +74,7 @@ class wayfire_cube : public wf::plugin_interface_t
             background = std::make_unique<wf_cube_background_cubemap> ();
         else
         {
-            log_error("cube: Unrecognized background mode %s. Using default \"simple\"",
+            LOGE("cube: Unrecognized background mode %s. Using default \"simple\"",
                 last_background_mode.c_str());
             background = std::make_unique<wf_cube_simple_background> ();
         }

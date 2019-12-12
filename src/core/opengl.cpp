@@ -1,8 +1,9 @@
+#include <wayfire/util/log.hpp>
 #include <fstream>
 #include "opengl-priv.hpp"
-#include "debug.hpp"
 #include "output.hpp"
 #include "core-impl.hpp"
+#include "config.h"
 
 extern "C"
 {
@@ -34,7 +35,8 @@ void gl_call(const char *func, uint32_t line, const char *glfunc) {
     if ((err = glGetError()) == GL_NO_ERROR)
         return;
 
-    log_error("gles2: function %s in %s line %u: %s", glfunc, func, line, gl_error_string(glGetError()));
+    LOGE("gles2: function ", glfunc, " in ", func, " line ", line, ": ",
+        gl_error_string(glGetError()));
 }
 
 namespace OpenGL
@@ -65,7 +67,7 @@ namespace OpenGL
 
         if (s == GL_FALSE)
         {
-            log_error("Failed to load shader from %s\n; Errors:\n%s", path.c_str(), b1);
+            LOGE("Failed to load shader from ", path, "\n; Errors:\n", b1);
             return -1;
         }
 
@@ -82,7 +84,7 @@ namespace OpenGL
         std::fstream file(path, std::ios::in);
         if(!file.is_open())
         {
-            log_error("cannot open shader file %s", path.c_str());
+            LOGE("cannot open shader file ", path);
             return -1;
         }
 
@@ -236,7 +238,7 @@ namespace OpenGL
         GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb));
     }
 
-    void clear(wf_color col, uint32_t mask)
+    void clear(wf::color_t col, uint32_t mask)
     {
         GL_CALL(glClearColor(col.r, col.g, col.b, col.a));
         GL_CALL(glClear(mask));
@@ -297,7 +299,7 @@ bool wf_framebuffer_base::allocate(int width, int height)
         auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
         if (status != GL_FRAMEBUFFER_COMPLETE)
         {
-            log_error("failed to initialize framebuffer");
+            LOGE("Failed to initialize framebuffer");
             return false;
         }
     }
@@ -378,7 +380,7 @@ wlr_box wf_framebuffer::framebuffer_box_from_damage_box(wlr_box box) const
     if (has_nonstandard_transform)
     {
         // TODO: unimplemented, but also unused for now
-        log_error("unimplemented reached: framebuffer_box_from_geometry_box"
+        LOGE("unimplemented reached: framebuffer_box_from_geometry_box"
             " with has_nonstandard_transform");
         return {0, 0, 0, 0};
     }
@@ -391,9 +393,9 @@ wlr_box wf_framebuffer::framebuffer_box_from_damage_box(wlr_box box) const
     wl_output_transform transform =
         wlr_output_transform_invert((wl_output_transform)wl_transform);
 
-   // log_info("got %d,%d %dx%d, %d", box.x, box.y, box.width, box.height, wl_transform);
+   // LOGI("got %d,%d %dx%d, %d", box.x, box.y, box.width, box.height, wl_transform);
     wlr_box_transform(&result, &box, transform, width, height);
-  //  log_info("tr %d,%d %dx%d", box.x, box.y, box.width, box.height);
+  //  LOGI("tr %d,%d %dx%d", box.x, box.y, box.width, box.height);
     return result;
 }
 

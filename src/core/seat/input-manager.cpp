@@ -16,7 +16,8 @@ extern "C"
 #include "input-manager.hpp"
 #include "output-layout.hpp"
 #include "workspace-manager.hpp"
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
+#include <debug.hpp>
 
 #include "switch.hpp"
 #include "tablet.hpp"
@@ -59,15 +60,12 @@ static std::unique_ptr<wf_input_device_internal> create_wf_device_for_device(
 
 void input_manager::handle_new_input(wlr_input_device *dev)
 {
-    log_info("handle new input: %s, default mapping: %s",
-        dev->name, dev->output_name);
+    LOGI("handle new input: ", dev->name,
+        ", default mapping: ", dev->output_name);
     input_devices.push_back(create_wf_device_for_device(dev));
 
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
-    {
-        keyboards.push_back(
-            std::make_unique<wf_keyboard> (dev, wf::get_core().config));
-    }
+        keyboards.push_back(std::make_unique<wf_keyboard> (dev));
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
     {
@@ -84,9 +82,10 @@ void input_manager::handle_new_input(wlr_input_device *dev)
         our_touch->add_device(dev);
     }
 
-    auto section = wf::get_core().config->get_section(nonull(dev->name));
-    auto mapped_output = section->get_option("output",
-        nonull(dev->output_name))->as_string();
+    auto mapped_output_opt = wf::get_core().config.get_option(
+        nonull(dev->name) + std::string("/output"));
+    std::string mapped_output = mapped_output_opt ?
+        mapped_output_opt->get_value_str() : nonull(dev->output_name);
 
     auto wo = wf::get_core().output_layout->find_output(mapped_output);
     if (wo)
@@ -101,7 +100,7 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
 void input_manager::handle_input_destroyed(wlr_input_device *dev)
 {
-    log_info("remove input: %s", dev->name);
+    LOGI("remove input: ", dev->name);
 
     auto it = std::remove_if(input_devices.begin(), input_devices.end(),
         [=] (const std::unique_ptr<wf_input_device_internal>& idev) {
@@ -137,7 +136,7 @@ void input_manager::handle_input_destroyed(wlr_input_device *dev)
 
 input_manager::input_manager()
 {
-    wf::pointing_device_t::config.load(wf::get_core().config);
+    wf::pointing_device_t::config.load();
 
     input_device_created.set_callback([&] (void *data) {
         auto dev = static_cast<wlr_input_device*> (data);
@@ -313,7 +312,8 @@ void input_manager::set_exclusive_focus(wl_client *client)
 
 /* add/remove bindings */
 
-wf_binding* input_manager::new_binding(wf_binding_type type, wf_option value,
+wf_binding* input_manager::new_binding(wf_binding_type type,
+    std::shared_ptr<wf::config::option_base_t> value,
     wf::output_t *output, void *callback)
 {
     auto binding = std::make_unique<wf_binding>();
@@ -374,8 +374,12 @@ bool input_manager::check_button_bindings(uint32_t button)
 
     for (auto& binding : bindings[WF_BINDING_BUTTON])
     {
+        auto as_button = std::dynamic_pointer_cast<
+            wf::config::option_t<wf::buttonbinding_t>> (binding->value);
+        assert(as_button);
+
         if (binding->output == wf::get_core().get_active_output() &&
-            binding->value->as_cached_button().matches({mod_state, button}))
+            wf::buttonbinding_t{mod_state, button} == as_button->get_value())
         {
             /* We must be careful because the callback might be erased,
              * so force copy the callback into the lambda */
@@ -388,8 +392,13 @@ bool input_manager::check_button_bindings(uint32_t button)
 
     for (auto& binding : bindings[WF_BINDING_ACTIVATOR])
     {
+        auto as_activator = std::dynamic_pointer_cast<
+            wf::config::option_t<wf::activatorbinding_t>> (binding->value);
+        assert(as_activator);
+
         if (binding->output == wf::get_core().get_active_output() &&
-            binding->value->matches_button({mod_state, button}))
+            as_activator->get_value().has_match(
+                wf::buttonbinding_t{mod_state, button}))
         {
             /* We must be careful because the callback might be erased,
              * so force copy the callback into the lambda */
@@ -414,9 +423,15 @@ bool input_manager::check_axis_bindings(wlr_event_pointer_axis *ev)
 
     for (auto& binding : bindings[WF_BINDING_AXIS])
     {
+        auto as_key = std::dynamic_pointer_cast<
+            wf::config::option_t<wf::keybinding_t>> (binding->value);
+        assert(as_key);
+
         if (binding->output == wf::get_core().get_active_output() &&
-            binding->value->as_cached_key().matches({mod_state, 0}))
+            as_key->get_value() == wf::keybinding_t{mod_state, 0})
+        {
             callbacks.push_back(binding->call.axis);
+        }
     }
 
     for (auto call : callbacks)

@@ -144,13 +144,13 @@ void wf::color_rect_view_t::close()
     unref();
 }
 
-void wf::color_rect_view_t::set_color(wf_color color)
+void wf::color_rect_view_t::set_color(wf::color_t color)
 {
     this->_color = color;
     damage();
 }
 
-void wf::color_rect_view_t::set_border_color(wf_color border)
+void wf::color_rect_view_t::set_border_color(wf::color_t border)
 {
     this->_border_color = border;
     damage();
@@ -176,7 +176,7 @@ wf_size_t wf::color_rect_view_t::get_size() const
 }
 
 static void render_colored_rect(const wf_framebuffer& fb, float projection[9],
-    int x, int y, int w, int h, const wf_color& color)
+    int x, int y, int w, int h, const wf::color_t& color)
 {
     wlr_box render_geometry_unscaled {x, y, w, h};
     wlr_box render_geometry = fb.damage_box_from_geometry_box(
@@ -187,7 +187,7 @@ static void render_colored_rect(const wf_framebuffer& fb, float projection[9],
         WL_OUTPUT_TRANSFORM_NORMAL, 0, projection);
 
     float a = color.a;
-    float col[4] = {color.r * a, color.g * a, color.b * a, a};
+    float col[4] = {(float)color.r * a, (float)color.g * a, (float)color.b * a, a};
     wlr_render_quad_with_matrix(wf::get_core().renderer, col, matrix);
 }
 

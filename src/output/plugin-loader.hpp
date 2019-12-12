@@ -6,6 +6,7 @@
 #include "plugin.hpp"
 #include "config.h"
 #include "util.hpp"
+#include <option-wrapper.hpp>
 
 namespace wf
 {
@@ -16,7 +17,7 @@ class wayfire_config;
 using wayfire_plugin = std::unique_ptr<wf::plugin_interface_t>;
 struct plugin_manager
 {
-    plugin_manager(wf::output_t *o, wayfire_config *config);
+    plugin_manager(wf::output_t *o);
     ~plugin_manager();
 
     void reload_dynamic_plugins();
@@ -24,11 +25,8 @@ struct plugin_manager
 
 private:
     wf::output_t *output;
-    wayfire_config *config;
-    wf_option plugins_opt;
-
+    wf::option_wrapper_t<std::string> plugins_opt;
     std::unordered_map<std::string, wayfire_plugin> loaded_plugins;
-    wf_option_callback list_updated;
 
     void deinit_plugins(bool unloadable);
 

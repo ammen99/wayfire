@@ -9,7 +9,7 @@
 #include "output.hpp"
 #include "../core/wm.hpp"
 #include "core.hpp"
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
 
 namespace
 {
@@ -24,28 +24,19 @@ namespace
     }
 }
 
-static const std::string default_plugins = "viewport_impl move resize animate \
-                                            switcher vswitch cube expo command \
-                                            grid";
-
-plugin_manager::plugin_manager(wf::output_t *o, wayfire_config *config)
+plugin_manager::plugin_manager(wf::output_t *o)
 {
-    this->config = config;
     this->output = o;
-
-    auto section = config->get_section("core");
-    plugins_opt = section->get_option("plugins", "none");
+    this->plugins_opt.load_option("core/plugins");
 
     reload_dynamic_plugins();
     load_static_plugins();
 
-    list_updated = [=] ()
+    this->plugins_opt.set_callback([=] ()
     {
         /* reload when config reload has finished */
         idle_reaload_plugins.run_once([&] () {reload_dynamic_plugins(); });
-    };
-
-    plugins_opt->add_updated_handler(&list_updated);
+    });
 }
 
 void plugin_manager::deinit_plugins(bool unloadable)
@@ -67,15 +58,13 @@ plugin_manager::~plugin_manager()
     deinit_plugins(false);
 
     loaded_plugins.clear();
-    plugins_opt->rem_updated_handler(&list_updated);
 }
 
 void plugin_manager::init_plugin(wayfire_plugin& p)
 {
     p->grab_interface = std::make_unique<wf::plugin_grab_interface_t> (output);
     p->output = output;
-
-    p->init(config);
+    p->init();
 }
 
 void plugin_manager::destroy_plugin(wayfire_plugin& p)
@@ -103,7 +92,7 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
     void *handle = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if(handle == NULL)
     {
-        log_error("error loading plugin: %s", dlerror());
+        LOGE("error loading plugin: ", dlerror());
         return nullptr;
     }
 
@@ -111,7 +100,7 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
     auto version_func_ptr = dlsym(handle, "getWayfireVersion");
     if (version_func_ptr == NULL)
     {
-        log_error("%s: missing getWayfireVersion()", path.c_str());
+        LOGE(path, ": missing getWayfireVersion()", path.c_str());
         dlclose(handle);
         return nullptr;
     }
@@ -122,8 +111,8 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
 
     if (version_func() != WAYFIRE_API_ABI_VERSION)
     {
-        log_error("%s: API/ABI version mismatch: Wayfire is %d, plugin built "
-            "with %d", path.c_str(), WAYFIRE_API_ABI_VERSION, plugin_abi_version);
+        LOGE(path, ": API/ABI version mismatch: Wayfire is ",
+            WAYFIRE_API_ABI_VERSION, ",  plugin built with ", plugin_abi_version);
         dlclose(handle);
         return nullptr;
     }
@@ -131,11 +120,11 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
     auto new_instance_func_ptr = dlsym(handle, "newInstance");
     if(new_instance_func_ptr == NULL)
     {
-        log_error("%s: missing newInstance(). %s", path.c_str(), dlerror());
+        LOGE(path, ": missing newInstance(). ", dlerror());
         return nullptr;
     }
 
-    log_debug("loading plugin %s", path.c_str());
+    LOGD("Loading plugin ", path.c_str());
     auto new_instance_func =
         union_cast<void*, wayfire_plugin_load_func> (new_instance_func_ptr);
 
@@ -146,13 +135,12 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
 
 void plugin_manager::reload_dynamic_plugins()
 {
-    auto plugin_list = plugins_opt->as_string();
+    std::string plugin_list = plugins_opt;
     if (plugin_list == "none")
     {
-        log_error("No plugins specified in the config file, or config file is "
+        LOGE("No plugins specified in the config file, or config file is "
             "missing. In this state the compositor is nearly unusable, please "
             "ensure your configuration file is set up properly.");
-        plugin_list = default_plugins;
     }
 
     std::stringstream stream(plugin_list);
@@ -186,7 +174,7 @@ void plugin_manager::reload_dynamic_plugins()
         if (std::find(next_plugins.begin(), next_plugins.end(), it->first) == next_plugins.end() &&
             it->second->is_unloadable())
         {
-            log_debug("unload plugin %s", it->first.c_str());
+            LOGD("unload plugin ", it->first.c_str());
             destroy_plugin(it->second);
             it = loaded_plugins.erase(it);
         }

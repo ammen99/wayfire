@@ -42,7 +42,7 @@ namespace wf
                 auto result = parse_expression(match_option->as_string());
                 if (!result.first)
                 {
-                    log_error("Failed to load match expression %s:\n%s",
+                    LOGE("Failed to load match expression %s:\n%s",
                         match_option->as_string().c_str(), result.second.c_str());
                 }
 

@@ -39,7 +39,7 @@ void errorHandler(GLenum src, GLenum type, GLuint id, GLenum severity,
     if(severity == GL_DEBUG_SEVERITY_NOTIFICATION)
         return;
 
-    log_info(
+    LOGI(
         "_______________________________________________\n"
         "Source: %s\n"
         "Type: %s\n"

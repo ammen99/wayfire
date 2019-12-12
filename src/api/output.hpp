@@ -4,7 +4,9 @@
 #include "geometry.hpp"
 #include "object.hpp"
 #include "bindings.hpp"
-#include <config.hpp>
+
+#include <option-wrapper.hpp>
+#include <wayfire/config/types.hpp>
 
 extern "C"
 {
@@ -163,12 +165,15 @@ class output_t : public wf::object_base_t
      *
      * @return The wf_binding which can be used to unregister the binding.
      */
-    wf_binding *add_key(wf_option key, key_callback *);
-    wf_binding *add_axis(wf_option axis, axis_callback *);
-    wf_binding *add_touch(wf_option mod, touch_callback *);
-    wf_binding *add_button(wf_option button, button_callback *);
-    wf_binding *add_gesture(wf_option gesture, gesture_callback *);
-    wf_binding *add_activator(wf_option activator, activator_callback *);
+    wf_binding *add_key(option_sptr_t<keybinding_t> key, key_callback *);
+    wf_binding *add_axis(option_sptr_t<keybinding_t> axis, axis_callback *);
+    wf_binding *add_touch(option_sptr_t<keybinding_t> mod, touch_callback *);
+    wf_binding *add_button(option_sptr_t<buttonbinding_t> button,
+        button_callback *);
+    wf_binding *add_gesture(option_sptr_t<touchgesture_t> gesture,
+        gesture_callback *);
+    wf_binding *add_activator(option_sptr_t<activatorbinding_t> activator,
+        activator_callback *);
 
     /**
      * Remove the given binding, regardless of its type.

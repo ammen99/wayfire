@@ -4,6 +4,7 @@
 #include "xdg-shell.hpp"
 #include "core.hpp"
 #include "debug.hpp"
+#include <wayfire/util/log.hpp>
 #include "output.hpp"
 #include "workspace-manager.hpp"
 #include "output-layout.hpp"
@@ -158,7 +159,7 @@ struct wf_layer_shell_manager
 
         if (edges == 0 || __builtin_popcount(edges) > 1)
         {
-            log_error ("Unsupported: layer-shell exclusive zone for surfaces anchored to 0, 2 or 4 edges");
+            LOGE ("Unsupported: layer-shell exclusive zone for surfaces anchored to 0, 2 or 4 edges");
             return;
         }
 
@@ -288,7 +289,7 @@ struct wf_layer_shell_manager
 wayfire_layer_shell_view::wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf)
     : wf::wlr_view_t(), lsurface(lsurf)
 {
-    log_debug("Create a layer surface: namespace %s layer %d anchor %d,"
+    LOGD("Create a layer surface: namespace %s layer %d anchor %d,"
               "size %dx%d, margin top:%d, down:%d, left:%d, right:%d",
               lsurf->namespace_t, lsurf->current.layer, lsurf->client_pending.anchor,
               lsurf->client_pending.desired_width, lsurf->client_pending.desired_height,
@@ -305,7 +306,7 @@ wayfire_layer_shell_view::wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf)
 
     if (!get_output())
     {
-        log_error ("Couldn't find output for the layer surface");
+        LOGE ("Couldn't find output for the layer surface");
         close();
         return;
     }
@@ -451,7 +452,7 @@ void wayfire_layer_shell_view::configure(wf_geometry box)
     }
 
     if (box.width < 0 || box.height < 0) {
-        log_error ("layer-surface has calculated width and height < 0");
+        LOGE ("layer-surface has calculated width and height < 0");
         close();
     }
 

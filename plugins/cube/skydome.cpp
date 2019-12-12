@@ -71,7 +71,7 @@ void wf_cube_background_skydome::reload_texture()
     }
     else
     {
-        log_error("Failed to load skydome image from \"%s\".",
+        LOGE("Failed to load skydome image from \"%s\".",
             last_background_image.c_str());
         GL_CALL(glDeleteTextures(1, &tex));
         tex = -1;

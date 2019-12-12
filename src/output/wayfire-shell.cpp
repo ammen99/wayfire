@@ -10,6 +10,7 @@
 #include "wayfire-shell-unstable-v2-protocol.h"
 #include "signal-definitions.hpp"
 #include "../view/view-impl.hpp"
+#include <wayfire/util/log.hpp>
 
 /* ----------------------------- wfs_hotspot -------------------------------- */
 static void handle_hotspot_destroy(wl_resource *resource);
@@ -408,7 +409,7 @@ wayfire_shell* wayfire_shell_create(wl_display *display)
 
     if (ws->shell_manager == NULL)
     {
-        log_error("Failed to create wayfire_shell interface");
+        LOGE("Failed to create wayfire_shell interface");
         return NULL;
     }
 

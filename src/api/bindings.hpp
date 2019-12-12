@@ -7,13 +7,17 @@ extern "C"
     struct wlr_event_pointer_axis;
 }
 
+namespace wf{
+class touchgesture_t;
+}
+
 struct wf_touch_gesture;
 struct wf_binding; // opaque handle to a binding, can be used to remove it
 using key_callback = std::function<bool(uint32_t)>;
 using button_callback = std::function<bool(uint32_t, int32_t, int32_t)>; // button, x, y
 using axis_callback = std::function<bool(wlr_event_pointer_axis*)>;
 using touch_callback = std::function<bool(int32_t, int32_t)>; // x, y
-using gesture_callback = std::function<bool(wf_touch_gesture*)>;
+using gesture_callback = std::function<bool(wf::touchgesture_t*)>;
 
 enum wf_activator_source
 {

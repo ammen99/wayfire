@@ -1,4 +1,5 @@
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
+#include <debug.hpp>
 #include "core.hpp"
 #include "surface-impl.hpp"
 #include "output.hpp"
@@ -107,7 +108,7 @@ void create_xdg_popup_templ(XdgPopupVersion *popup)
     auto parent = wf::wf_surface_from_void(popup->parent->data);
     if (!parent)
     {
-        log_error("attempting to create a popup with unknown parent");
+        LOGE("attempting to create a popup with unknown parent");
         return;
     }
 
@@ -126,9 +127,8 @@ template<class XdgToplevelVersion>
 wayfire_xdg_view<XdgToplevelVersion>::wayfire_xdg_view(XdgToplevelVersion *top)
     : wf::wlr_view_t(), xdg_toplevel(top)
 {
-    log_info ("new xdg_shell_stable surface: %s app-id: %s",
-              nonull(xdg_toplevel->title),
-              nonull(xdg_toplevel->app_id));
+    LOGI("new xdg_shell_stable surface: ", xdg_toplevel->title,
+        " app-id: ", xdg_toplevel->app_id);
 
     handle_title_changed(nonull(xdg_toplevel->title));
     handle_app_id_changed(nonull(xdg_toplevel->app_id));

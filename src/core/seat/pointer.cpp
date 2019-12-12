@@ -1,9 +1,10 @@
 #include "pointer.hpp"
+#include "pointing-device.hpp"
 #include "input-manager.hpp"
 #include "signal-definitions.hpp"
 
+#include <wayfire/util/log.hpp>
 #include <core.hpp>
-#include <debug.hpp>
 #include <output-layout.hpp>
 #include <compositor-surface.hpp>
 
@@ -24,10 +25,6 @@ wf::LogicalPointer::LogicalPointer(nonstd::observer_ptr<input_manager> input)
             update_cursor_position(get_current_time(), false);
         }
     });
-
-    auto section = wf::get_core().config->get_section("input");
-    mouse_scroll_speed    = section->get_option("mouse_scroll_speed", "1");
-    touchpad_scroll_speed = section->get_option("touchpad_scroll_speed", "1");
 }
 
 wf::LogicalPointer::~LogicalPointer()
@@ -44,7 +41,7 @@ void wf::LogicalPointer::set_enable_focus(bool enabled)
 {
     this->focus_enabled_count += enabled ? 1 : -1;
     if (focus_enabled_count > 1)
-        log_info("LogicalPointer enabled more times than disabled?");
+        LOGI("LogicalPointer enabled more times than disabled?");
 
     // reset grab
     if (!focus_enabled())
@@ -114,7 +111,7 @@ void wf::LogicalPointer::update_cursor_focus(wf::surface_interface_t *focus,
 
     bool focus_change = (cursor_focus != focus);
     if (focus_change) {
-        log_debug("change cursor focus %p -> %p", cursor_focus, focus);
+        LOGD("change cursor focus ", cursor_focus, " -> ", focus);
     }
 
     cursor_focus = focus;
@@ -331,7 +328,7 @@ void wf::LogicalPointer::send_button(wlr_event_pointer_button *ev,
 {
     if (input->active_grab)
     {
-        log_info("send button %d", ev->button);
+        LOGI("send button ", ev->button);
         if (input->active_grab->callbacks.pointer.button)
             input->active_grab->callbacks.pointer.button(ev->button, ev->state);
 
@@ -462,8 +459,8 @@ void wf::LogicalPointer::handle_pointer_axis(wlr_event_pointer_axis *ev)
 
     /* Calculate speed settings */
     double mult = ev->source == WLR_AXIS_SOURCE_FINGER ?
-        touchpad_scroll_speed->as_cached_double() :
-        mouse_scroll_speed->as_cached_double();
+        wf::pointing_device_t::config.touchpad_scroll_speed :
+        wf::pointing_device_t::config.mouse_scroll_speed;
 
     wlr_seat_pointer_notify_axis(input->seat, ev->time_msec, ev->orientation,
         mult * ev->delta, mult * ev->delta_discrete, ev->source);

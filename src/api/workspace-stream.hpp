@@ -25,7 +25,7 @@ struct workspace_stream_t
      * plugins can choose the background color they want first and if
      * it is not set (alpha = -1.0) it will fallback to the default
      * user configurable color. */
-    wf_color background = {0.0f, 0.0f, 0.0f, -1.0f};
+    wf::color_t background = {0.0f, 0.0f, 0.0f, -1.0f};
 };
 
 /** Emitted whenever a workspace stream is being started or stopped */

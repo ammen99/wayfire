@@ -17,7 +17,7 @@ extern "C"
 #include "opengl.hpp"
 #include "../core/core-impl.hpp"
 #include "output.hpp"
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
 #include "render-manager.hpp"
 #include "signal-definitions.hpp"
 
@@ -189,7 +189,7 @@ wf::wlr_surface_base_t::wlr_surface_base_t(surface_interface_t *self)
         auto sub = static_cast<wlr_subsurface*> (data);
         if (sub->data)
         {
-            log_error("Creating the same subsurface twice!");
+            LOGE("Creating the same subsurface twice!");
             return;
         }
 

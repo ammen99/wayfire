@@ -2,7 +2,7 @@
 #include "output.hpp"
 #include "seat/input-manager.hpp"
 #include "signal-definitions.hpp"
-#include "debug.hpp"
+#include <wayfire/util/log.hpp>
 
 wf::plugin_grab_interface_t::plugin_grab_interface_t(wf::output_t *wo)
     : output(wo) { }
@@ -11,7 +11,7 @@ bool wf::plugin_grab_interface_t::grab()
 {
     if (!(capabilities & CAPABILITY_GRAB_INPUT))
     {
-        log_error ("attempt to grab iface %s without input grabbing ability", name.c_str());
+        LOGE("attempt to grab iface ", name, " without input grabbing ability");
         return false;
     }
 
@@ -52,7 +52,7 @@ wayfire_view get_signaled_view(wf::signal_data_t *data)
     auto conv = static_cast<_view_signal*> (data);
     if (!conv)
     {
-        log_error("Got a bad _view_signal");
+        LOGE("Got a bad _view_signal");
         return nullptr;
     }
 

@@ -3,7 +3,7 @@
 
 #include "compositor-surface.hpp"
 #include "view.hpp"
-#include <config.hpp>
+#include <wayfire/config/types.hpp>
 
 namespace wf
 {
@@ -81,8 +81,8 @@ class mirror_view_t : public wf::view_interface_t, wf::compositor_surface_t
 class color_rect_view_t : public wf::view_interface_t, wf::compositor_surface_t
 {
   protected:
-    wf_color _color;
-    wf_color _border_color;
+    wf::color_t _color;
+    wf::color_t _border_color;
     int border;
 
     wf_geometry geometry;
@@ -100,9 +100,9 @@ class color_rect_view_t : public wf::view_interface_t, wf::compositor_surface_t
     virtual void close() override;
 
     /** Set the view color. Color's alpha is not premultiplied */
-    virtual void set_color(wf_color color);
+    virtual void set_color(wf::color_t color);
     /** Set the view border color. Color's alpha is not premultiplied */
-    virtual void set_border_color(wf_color border);
+    virtual void set_border_color(wf::color_t border);
     /** Set the border width. */
     virtual void set_border(int width);
 

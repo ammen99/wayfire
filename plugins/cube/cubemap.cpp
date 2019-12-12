@@ -54,7 +54,7 @@ void wf_cube_background_cubemap::reload_texture()
     {
         if (!image_io::load_from_file(last_background_image, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i))
         {
-            log_error("Failed to load cubemap background image from \"%s\".",
+            LOGE("Failed to load cubemap background image from \"%s\".",
                 last_background_image.c_str());
 
             GL_CALL(glDeleteTextures(1, &tex));

@@ -1,6 +1,7 @@
 #include "gtk-shell.hpp"
 #include "gtk-shell-protocol.h"
 
+#include <wayfire/util/log.hpp>
 #include "view.hpp"
 #include "../core/core-impl.hpp"
 #include "core.hpp"
@@ -64,7 +65,7 @@ wf_gtk_shell* wf_gtk_shell_create(wl_display *display)
     if (wl_global_create(display, &gtk_shell1_interface, 1, NULL,
             bind_gtk_shell1) == NULL)
     {
-        log_error("Failed to create gtk_shell1");
+        LOGE("Failed to create gtk_shell1");
         return nullptr;
     }
 
