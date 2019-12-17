@@ -56,10 +56,9 @@ class wayfire_invert_screen : public wf::plugin_interface_t
     }
 
 
-    void init(wayfire_config *config)
+    void init() override
     {
-        auto section = config->get_section("invert");
-        auto toggle_key = section->get_option("toggle", "<super> KEY_I");
+        wf::option_wrapper_t<wf::activatorbinding_t> toggle_key{"invert/toggle"};
 
         grab_interface->name = "invert";
         grab_interface->capabilities = 0;
@@ -133,7 +132,7 @@ class wayfire_invert_screen : public wf::plugin_interface_t
         OpenGL::render_end();
     }
 
-    void fini()
+    void fini() override
     {
         if (active)
             output->render->rem_post(&hook);

@@ -23,7 +23,7 @@ class wf_wrot : public wf::plugin_interface_t
     wayfire_view current_view;
 
     public:
-        void init(wayfire_config *config)
+        void init() override
         {
             grab_interface->name = "wrot";
             grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
@@ -49,8 +49,8 @@ class wf_wrot : public wf::plugin_interface_t
                 return true;
             };
 
-            auto button = (*config)["wrot"]->get_option("activate", "<alt> BTN_RIGHT");
-            output->add_button(button, &call);
+            output->add_button(
+                wf::option_wrapper_t<wf::buttonbinding_t>("wrot/activate"), &call);
 
             grab_interface->callbacks.pointer.motion = [=] (int x, int y)
             {
@@ -101,7 +101,7 @@ class wf_wrot : public wf::plugin_interface_t
             output->deactivate_plugin(grab_interface);
         }
 
-        void fini()
+        void fini() override
         {
             if (grab_interface->is_grabbed())
                 input_released();

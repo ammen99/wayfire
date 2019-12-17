@@ -25,7 +25,7 @@
 #include <plugin.hpp>
 #include <output.hpp>
 #include <opengl.hpp>
-#include <animation.hpp>
+#include <wayfire/util/duration.hpp>
 #include <render-manager.hpp>
 
 static const char* vertex_shader =
@@ -99,11 +99,14 @@ void main()
 class wayfire_fisheye : public wf::plugin_interface_t
 {
     wf::post_hook_t hook;
-    activator_callback toggle_cb;
-    wf_duration duration;
+    wf::animation::duration_t animation{wf::create_option<int>(300)};
+    wf::animation::timed_transition_t current_zoom{animation, 0, 0};
+
     float target_zoom;
     bool active, hook_set;
-    wf_option radius, zoom;
+
+    wf::option_wrapper_t<double> radius{"fisheye/radius"};
+    wf::option_wrapper_t<double> zoom{"fisheye/zoom"};
 
     GLuint program, posID, mouseID, resID, radiusID, zoomID;
 
@@ -123,56 +126,50 @@ class wayfire_fisheye : public wf::plugin_interface_t
     }
 
     public:
-        void init(wayfire_config *config)
+        void init() override
         {
             grab_interface->name = "fisheye";
             grab_interface->capabilities = 0;
 
-            auto section = config->get_section("fisheye");
-            auto toggle_key = section->get_option("toggle", "<super> KEY_F");
-            radius = section->get_option("radius", "300");
-            zoom = section->get_option("zoom", "7");
-
-            target_zoom = zoom->as_double();
-
-            hook = [=] (const wf_framebuffer_base& source, const wf_framebuffer_base& dest) {
-                render(source, dest);
-            };
-
             hook_set = active = false;
-            toggle_cb = [=] (wf_activator_source, uint32_t)
-            {
-                if (!output->can_activate_plugin(grab_interface))
-                    return false;
+            output->add_activator(
+                wf::option_wrapper_t<wf::activatorbinding_t>{"fisheye/toggle"},
+                &toggle_cb);
 
+            zoom.set_callback([=] () {
                 if (active)
-                {
-                    active = false;
-                    duration.start(duration.progress(), 0);
-                } else
-                {
-                    active = true;
-                    duration.start(duration.progress(), target_zoom);
-
-                    if (!hook_set)
-                    {
-                        hook_set = true;
-                        output->render->add_post(&hook);
-                        output->render->set_redraw_always();
-                    }
-                }
-
-                return true;
-            };
-            output->add_activator(toggle_key, &toggle_cb);
+                    this->current_zoom.restart_with_end(zoom);
+            });
 
             load_program();
-
-            duration = wf_duration(new_static_option("700"));
-            duration.start(0, 0); // so that the first value we get is correct
         }
 
-        void render(const wf_framebuffer_base& source,
+        activator_callback toggle_cb = [=] (wf_activator_source, uint32_t)
+        {
+            if (!output->can_activate_plugin(grab_interface))
+                return false;
+
+            if (active)
+            {
+                active = false;
+                current_zoom.restart_with_end(0);
+                animation.start();
+            } else
+            {
+                active = true;
+                current_zoom.restart_with_end(zoom);
+                if (!hook_set)
+                {
+                    hook_set = true;
+                    output->render->add_post(&hook);
+                    output->render->set_redraw_always();
+                }
+            }
+
+            return true;
+        };
+
+        wf::post_hook_t render_hook = [=](const wf_framebuffer_base& source,
             const wf_framebuffer_base& dest)
         {
             auto oc = output->get_cursor_position();
@@ -189,9 +186,6 @@ class wayfire_fisheye : public wf::plugin_interface_t
                 -1.0f,  1.0f
             };
 
-            auto current_zoom = duration.progress();
-            target_zoom = zoom->as_double();
-
             OpenGL::render_begin(dest);
 
             GL_CALL(glUseProgram(program));
@@ -200,7 +194,7 @@ class wayfire_fisheye : public wf::plugin_interface_t
 
             GL_CALL(glUniform2f(mouseID, oc.x, oc.y));
             GL_CALL(glUniform2f(resID, dest.viewport_width, dest.viewport_height));
-            GL_CALL(glUniform1f(radiusID, radius->as_double()));
+            GL_CALL(glUniform1f(radiusID, radius));
             GL_CALL(glUniform1f(zoomID, current_zoom));
 
             GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
@@ -212,16 +206,9 @@ class wayfire_fisheye : public wf::plugin_interface_t
 
             OpenGL::render_end();
 
-            if (active)
-            {
-                /* Reset animation in case target_zoom
-                 * was changed via config */
-                duration.start(current_zoom, target_zoom);
-            } else if (!duration.running())
-            {
+            if (!active && !animation.running())
                 finalize();
-            }
-        }
+        };
 
         void finalize()
         {
@@ -230,7 +217,7 @@ class wayfire_fisheye : public wf::plugin_interface_t
             hook_set = false;
         }
 
-        void fini()
+        void fini() override
         {
             if (hook_set)
                 finalize();

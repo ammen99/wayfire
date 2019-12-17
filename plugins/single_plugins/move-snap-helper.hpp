@@ -1,9 +1,9 @@
 #pragma once
 
 #include <view.hpp>
-#include <config.hpp>
 #include <core.hpp>
 #include "../wobbly/wobbly-signal.hpp"
+#include <option-wrapper.hpp>
 
 namespace wf
 {
@@ -22,8 +22,9 @@ class move_snap_helper_t : public wf::custom_data_t
     wayfire_view view;
     wf_point grab;
 
-    wf_option enable_snap_off;
-    wf_option snap_off_threshold;
+    /* TODO: figure out where to put these options */
+    wf::option_wrapper_t<bool> enable_snap_off{"move/enable_snap_off"};
+    wf::option_wrapper_t<int> snap_off_threshold{"move/snap_off_threshold"};
 
     bool view_in_slot; /* Whether the view is held at its original position */
     double px, py; /* Percentage of the view width/height from the grab point
@@ -35,11 +36,6 @@ class move_snap_helper_t : public wf::custom_data_t
         this->view = view;
         this->grab = grab;
         this->last_grabbing_position = grab;
-
-        /* TODO: figure out where to put these options */
-        auto section = wf::get_core().config->get_section("move");
-        enable_snap_off = section->get_option("enable_snap_off", "1");
-        snap_off_threshold = section->get_option("snap_off_threshold", "0");
 
         view_in_slot = should_enable_snap_off();
         start_wobbly(view, grab.x, grab.y);
@@ -72,7 +68,7 @@ class move_snap_helper_t : public wf::custom_data_t
             (to.y - grab.y) * (to.y - grab.y));
 
         /* Reached threshold */
-        if (view_in_slot && distance >= snap_off_threshold->as_int())
+        if (view_in_slot && distance >= snap_off_threshold)
             snap_off();
 
         /* View is stuck, we shouldn't change its geometry */
@@ -100,7 +96,7 @@ class move_snap_helper_t : public wf::custom_data_t
   protected:
     virtual bool should_enable_snap_off() const
     {
-        return enable_snap_off->as_int() &&
+        return enable_snap_off &&
             (view->tiled_edges || view->fullscreen);
     }
 

@@ -2,7 +2,7 @@
 #define ANIMATE_H_
 
 #include <view.hpp>
-#include <animation.hpp>
+#include <wayfire/util/duration.hpp>
 
 #define HIDING_ANIMATION (1 << 0)
 #define SHOWING_ANIMATION (1 << 1)

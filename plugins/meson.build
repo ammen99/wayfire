@@ -1,5 +1,5 @@
-#subdir('single_plugins')
-#subdir('decor')
+subdir('single_plugins')
+subdir('decor')
 #subdir('animate')
 #subdir('cube')
 #subdir('wobbly')

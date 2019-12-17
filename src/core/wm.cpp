@@ -49,7 +49,7 @@ void wayfire_close::init()
         return true;
     };
 
-    output->add_activator(key.raw_option, &callback);
+    output->add_activator(key, &callback);
 }
 
 void wayfire_close::fini()

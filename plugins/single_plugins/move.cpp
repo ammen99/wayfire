@@ -2,7 +2,7 @@
 #include <output.hpp>
 #include <core.hpp>
 #include <view.hpp>
-#include <animation.hpp>
+#include <wayfire/util/duration.hpp>
 #include <workspace-manager.hpp>
 #include <render-manager.hpp>
 #include <compositor-view.hpp>
@@ -63,7 +63,10 @@ class wayfire_move : public wf::plugin_interface_t
     touch_callback touch_activate_binding;
     wayfire_view view;
 
-    wf_option enable_snap, snap_threshold;
+    wf::option_wrapper_t<bool> enable_snap{"move/enable_snap"};
+    wf::option_wrapper_t<int> snap_threshold{"move/snap_threshold"};
+    wf::option_wrapper_t<wf::buttonbinding_t> activate_button{"move/activate"};
+
     bool is_using_touch;
     bool was_client_request;
 
@@ -75,14 +78,12 @@ class wayfire_move : public wf::plugin_interface_t
 #define MOVE_HELPER view->get_data<wf::move_snap_helper_t>()
 
     public:
-        void init(wayfire_config *config)
+        void init() override
         {
             grab_interface->name = "move";
             grab_interface->capabilities =
                 wf::CAPABILITY_GRAB_INPUT | wf::CAPABILITY_MANAGE_DESKTOP;
 
-            auto section = config->get_section("move");
-            wf_option button = section->get_option("activate", "<super> BTN_LEFT");
             activate_binding = [=] (uint32_t, int, int)
             {
                 is_using_touch = false;
@@ -107,11 +108,10 @@ class wayfire_move : public wf::plugin_interface_t
                 return false;
             };
 
-            output->add_button(button, &activate_binding);
-            output->add_touch(new_static_option("<super>"), &touch_activate_binding);
-
-            enable_snap = section->get_option("enable_snap", "1");
-            snap_threshold = section->get_option("snap_threshold", "2");
+            output->add_button(activate_button, &activate_binding);
+            output->add_touch(
+                wf::create_option_string<wf::keybinding_t>("<super>"),
+                &touch_activate_binding);
 
             using namespace std::placeholders;
             grab_interface->callbacks.pointer.button =
@@ -121,7 +121,7 @@ class wayfire_move : public wf::plugin_interface_t
                 if (state == WLR_BUTTON_RELEASED && was_client_request && b == BTN_LEFT)
                     return input_pressed(state, false);
 
-                if (b != button->as_button().button)
+                if (b != wf::buttonbinding_t(activate_button).get_button())
                     return;
 
                 is_using_touch = false;
@@ -207,7 +207,7 @@ class wayfire_move : public wf::plugin_interface_t
                     view, get_input_coords()));
 
             output->focus_view(view, true);
-            if (enable_snap->as_int())
+            if (enable_snap)
                 slot.slot_id = 0;
 
             this->view = view;
@@ -274,7 +274,7 @@ class wayfire_move : public wf::plugin_interface_t
             if (view && output->workspace->get_view_layer(view) != wf::LAYER_WORKSPACE)
                 return 0;
 
-            int threshold = snap_threshold->as_cached_int();
+            int threshold = snap_threshold;
 
             bool is_left = x - g.x <= threshold;
             bool is_right = g.x + g.width - x <= threshold;
@@ -504,7 +504,7 @@ class wayfire_move : public wf::plugin_interface_t
             /* View might get destroyed when updating multi-output */
             if (view)
             {
-                if (enable_snap->as_cached_int() && !MOVE_HELPER->is_view_fixed())
+                if (enable_snap && !MOVE_HELPER->is_view_fixed())
                     update_slot(calc_slot(input.x, input.y));
             } else
             {
@@ -513,7 +513,7 @@ class wayfire_move : public wf::plugin_interface_t
             }
         }
 
-        void fini()
+        void fini() override
         {
             if (grab_interface->is_grabbed())
                 input_pressed(WLR_BUTTON_RELEASED, false);

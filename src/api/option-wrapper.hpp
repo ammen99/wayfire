@@ -90,9 +90,14 @@ class option_wrapper_t : public noncopyable_t
     }
 
     /** Implicitly convertible to the value of the option */
-    operator Type()
+    operator Type() const
     {
         return raw_option->get_value();
+    }
+
+    operator option_sptr_t<Type>() const
+    {
+        return raw_option;
     }
 
     /** Set a callback to execute when the option value changes. */

@@ -79,7 +79,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
     int titlebar = titlebar_thickness;
 
     wayfire_view view;
-    wf_option font_option;
+    wf::option_wrapper_t<std::string> font_option{"decoration/font"};
     wf::signal_callback_t title_set;
 
     int width = 100, height = 100;
@@ -92,10 +92,9 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
 
   public:
-    simple_decoration_surface(wayfire_view view, wf_option font)
+    simple_decoration_surface(wayfire_view view)
         : surface_interface_t(view.get())
     {
-        this->font_option = font;
         this->view = view;
 
         title_set = [=] (wf::signal_data_t *data)
@@ -158,7 +157,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
         if (tex == (uint)-1)
         {
             tex = get_text_texture(width * fb.scale, titlebar * fb.scale,
-                view->get_title(), font_option->as_string());
+                view->get_title(), font_option);
         }
 
         gl_geometry gg;
@@ -359,9 +358,9 @@ class simple_decoration_surface : public wf::surface_interface_t,
     };
 };
 
-void init_view(wayfire_view view, wf_option font)
+void init_view(wayfire_view view)
 {
-    auto surf = new simple_decoration_surface(view, font);
+    auto surf = new simple_decoration_surface(view);
     view->set_decoration(surf);
     view->damage();
 }

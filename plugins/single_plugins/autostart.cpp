@@ -1,6 +1,6 @@
 #include <singleton-plugin.hpp>
 #include <core.hpp>
-#include <debug.hpp>
+#include <wayfire/util/log.hpp>
 
 class wayfire_autostart
 {
@@ -8,9 +8,9 @@ class wayfire_autostart
     wayfire_autostart()
     {
         /* Run only once, at startup */
-        auto section = wf::get_core().config->get_section("autostart");
-        for (const auto& command : section->options)
-            wf::get_core().run(command->as_string().c_str());
+        auto section = wf::get_core().config.get_section("autostart");
+        for (const auto& command : section->get_registered_options())
+            wf::get_core().run(command->get_value_str().c_str());
     }
 };
 

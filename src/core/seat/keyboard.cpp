@@ -70,12 +70,20 @@ void wf_keyboard::reload_input_options()
 {
     auto ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
+    /* Copy memory to stack, so that .c_str() is valid */
+    std::string rules   = this->rules;
+    std::string model   = this->model;
+    std::string layout  = this->layout;
+    std::string variant = this->variant;
+    std::string options = this->options;
+
+
     xkb_rule_names names;
-    names.rules   = ((std::string)rules).c_str();
-    names.model   = ((std::string)model).c_str();
-    names.layout  = ((std::string)layout).c_str();
-    names.variant = ((std::string)variant).c_str();
-    names.options = ((std::string)options).c_str();
+    names.rules   = rules.c_str();
+    names.model   = model.c_str();
+    names.layout  = layout.c_str();
+    names.variant = variant.c_str();
+    names.options = options.c_str();
     auto keymap = xkb_map_new_from_names(ctx, &names,
         XKB_KEYMAP_COMPILE_NO_FLAGS);
 

@@ -29,16 +29,14 @@ class wayfire_resize : public wf::plugin_interface_t
     wf_geometry grabbed_geometry;
 
     uint32_t edges;
+    wf::option_wrapper_t<wf::buttonbinding_t> button{"resize/activate"};
 
     public:
-    void init(wayfire_config *config)
+    void init() override
     {
         grab_interface->name = "resize";
         grab_interface->capabilities =
             wf::CAPABILITY_GRAB_INPUT | wf::CAPABILITY_MANAGE_DESKTOP;
-
-        auto button = config->get_section("resize")
-            ->get_option("activate", "<super> BTN_RIGHT");
 
         activate_binding = [=] (uint32_t, int, int)
         {
@@ -65,14 +63,16 @@ class wayfire_resize : public wf::plugin_interface_t
         };
 
         output->add_button(button, &activate_binding);
-        output->add_touch(new_static_option("<super> <shift>"), &touch_activate_binding);
+        output->add_touch(
+            wf::create_option_string<wf::keybinding_t>("<super> <shift>"),
+            &touch_activate_binding);
 
         grab_interface->callbacks.pointer.button = [=] (uint32_t b, uint32_t state)
         {
             if (state == WLR_BUTTON_RELEASED && was_client_request && b == BTN_LEFT)
                 return input_pressed(state);
 
-            if (b != button->as_cached_button().button)
+            if (b != wf::buttonbinding_t(button).get_button())
                 return;
 
             input_pressed(state);
@@ -273,7 +273,7 @@ class wayfire_resize : public wf::plugin_interface_t
         view->resize(width, height);
     }
 
-    void fini()
+    void fini() override
     {
         if (grab_interface->is_grabbed())
             input_pressed(WLR_BUTTON_RELEASED);

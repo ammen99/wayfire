@@ -8,11 +8,12 @@ class wayfire_place_window : public wf::plugin_interface_t
 {
     wf::signal_callback_t created_cb;
     wf::signal_callback_t workarea_changed_cb;
-    wf_option placement_mode;
+    wf::option_wrapper_t<std::string> placement_mode{"place/mode"};
+
     int cascade_x, cascade_y;
 
     public:
-    void init(wayfire_config *config)
+    void init() override
     {
         auto workarea = output->workspace->get_workarea();
         cascade_x = workarea.x;
@@ -31,8 +32,8 @@ class wayfire_place_window : public wf::plugin_interface_t
 
             ev->is_positioned = true;
             auto workarea = output->workspace->get_workarea();
-            auto mode = placement_mode->as_string();
 
+            std::string mode = placement_mode;
             if (mode == "cascade")
                 cascade(view, workarea);
             else if (mode == "random")
@@ -49,9 +50,6 @@ class wayfire_place_window : public wf::plugin_interface_t
             if (cascade_y < workarea.y || cascade_y > workarea.y + workarea.height)
                 cascade_y = workarea.y;
         };
-
-        auto section = config->get_section("place");
-        placement_mode = section->get_option("mode", "center");
 
         output->connect_signal("reserved-workarea", &workarea_changed_cb);
         output->connect_signal("map-view", &created_cb);
@@ -106,7 +104,7 @@ class wayfire_place_window : public wf::plugin_interface_t
         view->move(window.x, window.y);
     }
 
-    void fini()
+    void fini() override
     {
         output->disconnect_signal("reserved-workarea", &workarea_changed_cb);
         output->disconnect_signal("map-view", &created_cb);

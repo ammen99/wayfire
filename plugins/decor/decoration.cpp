@@ -8,17 +8,13 @@
 #include "deco-subsurface.hpp"
 class wayfire_decoration : public wf::plugin_interface_t
 {
-    wf_option font;
     wf::signal_callback_t view_created;
 
-    public:
-    void init(wayfire_config *config)
+  public:
+    void init() override
     {
         grab_interface->name = "simple-decoration";
         grab_interface->capabilities = wf::CAPABILITY_VIEW_DECORATOR;
-
-        font = config->get_section("decoration")->get_option("font", "serif");
-
         view_created = [=] (wf::signal_data_t *data)
         {
             new_view(get_signaled_view(data));
@@ -34,7 +30,7 @@ class wayfire_decoration : public wf::plugin_interface_t
         {
             if (output->activate_plugin(grab_interface))
             {
-                init_view(view, font);
+                init_view(view);
                 idle_deactivate.run_once([this] () {
                     output->deactivate_plugin(grab_interface);
                 });
@@ -42,7 +38,7 @@ class wayfire_decoration : public wf::plugin_interface_t
         }
     }
 
-    void fini()
+    void fini() override
     {
         for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
             view->set_decoration(nullptr);

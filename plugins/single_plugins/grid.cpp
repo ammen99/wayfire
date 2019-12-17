@@ -9,7 +9,7 @@
 #include <cmath>
 #include <linux/input-event-codes.h>
 #include "signal-definitions.hpp"
-#include <animation.hpp>
+#include "../common/geometry-animation.hpp"
 
 #include "snap_signal.hpp"
 #include "../wobbly/wobbly-signal.hpp"
@@ -23,7 +23,6 @@ const std::string grid_view_id = "grid-view";
 
 class wayfire_grid_view_cdata : public wf::custom_data_t
 {
-    wf_duration duration;
     bool is_active = true;
 
     wayfire_view view;
@@ -32,21 +31,21 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
     wf::signal_callback_t unmapped;
 
     int32_t tiled_edges = -1;
-    wf_geometry target, initial;
     const wf::plugin_grab_interface_uptr& iface;
-    wf_option animation_type;
+
+    wf::option_wrapper_t<std::string> animation_type{"grid/type"};
+    wf::option_wrapper_t<int> animation_duration{"grid/duration"};
+    wf::geometry_animation_t animation{animation_duration};
 
     public:
 
     wayfire_grid_view_cdata(wayfire_view view,
-        const wf::plugin_grab_interface_uptr& _iface,
-        wf_option animation_type, wf_option animation_duration)
+        const wf::plugin_grab_interface_uptr& _iface)
         : iface(_iface)
     {
         this->view = view;
         this->output = view->get_output();
-        this->animation_type = animation_type;
-        duration = wf_duration(animation_duration);
+        this->animation = wf::geometry_animation_t{animation_duration};
 
         if (!view->get_output()->activate_plugin(iface))
         {
@@ -77,8 +76,8 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
 
     void adjust_target_geometry(wf_geometry geometry, int32_t target_edges)
     {
-        target = geometry;
-        initial = view->get_wm_geometry();
+        animation.set_start(view->get_wm_geometry());
+        animation.set_end(geometry);
 
         /* Restore tiled edges if we don't need to set something special when
          * grid is ready */
@@ -88,7 +87,7 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
             this->tiled_edges = target_edges;
         }
 
-        auto type = animation_type->as_string();
+        std::string type = animation_type;
         if (view->get_transformer("wobbly") || !is_active)
             type = "wobbly";
 
@@ -112,7 +111,7 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
         view->set_tiled(wf::TILED_EDGES_ALL);
         view->set_moving(1);
         view->set_resizing(1);
-        duration.start();
+        animation.start();
     }
 
     void set_end_state(wf_geometry geometry, int32_t edges)
@@ -124,21 +123,16 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
 
     void adjust_geometry()
     {
-        if (!duration.running())
+        if (!animation.running())
         {
-            set_end_state(target, tiled_edges);
+            set_end_state(animation, tiled_edges);
             view->set_moving(0);
             view->set_resizing(0);
 
             return destroy();
         }
 
-        int cx = duration.progress(initial.x, target.x);
-        int cy = duration.progress(initial.y, target.y);
-        int cw = duration.progress(initial.width, target.width);
-        int ch = duration.progress(initial.height, target.height);
-
-        view->set_geometry({cx, cy, cw, ch});
+        view->set_geometry((wf_geometry) animation);
     }
 
     ~wayfire_grid_view_cdata()
@@ -161,13 +155,12 @@ class wf_grid_slot_data : public wf::custom_data_t
 };
 
 nonstd::observer_ptr<wayfire_grid_view_cdata> ensure_grid_view(wayfire_view view,
-        const wf::plugin_grab_interface_uptr& iface, wf_option animation_type,
-        wf_option animation_duration)
+        const wf::plugin_grab_interface_uptr& iface)
 {
     if (!view->has_data<wayfire_grid_view_cdata>())
     {
-        view->store_data(std::make_unique<wayfire_grid_view_cdata>
-            (view, iface, animation_type, animation_duration));
+        view->store_data(
+            std::make_unique<wayfire_grid_view_cdata> (view, iface));
     }
 
     return view->get_data<wayfire_grid_view_cdata> ();
@@ -217,26 +210,9 @@ static uint32_t get_slot_from_tiled_edges(uint32_t edges)
 class wayfire_grid : public wf::plugin_interface_t
 {
     std::vector<std::string> slots = {"unused", "bl", "b", "br", "l", "c", "r", "tl", "t", "tr"};
-    std::vector<std::string> default_keys = {
-        "none",
-        "<alt> <ctrl> KEY_KP1",
-        "<alt> <ctrl> KEY_KP2",
-        "<alt> <ctrl> KEY_KP3",
-        "<alt> <ctrl> KEY_KP4",
-        "<alt> <ctrl> KEY_KP5",
-        "<alt> <ctrl> KEY_KP6",
-        "<alt> <ctrl> KEY_KP7",
-        "<alt> <ctrl> KEY_KP8",
-        "<alt> <ctrl> KEY_KP9",
-    };
     activator_callback bindings[10];
-    wf_option keys[10];
-
-    wf_option animation_duration, animation_type;
-
-    wf_option restore_opt;
-    std::string restore_opt_str;
-    const std::string restore_opt_default = "toggle";
+    wf::option_wrapper_t<wf::activatorbinding_t> keys[10];
+    wf::option_wrapper_t<wf::activatorbinding_t> restore_opt{"grid/restore"};
 
     activator_callback restore = [=] (wf_activator_source, uint32_t)
     {
@@ -246,35 +222,22 @@ class wayfire_grid : public wf::plugin_interface_t
         view->tile_request(0);
         return true;
     };
-    wf_option_callback restore_opt_changed = [=] ()
-    {
-        output->rem_binding(&restore);
-        restore_opt_str = restore_opt->as_string();
-        if (restore_opt_str != restore_opt_default)
-            output->add_activator(restore_opt, &restore);
-    };
 
     nonstd::observer_ptr<wayfire_grid_view_cdata>
         ensure_grid_view(wayfire_view view)
     {
-        return ::ensure_grid_view(view, grab_interface,
-            animation_type, animation_duration);
+        return ::ensure_grid_view(view, grab_interface);
     }
 
     public:
-    void init(wayfire_config *config)
+    void init() override
     {
         grab_interface->name = "grid";
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
 
-        auto section = config->get_section("grid");
-        animation_duration = section->get_option("duration", "300");
-        animation_type = section->get_option("type", "simple");
-
         for (int i = 1; i < 10; i++)
         {
-            keys[i] = section->get_option("slot_" + slots[i], default_keys[i]);
-
+            keys[i].load_option("grid/slot_" + slots[i]);
             bindings[i] = [=] (wf_activator_source, uint32_t)
             {
                 auto view = output->get_active_view();
@@ -288,11 +251,6 @@ class wayfire_grid : public wf::plugin_interface_t
 
             output->add_activator(keys[i], &bindings[i]);
         }
-
-        restore_opt = section->get_option("restore", restore_opt_default);
-        restore_opt_str = restore_opt->as_string();
-        restore_opt_changed();
-        restore_opt->add_updated_handler(&restore_opt_changed);
 
         output->connect_signal("reserved-workarea", &on_workarea_changed);
         output->connect_signal("view-snap", &on_snap_signal);
@@ -427,7 +385,7 @@ class wayfire_grid : public wf::plugin_interface_t
             data->desired_size, -1);
     };
 
-    void fini()
+    void fini() override
     {
         for (int i = 1; i < 10; i++)
             output->rem_binding(&bindings[i]);

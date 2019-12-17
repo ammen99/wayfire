@@ -12,31 +12,18 @@
 
 class wayfire_fast_switcher : public wf::plugin_interface_t
 {
-    key_callback init_binding;
-    wf_option activate_key;
-
-    wf::signal_callback_t destroyed;
-
+    wf::option_wrapper_t<wf::keybinding_t> activate_key{"fast-switcher/activate"};
     size_t current_view_index;
     std::vector<wayfire_view> views; // all views on current viewport
 
     bool active = false;
 
     public:
-    void init(wayfire_config *config)
+    void init() override
     {
         grab_interface->name = "fast-switcher";
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
-
-        auto section = config->get_section("fast-switcher");
-
-        activate_key = section->get_option("activate", "<alt> KEY_TAB");
-        init_binding = [=] (uint32_t key)
-        {
-            return fast_switch();
-        };
-
-        output->add_key(activate_key, &init_binding);
+        output->add_key(activate_key, &fast_switch_start);
 
         using namespace std::placeholders;
         grab_interface->callbacks.keyboard.key = std::bind(std::mem_fn(&wayfire_fast_switcher::handle_key),
@@ -49,16 +36,13 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         {
             switch_terminate();
         };
-
-        destroyed = [=] (wf::signal_data_t *data)
-        {
-            cleanup_view(get_signaled_view(data));
-        };
     }
 
     void handle_mod(uint32_t mod, uint32_t st)
     {
-        bool mod_released = (mod == activate_key->as_cached_key().mod && st == WLR_KEY_RELEASED);
+        bool mod_released =
+            (mod == activate_key.raw_option->get_value().get_modifiers() &&
+             st == WLR_KEY_RELEASED);
 
         if (mod_released)
             switch_terminate();
@@ -96,8 +80,10 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         }
     }
 
-    void cleanup_view(wayfire_view view)
+    wf::signal_callback_t cleanup_view = [=] (wf::signal_data_t *data)
     {
+        auto view = get_signaled_view(data);
+
         size_t i = 0;
         for (; i < views.size() && views[i] != view; i++);
         if (i == views.size())
@@ -117,7 +103,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
                 (current_view_index + views.size() - 1) % views.size();
             view_chosen(current_view_index, true);
         }
-    }
+    };
 
     const std::string transformer_name = "fast-switcher";
 
@@ -135,7 +121,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         view->damage();
     }
 
-    bool fast_switch()
+    key_callback fast_switch_start = [=] (uint32_t)
     {
         if (active)
             return false;
@@ -161,11 +147,11 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         grab_interface->grab();
         switch_next();
 
-        output->connect_signal("view-disappeared", &destroyed);
-        output->connect_signal("detach-view", &destroyed);
+        output->connect_signal("view-disappeared", &cleanup_view);
+        output->connect_signal("detach-view", &cleanup_view);
 
         return true;
-    }
+    };
 
     void switch_terminate()
     {
@@ -178,8 +164,8 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
 
         active = false;
 
-        output->disconnect_signal("view-disappeared", &destroyed);
-        output->disconnect_signal("detach-view", &destroyed);
+        output->disconnect_signal("view-disappeared", &cleanup_view);
+        output->disconnect_signal("detach-view", &cleanup_view);
     }
 
     void switch_next()
@@ -191,12 +177,12 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         view_chosen(current_view_index, true);
     }
 
-    void fini()
+    void fini() override
     {
         if (active)
             switch_terminate();
 
-        output->rem_binding(&init_binding);
+        output->rem_binding(&fast_switch_start);
     }
 };
 

@@ -11,7 +11,7 @@
 #include <render-manager.hpp>
 #include <workspace-manager.hpp>
 
-#include <animation.hpp>
+#include <wayfire/util/duration.hpp>
 #include <nonstd/reverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -21,15 +21,20 @@
 
 constexpr const char* switcher_transformer = "switcher-3d";
 constexpr const char* switcher_transformer_background = "switcher-3d";
-
 constexpr float background_dim_factor = 0.6;
 
-struct SwitcherPaintAttribs
+using namespace wf::animation;
+class SwitcherPaintAttribs
 {
-    wf_transition scale_x{1, 1}, scale_y{1, 1};
-    wf_transition off_x{0, 0}, off_y{0, 0}, off_z{0, 0};
-    wf_transition rotation{0, 0};
-    wf_transition alpha{1, 1};
+  public:
+    SwitcherPaintAttribs(const duration_t& duration)
+        : scale_x(duration, 1, 1), scale_y(duration, 1, 1),
+        off_x(duration, 0, 0), off_y(duration, 0, 0), off_z(duration, 0, 0),
+        rotation(duration, 0, 0), alpha(duration, 1, 1) {}
+
+    timed_transition_t scale_x, scale_y;
+    timed_transition_t off_x, off_y, off_z;
+    timed_transition_t rotation, alpha;
 };
 
 enum SwitcherViewPosition
@@ -51,95 +56,74 @@ struct SwitcherView
     SwitcherPaintAttribs attribs;
 
     int position;
+    SwitcherView(duration_t& duration) : attribs(duration) {}
 
     /* Make animation start values the current progress of duration */
-    void refresh_start(wf_duration& duration)
+    void refresh_start()
     {
-        attribs.off_x.start = duration.progress(attribs.off_x);
-        attribs.off_y.start = duration.progress(attribs.off_y);
-        attribs.off_z.start = duration.progress(attribs.off_z);
+        for_each([] (timed_transition_t& t) { t.restart_same_end(); });
+    }
 
-        attribs.scale_x.start = duration.progress(attribs.scale_x);
-        attribs.scale_y.start = duration.progress(attribs.scale_y);
+    void to_end()
+    {
+        for_each([] (timed_transition_t& t) { t.set(t.end, t.end); });
+    }
 
-        attribs.alpha.start = duration.progress(attribs.alpha);
-        attribs.rotation.start = duration.progress(attribs.rotation);
+  private:
+    void for_each(std::function<void(timed_transition_t& t)> call)
+    {
+        call(attribs.off_x);
+        call(attribs.off_y);
+        call(attribs.off_z);
+
+        call(attribs.scale_x);
+        call(attribs.scale_y);
+
+        call(attribs.alpha);
+        call(attribs.rotation);
     }
 };
 
 class WayfireSwitcher : public wf::plugin_interface_t
 {
-    wf_duration duration;
-    wf_duration background_dim_duration;
+    wf::option_wrapper_t<double> view_thumbnail_scale{
+        "switcher/view_thumbnail_scale"};
+    wf::option_wrapper_t<double> touch_sensitivity{"switcher/touch_sensitivity"};
+    wf::option_wrapper_t<int> speed{"switcher/speed"};
 
-    wf_option view_thumbnail_scale, touch_sensitivity;
+    duration_t duration{speed};
+    duration_t background_dim_duration{speed};
+    timed_transition_t background_dim{background_dim_duration};
 
     /* If a view comes before another in this list, it is on top of it */
     std::vector<SwitcherView> views;
 
     // the modifiers which were used to activate switcher
     uint32_t activating_modifiers = 0;
-    key_callback next_view_binding, prev_view_binding;
-    gesture_callback touch_activate;
-
-    wf::effect_hook_t damage;
-    wf::render_hook_t switcher_renderer;
-
-    wf::signal_callback_t view_removed;
-
     bool active = false;
     public:
 
-    void init(wayfire_config *config)
+    void init() override
     {
         grab_interface->name = "switcher";
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
-        switcher_renderer = [=] (const wf_framebuffer& buffer) { render_output(buffer); };
-
-        damage = [=] ()
-        {
-            output->render->damage_whole();
-        };
-
-        auto section = config->get_section("switcher");
-
-        view_thumbnail_scale = section->get_option("view_thumbnail_scale", "1.0");
-        touch_sensitivity = section->get_option("touch_sensitivity", "1.0");
-
-        auto speed = section->get_option("speed", "500");
-        duration = wf_duration{speed, wf_animation::circle};
-        background_dim_duration = wf_duration{speed, wf_animation::circle};
-
-        next_view_binding = [=] (uint32_t) { return handle_switch_request(-1); };
-        prev_view_binding = [=] (uint32_t) { return handle_switch_request(1); };
-
-        output->add_key(section->get_option("next_view", "<super> KEY_TAB"),
+        output->add_key(
+            wf::option_wrapper_t<wf::keybinding_t>{"switcher/next_view"},
             &next_view_binding);
-        output->add_key(section->get_option("prev_view", "<super> <shift> KEY_TAB"),
+        output->add_key(
+            wf::option_wrapper_t<wf::keybinding_t>{"switcher/prev_view"},
             &prev_view_binding);
+        output->add_gesture(
+            wf::option_wrapper_t<wf::touchgesture_t>{"switcher/gesture_toggle"},
+            &touch_activate);
+        output->connect_signal("detach-view", &view_removed);
 
         grab_interface->callbacks.keyboard.mod = [=] (uint32_t mod, uint32_t state)
         {
             if (state == WLR_KEY_RELEASED && (mod & activating_modifiers))
                 handle_done();
         };
-
-        touch_activate = [=] (wf_touch_gesture*) {
-            if (!active)
-            {
-                /* We set it to -1 to indicate that the user hasn't done anything yet */
-                touch_total_dx = -1;
-                return handle_switch_request(0);
-            } else {
-                handle_done();
-            }
-
-            return true;
-        };
-
-        auto gesture_activator = section->get_option("gesture_toggle", "edge-swipe down 3");
-        output->add_gesture(gesture_activator, &touch_activate);
 
         grab_interface->callbacks.touch.down = [=] (int id, int x, int y) {
             if (id == 0) handle_touch_down(x, y);
@@ -154,13 +138,43 @@ class WayfireSwitcher : public wf::plugin_interface_t
         };
 
         grab_interface->callbacks.cancel = [=] () {deinit_switcher();};
-
-        view_removed = [=] (wf::signal_data_t *data)
-        {
-            handle_view_removed(get_signaled_view(data));
-        };
-        output->connect_signal("detach-view", &view_removed);
     }
+
+    key_callback next_view_binding = [=] (uint32_t)
+    {
+        return handle_switch_request(-1);
+    };
+
+    key_callback prev_view_binding = [=] (uint32_t)
+    {
+        return handle_switch_request(1);
+    };
+
+    gesture_callback touch_activate = [=] (wf::touchgesture_t*)
+    {
+        if (!active)
+        {
+            /* We set it to -1 to indicate that the user hasn't done anything yet */
+            touch_total_dx = -1;
+            return handle_switch_request(0);
+        } else {
+            handle_done();
+        }
+
+        return true;
+    };
+
+    wf::effect_hook_t damage = [=] ()
+    {
+        output->render->damage_whole();
+    };
+
+    wf::render_hook_t switcher_renderer;
+    wf::signal_callback_t view_removed = [=] (wf::signal_data_t *data)
+    {
+        handle_view_removed(get_signaled_view(data));
+    };
+
 
     void handle_view_removed(wayfire_view view)
     {
@@ -233,9 +247,7 @@ class WayfireSwitcher : public wf::plugin_interface_t
 
     void handle_touch_motion(int x, int)
     {
-        const float TOUCH_SENSITIVITY = 0.05 *
-            touch_sensitivity->as_cached_double();
-
+        const float TOUCH_SENSITIVITY = 0.05 * touch_sensitivity;
         auto og = output->get_relative_geometry();
 
         float dx = touch_sx - x;
@@ -313,15 +325,9 @@ class WayfireSwitcher : public wf::plugin_interface_t
      * @param dir -1 for left, 1 for right */
     void move(SwitcherView& sv, int dir)
     {
-        sv.attribs.off_x = {
-            duration.progress(sv.attribs.off_x),
-            sv.attribs.off_x.end + get_center_offset() * dir
-        };
-
-        sv.attribs.off_y = {
-            duration.progress(sv.attribs.off_y),
-            sv.attribs.off_y.end
-        };
+        sv.attribs.off_x.restart_with_end(
+            sv.attribs.off_x.end + get_center_offset() * dir);
+        sv.attribs.off_y.restart_same_end();
 
         float z_sign = 0;
         if (sv.position == SWITCHER_POSITION_CENTER)
@@ -338,32 +344,22 @@ class WayfireSwitcher : public wf::plugin_interface_t
             z_sign = -1;
         }
 
-        sv.attribs.off_z = {
-            duration.progress(sv.attribs.off_z),
-            sv.attribs.off_z.end + get_z_offset() * z_sign
-        };
+        sv.attribs.off_z.restart_with_end(
+            sv.attribs.off_z.end + get_z_offset() * z_sign);
 
         /* scale views that aren't in the center */
-        sv.attribs.scale_x = {
-            duration.progress(sv.attribs.scale_x),
-            sv.attribs.scale_x.end * std::pow(get_back_scale(), z_sign)
-        };
+        sv.attribs.scale_x.restart_with_end(
+            sv.attribs.scale_x.end * std::pow(get_back_scale(), z_sign));
 
-        sv.attribs.scale_y = {
-            duration.progress(sv.attribs.scale_y),
-            sv.attribs.scale_y.end * std::pow(get_back_scale(), z_sign)
-        };
+        sv.attribs.scale_y.restart_with_end(
+            sv.attribs.scale_y.end * std::pow(get_back_scale(), z_sign));
 
-        sv.attribs.rotation = {
-            duration.progress(sv.attribs.rotation),
-            sv.attribs.rotation.end + get_rotation() * dir
-        };
+        sv.attribs.rotation.restart_with_end(
+            sv.attribs.rotation.end + get_rotation() * dir);
 
         sv.position += dir;
-        sv.attribs.alpha = {
-            duration.progress(sv.attribs.alpha),
-            view_expired(sv.position) ? 0.3 : 1.0
-        };
+        sv.attribs.alpha.restart_with_end(
+            view_expired(sv.position) ? 0.3 : 1.0);
     }
 
     /* Calculate how much a view should be scaled to fit into the slots */
@@ -380,7 +376,7 @@ class WayfireSwitcher : public wf::plugin_interface_t
 
         float needed_exact = std::min(max_width / bbox.width, max_height / bbox.height);
         // don't scale down if the view is already small enough
-        return std::min(needed_exact, 1.0f) * view_thumbnail_scale->as_cached_double();
+        return std::min(needed_exact, 1.0f) * view_thumbnail_scale;
     }
 
     /* Calculate alpha for the view when switcher is inactive. */
@@ -402,13 +398,13 @@ class WayfireSwitcher : public wf::plugin_interface_t
         float dx = (og.width / 2 - bbox.width / 2) - bbox.x;
         float dy = bbox.y - (og.height / 2 - bbox.height / 2);
 
-        sv.attribs.off_x = {0, dx};
-        sv.attribs.off_y = {0, dy};
+        sv.attribs.off_x.set(0, dx);
+        sv.attribs.off_y.set(0, dy);
 
         float scale = calculate_scaling_factor(bbox);
-        sv.attribs.scale_x = {1, scale};
-        sv.attribs.scale_y = {1, scale};
-        sv.attribs.alpha = {get_view_normal_alpha(sv.view), 1.0};
+        sv.attribs.scale_x.set(1, scale);
+        sv.attribs.scale_y.set(1, scale);
+        sv.attribs.alpha.set(get_view_normal_alpha(sv.view), 1.0);
     }
 
     /* Position the view, starting from untransformed position */
@@ -462,7 +458,8 @@ class WayfireSwitcher : public wf::plugin_interface_t
         views.clear();
 
         duration.start();
-        background_dim_duration.start(1, background_dim_factor);
+        background_dim.set(1, background_dim_factor);
+        background_dim_duration.start();
 
         auto ws_views = get_workspace_views();
         for (auto v : ws_views)
@@ -494,16 +491,15 @@ class WayfireSwitcher : public wf::plugin_interface_t
 
         for (auto& sv : views)
         {
-            sv.attribs.off_x = {duration.progress(sv.attribs.off_x), 0};
-            sv.attribs.off_y = {duration.progress(sv.attribs.off_y), 0};
-            sv.attribs.off_z = {duration.progress(sv.attribs.off_z), 0};
+            sv.attribs.off_x.restart_with_end(0);
+            sv.attribs.off_y.restart_with_end(0);
+            sv.attribs.off_z.restart_with_end(0);
 
-            sv.attribs.scale_x = {duration.progress(sv.attribs.scale_x), 1.0};
-            sv.attribs.scale_y = {duration.progress(sv.attribs.scale_y), 1.0};
+            sv.attribs.scale_x.restart_with_end(1.0);
+            sv.attribs.scale_y.restart_with_end(1.0);
 
-            sv.attribs.rotation = {duration.progress(sv.attribs.rotation), 0};
-            sv.attribs.alpha    = {duration.progress(sv.attribs.alpha),
-                get_view_normal_alpha(sv.view)};
+            sv.attribs.rotation.restart_with_end(0);
+            sv.attribs.alpha.restart_with_end(get_view_normal_alpha(sv.view));
 
             if (sv.view == fading_view)
             {
@@ -513,7 +509,8 @@ class WayfireSwitcher : public wf::plugin_interface_t
             }
         }
 
-        background_dim_duration.start(background_dim_duration.progress(), 1);
+        background_dim.restart_with_end(1);
+        background_dim_duration.start();
         duration.start();
         active = false;
 
@@ -569,7 +566,10 @@ class WayfireSwitcher : public wf::plugin_interface_t
                 switcher_transformer);
         }
 
-        return SwitcherView{view, {}, SWITCHER_POSITION_CENTER};
+        SwitcherView sw{duration};
+        sw.view = view;
+        sw.position = SWITCHER_POSITION_CENTER;
+        return sw;
     }
 
     void render_view(const SwitcherView& sv, const wf_framebuffer& buffer)
@@ -578,23 +578,17 @@ class WayfireSwitcher : public wf::plugin_interface_t
             sv.view->get_transformer(switcher_transformer).get());
         assert(transform);
 
-        transform->translation = glm::translate(
-            glm::mat4(1.0), {
-                duration.progress(sv.attribs.off_x),
-                duration.progress(sv.attribs.off_y),
-                duration.progress(sv.attribs.off_z)});
+        transform->translation = glm::translate(glm::mat4(1.0),
+            { (double)sv.attribs.off_x, (double)sv.attribs.off_y,
+                (double)sv.attribs.off_z});
 
-        transform->scaling = glm::scale(
-            glm::mat4(1.0), {
-                duration.progress(sv.attribs.scale_x),
-                duration.progress(sv.attribs.scale_y),
-                1.0});
+        transform->scaling = glm::scale(glm::mat4(1.0),
+            {(double)sv.attribs.scale_x, (double)sv.attribs.scale_y, 1.0});
 
-        transform->rotation = glm::rotate(
-            glm::mat4(1.0), (float)duration.progress(sv.attribs.rotation),
-            {0.0, 1.0, 0.0});
+        transform->rotation = glm::rotate(glm::mat4(1.0),
+            (float)sv.attribs.rotation, {0.0, 1.0, 0.0});
 
-        transform->color[3] = duration.progress(sv.attribs.alpha);
+        transform->color[3] = sv.attribs.alpha;
         sv.view->render_transformed(output->render->get_target_framebuffer(),
             output->render->get_target_framebuffer().get_damage_region());
 
@@ -604,13 +598,13 @@ class WayfireSwitcher : public wf::plugin_interface_t
         transform->color[3] = 1.0;
     }
 
-    void render_output(const wf_framebuffer& fb)
+    wf::render_hook_t switcher_rendererer = [=] (const wf_framebuffer& fb)
     {
         OpenGL::render_begin(fb);
         OpenGL::clear({0, 0, 0, 1});
         OpenGL::render_end();
 
-        dim_background(background_dim_duration.progress());
+        dim_background(background_dim);
         for (auto view : get_background_views())
             view->render_transformed(fb, fb.get_damage_region());
 
@@ -628,7 +622,7 @@ class WayfireSwitcher : public wf::plugin_interface_t
             if (!active)
                 deinit_switcher();
         }
-    }
+    };
 
     /* delete all views matching the given criteria, skipping the first "start" views */
     void cleanup_views(std::function<bool(SwitcherView&)> criteria)
@@ -704,7 +698,7 @@ class WayfireSwitcher : public wf::plugin_interface_t
             } else if (!view_expired(sv.position))
             {
                 /* Make sure animations start from where we are now */
-                sv.refresh_start(duration);
+                sv.refresh_start();
             }
 
             count_left += (sv.position == SWITCHER_POSITION_LEFT);
@@ -784,11 +778,9 @@ class WayfireSwitcher : public wf::plugin_interface_t
         arrange_view(sv, empty_slot);
 
         /* directly show it on the target position */
-        wf_duration immediate = new_static_option("0");
-        sv.refresh_start(immediate);
-        sv.attribs.alpha = {0, 1};
-
-        views.push_back(sv);
+        sv.to_end();
+        sv.attribs.alpha.set(0, 1);
+        views.push_back(std::move(sv));
     }
 
     // TODO:!!! fini

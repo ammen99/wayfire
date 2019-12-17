@@ -30,13 +30,13 @@ class singleton_plugin_t : public plugin_interface_t
 {
     using CustomDataT = detail::singleton_data_t<Plugin>;
   public:
-    void init(wayfire_config *config)
+    void init() override
     {
         auto instance = wf::get_core().get_data_safe<CustomDataT> ();
         instance->ref();
     }
 
-    void fini()
+    void fini() override
     {
         assert(wf::get_core().has_data<CustomDataT>());
         auto instance = wf::get_core().get_data_safe<CustomDataT> ();

@@ -10,10 +10,10 @@
 #include <queue>
 #include <linux/input.h>
 #include <utility>
-#include <animation.hpp>
 #include <set>
 #include "view-change-viewport-signal.hpp"
 #include "../wobbly/wobbly-signal.hpp"
+#include <wayfire/util/duration.hpp>
 
 class vswitch_view_transformer : public wf_2D_view
 {
@@ -24,6 +24,15 @@ class vswitch_view_transformer : public wf_2D_view
 };
 const std::string vswitch_view_transformer::name = "vswitch-transformer";
 
+using namespace wf::animation;
+class vswitch_animation_t : public duration_t
+{
+  public:
+    using duration_t::duration_t;
+    timed_transition_t dx{*this};
+    timed_transition_t dy{*this};
+};
+
 class vswitch : public wf::plugin_interface_t
 {
     private:
@@ -31,12 +40,8 @@ class vswitch : public wf::plugin_interface_t
         activator_callback callback_win_left, callback_win_right, callback_win_up, callback_win_down;
 
         gesture_callback gesture_cb;
-
-        wf_duration duration;
-        wf_transition dx, dy;
+        vswitch_animation_t animation;
         wayfire_view grabbed_view = nullptr;
-
-        wf_option animation_duration;
 
     public:
     wayfire_view get_top_view()
@@ -48,7 +53,7 @@ class vswitch : public wf::plugin_interface_t
         return views.empty() ? nullptr : views[0];
     }
 
-    void init(wayfire_config *config)
+    void init()
     {
         grab_interface->name = "vswitch";
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
@@ -64,17 +69,15 @@ class vswitch : public wf::plugin_interface_t
         callback_win_up    = [=] (wf_activator_source, uint32_t) { return add_direction( 0, -1, get_top_view()); };
         callback_win_down  = [=] (wf_activator_source, uint32_t) { return add_direction( 0,  1, get_top_view()); };
 
-        auto section   = config->get_section("vswitch");
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_left{"vswitch/binding_left"};
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_right{"vswitch/binding_right"};
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_up{"vswitch/binding_up"};
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_down{"vswitch/binding_down"};
 
-        auto binding_left  = section->get_option("binding_left",  "<super> KEY_LEFT  | swipe right 4");
-        auto binding_right = section->get_option("binding_right", "<super> KEY_RIGHT | swipe left 4");
-        auto binding_up    = section->get_option("binding_up",    "<super> KEY_UP    | swipe down 4");
-        auto binding_down  = section->get_option("binding_down",  "<super> KEY_DOWN  | swipe up 4");
-
-        auto binding_win_left  = section->get_option("binding_win_left",  "<super> <shift> KEY_LEFT");
-        auto binding_win_right = section->get_option("binding_win_right", "<super> <shift> KEY_RIGHT");
-        auto binding_win_up    = section->get_option("binding_win_up",    "<super> <shift> KEY_UP");
-        auto binding_win_down  = section->get_option("binding_win_down",  "<super> <shift> KEY_DOWN");
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_win_left{"vswitch/binding_win_left"};
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_win_right{"vswitch/binding_win_right"};
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_win_up{"vswitch/binding_win_up"};
+        wf::option_wrapper_t<wf::activatorbinding_t> binding_win_down{"vswitch/binding_win_down"};
 
         output->add_activator(binding_left,  &callback_left);
         output->add_activator(binding_right, &callback_right);
@@ -86,9 +89,8 @@ class vswitch : public wf::plugin_interface_t
         output->add_activator(binding_win_up,    &callback_win_up);
         output->add_activator(binding_win_down,  &callback_win_down);
 
-        animation_duration = section->get_option("duration", "180");
-        duration = wf_duration(animation_duration);
-
+        animation = vswitch_animation_t{
+            wf::option_wrapper_t<int> {"vswitch/duration"}.raw_option};
         output->connect_signal("set-workspace-request", &on_set_workspace_request);
     }
 
@@ -115,14 +117,12 @@ class vswitch : public wf::plugin_interface_t
          * of the workspace grid */
         auto cws = output->workspace->get_current_workspace();
         auto wsize = output->workspace->get_workspace_grid_size();
-        int tvx = clamp(cws.x + dx.end + x, 0.0, wsize.width - 1.0);
-        int tvy = clamp(cws.y + dy.end + y, 0.0, wsize.height - 1.0);
+        int tvx = clamp(cws.x + animation.dx.end + x, 0.0, wsize.width - 1.0);
+        int tvy = clamp(cws.y + animation.dy.end + y, 0.0, wsize.height - 1.0);
 
-        dx = {duration.progress(dx), 1.0 * tvx - cws.x};
-        dy = {duration.progress(dy), 1.0 * tvy - cws.y};
-
-        duration.start();
-
+        animation.dx.restart_with_end(1.0 * tvx - cws.x);
+        animation.dy.restart_with_end(1.0 * tvy - cws.y);
+        animation.start();
         return true;
     }
 
@@ -167,15 +167,15 @@ class vswitch : public wf::plugin_interface_t
         output->render->add_effect(&update_animation, wf::OUTPUT_EFFECT_PRE);
         output->render->set_redraw_always();
 
-        duration.start();
-        dx = dy = {0, 0};
-
+        animation.dx.set(0, 0);
+        animation.dy.set(0, 0);
+        animation.start();
         return true;
     }
 
     wf::effect_hook_t update_animation = [=] ()
     {
-        if (!duration.running())
+        if (!animation.running())
             return stop_switch();
 
         auto screen_size = output->get_screen_size();
@@ -186,8 +186,8 @@ class vswitch : public wf::plugin_interface_t
                 view->get_transformer(vswitch_view_transformer::name).get());
 
             view->damage();
-            tr->translation_x = -duration.progress(dx) * screen_size.width;
-            tr->translation_y = -duration.progress(dy) * screen_size.height;
+            tr->translation_x = -animation.dx * screen_size.width;
+            tr->translation_y = -animation.dy * screen_size.height;
             view->damage();
         }
     };
@@ -197,8 +197,8 @@ class vswitch : public wf::plugin_interface_t
         auto cws = output->workspace->get_current_workspace();
         auto old_ws = cws;
 
-        cws.x += dx.end;
-        cws.y += dy.end;
+        cws.x += animation.dx.end;
+        cws.y += animation.dy.end;
 
         auto output_g = output->get_relative_geometry();
         output->workspace->set_workspace(cws);
@@ -206,8 +206,8 @@ class vswitch : public wf::plugin_interface_t
         if (grabbed_view)
         {
             auto wm = grabbed_view->get_wm_geometry();
-            grabbed_view->move(wm.x + dx.end * output_g.width,
-                wm.y + dy.end * output_g.height);
+            grabbed_view->move(wm.x + animation.dx.end * output_g.width,
+                wm.y + animation.dy.end * output_g.height);
 
             output->focus_view(grabbed_view);
             output->workspace->bring_to_front(grabbed_view);

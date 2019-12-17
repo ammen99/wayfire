@@ -1,12 +1,21 @@
 #include <geometry.hpp>
-#include <config.hpp>
-#include <animation.hpp>
 #include <render-manager.hpp>
 #include <workspace-manager.hpp>
 #include <compositor-view.hpp>
 
+#include "geometry-animation.hpp"
+#include <option-wrapper.hpp>
+#include <wayfire/util/duration.hpp>
+
 namespace wf
 {
+using namespace wf::animation;
+class preview_indication_animation_t : public geometry_animation_t
+{
+  public:
+    using geometry_animation_t::geometry_animation_t;
+    timed_transition_t alpha{*this};
+};
 
 /**
  * A view which can be used to show previews for different actions on the
@@ -21,15 +30,7 @@ class preview_indication_view_t : public wf::color_rect_view_t
     const wf::color_t base_border = {0.25, 0.25, 0.5, 0.8};
     const int base_border_w = 3;
 
-    wf_duration duration;
-
-    /* The animation running */
-    struct state_t
-    {
-        wf_geometry start_geometry, end_geometry;
-        wf_transition alpha;
-    } animation;
-
+    preview_indication_animation_t animation;
     bool should_close = false;
 
   public:
@@ -41,14 +42,13 @@ class preview_indication_view_t : public wf::color_rect_view_t
      *                       the output
      */
     preview_indication_view_t(wf::output_t *output, wf_geometry start_geometry)
-        : wf::color_rect_view_t()
+        : wf::color_rect_view_t(), animation(wf::create_option<int>(200))
     {
         set_output(output);
+        animation.set_start(start_geometry);
+        animation.set_end(start_geometry);
+        animation.alpha.set(0, 1);
 
-        animation.start_geometry = animation.end_geometry = start_geometry;
-        animation.alpha = {0, 1};
-
-        duration = wf_duration{new_static_option("200")};
         pre_paint = [=] () { update_animation(); };
         get_output()->render->add_effect(&pre_paint, wf::OUTPUT_EFFECT_PRE);
 
@@ -73,20 +73,12 @@ class preview_indication_view_t : public wf::color_rect_view_t
      */
     void set_target_geometry(wf_geometry target, float alpha, bool close = false)
     {
-        animation.start_geometry.x = duration.progress(
-            animation.start_geometry.x, animation.end_geometry.x);
-        animation.start_geometry.y = duration.progress(
-            animation.start_geometry.y, animation.end_geometry.y);
-        animation.start_geometry.width = duration.progress(
-            animation.start_geometry.width, animation.end_geometry.width);
-        animation.start_geometry.height = duration.progress(
-            animation.start_geometry.height, animation.end_geometry.height);
-
-        animation.alpha = {duration.progress(animation.alpha), alpha};
-
-        animation.end_geometry = target;
-        duration.start();
-
+        animation.x.restart_with_end(target.x);
+        animation.y.restart_with_end(target.y);
+        animation.width.restart_with_end(target.width);
+        animation.height.restart_with_end(target.height);
+        animation.alpha.restart_with_end(alpha);
+        animation.start();
         this->should_close = close;
     }
 
@@ -109,20 +101,11 @@ class preview_indication_view_t : public wf::color_rect_view_t
     /** Update the current state */
     void update_animation()
     {
-        wf_geometry current;
-        current.x = duration.progress(animation.start_geometry.x,
-            animation.end_geometry.x);
-        current.y = duration.progress(animation.start_geometry.y,
-            animation.end_geometry.y);
-        current.width = duration.progress(animation.start_geometry.width,
-            animation.end_geometry.width);
-        current.height = duration.progress(animation.start_geometry.height,
-            animation.end_geometry.height);
-
+        wf_geometry current = animation;
         if (current != geometry)
             set_geometry(current);
 
-        auto alpha = duration.progress(animation.alpha);
+        double alpha = animation.alpha;
         if (base_color.a * alpha != _color.a)
         {
             _color.a = alpha * base_color.a;
@@ -133,7 +116,7 @@ class preview_indication_view_t : public wf::color_rect_view_t
         }
 
         /* The end of unmap animation, just exit */
-        if (!duration.running() && should_close)
+        if (!animation.running() && should_close)
             close();
     }
 };
