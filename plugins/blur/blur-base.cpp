@@ -2,6 +2,7 @@
 #include <debug.hpp>
 #include <output.hpp>
 #include <workspace-manager.hpp>
+#include <wayfire/util/log.hpp>
 
 static const char* blur_blend_vertex_shader = R"(
 #version 100
@@ -41,18 +42,14 @@ wf_blur_base::wf_blur_base(wf::output_t *output,
     this->output = output;
     this->algorithm_name = defaults.algorithm_name;
 
-    auto section = wf::get_core().config->get_section("blur");
-    this->offset_opt = section->get_option(algorithm_name + "_offset",
-        defaults.offset);
-    this->degrade_opt = section->get_option(algorithm_name + "_degrade",
-        defaults.degrade);
-    this->iterations_opt = section->get_option(algorithm_name + "_iterations",
-        defaults.iterations);
+    this->offset_opt.load_option("blur/" + algorithm_name + "_offset");
+    this->degrade_opt.load_option("blur/" + algorithm_name + "_degrade");
+    this->iterations_opt.load_option("blur/" + algorithm_name + "_iterations");
 
     this->options_changed = [=] () { damage_all_workspaces(); };
-    this->offset_opt->add_updated_handler(&options_changed);
-    this->degrade_opt->add_updated_handler(&options_changed);
-    this->iterations_opt->add_updated_handler(&options_changed);
+    this->offset_opt.set_callback(options_changed);
+    this->degrade_opt.set_callback(options_changed);
+    this->iterations_opt.set_callback(options_changed);
 
     OpenGL::render_begin();
     blend_program = OpenGL::create_program_from_source(
@@ -69,10 +66,6 @@ wf_blur_base::wf_blur_base(wf::output_t *output,
 
 wf_blur_base::~wf_blur_base()
 {
-    this->offset_opt->rem_updated_handler(&options_changed);
-    this->degrade_opt->rem_updated_handler(&options_changed);
-    this->iterations_opt->rem_updated_handler(&options_changed);
-
     OpenGL::render_begin();
     fb[0].release();
     fb[1].release();
@@ -84,7 +77,7 @@ wf_blur_base::~wf_blur_base()
 
 int wf_blur_base::calculate_blur_radius()
 {
-    return offset_opt->as_cached_double() * degrade_opt->as_cached_int() * iterations_opt->as_cached_int();
+    return offset_opt * degrade_opt * iterations_opt;
 }
 
 void wf_blur_base::damage_all_workspaces()
@@ -128,7 +121,7 @@ wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
      * between the source and final image.
      * To make things a bit more stable, we first blit to a size which
      * is divisble by degrade */
-    int degrade = degrade_opt->as_int();
+    int degrade = degrade_opt;
     int rounded_width = std::max(1, subbox.width + subbox.width % degrade);
     int rounded_height = std::max(1, subbox.height + subbox.height % degrade);
 
@@ -150,7 +143,7 @@ wlr_box wf_blur_base::copy_region(wf_framebuffer_base& result,
 void wf_blur_base::pre_render(uint32_t src_tex, wlr_box src_box,
     const wf_region& damage, const wf_framebuffer& target_fb)
 {
-    int degrade = degrade_opt->as_int();
+    int degrade = degrade_opt;
     auto damage_box = copy_region(fb[0], target_fb, damage);
     int scaled_width = std::max(1, damage_box.width / degrade);
     int scaled_height = std::max(1, damage_box.height / degrade);
@@ -162,7 +155,7 @@ void wf_blur_base::pre_render(uint32_t src_tex, wlr_box src_box,
         std::swap(fb[0], fb[1]);
 
     /* Support iterations = 0 */
-    if (iterations_opt->as_int() == 0 && algorithm_name != "bokeh")
+    if (iterations_opt == 0 && algorithm_name != "bokeh")
     {
         int rounded_width = std::max(1, damage_box.width + damage_box.width % degrade);
         int rounded_height = std::max(1, damage_box.height + damage_box.height % degrade);

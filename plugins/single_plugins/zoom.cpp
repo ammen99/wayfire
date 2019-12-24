@@ -7,13 +7,10 @@
 
 class wayfire_zoom_screen : public wf::plugin_interface_t
 {
-
-    wf::post_hook_t hook;
     wf::option_wrapper_t<wf::keybinding_t> modifier{"zoom/modifier"};
     wf::option_wrapper_t<double> speed{"zoom/speed"};
     wf::option_wrapper_t<int> smoothing_duration{"zoom/smoothing_duration"};
-    wf::animation::duration_t animation{smoothing_duration};
-    wf::animation::timed_transition_t current_zoom{animation};
+    wf::animation::simple_animation_t progression{smoothing_duration};
     bool hook_set = false;
 
     public:
@@ -21,24 +18,26 @@ class wayfire_zoom_screen : public wf::plugin_interface_t
         {
             grab_interface->name = "zoom";
             grab_interface->capabilities = 0;
+
+            progression.set(1, 1);
+
             output->add_axis(modifier, &axis);
         }
 
         void update_zoom_target(float delta)
         {
-            float target = current_zoom.end;
+            float target = progression.end;
             target -= target * delta * speed;
             target = clamp(target, 1.0f, 50.0f);
 
-            if (target != current_zoom.end)
+            if (target != progression.end)
             {
-                current_zoom.restart_with_end(target);
-                animation.start();
+                progression.animate(target);
 
                 if (!hook_set)
                 {
                     hook_set = true;
-                    output->render->add_post(&hook);
+                    output->render->add_post(&render_hook);
                     output->render->set_redraw_always();
                 }
             }
@@ -73,9 +72,9 @@ class wayfire_zoom_screen : public wf::plugin_interface_t
             x = box.x;
             y = h - box.y;
 
-            const float scale = (current_zoom - 1) / current_zoom;
+            const float scale = (progression - 1) / progression;
 
-            const float tw = w / current_zoom, th = h / current_zoom;
+            const float tw = w / progression, th = h / progression;
             const float x1 = x * scale;
             const float y1 = y * scale;
 
@@ -86,21 +85,21 @@ class wayfire_zoom_screen : public wf::plugin_interface_t
                     GL_COLOR_BUFFER_BIT, GL_LINEAR));
             OpenGL::render_end();
 
-            if (!animation.running() && current_zoom - 1 <= 0.01)
+            if (!progression.running() && progression - 1 <= 0.01)
                 unset_hook();
         };
 
         void unset_hook()
         {
             output->render->set_redraw_always(false);
-            output->render->rem_post(&hook);
+            output->render->rem_post(&render_hook);
             hook_set = false;
         }
 
         void fini() override
         {
             if (hook_set)
-                output->render->rem_post(&hook);
+                output->render->rem_post(&render_hook);
 
             output->rem_binding(&axis);
         }

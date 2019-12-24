@@ -154,28 +154,22 @@ void render_triangles(GLuint tex, glm::mat4 mat, float *pos, float *uv, int cnt)
 
 namespace wobbly_settings
 {
-    wf_option friction, spring_k, resolution;
-
-    void init(wayfire_config *config)
-    {
-        auto section = config->get_section("wobbly");
-        friction = section->get_option("friction", "3");
-        spring_k = section->get_option("spring_k", "8");
-        resolution = section->get_option("grid_resolution", "6");
-    };
+    wf::option_wrapper_t<double> friction{"wobbly/friction"};
+    wf::option_wrapper_t<double> spring_k{"wobbly/spring_k"};
+    wf::option_wrapper_t<int> resolution{"wobbly/grid_resolution"};
 };
 
 extern "C"
 {
     double wobbly_settings_get_friction()
     {
-        return clamp(wobbly_settings::friction->as_cached_double(),
+        return clamp((double) wobbly_settings::friction,
             MINIMAL_FRICTION, MAXIMAL_FRICTION);
     }
 
     double wobbly_settings_get_spring_k()
     {
-        return clamp(wobbly_settings::spring_k->as_cached_double(),
+        return clamp((double) wobbly_settings::spring_k,
             MINIMAL_SPRING_K, MAXIMAL_SPRING_K);
     }
 }
@@ -541,8 +535,8 @@ class wf_wobbly : public wf_view_transformer_t
         model->grabbed = 0;
         model->synced = 1;
 
-        model->x_cells = wobbly_settings::resolution->as_cached_int();
-        model->y_cells = wobbly_settings::resolution->as_cached_int();
+        model->x_cells = wobbly_settings::resolution;
+        model->y_cells = wobbly_settings::resolution;
 
         model->v = NULL;
         model->uv = NULL;
@@ -760,9 +754,8 @@ class wayfire_wobbly : public wf::plugin_interface_t
 {
     wf::signal_callback_t wobbly_changed;
     public:
-        void init(wayfire_config *config)
+        void init() override
         {
-            wobbly_settings::init(config);
             grab_interface->capabilities = 0;
             grab_interface->name = "wobbly";
 
@@ -807,7 +800,7 @@ class wayfire_wobbly : public wf::plugin_interface_t
                 wobbly->end_grab();
         }
 
-        void fini()
+        void fini() override
         {
             for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
             {

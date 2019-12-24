@@ -28,11 +28,13 @@ class tile_plugin_t : public wf::plugin_interface_t
 {
   private:
     std::unique_ptr<wf::matcher::view_matcher> tile_by_default_matcher;
-    wf_option tile_by_default, keep_fullscreen_on_adjacent;
-    wf_option button_move, button_resize;
-    wf_option key_toggle_tile, key_toggle_fullscreen;
+    wf::option_wrapper_t<std::string> tile_by_default{"simple-tile/tile_by_default"};
+    wf::option_wrapper_t<bool> keep_fullscreen_on_adjacent{"simple-tile/keep_fullscreen_on_adjacent"};
+    wf::option_wrapper_t<wf::buttonbinding_t> button_move{"simple-tile/button_move"}, button_resize{"simple-tile/button_resize"};
+    wf::option_wrapper_t<wf::keybinding_t> key_toggle_tile{"simple-tile/key_toggle_tile"}, key_toggle_fullscreen{"simple-tile/key_toggle_fullscreen"};
 
-    wf_option key_focus_left, key_focus_right, key_focus_above, key_focus_below;
+    wf::option_wrapper_t<wf::keybinding_t> key_focus_left{"simple-tile/key_focus_left"}, key_focus_right{"simple-tile/key_focus_right"};
+    wf::option_wrapper_t<wf::keybinding_t> key_focus_above{"simple-tile/key_focus_above"}, key_focus_below{"simple-tile/key_focus_below"};
 
   private:
     std::vector<std::vector<std::unique_ptr<wf::tile::tree_node_t>>> roots;
@@ -368,7 +370,7 @@ class tile_plugin_t : public wf::plugin_interface_t
                 /* This will lower the fullscreen status of the view */
                 output->focus_view(adjacent->view, true);
 
-                if (was_fullscreen && keep_fullscreen_on_adjacent->as_int())
+                if (was_fullscreen && keep_fullscreen_on_adjacent)
                     adjacent->view->fullscreen_request(output, true);
             }
         });
@@ -376,13 +378,13 @@ class tile_plugin_t : public wf::plugin_interface_t
 
     key_callback on_focus_adjacent = [=] (uint32_t key)
     {
-        if (key == key_focus_left->as_cached_key().keyval)
+        if (key == dynamic_cast<wf::keybinding_t*> (&key_focus_left)->get_key())
             return focus_adjacent(tile::INSERT_LEFT);
-        if (key == key_focus_right->as_cached_key().keyval)
+        if (key == dynamic_cast<wf::keybinding_t*> (&key_focus_right)->get_key())
             return focus_adjacent(tile::INSERT_RIGHT);
-        if (key == key_focus_above->as_cached_key().keyval)
+        if (key == dynamic_cast<wf::keybinding_t*> (&key_focus_above)->get_key())
             return focus_adjacent(tile::INSERT_ABOVE);
-        if (key == key_focus_below->as_cached_key().keyval)
+        if (key == dynamic_cast<wf::keybinding_t*> (&key_focus_below)->get_key())
             return focus_adjacent(tile::INSERT_BELOW);
 
         return false;
@@ -397,29 +399,6 @@ class tile_plugin_t : public wf::plugin_interface_t
     {
         return start_controller<tile::resize_view_controller_t> ({x, y});
     };
-
-    void load_options(wayfire_config *config)
-    {
-        auto section = config->get_section("simple-tile");
-
-        tile_by_default = section->get_option("tile_by_default", "any");
-        tile_by_default_matcher = wf::matcher::get_matcher(tile_by_default);
-        keep_fullscreen_on_adjacent = section->get_option(
-            "keep_fullscreen_on_adjacent", "1");
-
-        button_move = section->get_option("button_move", "<super> BTN_LEFT");
-        button_resize =
-            section->get_option("button_resize", "<super> BTN_RIGHT");
-
-        key_toggle_tile = section->get_option("key_toggle", "<super> KEY_T");
-        key_toggle_fullscreen =
-            section->get_option("key_toggle_fullscreen", "<super> KEY_M");
-
-        key_focus_left  = section->get_option("key_focus_left", "<super> KEY_H");
-        key_focus_right = section->get_option("key_focus_right", "<super> KEY_L");
-        key_focus_above = section->get_option("key_focus_above", "<super> KEY_K");
-        key_focus_below = section->get_option("key_focus_below", "<super> KEY_J");
-    }
 
     void setup_callbacks()
     {
@@ -447,7 +426,7 @@ class tile_plugin_t : public wf::plugin_interface_t
     }
 
   public:
-    void init(wayfire_config *config) override
+    void init() override
     {
         this->grab_interface->name = "simple-tile";
         /* TODO: change how grab interfaces work - plugins should do ifaces on
@@ -470,7 +449,7 @@ class tile_plugin_t : public wf::plugin_interface_t
         output->connect_signal("view-change-viewport", &on_view_change_viewport);
         output->connect_signal("view-minimize-request", &on_view_minimized);
 
-        load_options(config);
+        tile_by_default_matcher = wf::matcher::get_matcher(tile_by_default.raw_option);
         setup_callbacks();
     }
 

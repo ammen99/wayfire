@@ -16,10 +16,6 @@ wf_cube_background_skydome::wf_cube_background_skydome(wf::output_t *output)
 {
     this->output = output;
     load_program();
-
-    auto section = wf::get_core().config->get_section("cube");
-    background_image = section->get_option("skydome_texture", "");
-    mirror_opt = section->get_option("skydome_mirror", "1");
     reload_texture();
 }
 
@@ -49,10 +45,10 @@ void wf_cube_background_skydome::load_program()
 
 void wf_cube_background_skydome::reload_texture()
 {
-    if (last_background_image == background_image->as_string())
+    if (!last_background_image.compare(background_image))
         return;
 
-    last_background_image = background_image->as_string();
+    last_background_image = background_image;
     OpenGL::render_begin();
 
     if (tex == (uint32_t)-1)
@@ -84,10 +80,10 @@ void wf_cube_background_skydome::reload_texture()
 
 void wf_cube_background_skydome::fill_vertices()
 {
-    if (mirror_opt->as_int() == last_mirror)
+    if (mirror_opt == last_mirror)
         return;
 
-    last_mirror = mirror_opt->as_int();
+    last_mirror = mirror_opt;
 
     float scale = 75.0;
     int gw = SKYDOME_GRID_WIDTH + 1;
@@ -157,11 +153,11 @@ void wf_cube_background_skydome::render_frame(const wf_framebuffer& fb,
     GL_CALL(glEnableVertexAttribArray(uvID));
 
     auto rotation = glm::rotate(glm::mat4(1.0),
-        (float) (attribs.duration.progress(attribs.offset_y) * 0.5),
+        (float) (attribs.cube_animation.offset_y * 0.5),
         glm::vec3(1., 0., 0.));
 
     auto view = glm::lookAt(glm::vec3(0., 0., 0.),
-        glm::vec3(0., 0., -attribs.duration.progress(attribs.offset_z)),
+        glm::vec3(0., 0., -attribs.cube_animation.offset_z),
         glm::vec3(0., 1., 0.));
 
     auto vp = fb.transform * attribs.projection * view * rotation;
@@ -173,7 +169,7 @@ void wf_cube_background_skydome::render_frame(const wf_framebuffer& fb,
 
     auto cws = output->workspace->get_current_workspace();
     auto model = glm::rotate(glm::mat4(1.0),
-        float(attribs.duration.progress(attribs.rotation)) - cws.x * attribs.side_angle,
+        float(attribs.cube_animation.rotation) - cws.x * attribs.side_angle,
         glm::vec3(0, 1, 0));
 
     GL_CALL(glUniformMatrix4fv(modelID, 1, GL_FALSE, &model[0][0]));

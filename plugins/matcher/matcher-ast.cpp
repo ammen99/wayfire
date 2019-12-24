@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <regex>
+#include <wayfire/util/log.hpp>
 
 namespace wf
 {

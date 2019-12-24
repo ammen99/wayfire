@@ -30,8 +30,8 @@ class wf_cube_background_skydome : public wf_cube_background_base
 
     std::string last_background_image;
     int last_mirror = -1;
-
-    wf_option background_image, mirror_opt;
+    wf::option_wrapper_t<std::string> background_image{"cube/skydome_texture"};
+    wf::option_wrapper_t<bool> mirror_opt{"cube/skydome_mirror"};
 };
 
 #endif /* end of include guard: WF_CUBE_BACKGROUND_SKYDOME */

@@ -6,8 +6,8 @@
 #include <core.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-wf_option FireAnimation::fire_particles;
-wf_option FireAnimation::fire_particle_size;
+static wf::option_wrapper_t<int> fire_particles{"animate/fire_particles"};
+static wf::option_wrapper_t<double> fire_particle_size{"animate/fire_particle_size"};
 
 // generate a random float between s and e
 static float random(float s, float e)
@@ -18,7 +18,7 @@ static float random(float s, float e)
 
 static int particle_count_for_width(int width)
 {
-    int particles = FireAnimation::fire_particles->as_cached_int();
+    int particles = fire_particles;
 
     return particles * std::min(width / 400.0, 3.5);
 }
@@ -26,13 +26,12 @@ static int particle_count_for_width(int width)
 class FireTransformer : public wf_view_transformer_t
 {
     wf_geometry last_boundingbox;
-    wf_duration duration;
 
     public:
     ParticleSystem ps;
 
     FireTransformer(wayfire_view view) :
-        ps(FireAnimation::fire_particles->as_cached_int(),
+        ps(fire_particles,
            [=] (Particle& p) {init_particle(p); })
     {
         last_boundingbox = view->get_bounding_box();
@@ -86,7 +85,7 @@ class FireTransformer : public wf_view_transformer_t
         p.speed = {random(-10, 10), random(-25, 5)};
         p.g = {-1, -3};
 
-        double size = FireAnimation::fire_particle_size->as_double();
+        double size = fire_particle_size;
         p.base_radius = p.radius = random(size * 0.8, size * 1.2);
     }
 
@@ -122,21 +121,18 @@ static float fire_duration_mod_for_height(int height)
     return std::min(height / 400.0, 3.0);
 }
 
-void FireAnimation::init(wayfire_view view, wf_option dur, wf_animation_type type)
+void FireAnimation::init(wayfire_view view, int dur, wf_animation_type type)
 {
 
     this->view = view;
 
-    int msec = dur->as_int() * fire_duration_mod_for_height(
+    int msec = dur * fire_duration_mod_for_height(
         view->get_bounding_box().height);
-    this->duration = wf_duration(new_static_option(std::to_string(msec)),
-                                 wf_animation::linear);
+    this->progression = wf::animation::simple_animation_t(wf::create_option<int>(msec));
+    this->progression.animate(0, 1);
 
-    if (type & HIDING_ANIMATION) {
-        duration.start(1, 0);
-    } else {
-        duration.start(0, 1);
-    }
+    if (type & HIDING_ANIMATION)
+        this->progression.flip();
 
     name = "animation-fire-" + std::to_string(type);
     auto tr = std::make_unique<FireTransformer>(view);
@@ -147,12 +143,12 @@ void FireAnimation::init(wayfire_view view, wf_option dur, wf_animation_type typ
 
 bool FireAnimation::step()
 {
-    transformer->set_progress_line(duration.progress());
-    if (duration.running())
+    transformer->set_progress_line(this->progression);
+    if (this->progression.running())
         transformer->ps.spawn(transformer->ps.size() / 10);
 
     transformer->ps.update();
-    return duration.running() || transformer->ps.statistic();
+    return this->progression.running() || transformer->ps.statistic();
 }
 
 FireAnimation::~FireAnimation()

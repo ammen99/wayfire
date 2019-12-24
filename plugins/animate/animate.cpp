@@ -12,7 +12,7 @@
 
 #include "../matcher/matcher.hpp"
 
-void animation_base::init(wayfire_view, wf_option, wf_animation_type) {}
+void animation_base::init(wayfire_view, int, wf_animation_type) {}
 bool animation_base::step() {return false;}
 animation_base::~animation_base() {}
 
@@ -51,7 +51,7 @@ struct animation_hook : public wf::custom_data_t
             stop_hook(true);
     };
 
-    animation_hook(wayfire_view view, wf_option duration, wf_animation_type type)
+    animation_hook(wayfire_view view, int duration, wf_animation_type type)
     {
         this->type = type;
         this->view = view;
@@ -96,36 +96,23 @@ struct animation_hook : public wf::custom_data_t
 
 class wayfire_animation : public wf::plugin_interface_t
 {
-    wf_option open_animation, close_animation;
-    wf_option duration, startup_duration;
-    wf_option animation_enabled_for, fade_enabled_for,
-              zoom_enabled_for, fire_enabled_for;
+    wf::option_wrapper_t<std::string> open_animation{"animate/open_animation"};
+    wf::option_wrapper_t<std::string> close_animation{"animate/close_animation"};
+    wf::option_wrapper_t<int> duration{"animate/duration"};
+    wf::option_wrapper_t<int> startup_duration{"animate/startup_duration"};
+    wf::option_wrapper_t<std::string> animation_enabled_for{"animate/enabled_for"};
+    wf::option_wrapper_t<std::string> fade_enabled_for{"animate/fade_enabled_for"};
+    wf::option_wrapper_t<std::string> zoom_enabled_for{"animate/zoom_enabled_for"};
+    wf::option_wrapper_t<std::string> fire_enabled_for{"animate/fire_enabled_for"};
 
     std::unique_ptr<wf::matcher::view_matcher> animation_enabled_matcher,
         fade_enabled_matcher, zoom_enabled_matcher, fire_enabled_matcher;
 
     public:
-    void init(wayfire_config *config)
+    void init() override
     {
         grab_interface->name = "animate";
         grab_interface->capabilities = 0;
-
-        auto section     = config->get_section("animate");
-        open_animation   = section->get_option("open_animation", "fade");
-        close_animation  = section->get_option("close_animation", "fade");
-        duration         = section->get_option("duration", "300");
-        startup_duration = section->get_option("startup_duration", "600");
-
-        animation_enabled_for = section->get_option("enabled_for",
-            "(type is toplevel || (type is x-or && focuseable is true))");
-        fade_enabled_for = section->get_option("fade_enabled_for", "type is overlay");
-        zoom_enabled_for = section->get_option("zoom_enabled_for", "none");
-        fire_enabled_for = section->get_option("fire_enabled_for", "none");
-
-        FireAnimation::fire_particles =
-            section->get_option("fire_particles", "2000");
-        FireAnimation::fire_particle_size =
-            section->get_option("fire_particle_size", "16");
 
         output->connect_signal("map-view", &on_view_mapped);
         output->connect_signal("pre-unmap-view", &on_view_unmapped);
@@ -133,13 +120,13 @@ class wayfire_animation : public wf::plugin_interface_t
         output->connect_signal("view-minimize-request", &on_minimize_request);
 
         animation_enabled_matcher =
-            wf::matcher::get_matcher(animation_enabled_for);
-        fade_enabled_matcher = wf::matcher::get_matcher(fade_enabled_for);
-        zoom_enabled_matcher = wf::matcher::get_matcher(zoom_enabled_for);
-        fire_enabled_matcher = wf::matcher::get_matcher(fire_enabled_for);
+            wf::matcher::get_matcher(animation_enabled_for.raw_option);
+        fade_enabled_matcher = wf::matcher::get_matcher(fade_enabled_for.raw_option);
+        zoom_enabled_matcher = wf::matcher::get_matcher(zoom_enabled_for.raw_option);
+        fire_enabled_matcher = wf::matcher::get_matcher(fire_enabled_for.raw_option);
     }
 
-    std::string get_animation_for_view(wf_option& anim_type, wayfire_view view)
+    std::string get_animation_for_view(wf::option_wrapper_t<std::string>& anim_type, wayfire_view view)
     {
         /* Determine the animation for the given view.
          * Note that the matcher plugin might not have been loaded, so
@@ -153,12 +140,12 @@ class wayfire_animation : public wf::plugin_interface_t
             if (wf::matcher::evaluate(fire_enabled_matcher, view))
                 return "fire";
             if (wf::matcher::evaluate(animation_enabled_matcher, view))
-                return anim_type->as_string();
+                return anim_type;
         }
         else if (view->role == wf::VIEW_ROLE_TOPLEVEL ||
             (view->role == wf::VIEW_ROLE_UNMANAGED && view->is_focuseable()))
         {
-            return anim_type->as_string();
+            return anim_type;
         }
 
         return "none";
@@ -216,7 +203,7 @@ class wayfire_animation : public wf::plugin_interface_t
         new wf_system_fade(output, startup_duration);
     };
 
-    void fini()
+    void fini() override
     {
         output->disconnect_signal("map-view", &on_view_mapped);
         output->disconnect_signal("pre-unmap-view", &on_view_unmapped);

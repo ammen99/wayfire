@@ -2,7 +2,7 @@
 #define WF_TILE_PLUGIN_TREE_CONTROLLER_HPP
 
 #include "tree.hpp"
-#include <config.hpp>
+#include <option-wrapper.hpp>
 
 /* Contains functions which are related to manipulating the tiling tree */
 namespace wf

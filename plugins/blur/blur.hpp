@@ -107,8 +107,9 @@ class wf_blur_base
      * should be set by the constructor */
     std::string algorithm_name;
 
-    wf_option offset_opt, degrade_opt, iterations_opt;
-    wf_option_callback options_changed;
+    wf::option_wrapper_t<double> offset_opt;
+    wf::option_wrapper_t<int> degrade_opt, iterations_opt;
+    wf::config::option_base_t::updated_callback_t options_changed;
 
     wf::output_t *output;
 

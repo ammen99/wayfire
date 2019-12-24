@@ -10,19 +10,20 @@ class fade_animation : public animation_base
     wayfire_view view;
 
     float start = 0, end = 1;
-    wf_duration duration;
+    wf::animation::simple_animation_t progression;
     std::string name;
 
     public:
 
-    void init(wayfire_view view, wf_option dur, wf_animation_type type) override
+    void init(wayfire_view view, int dur, wf_animation_type type) override
     {
         this->view = view;
-        duration = wf_duration(dur);
-        duration.start();
+        this->progression = wf::animation::simple_animation_t(wf::create_option<int>(dur));
+
+        this->progression.animate(start, end);
 
         if (type & HIDING_ANIMATION)
-            std::swap(start, end);
+            this->progression.flip();
 
         name = "animation-fade-" + std::to_string(type);
         view->add_transformer(std::make_unique<wf_2D_view> (view), name);
@@ -31,8 +32,8 @@ class fade_animation : public animation_base
     bool step() override
     {
         auto transform = dynamic_cast<wf_2D_view*> (view->get_transformer(name).get());
-        transform->alpha = duration.progress(start, end);
-        return duration.running();
+        transform->alpha = this->progression;
+        return progression.running();
     }
 
     ~fade_animation()
@@ -41,22 +42,35 @@ class fade_animation : public animation_base
     }
 };
 
+using namespace wf::animation;
+
+class zoom_animation_t : public duration_t
+{
+    public:
+    using duration_t::duration_t;
+    timed_transition_t alpha{*this};
+    timed_transition_t zoom{*this};
+    timed_transition_t offset_x{*this};
+    timed_transition_t offset_y{*this};
+};
+
 class zoom_animation : public animation_base
 {
     wayfire_view view;
     wf_2D_view *our_transform = nullptr;
-
-    wf_transition alpha {0, 1}, zoom {1./3, 1},
-                  offset_x{0, 0}, offset_y{0, 0};
-    wf_duration duration;
+    zoom_animation_t progression;
 
     public:
 
-    void init(wayfire_view view, wf_option dur, wf_animation_type type) override
+    void init(wayfire_view view, int dur, wf_animation_type type) override
     {
         this->view = view;
-        duration = wf_duration(dur);
-        duration.start();
+        this->progression = zoom_animation_t(wf::create_option<int>(dur));
+        this->progression.alpha = wf::animation::timed_transition_t(this->progression, 0, 1);
+        this->progression.zoom = wf::animation::timed_transition_t(this->progression, 1./3, 1);
+        this->progression.offset_x = wf::animation::timed_transition_t(this->progression, 0, 0);
+        this->progression.offset_y = wf::animation::timed_transition_t(this->progression, 0, 0);
+        this->progression.start();
 
         if (type & MINIMIZE_STATE_ANIMATION)
         {
@@ -70,24 +84,24 @@ class zoom_animation : public animation_base
                 int view_cx = bbox.x + bbox.width / 2;
                 int view_cy = bbox.y + bbox.height / 2;
 
-                offset_x = {1.0 * hint_cx - view_cx, 0};
-                offset_y = {1.0 * hint_cy - view_cy, 0};
+                progression.offset_x.set(1.0 * hint_cx - view_cx, 0);
+                progression.offset_y.set(1.0 * hint_cy - view_cy, 0);
 
                 if (bbox.width > 0 && bbox.height > 0)
                 {
                     double scale_x = 1.0 * hint.width / bbox.width;
                     double scale_y = 1.0 * hint.height / bbox.height;
-                    zoom = {std::min(scale_x, scale_y), 1};
+                    progression.zoom.set(std::min(scale_x, scale_y), 1);
                 }
             }
         }
 
         if (type & HIDING_ANIMATION)
         {
-            std::swap(alpha.start, alpha.end);
-            std::swap(zoom.start, zoom.end);
-            std::swap(offset_x.start, offset_x.end);
-            std::swap(offset_y.start, offset_y.end);
+            progression.alpha.flip();
+            progression.zoom.flip();
+            progression.offset_x.flip();
+            progression.offset_y.flip();
         }
 
         our_transform = new wf_2D_view(view);
@@ -96,16 +110,16 @@ class zoom_animation : public animation_base
 
     bool step() override
     {
-        float c = duration.progress(zoom);
+        float c = this->progression.zoom;
 
-        our_transform->alpha = duration.progress(alpha);
+        our_transform->alpha = this->progression.alpha;
         our_transform->scale_x = c;
         our_transform->scale_y = c;
 
-        our_transform->translation_x = duration.progress(offset_x);
-        our_transform->translation_y = duration.progress(offset_y);
+        our_transform->translation_x = this->progression.offset_x;
+        our_transform->translation_y = this->progression.offset_y;
 
-        return duration.running();
+        return this->progression.running();
     }
 
     ~zoom_animation()

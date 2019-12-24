@@ -98,9 +98,7 @@ void main()
 
 class wayfire_fisheye : public wf::plugin_interface_t
 {
-    wf::post_hook_t hook;
-    wf::animation::duration_t animation{wf::create_option<int>(300)};
-    wf::animation::timed_transition_t current_zoom{animation, 0, 0};
+    wf::animation::simple_animation_t progression{wf::create_option<int>(300)};
 
     float target_zoom;
     bool active, hook_set;
@@ -136,9 +134,10 @@ class wayfire_fisheye : public wf::plugin_interface_t
                 wf::option_wrapper_t<wf::activatorbinding_t>{"fisheye/toggle"},
                 &toggle_cb);
 
+            target_zoom = zoom;
             zoom.set_callback([=] () {
                 if (active)
-                    this->current_zoom.restart_with_end(zoom);
+                    this->progression.animate(zoom);
             });
 
             load_program();
@@ -152,16 +151,15 @@ class wayfire_fisheye : public wf::plugin_interface_t
             if (active)
             {
                 active = false;
-                current_zoom.restart_with_end(0);
-                animation.start();
+                progression.animate(0);
             } else
             {
                 active = true;
-                current_zoom.restart_with_end(zoom);
+                progression.animate(zoom);
                 if (!hook_set)
                 {
                     hook_set = true;
-                    output->render->add_post(&hook);
+                    output->render->add_post(&render_hook);
                     output->render->set_redraw_always();
                 }
             }
@@ -195,7 +193,7 @@ class wayfire_fisheye : public wf::plugin_interface_t
             GL_CALL(glUniform2f(mouseID, oc.x, oc.y));
             GL_CALL(glUniform2f(resID, dest.viewport_width, dest.viewport_height));
             GL_CALL(glUniform1f(radiusID, radius));
-            GL_CALL(glUniform1f(zoomID, current_zoom));
+            GL_CALL(glUniform1f(zoomID, progression));
 
             GL_CALL(glVertexAttribPointer(posID, 2, GL_FLOAT, GL_FALSE, 0, vertexData));
             GL_CALL(glEnableVertexAttribArray(posID));
@@ -206,13 +204,13 @@ class wayfire_fisheye : public wf::plugin_interface_t
 
             OpenGL::render_end();
 
-            if (!active && !animation.running())
+            if (!active && !progression.running())
                 finalize();
         };
 
         void finalize()
         {
-            output->render->rem_post(&hook);
+            output->render->rem_post(&render_hook);
             output->render->set_redraw_always(false);
             hook_set = false;
         }

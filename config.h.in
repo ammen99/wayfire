@@ -4,6 +4,7 @@
 #define INSTALL_PREFIX "@INSTALL_PREFIX@"
 #define PLUGIN_PATH "@PLUGIN_PATH@"
 #define WF_SRC_DIR "@WF_SRC_DIR@"
+#define PLUGIN_XML_DIR "@PLUGIN_XML_DIR@"
 #mesondefine BUILD_WITH_IMAGEIO
 #mesondefine WAYFIRE_DEBUG_ENABLED
 #mesondefine USE_GLES32

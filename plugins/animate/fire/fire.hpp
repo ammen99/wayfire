@@ -13,14 +13,12 @@ class FireAnimation : public animation_base
     std::string name; // the name of the transformer in the view's table
     wayfire_view view;
     nonstd::observer_ptr<FireTransformer> transformer;
-    wf_duration duration;
+    wf::animation::simple_animation_t progression;
 
     public:
 
-    static wf_option fire_particles, fire_particle_size;
-
     ~FireAnimation();
-    void init(wayfire_view view, wf_option duration, wf_animation_type type) override;
+    void init(wayfire_view view, int duration, wf_animation_type type) override;
     bool step() override; /* return true if continue, false otherwise */
 };
 

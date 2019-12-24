@@ -6,6 +6,7 @@
 #include <core.hpp>
 #include <output.hpp>
 #include <workspace-manager.hpp>
+#include <wayfire/util/log.hpp>
 
 namespace wf
 {
@@ -35,22 +36,22 @@ namespace wf
         class default_view_matcher : public view_matcher
         {
             std::unique_ptr<expression_t> expr;
-            wf_option match_option;
+            wf::option_sptr_t<std::string> match_option;
 
-            wf_option_callback on_match_string_updated = [=] ()
+            wf::config::option_base_t::updated_callback_t on_match_string_updated = [=] ()
             {
-                auto result = parse_expression(match_option->as_string());
+                auto result = parse_expression(match_option->get_value_str());
                 if (!result.first)
                 {
                     LOGE("Failed to load match expression %s:\n%s",
-                        match_option->as_string().c_str(), result.second.c_str());
+                        match_option->get_value_str().c_str(), result.second.c_str());
                 }
 
                 this->expr = std::move(result.first);
             };
 
             public:
-            default_view_matcher(wf_option option)
+            default_view_matcher(wf::option_sptr_t<std::string> option)
                 : match_option(option)
             {
                 on_match_string_updated();

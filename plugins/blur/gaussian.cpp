@@ -112,7 +112,7 @@ class wf_gaussian_blur : public wf_blur_base
 
     void upload_data(int i, int width, int height)
     {
-        float offset = offset_opt->as_cached_double();
+        float offset = offset_opt;
         static const float vertexData[] = {
             -1.0f, -1.0f,
              1.0f, -1.0f,
@@ -136,7 +136,7 @@ class wf_gaussian_blur : public wf_blur_base
 
     int blur_fb0(int width, int height) override
     {
-        int i, iterations = iterations_opt->as_cached_int();
+        int i, iterations = iterations_opt;
 
         OpenGL::render_begin();
         GL_CALL(glDisable(GL_BLEND));

@@ -74,8 +74,9 @@ class wayfire_blur : public wf::plugin_interface_t
     const std::string toggle_mode = "toggle";
     std::string last_mode;
 
-    wf_option method_opt, mode_opt;
-    wf_option_callback blur_method_changed, mode_changed;
+    wf::option_wrapper_t<std::string> method_opt{"blur/method"}, mode_opt{"blur/mode"};
+    wf::option_wrapper_t<wf::buttonbinding_t> toggle_button{"blur/toggle"};
+    wf::config::option_base_t::updated_callback_t blur_method_changed, mode_changed;
     std::unique_ptr<wf_blur_base> blur_algorithm;
 
     const std::string transformer_name = "blur";
@@ -109,45 +110,41 @@ class wayfire_blur : public wf::plugin_interface_t
     }
 
     public:
-    void init(wayfire_config *config)
+    void init() override
     {
         grab_interface->name = "blur";
         grab_interface->capabilities = 0;
 
-        auto section = config->get_section("blur");
-
-        method_opt = section->get_option("method", "kawase");
         blur_method_changed = [=] () {
-            blur_algorithm = create_blur_from_name(output, method_opt->as_string());
+            blur_algorithm = create_blur_from_name(output, method_opt);
             blur_algorithm->damage_all_workspaces();
         };
         /* Create initial blur algorithm */
         blur_method_changed();
-        method_opt->add_updated_handler(&blur_method_changed);
+        method_opt.set_callback(blur_method_changed);
 
         /* Default mode is normal, which means attach the blur transformer
          * to each view on the output. If on toggle, this means that the user
          * has to manually click on the views they want to blur */
         last_mode = "none";
-        mode_opt = section->get_option("mode", normal_mode);
         mode_changed = [=] ()
         {
-            if (last_mode == mode_opt->as_string())
+            if (std::string(mode_opt) == last_mode)
                 return;
 
             if (last_mode == normal_mode)
                 remove_transformers();
 
-            if (mode_opt->as_string() == normal_mode)
+            if (std::string(mode_opt) == normal_mode)
             {
                 for (auto& view : output->workspace->get_views_in_layer(blur_layers))
                     add_transformer(view);
             }
 
-            last_mode = mode_opt->as_string();
+            last_mode = mode_opt;
         };
         mode_changed();
-        mode_opt->add_updated_handler(&mode_changed);
+        mode_opt.set_callback(mode_changed);
 
         /* Toggles the blur state of the view the user clicked on */
         button_toggle = [=] (uint32_t, int, int)
@@ -167,8 +164,7 @@ class wayfire_blur : public wf::plugin_interface_t
 
             return true;
         };
-        output->add_button(section->get_option("toggle", "<super> <alt> BTN_LEFT"),
-            &button_toggle);
+        output->add_button(toggle_button, &button_toggle);
 
         /* If a view is attached to this output, and we are in normal mode,
          * we should add a blur transformer so it gets blurred
@@ -179,7 +175,7 @@ class wayfire_blur : public wf::plugin_interface_t
         view_attached = [=] (wf::signal_data_t *data)
         {
             auto view = get_signaled_view(data);
-            if (mode_opt->as_string() == normal_mode &&
+            if (std::string(mode_opt) == normal_mode &&
                 (output->workspace->get_view_layer(view) & blur_layers))
             {
                 /* we shouldn't have added it already */
@@ -325,15 +321,13 @@ class wayfire_blur : public wf::plugin_interface_t
         output->render->connect_signal("workspace-stream-post", &workspace_stream_post);
     }
 
-    void fini()
+    void fini() override
     {
         remove_transformers();
 
         output->rem_binding(&button_toggle);
         output->disconnect_signal("attach-view", &view_attached);
         output->disconnect_signal("detach-view", &view_detached);
-        mode_opt->rem_updated_handler(&mode_changed);
-        method_opt->rem_updated_handler(&blur_method_changed);
         output->render->rem_effect(&frame_pre_paint);
         output->render->disconnect_signal("workspace-stream-pre", &workspace_stream_pre);
         output->render->disconnect_signal("workspace-stream-post", &workspace_stream_post);
