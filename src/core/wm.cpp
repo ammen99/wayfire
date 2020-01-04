@@ -115,6 +115,9 @@ void wayfire_focus::check_focus_surface(wf::surface_interface_t* focus)
     while (view->parent)
         view = view->parent.get();
 
+    if (!view->is_mapped())    /* check again */
+        return;
+
     view->get_output()->focus_view(view->self(), true);
     set_last_focus(view->self());
 }
