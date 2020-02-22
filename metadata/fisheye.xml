@@ -7,12 +7,12 @@
 		<option name="toggle" type="activator">
 			<_short>Toggle</_short>
 			<_long>Toggles fisheye with the specified key.</_long>
-			<default>&lt;super&gt; KEY_F</default>
+			<default>&lt;super&gt; &lt;ctrl&gt; BTN_LEFT</default>
 		</option>
 		<option name="radius" type="double">
 			<_short>Radius</_short>
 			<_long>Sets the border radius in pixels.</_long>
-			<default>300.0</default>
+			<default>450.0</default>
 			<min>1.0</min>
 		</option>
 		<option name="zoom" type="double">

@@ -7,47 +7,47 @@
 		<option name="binding_left" type="activator">
 			<_short>Left</_short>
 			<_long>Switches to workspace left with the specified activator.</_long>
-			<default>&lt;super&gt; KEY_LEFT</default>
+			<default>&lt;super&gt; KEY_H</default>
 		</option>
 		<option name="binding_right" type="activator">
 			<_short>Right</_short>
 			<_long>Switches to workspace right with the specified activator.</_long>
-			<default>&lt;super&gt; KEY_RIGHT</default>
+			<default>&lt;super&gt; KEY_L</default>
 		</option>
 		<option name="binding_up" type="activator">
 			<_short>Up</_short>
 			<_long>Switches to workspace up with the specified activator.</_long>
-			<default>&lt;super&gt; KEY_UP</default>
+			<default>&lt;super&gt; KEY_K</default>
 		</option>
 		<option name="binding_down" type="activator">
 			<_short>Down</_short>
 			<_long>Switches to workspace down with the specified activator.</_long>
-			<default>&lt;super&gt; KEY_DOWN</default>
+			<default>&lt;super&gt; KEY_J</default>
 		</option>
 		<option name="binding_win_left" type="activator">
 			<_short>Left with window</_short>
 			<_long>Switches to workspace left with the focused window with the specified activator.</_long>
-			<default>&lt;super&gt; &lt;shift&gt; KEY_LEFT</default>
+			<default>&lt;super&gt; &lt;shift&gt; KEY_H</default>
 		</option>
 		<option name="binding_win_right" type="activator">
 			<_short>Right with window</_short>
 			<_long>Switches to workspace right with the focused window with the specified activator.</_long>
-			<default>&lt;super&gt; &lt;shift&gt; KEY_RIGHT</default>
+			<default>&lt;super&gt; &lt;shift&gt; KEY_L</default>
 		</option>
 		<option name="binding_win_up" type="activator">
 			<_short>Up with window</_short>
 			<_long>Switches to workspace up with the focused window with the specified activator.</_long>
-			<default>&lt;super&gt; &lt;shift&gt; KEY_UP</default>
+			<default>&lt;super&gt; &lt;shift&gt; KEY_K</default>
 		</option>
 		<option name="binding_win_down" type="activator">
 			<_short>Down with window</_short>
 			<_long>Switches to workspace down with the focused window with the specified activator.</_long>
-			<default>&lt;super&gt; &lt;shift&gt; KEY_DOWN</default>
+			<default>&lt;super&gt; &lt;shift&gt; KEY_J</default>
 		</option>
 		<option name="duration" type="int">
 			<_short>Duration</_short>
 			<_long>Sets the duration of the workspace switching animation in milliseconds.</_long>
-			<default>180</default>
+			<default>300</default>
 		</option>
 	</plugin>
 </wayfire>

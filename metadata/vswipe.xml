@@ -27,7 +27,7 @@
 		<option name="background" type="color">
 			<_short>Background color</_short>
 			<_long>Sets the background color.</_long>
-			<default>0.0 0.0 0.0 1.0</default>
+			<default>0.1 0.1 0.1 1.0</default>
 		</option>
 		<option name="fingers" type="int">
 			<_short>Number of fingers</_short>

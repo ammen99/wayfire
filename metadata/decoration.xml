@@ -7,7 +7,7 @@
 		<option name="font" type="string">
 			<_short>Font</_short>
 			<_long>Sets the font to use for the title bars.</_long>
-			<default>serif</default>
+			<default>sans-serif</default>
 		</option>
 		<option name="title_height" type="int">
 			<_short>Title bar height</_short>
@@ -28,12 +28,12 @@
 		<option name="active_color" type="color">
 			<_short>Color when window is active</_short>
 			<_long>Sets the color when the window is active.</_long>
-			<default>#222222aa</default>
+			<default>0.6 0.6 0.6 1.0</default>
 		</option>
 		<option name="inactive_color" type="color">
 			<_short>Color when window is inactive</_short>
 			<_long>Sets the color when the window is inactive.</_long>
-			<default>#333333dd</default>
+			<default>0.3 0.3 0.3 1.0</default>
 		</option>
 	</plugin>
 </wayfire>

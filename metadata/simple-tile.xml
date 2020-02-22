@@ -18,42 +18,42 @@
 		<option name="button_move" type="button">
 			<_short>Button move</_short>
 			<_long>When the specified button is held down, you can drag and drop tiled windows to reorder them and to change the tiling direction.</_long>
-			<default>&lt;super&gt; BTN_LEFT</default>
+			<default>none</default>
 		</option>
 		<option name="button_resize" type="button">
 			<_short>Button resize</_short>
 			<_long>When the specified button is held down, you can drag tiled windows to resize them.</_long>
-			<default>&lt;super&gt; BTN_RIGHT</default>
+			<default>none</default>
 		</option>
 		<option name="key_toggle" type="key">
 			<_short>Key toggle</_short>
 			<_long>Toggles tiling mode with the specified key.</_long>
-			<default>&lt;super&gt; KEY_T</default>
+			<default>none</default>
 		</option>
 		<option name="key_toggle_fullscreen" type="key">
 			<_short>Key toggle fullscreen</_short>
 			<_long>Makes focused view fullscreen with the specified key.</_long>
-			<default>&lt;super&gt; KEY_M</default>
+			<default>none</default>
 		</option>
 		<option name="key_focus_left" type="key">
 			<_short>Key focus left</_short>
 			<_long>Moves focus to the window left with the specified key.</_long>
-			<default>&lt;super&gt; KEY_H</default>
+			<default>none</default>
 		</option>
 		<option name="key_focus_right" type="key">
 			<_short>Key focus right</_short>
 			<_long>Moves focus to the window right with the specified key.</_long>
-			<default>&lt;super&gt; KEY_L</default>
+			<default>none</default>
 		</option>
 		<option name="key_focus_above" type="key">
 			<_short>Key focus above</_short>
 			<_long>Moves focus to the window above with the specified key.</_long>
-			<default>&lt;super&gt; KEY_K</default>
+			<default>none</default>
 		</option>
 		<option name="key_focus_below" type="key">
 			<_short>Key focus below</_short>
 			<_long>Moves focus to the window below with the specified key.</_long>
-			<default>&lt;super&gt; KEY_J</default>
+			<default>none</default>
 		</option>
 	</plugin>
 </wayfire>

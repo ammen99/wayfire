@@ -7,12 +7,12 @@
 		<option name="toggle" type="activator">
 			<_short>Toggle</_short>
 			<_long>Shows an overview of all workspaces with the specified activator.  Pressing again exits.</_long>
-			<default>&lt;super&gt; KEY_E</default>
+			<default>&lt;super&gt;</default>
 		</option>
 		<option name="background" type="color">
 			<_short>Background color</_short>
 			<_long>Sets the background color.</_long>
-			<default>0.0 0.0 0.0 1.0</default>
+			<default>0.1 0.1 0.1 1.0</default>
 		</option>
 		<option name="duration" type="int">
 			<_short>Zoom duration</_short>

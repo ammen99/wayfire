@@ -18,7 +18,7 @@
 		<option name="snap_threshold" type="int">
 			<_short>Snap threshold</_short>
 			<_long>Sets the amount of pixels from the edge of the screen for which aero-snap gets triggered.</_long>
-			<default>2</default>
+			<default>10</default>
 		</option>
 		<option name="enable_snap_off" type="bool">
 			<_short>Snap off</_short>
@@ -28,7 +28,7 @@
 		<option name="snap_off_threshold" type="int">
 			<_short>Snap off threshold</_short>
 			<_long>When attempting to move a snapped window, this option requires the user to move at least the specified amount of pixels before the window actually moves.  This only takes effect with `move.enable_snap_off`.</_long>
-			<default>0</default>
+			<default>10</default>
 		</option>
 		<option name="join_views" type="bool">
 			<_short>Disallow independently moving dialogues</_short>

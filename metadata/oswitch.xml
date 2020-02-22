@@ -7,12 +7,12 @@
 		<option name="next_output" type="activator">
 			<_short>Next output</_short>
 			<_long>Moves focus to the next output with the specified activator.</_long>
-			<default>&lt;super&gt; KEY_K</default>
+			<default>&lt;super&gt; KEY_O</default>
 		</option>
 		<option name="next_output_with_win" type="activator">
 			<_short>Next output with window</_short>
 			<_long>Moves focus to the next output with the focused window with the specified activator.</_long>
-			<default>&lt;super&gt; &lt;shift&gt; KEY_K</default>
+			<default>&lt;super&gt; &lt;shift&gt; KEY_O</default>
 		</option>
 	</plugin>
 </wayfire>

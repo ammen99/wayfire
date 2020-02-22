@@ -7,7 +7,7 @@
 		<option name="activate" type="button">
 			<_short>Activate</_short>
 			<_long>Rotates the window with the specified button.</_long>
-			<default>&lt;alt&gt; BTN_RIGHT</default>
+			<default>&lt;super&gt; &lt;ctrl&gt; BTN_RIGHT</default>
 		</option>
 	</plugin>
 </wayfire>

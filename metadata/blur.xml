@@ -22,7 +22,7 @@
 		<option name="toggle" type="button">
 			<_short>Toggle</_short>
 			<_long>Sets the shortcut to toggle blurring for a specific window.</_long>
-			<default>&lt;super&gt; &lt;alt&gt; BTN_LEFT</default>
+			<default>none</default>
 		</option>
 		<!-- Methods -->
 		<option name="method" type="string">

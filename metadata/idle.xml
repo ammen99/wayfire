@@ -8,7 +8,7 @@
 		<option name="toggle" type="activator">
 			<_short>Toggle</_short>
 			<_long>Disables the compositor going idle with the specified activator.  Pressing again reactivates.</_long>
-			<default>&lt;super&gt; &lt;shift&gt; KEY_I</default>
+			<default>none</default>
 		</option>
 		<!-- Screensaver -->
 		<option name="screensaver_timeout" type="int">

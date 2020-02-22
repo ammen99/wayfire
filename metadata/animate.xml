@@ -8,7 +8,7 @@
 		<option name="open_animation" type="string">
 			<_short>Open animation</_short>
 			<_long>Specifies the type of animation when opening a window.</_long>
-			<default>fade</default>
+			<default>zoom</default>
 			<desc>
 				<value>none</value>
 				<_name>None</_name>
@@ -29,7 +29,7 @@
 		<option name="close_animation" type="string">
 			<_short>Close animation</_short>
 			<_long>Specifies the type of animation when closing a window.</_long>
-			<default>fade</default>
+			<default>zoom</default>
 			<desc>
 				<value>none</value>
 				<_name>None</_name>
@@ -56,7 +56,7 @@
 		<option name="duration" type="int">
 			<_short>Duration</_short>
 			<_long>Sets the duration of the animation in milliseconds.</_long>
-			<default>300</default>
+			<default>500</default>
 		</option>
 		<option name="startup_duration" type="int">
 			<_short>System fade duration when Wayfire starts</_short>
@@ -72,7 +72,7 @@
 		<option name="fade_duration" type="int">
 			<_short>Fade duration</_short>
 			<_long>Sets the duration for the _fade_ animation in milliseconds.  Only applies for windows matched by `animate.fade_enabled_for`.</_long>
-			<default>300</default>
+			<default>400</default>
 		</option>
 		<!-- Zoom animation -->
 		<option name="zoom_enabled_for" type="string">
@@ -83,7 +83,7 @@
 		<option name="zoom_duration" type="int">
 			<_short>Zoom duration</_short>
 			<_long>Sets the duration for the _zoom_ animation in milliseconds.  Only applies for windows matched by `animate.zoom_enabled_for`.</_long>
-			<default>300</default>
+			<default>500</default>
 		</option>
 		<!-- Fire animation -->
 		<option name="fire_enabled_for" type="string">

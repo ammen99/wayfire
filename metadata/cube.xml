@@ -11,17 +11,17 @@
 			<option name="activate" type="button">
 				<_short>Activate</_short>
 				<_long>Activates the cube with the specified button.</_long>
-				<default>&lt;alt&gt; &lt;ctrl&gt; BTN_LEFT</default>
+				<default>&lt;super&gt; &lt;shift&gt; BTN_LEFT</default>
 			</option>
 			<option name="rotate_left" type="activator">
 				<_short>Rotate left</_short>
 				<_long>Rotates left with the specified activator.</_long>
-				<default>&lt;alt&gt; &lt;ctrl&gt; KEY_LEFT</default>
+				<default>&lt;super&gt; &lt;ctrl&gt; KEY_H</default>
 			</option>
 			<option name="rotate_right" type="activator">
 				<_short>Rotate right</_short>
 				<_long>Rotates right with the specified activator.</_long>
-				<default>&lt;alt&gt; &lt;ctrl&gt; KEY_RIGHT</default>
+				<default>&lt;super&gt; &lt;ctrl&gt; KEY_L</default>
 			</option>
 		</group>
 		<!-- Effects -->
@@ -53,7 +53,7 @@
 		<option name="zoom" type="double">
 			<_short>Zoom</_short>
 			<_long>Sets the level of zoom out.  Setting the value to **0.0** means to not zoom out.</_long>
-			<default>0.0</default>
+			<default>0.1</default>
 			<precision>0.01</precision>
 		</option>
 		<option name="initial_animation" type="int">
@@ -65,19 +65,19 @@
 		<option name="speed_zoom" type="double">
 			<_short>Zoom speed</_short>
 			<_long>Sets the speed factor for zooming.</_long>
-			<default>0.05</default>
+			<default>0.07</default>
 			<precision>0.01</precision>
 		</option>
 		<option name="speed_spin_horiz" type="double">
 			<_short>Horizontal spin speed</_short>
 			<_long>Sets the velocity of horizontal spinning.</_long>
-			<default>0.01</default>
+			<default>0.02</default>
 			<precision>0.01</precision>
 		</option>
 		<option name="speed_spin_vert" type="double">
 			<_short>Vertical spin speed</_short>
 			<_long>Sets the velocity of vertical spinning.</_long>
-			<default>0.01</default>
+			<default>0.02</default>
 			<precision>0.01</precision>
 		</option>
 		<!-- Background -->
@@ -101,7 +101,7 @@
 		<option name="background" type="color">
 			<_short>Background color</_short>
 			<_long>Sets the background color for the simple background mode.</_long>
-			<default>0.0 0.0 0.0 1.0</default>
+			<default>0.1 0.1 0.1 1.0</default>
 		</option>
 		<!-- Skydome -->
 		<option name="skydome_mirror" type="bool">

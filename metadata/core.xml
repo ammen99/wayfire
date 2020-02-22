@@ -34,7 +34,7 @@
 		<option name="close_top_view" type="activator">
 			<_short>Close view</_short>
 			<_long>Closes the currently focused window with the specified key.</_long>
-			<default>&lt;super&gt; KEY_Q | &lt;alt&gt; KEY_F4</default>
+			<default>&lt;super&gt; KEY_W | &lt;super&gt; BTN_MIDDLE | &lt;alt&gt; KEY_F4</default>
 		</option>
 		<!-- Horizontal/Vertical workspaces -->
 		<option name="vwidth" type="int">
@@ -50,7 +50,7 @@
 		<option name="background_color" type="color">
 			<_short>Background color</_short>
 			<_long>Sets the background color of workspaces.  Visible when nothing is drawing the background.</_long>
-			<default>0.0 0.0 0.0 1.0</default>
+			<default>0.1 0.1 0.1 1.0</default>
 		</option>
 		<option name="preferred_decoration_mode" type="string">
 			<_short>Preferred decoration mode</_short>

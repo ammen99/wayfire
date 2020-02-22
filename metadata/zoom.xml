@@ -7,12 +7,12 @@
 		<option name="modifier" type="key">
 			<_short>Zoom in the desktop by scrolling with modifier</_short>
 			<_long>Scrolls with the specified modifier to zoom in and out.</_long>
-			<default>&lt;super&gt;</default>
+			<default>&lt;super&gt; &lt;ctrl&gt;</default>
 		</option>
 		<option name="speed" type="double">
 			<_short>Speed</_short>
 			<_long>Sets the speed factor for zooming.</_long>
-			<default>0.005</default>
+			<default>0.01</default>
 			<precision>0.001</precision>
 		</option>
 		<option name="smoothing_duration" type="int">

@@ -7,7 +7,7 @@
 		<option name="activate" type="key">
 			<_short>Activate</_short>
 			<_long>Activates fast switcher with the specified key.</_long>
-			<default>&lt;alt&gt; KEY_TAB</default>
+			<default>&lt;alt&gt; KEY_ESC</default>
 		</option>
 	</plugin>
 </wayfire>

@@ -7,7 +7,7 @@
 		<option name="modifier" type="key">
 			<_short>Modifier</_short>
 			<_long>When the modifier key is held down, you can scroll down and up to adjust the opacity of the window.</_long>
-			<default>&lt;alt&gt;</default>
+			<default>&lt;super&gt;</default>
 		</option>
 		<option name="min_value" type="double">
 			<_short>Minimum</_short>
