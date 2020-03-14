@@ -44,6 +44,7 @@ static int repeat_once_handler(void *callback)
 class wayfire_command : public wf::plugin_interface_t
 {
     std::vector<wf::activator_callback> bindings;
+    std::vector<wf::gesture_callback> gestures;
 
     struct
     {
@@ -58,7 +59,19 @@ class wayfire_command : public wf::plugin_interface_t
         BINDING_NORMAL,
         BINDING_REPEAT,
         BINDING_ALWAYS,
+        BINDING_GESTURE,
     };
+
+    bool on_gesture(std::string command, binding_mode mode, wf::touchgesture_t *gesture)
+    {
+        if (!output->can_activate_plugin(grab_interface))
+            return false;
+
+        wf::get_core().run(command.c_str());
+
+        return true;
+    }
+
     bool on_binding(std::string command, binding_mode mode, wf::activator_source_t source,
         uint32_t value)
     {
@@ -177,6 +190,7 @@ class wayfire_command : public wf::plugin_interface_t
         }
 
         bindings.resize(command_names.size());
+        gestures.resize(command_names.size());
         const std::string norepeat = "...norepeat...";
         const std::string noalways = "...noalways...";
 
@@ -186,6 +200,7 @@ class wayfire_command : public wf::plugin_interface_t
             auto regular_binding_name = "binding_" + command_names[i];
             auto repeat_binding_name = "repeatable_binding_" + command_names[i];
             auto always_binding_name = "always_binding_" + command_names[i];
+            auto gesture_binding_name = "gesture_" + command_names[i];
 
             auto check_activator = [&] (const std::string& name)
             {
@@ -200,10 +215,24 @@ class wayfire_command : public wf::plugin_interface_t
                 return wf::option_sptr_t<wf::activatorbinding_t>{};
             };
 
+            auto check_gesture = [&] (const std::string& name)
+            {
+                auto opt = section->get_option_or(name);
+                if (opt)
+                {
+                    auto value = wf::option_type::from_string<
+                        wf::touchgesture_t> (opt->get_value_str());
+                    if (value) return wf::create_option(value.value());
+                }
+
+                return wf::option_sptr_t<wf::touchgesture_t>{};
+            };
+
             auto executable = section->get_option(command)->get_value_str();
             auto repeatable_opt = check_activator(repeat_binding_name);
             auto regular_opt = check_activator(regular_binding_name);
             auto always_opt = check_activator(always_binding_name);
+            auto gesture_opt = check_gesture(gesture_binding_name);
 
             using namespace std::placeholders;
             if (repeatable_opt)
@@ -224,6 +253,12 @@ class wayfire_command : public wf::plugin_interface_t
                     this, executable, BINDING_NORMAL, _1, _2);
                 output->add_activator(regular_opt, &bindings[i]);
             }
+            if (gesture_opt)
+            {
+                gestures[i] = std::bind(std::mem_fn(&wayfire_command::on_gesture),
+                    this, executable, BINDING_GESTURE, _1);
+                output->add_gesture(gesture_opt, &gestures[i]);
+            }
         }
     }
 
@@ -231,8 +266,11 @@ class wayfire_command : public wf::plugin_interface_t
     {
         for (auto& binding : bindings)
             output->rem_binding(&binding);
+        for (auto& gesture : gestures)
+            output->rem_binding(&gesture);
 
         bindings.clear();
+        gestures.clear();
     }
 
     wf::signal_callback_t reload_config;
