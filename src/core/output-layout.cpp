@@ -1085,7 +1085,8 @@ namespace wf
                 }
             }
 
-            get_core().output_layout->emit_signal("configuration-changed", nullptr);
+            if (!shutdown_received)
+                get_core().output_layout->emit_signal("configuration-changed", nullptr);
 
             if (count_enabled > 0)
             {
