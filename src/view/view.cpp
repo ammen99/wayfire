@@ -356,6 +356,20 @@ void wf::view_interface_t::set_minimized(bool minim)
     desktop_state_updated();
 }
 
+void wf::view_interface_t::set_on_top(bool top)
+{
+    on_top = top;
+    if (on_top)
+    {
+        get_output()->workspace->add_view(self(), wf::LAYER_TOP);
+    } else
+    {
+        get_output()->workspace->add_view(self(), wf::LAYER_WORKSPACE);
+    }
+
+    desktop_state_updated();
+}
+
 void wf::view_interface_t::set_tiled(uint32_t edges)
 {
     // store last unmaximized geometry for restoring

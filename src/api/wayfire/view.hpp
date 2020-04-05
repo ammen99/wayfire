@@ -218,14 +218,19 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      * set_activated() or focus_request() */
     bool activated = false;
     /** Whether the view is in minimized state, usually you want to use either
-     * set_minizied() or minimize_request() */
+     * set_minimized() or minimize_request() */
     bool minimized = false;
+    /** Whether the view is in always-on-top state, usually you want to use either
+     * set_on_top() or on_top_request() */
+    bool on_top = false;
     /** The tiled edges of the view, usually you want to use set_tiled().
      * If the view is tiled to all edges, it is considered maximized. */
     uint32_t tiled_edges = 0;
 
     /** Set the minimized state of the view. */
     virtual void set_minimized(bool minimized);
+    /** Set the always-on-top state of the view. */
+    virtual void set_on_top(bool on_top);
     /** Set the tiled edges of the view */
     virtual void set_tiled(uint32_t edges);
     /** Set the fullscreen state of the view */
@@ -429,7 +434,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     virtual void destruct() override;
 
     /**
-     * Called whenever the minimized, tiled, fullscreened
+     * Called whenever the minimized, tiled, fullscreened, always-on-topped
      * or activated state changes */
     virtual void desktop_state_updated();
 

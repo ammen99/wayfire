@@ -14,6 +14,11 @@
 			<_long>Closes the currently focused window with the specified key.</_long>
 			<default>&lt;super&gt; KEY_Q | &lt;alt&gt; KEY_F4</default>
 		</option>
+		<option name="toggle_always_on_top" type="activator">
+			<_short>Toggle always-on-top</_short>
+			<_long>Toggles the always-on-top state of the currently focused window with the specified key.</_long>
+			<default>&lt;super&gt; &lt;shift&gt; KEY_F</default>
+		</option>
 		<!-- Horizontal/Vertical workspaces -->
 		<option name="vwidth" type="int">
 			<_short>Horizontal virtual size</_short>

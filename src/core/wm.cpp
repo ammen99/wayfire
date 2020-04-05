@@ -56,6 +56,31 @@ void wayfire_close::fini()
     output->rem_binding(&callback);
 }
 
+void wayfire_on_top::init()
+{
+    grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
+    wf::option_wrapper_t<wf::activatorbinding_t> key("core/toggle_always_on_top");
+    callback = [=] (wf::activator_source_t, uint32_t)
+    {
+        if (!output->activate_plugin(grab_interface))
+            return false;
+
+        output->deactivate_plugin(grab_interface);
+        auto view = output->get_active_view();
+        if (view && view->role == wf::VIEW_ROLE_TOPLEVEL)
+            view->set_on_top(!view->on_top);
+
+        return true;
+    };
+
+    output->add_activator(key, &callback);
+}
+
+void wayfire_on_top::fini()
+{
+    output->rem_binding(&callback);
+}
+
 void wayfire_focus::init()
 {
     grab_interface->name = "_wf_focus";

@@ -17,6 +17,13 @@ class wayfire_close : public wf::plugin_interface_t {
         void fini() override;
 };
 
+class wayfire_on_top : public wf::plugin_interface_t {
+    wf::activator_callback callback;
+    public:
+        void init() override;
+        void fini() override;
+};
+
 class wayfire_focus : public wf::plugin_interface_t {
     wf::button_callback on_button;
     wf::touch_callback on_touch;
