@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="water">
+		<_short>Water</_short>
+		<_long>Water effect.</_long>
+		<category>Effects</category>
+		<option name="activate" type="button">
+			<_short>Activate</_short>
+			<_long>Activates water effect.</_long>
+			<default>&lt;ctrl&gt; &lt;super&gt; BTN_LEFT</default>
+		</option>
+	</plugin>
+</wayfire>
