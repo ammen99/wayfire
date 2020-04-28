@@ -33,7 +33,6 @@ struct view_transform_block_t : public noncopyable_t
 class view_interface_t::view_priv_impl
 {
   public:
-    wf::wl_idle_call idle_destruct;
     /**
      * A view is alive as long as it is possible for it to become mapped in the
      * future. For wlr views, this means that their role object hasn't been

@@ -1061,6 +1061,5 @@ void wf::view_damage_raw(wayfire_view view, const wlr_box& box)
 void wf::view_interface_t::destruct()
 {
     view_impl->is_alive = false;
-    view_impl->idle_destruct.run_once(
-        [&] () {wf::get_core_impl().erase_view(self());});
+    wf::get_core_impl().erase_view(self());
 }
