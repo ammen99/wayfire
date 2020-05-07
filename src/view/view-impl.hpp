@@ -65,6 +65,8 @@ class view_interface_t::view_priv_impl
         wf::region_t cached_damage;
         bool valid() { return this->fb != (uint32_t)-1; }
     } offscreen_buffer;
+    
+    wlr_box minimize_hint = { 0, 0, 0, 0 };
 };
 
 /**
@@ -94,8 +96,6 @@ class wlr_view_t :
 
     virtual std::string get_app_id() override final;
     virtual std::string get_title() override final;
-    virtual wlr_box get_minimize_hint() override final;
-
     virtual wf::region_t get_transformed_opaque_region() override;
 
     /* Functions which are further specialized for the different shells */
@@ -167,8 +167,6 @@ class wlr_view_t :
         toplevel_handle_v1_minimize_request,
         toplevel_handle_v1_set_rectangle_request,
         toplevel_handle_v1_close_request;
-
-    wlr_box minimize_hint;
 
     /* Create/destroy the toplevel_handle */
     virtual void create_toplevel();

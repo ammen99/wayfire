@@ -566,7 +566,12 @@ void wf::view_interface_t::damage()
 
 wlr_box wf::view_interface_t::get_minimize_hint()
 {
-    return { 0, 0, 0, 0 };
+    return this->view_impl->minimize_hint;
+}
+
+void wf::view_interface_t::set_minimize_hint(wlr_box hint)
+{
+    this->view_impl->minimize_hint = hint;
 }
 
 bool wf::view_interface_t::should_be_decorated()
