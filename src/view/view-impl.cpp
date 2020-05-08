@@ -81,7 +81,7 @@ void wf::wlr_view_t::handle_minimize_hint(wf::surface_interface_t *relative_to,
     box.width = hint.width;
     box.height = hint.height;
 
-    view_impl->minimize_hint = box;
+    set_minimize_hint(box);
 }
 
 wf::region_t wf::wlr_view_t::get_transformed_opaque_region()

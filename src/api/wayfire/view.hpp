@@ -273,7 +273,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     /**
      * Sets the minimize target for this view, i.e when displaying a minimize
      * animation, where the animation's target should be. 
-     * wlr_box hint requires x, y, width, height coordinates.
+     * @param hint The new minimize target rectangle, in output-local coordinates.
      */
     virtual void set_minimize_hint(wlr_box hint);
     /** @return true if the view needs decorations */
