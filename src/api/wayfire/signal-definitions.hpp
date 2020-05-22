@@ -99,6 +99,7 @@ struct change_viewport_signal : public wf::signal_data_t
 {
     bool carried_out;
     wf::point_t old_viewport, new_viewport;
+    wf::output_t *output;
 };
 using change_viewport_notify = change_viewport_signal;
 

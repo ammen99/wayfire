@@ -782,6 +782,7 @@ class workspace_manager::impl
         data.carried_out = false;
         data.old_viewport = viewport_manager.get_current_workspace();
         data.new_viewport = ws;
+        data.output = output;
         output->emit_signal("set-workspace-request", &data);
 
         if (!data.carried_out)
