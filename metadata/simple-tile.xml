@@ -50,5 +50,20 @@
 			<_long>Moves focus to the window below with the specified key.</_long>
 			<default>&lt;super&gt; KEY_J</default>
 		</option>
+    <option name="inner_gap_size" type="int">
+      <_short>Inner gap size</_short>
+      <_long>Number of pixels to shrink of a view when it has a neighbor in a given direction.</_long>
+      <default>5</default>
+    </option>
+    <option name="outer_horiz_gap_size" type="int">
+      <_short>Outer horizontal gap size</_short>
+      <_long>Number of pixels to shrink of a view when it has no neighbor on the left or on the right.</_long>
+      <default>0</default>
+    </option>
+    <option name="outer_vert_gap_size" type="int">
+      <_short>Outer vertical gap size</_short>
+      <_long>Number of pixels to shrink of a view when it has no neighbor above or below.</_long>
+      <default>0</default>
+    </option>
 	</plugin>
 </wayfire>

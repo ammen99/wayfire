@@ -18,6 +18,20 @@ namespace tile
 struct split_node_t;
 struct view_node_t;
 
+struct gap_size_t
+{
+    /* Gap on the left side */
+    int32_t left = 0;
+    /* Gap on the right side */
+    int32_t right = 0;
+    /* Gap on the top side */
+    int32_t top = 0;
+    /* Gap on the bottom side */
+    int32_t bottom = 0;
+    /* Gap for internal splits */
+    int32_t internal = 0;
+};
+
 struct tree_node_t
 {
     /** The node parent, or nullptr if this is the root node */
@@ -31,6 +45,10 @@ struct tree_node_t
 
     /** Set the geometry available for the node and its subnodes. */
     virtual void set_geometry(wf::geometry_t geometry);
+
+    /** Set the gaps for the node and subnodes. */
+    virtual void set_gaps(const gap_size_t& gaps) = 0;
+
     virtual ~tree_node_t()
     {}
 
@@ -38,6 +56,10 @@ struct tree_node_t
     nonstd::observer_ptr<split_node_t> as_split_node();
     /** Simply dynamic cast this to a view_node_t */
     nonstd::observer_ptr<view_node_t> as_view_node();
+
+  protected:
+    /* Gaps */
+    gap_size_t gaps;
 };
 
 /**
@@ -77,7 +99,13 @@ struct split_node_t : public tree_node_t
      * resize the children nodes, so that they fit inside the new geometry and
      * have a size proportional to their old size.
      */
-    void set_geometry(wf::geometry_t geometry);
+    void set_geometry(wf::geometry_t geometry) override;
+
+    /**
+     * Set the gaps for the subnodes. The internal gap will override
+     * the corresponding edges for each child.
+     */
+    void set_gaps(const gap_size_t& gaps) override;
 
     split_node_t(split_direction_t direction);
     split_direction_t get_split_direction() const;
@@ -126,6 +154,12 @@ struct view_node_t : public tree_node_t
      * the geometry of the whole output.
      */
     void set_geometry(wf::geometry_t geometry) override;
+
+    /**
+     * Set the gaps for non-fullscreen mode.
+     * The gap sizes will be subtracted from all edges of the view's geometry.
+     */
+    void set_gaps(const gap_size_t& gaps) override;
 
     /* Return the tree node corresponding to the view, or nullptr if none */
     static nonstd::observer_ptr<view_node_t> get_node(wayfire_view view);

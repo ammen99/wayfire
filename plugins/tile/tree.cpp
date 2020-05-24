@@ -1,5 +1,6 @@
 #include "tree.hpp"
 #include <wayfire/util.hpp>
+#include <wayfire/util/log.hpp>
 
 #include <wayfire/output.hpp>
 #include <wayfire/workspace-manager.hpp>
@@ -120,6 +121,8 @@ void split_node_t::recalculate_children(wf::geometry_t available)
         int32_t child_size = child_end - child_start;
         child->set_geometry(get_child_geometry(child_start, child_size));
     }
+
+    set_gaps(this->gaps);
 }
 
 void split_node_t::add_child(std::unique_ptr<tree_node_t> child, int index)
@@ -191,6 +194,46 @@ void split_node_t::set_geometry(wf::geometry_t geometry)
 {
     tree_node_t::set_geometry(geometry);
     recalculate_children(geometry);
+}
+
+void split_node_t::set_gaps(const gap_size_t& gaps)
+{
+    this->gaps = gaps;
+    for (const auto& child : this->children)
+    {
+        gap_size_t child_gaps = gaps;
+
+        /* See which edges are modified by this split */
+        int32_t *first_edge, *second_edge;
+        switch (this->split_direction)
+        {
+          case SPLIT_HORIZONTAL:
+            first_edge  = &child_gaps.top;
+            second_edge = &child_gaps.bottom;
+            break;
+
+          case SPLIT_VERTICAL:
+            first_edge  = &child_gaps.left;
+            second_edge = &child_gaps.right;
+            break;
+
+          default:
+            assert(false);
+        }
+
+        /* Override internal edges */
+        if (child != this->children.front())
+        {
+            *first_edge = gaps.internal;
+        }
+
+        if (child != this->children.back())
+        {
+            *second_edge = gaps.internal;
+        }
+
+        child->set_gaps(child_gaps);
+    }
 }
 
 split_direction_t split_node_t::get_split_direction() const
@@ -279,6 +322,18 @@ view_node_t::~view_node_t()
     view->erase_data<view_node_custom_data_t>();
 }
 
+void view_node_t::set_gaps(const gap_size_t& size)
+{
+    if ((this->gaps.top != size.top) ||
+        (this->gaps.bottom != size.bottom) ||
+        (this->gaps.left != size.left) ||
+        (this->gaps.right != size.right))
+    {
+        this->gaps = size;
+        this->set_geometry(this->geometry);
+    }
+}
+
 wf::geometry_t view_node_t::calculate_target_geometry()
 {
     /* Calculate view geometry in coordinates local to the active workspace,
@@ -286,6 +341,11 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     auto output = view->get_output();
     auto local_geometry = get_output_local_coordinates(
         view->get_output(), geometry);
+
+    local_geometry.x     += gaps.left;
+    local_geometry.y     += gaps.top;
+    local_geometry.width -= gaps.left + gaps.right;
+    local_geometry.height -= gaps.top + gaps.bottom;
 
     /* If view is maximized, we want to use the full available geometry */
     if (view->fullscreen)

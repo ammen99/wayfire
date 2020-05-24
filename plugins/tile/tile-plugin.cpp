@@ -44,7 +44,8 @@ class tile_plugin_t : public wf::plugin_interface_t
         "simple-tile/keep_fullscreen_on_adjacent"};
     wf::option_wrapper_t<wf::buttonbinding_t> button_move{"simple-tile/button_move"},
     button_resize{"simple-tile/button_resize"};
-    wf::option_wrapper_t<wf::keybinding_t> key_toggle_tile{"simple-tile/key_toggle"};
+    wf::option_wrapper_t<wf::keybinding_t> key_toggle_tile{"simple-tile/key_toggle"},
+    key_toggle_fullscreen{"simple-tile/key_toggle_fullscreen"};
 
     wf::option_wrapper_t<wf::keybinding_t> key_focus_left{
         "simple-tile/key_focus_left"},
@@ -52,6 +53,10 @@ class tile_plugin_t : public wf::plugin_interface_t
     wf::option_wrapper_t<wf::keybinding_t> key_focus_above{
         "simple-tile/key_focus_above"},
     key_focus_below{"simple-tile/key_focus_below"};
+
+    wf::option_wrapper_t<int> inner_gaps{"simple-tile/inner_gap_size"};
+    wf::option_wrapper_t<int> outer_horiz_gaps{"simple-tile/outer_horiz_gap_size"};
+    wf::option_wrapper_t<int> outer_vert_gaps{"simple-tile/outer_vert_gap_size"};
 
   private:
     std::vector<std::vector<std::unique_ptr<wf::tile::tree_node_t>>> roots;
@@ -96,6 +101,25 @@ class tile_plugin_t : public wf::plugin_interface_t
             }
         }
     }
+
+    std::function<void()> update_gaps = [=] ()
+    {
+        tile::gap_size_t gaps = {
+            .left   = outer_horiz_gaps,
+            .right  = outer_horiz_gaps,
+            .top    = outer_vert_gaps,
+            .bottom = outer_vert_gaps,
+            .internal = inner_gaps,
+        };
+
+        for (auto& col : roots)
+        {
+            for (auto& root : col)
+            {
+                root->set_gaps(gaps);
+            }
+        }
+    };
 
     void flatten_roots()
     {
@@ -509,6 +533,11 @@ class tile_plugin_t : public wf::plugin_interface_t
         {
             controller->input_motion(get_global_coordinates({x, y}));
         };
+
+        inner_gaps.set_callback(update_gaps);
+        outer_horiz_gaps.set_callback(update_gaps);
+        outer_vert_gaps.set_callback(update_gaps);
+        update_gaps();
     }
 
   public:
