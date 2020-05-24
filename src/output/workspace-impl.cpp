@@ -547,7 +547,8 @@ class output_viewport_manager_t
             v->move(v->get_wm_geometry().x + dx,
                 v->get_wm_geometry().y + dy);
         }
-
+        
+        data.output = output;
         output->emit_signal("viewport-changed", &data);
 
         /* unfocus view from last workspace */
