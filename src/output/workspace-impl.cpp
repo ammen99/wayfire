@@ -398,6 +398,50 @@ class output_viewport_manager_t
         current_vx = 0;
         current_vy = 0;
     }
+    /**
+     * @param threshold Threshold of the view to be counted 
+     *        on that workspace. 1.0 for 100% visible, 0.1 for 10%
+     *
+     * @return a vector of all the workspaces
+     */
+    std::vector<wf::point_t> get_view_workspaces(wayfire_view view, double threshold)
+    {
+        wf::dimensions_t output_workspaces;
+        std::vector<wf::point_t> view_workspaces;
+        wf::output_t *output = view->get_output();
+        output_workspaces = output->workspace->get_workspace_grid_size();
+
+        wlr_box bounding_box;
+        wf::geometry_t output_relative_geometry;
+        wf::geometry_t intersection;
+        double area;
+        if (threshold != 1.0)
+         {
+             bounding_box = view->get_bounding_box();
+             output_relative_geometry = view->get_output()->get_relative_geometry();
+             intersection = wf::geometry_intersection(bounding_box, output_relative_geometry);
+             area = 1.0 * intersection.width * intersection.height;
+             area /= 1.0 * bounding_box.width * bounding_box.height;
+         }
+
+        for (int row = output_workspaces.width; row-- > 0;)
+        {
+           for (int column = output_workspaces.height; column-- > 0;)
+           {
+              wf::point_t workspace = {row, column};
+              if (output->workspace->view_visible_on(view, workspace))
+              {
+                 if (threshold != 1.0)
+                 {
+                    if (area < threshold)
+                      continue;
+                 }
+                 view_workspaces.push_back(workspace);
+              }
+           }
+        }
+        return view_workspaces;
+    }
 
     /**
      * @param use_bbox When considering view visibility, whether to use the
@@ -916,6 +960,8 @@ workspace_manager::workspace_manager(output_t *wo) : pimpl(new impl(wo)) {}
 workspace_manager::~workspace_manager() = default;
 
 /* Just pass to the appropriate function from above */
+std::vector<wf::point_t> workspace_manager::get_view_workspaces(wayfire_view view, double threshold) 
+{ return pimpl->viewport_manager.get_view_workspaces(view, threshold); }
 bool workspace_manager::view_visible_on(wayfire_view view, wf::point_t ws) { return pimpl->viewport_manager.view_visible_on(view, ws, true); }
 std::vector<wayfire_view> workspace_manager::get_views_on_workspace(wf::point_t ws, uint32_t layer_mask, bool wm_only)
 { return pimpl->viewport_manager.get_views_on_workspace(ws, layer_mask, wm_only); }

@@ -112,6 +112,14 @@ class workspace_manager
 {
   public:
     /**
+     * @param threshold Threshold of the view to be counted 
+     *        on that workspace. 1.0 for 100% visible, 0.1 for 10%
+     *
+     * @return a vector of all the workspaces
+     */
+    std::vector<wf::point_t> get_view_workspaces(wayfire_view view, double threshold);
+
+    /**
      * Check if the given view is visible on the given workspace
      */
     bool view_visible_on(wayfire_view view, wf::point_t ws);
