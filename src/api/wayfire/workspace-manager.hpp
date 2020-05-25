@@ -114,7 +114,7 @@ class workspace_manager
     /**
      * Calculate a list of workspaces the view is visible on.
      * @param threshold How much of the view's area needs to overlap a workspace to be counted as visible on it.
-     *        on that workspace. 1.0 for 100% visible, 0.1 for 10%
+     *    1.0 for 100% visible, 0.1 for 10%.
      *
      * @return a vector of all the workspaces
      */
