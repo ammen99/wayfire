@@ -268,6 +268,7 @@ class wayfire_move : public wf::plugin_interface_t
             }
 
             view_change_viewport_signal workspace_may_changed;
+            workspace_may_changed.view = this->view;
             workspace_may_changed.recheck_all = true;
             output->emit_signal("view-change-viewport", &workspace_may_changed);
 
