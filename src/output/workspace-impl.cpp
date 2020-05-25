@@ -424,9 +424,9 @@ class output_viewport_manager_t
              area /= 1.0 * bounding_box.width * bounding_box.height;
          }
 
-        for (int row = output_workspaces.width; row-- > 0;)
+        for (int row = 0; row < output_workspaces.width; row++)
         {
-           for (int column = output_workspaces.height; column-- > 0;)
+           for (int column = 0; column < output_workspaces.heigh; column++)
            {
               wf::point_t workspace = {row, column};
               if (output->workspace->view_visible_on(view, workspace))
