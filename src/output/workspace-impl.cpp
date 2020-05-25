@@ -406,14 +406,13 @@ class output_viewport_manager_t
      */
     std::vector<wf::point_t> get_view_workspaces(wayfire_view view, double threshold)
     {
-
+        std::vector<wf::point_t> view_workspaces;
         wf::geometry_t workspace_relative_geometry;
         wlr_box view_relative_geometry;
         wf::dimensions_t workspaces;
         wf::geometry_t intersection;
         wf::output_t *output;
         double area;
-
         output = view->get_output();
         view_relative_geometry = view->get_bounding_box();
         workspaces = output->workspace->get_workspace_grid_size();
