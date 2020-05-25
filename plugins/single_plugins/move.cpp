@@ -15,6 +15,7 @@
 
 #include "snap_signal.hpp"
 #include "move-snap-helper.hpp"
+#include "../common/view-change-viewport-signal.hpp"
 
 class wf_move_mirror_view : public wf::mirror_view_t
 {

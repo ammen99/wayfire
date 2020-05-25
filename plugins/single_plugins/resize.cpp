@@ -6,6 +6,7 @@
 #include <wayfire/workspace-manager.hpp>
 #include <linux/input.h>
 #include <wayfire/signal-definitions.hpp>
+#include "../common/view-change-viewport-signal.hpp"
 
 extern "C"
 {
