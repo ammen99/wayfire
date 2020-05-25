@@ -415,14 +415,6 @@ class output_viewport_manager_t
         wf::geometry_t output_relative_geometry;
         wf::geometry_t intersection;
         double area;
-        if (threshold != 1.0)
-         {
-             bounding_box = view->get_bounding_box();
-             output_relative_geometry = view->get_output()->get_relative_geometry();
-             intersection = wf::geometry_intersection(bounding_box, output_relative_geometry);
-             area = 1.0 * intersection.width * intersection.height;
-             area /= 1.0 * bounding_box.width * bounding_box.height;
-         }
 
         for (int row = 0; row < output_workspaces.width; row++)
         {
@@ -431,6 +423,12 @@ class output_viewport_manager_t
               wf::point_t workspace = {row, column};
               if (output->workspace->view_visible_on(view, workspace))
               {
+                 bounding_box = view->get_bounding_box();
+                 output_relative_geometry = view->get_output()->get_relative_geometry();
+                 intersection = wf::geometry_intersection(bounding_box, output_relative_geometry);
+                 area = 1.0 * intersection.width * intersection.height;
+                 area /= 1.0 * bounding_box.width * bounding_box.height;
+                  
                  if (threshold != 1.0)
                  {
                     if (area < threshold)
