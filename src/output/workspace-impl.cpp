@@ -406,37 +406,37 @@ class output_viewport_manager_t
      */
     std::vector<wf::point_t> get_view_workspaces(wayfire_view view, double threshold)
     {
-        wf::dimensions_t output_workspaces;
-        std::vector<wf::point_t> view_workspaces;
-        wf::output_t *output = view->get_output();
-        output_workspaces = output->workspace->get_workspace_grid_size();
 
-        wlr_box bounding_box;
-        wf::geometry_t output_relative_geometry;
+        wf::geometry_t workspace_relative_geometry;
+        wlr_box view_relative_geometry;
+        wf::dimensions_t workspaces;
         wf::geometry_t intersection;
+        wf::output_t *output;
         double area;
 
-        for (int row = 0; row < output_workspaces.width; row++)
+        output = view->get_output();
+        view_relative_geometry = view->get_bounding_box();
+        workspaces = output->workspace->get_workspace_grid_size();
+
+        for (int horizontal_workspace = 0; horizontal_workspace < workspaces.width; horizontal_workspace++)
         {
-           for (int column = 0; column < output_workspaces.heigh; column++)
-           {
-              wf::point_t workspace = {row, column};
-              if (output->workspace->view_visible_on(view, workspace))
-              {
-                 bounding_box = view->get_bounding_box();
-                 output_relative_geometry = view->get_output()->get_relative_geometry();
-                 intersection = wf::geometry_intersection(bounding_box, output_relative_geometry);
-                 area = 1.0 * intersection.width * intersection.height;
-                 area /= 1.0 * bounding_box.width * bounding_box.height;
+            for (int vertical_workspace = 0; vertical_workspace < workspaces.height; vertical_workspace++)
+            {
+               wf::point_t ws = {horizontal_workspace, vertical_workspace};
+               if (output->workspace->view_visible_on(view, ws))
+               {
+                   workspace_relative_geometry = output->render->get_ws_box(ws);
+                   intersection = wf::geometry_intersection(view_relative_geometry, workspace_relative_geometry);
+                   area = 1.0 * intersection.width * intersection.height;
+                   area /= 1.0 * view_relative_geometry.width * view_relative_geometry.height;
                   
-                 if (threshold != 1.0)
-                 {
-                    if (area < threshold)
+                   if (area < threshold)
+                   {
                       continue;
-                 }
-                 view_workspaces.push_back(workspace);
-              }
-           }
+                   }
+                   view_workspaces.push_back(ws);
+               }
+            }
         }
         return view_workspaces;
     }
