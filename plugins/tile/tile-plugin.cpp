@@ -315,7 +315,7 @@ class tile_plugin_t : public wf::plugin_interface_t
     signal_callback_t on_view_change_viewport = [=] (signal_data_t *data)
     {
         auto ev = (view_change_viewport_signal*) (data);
-        if (!ev->recheck_all)
+        if (ev->old_viewport_invalid)
           change_view_workspace(ev->view, ev->to);
     };
 

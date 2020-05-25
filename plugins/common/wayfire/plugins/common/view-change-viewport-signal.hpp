@@ -13,5 +13,5 @@ struct view_change_viewport_signal : public _view_signal
      * from and to maybe null
      * if recheck_all is true
      */
-    bool recheck_all = false;
+    bool old_viewport_invalid = true;
 };
