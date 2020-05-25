@@ -266,6 +266,10 @@ class wayfire_move : public wf::plugin_interface_t
                 update_slot(0);
             }
 
+            view_change_viewport_signal workspace_may_changed;
+            workspace_may_changed.recheck_all = true;
+            output->emit_signal("view-change-viewport", &workspace_may_changed);
+
             this->view = nullptr;
         }
 

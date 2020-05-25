@@ -315,7 +315,8 @@ class tile_plugin_t : public wf::plugin_interface_t
     signal_callback_t on_view_change_viewport = [=] (signal_data_t *data)
     {
         auto ev = (view_change_viewport_signal*) (data);
-        change_view_workspace(ev->view, ev->to);
+        if (!recheck_all)
+          change_view_workspace(ev->view, ev->to);
     };
 
     signal_callback_t on_view_minimized = [=] (signal_data_t *data)

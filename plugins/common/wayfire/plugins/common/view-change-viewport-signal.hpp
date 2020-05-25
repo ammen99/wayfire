@@ -8,4 +8,10 @@
 struct view_change_viewport_signal : public _view_signal
 {
     wf::point_t from, to;
+
+    /**
+     * from and to maybe null
+     * if recheck_all is true
+     */
+    bool recheck_all = false;
 };
