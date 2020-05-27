@@ -21,13 +21,13 @@ struct wf_gtk_shell
  *  Currently only the app_id is implemented / required.
  */
 static void handle_gtk_surface_set_dbus_properties(wl_client *client,
-   wl_resource *resource,
-   const char *application_id,
-   const char *app_menu_path,
-   const char *menubar_path,
-   const char *window_object_path,
-   const char *application_object_path,
-   const char *unique_bus_name)
+    wl_resource *resource,
+    const char *application_id,
+    const char *app_menu_path,
+    const char *menubar_path,
+    const char *window_object_path,
+    const char *application_object_path,
+    const char *unique_bus_name)
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     if (application_id)
@@ -122,13 +122,13 @@ static void handle_gtk_shell_get_gtk_surface(wl_client *client,
     wl_resource *surface)
 {
     auto res = wl_resource_create(client,
-                                  &gtk_surface1_interface,
-                                  wl_resource_get_version(resource),
-                                  id);
+        &gtk_surface1_interface,
+        wl_resource_get_version(resource),
+        id);
     wl_resource_set_implementation(res,
-                                   &gtk_surface1_impl,
-                                   surface,
-                                   handle_gtk_surface_destroy);
+        &gtk_surface1_impl,
+        surface,
+        handle_gtk_surface_destroy);
 }
 
 /**
@@ -184,9 +184,9 @@ void bind_gtk_shell1(wl_client *client, void *data, uint32_t version, uint32_t i
         GTK_SHELL_VERSION,
         id);
     wl_resource_set_implementation(resource,
-                                   &gtk_shell1_impl,
-                                   data,
-                                   handle_gtk_shell1_destroy);
+        &gtk_shell1_impl,
+        data,
+        handle_gtk_shell1_destroy);
 }
 
 /**
@@ -197,10 +197,10 @@ wf_gtk_shell* wf_gtk_shell_create(wl_display *display)
 {
     wf_gtk_shell* gtk_shell = new wf_gtk_shell;
     wl_global* global = wl_global_create(display,
-                                         &gtk_shell1_interface,
-                                         GTK_SHELL_VERSION,
-                                         gtk_shell,
-                                         bind_gtk_shell1);
+        &gtk_shell1_interface,
+        GTK_SHELL_VERSION,
+        gtk_shell,
+        bind_gtk_shell1);
     if (global == NULL)
     {
         LOGE("Failed to create gtk_shell");
