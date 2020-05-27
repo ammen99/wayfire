@@ -316,7 +316,7 @@ class tile_plugin_t : public wf::plugin_interface_t
     {
         auto ev = (view_change_viewport_signal*) (data);
         if (ev->old_viewport_invalid)
-          change_view_workspace(ev->view, ev->to);
+            change_view_workspace(ev->view, ev->to);
     };
 
     signal_callback_t on_view_minimized = [=] (signal_data_t *data)
