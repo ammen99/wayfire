@@ -6,8 +6,6 @@
 #include "../core/core-impl.hpp"
 #include <wayfire/core.hpp>
 #include <map>
-#include <iostream>
-#include <wayfire/debug.hpp>
 #include <wayfire/signal-definitions.hpp>
 #define GTK_SHELL_VERSION 3
 
