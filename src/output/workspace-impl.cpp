@@ -399,42 +399,37 @@ class output_viewport_manager_t
         current_vy = 0;
     }
     /**
-     * @param threshold Threshold of the view to be counted 
+     * @param threshold Threshold of the view to be counted
      *        on that workspace. 1.0 for 100% visible, 0.1 for 10%
      *
      * @return a vector of all the workspaces
      */
     std::vector<wf::point_t> get_view_workspaces(wayfire_view view, double threshold)
     {
+        assert(view->get_output() == this->output);
         std::vector<wf::point_t> view_workspaces;
         wf::geometry_t workspace_relative_geometry;
-        wlr_box view_relative_geometry;
-        wf::dimensions_t workspaces;
-        wf::geometry_t intersection;
-        wf::output_t *output;
-        double area;
-        output = view->get_output();
-        view_relative_geometry = view->get_bounding_box();
-        workspaces = output->workspace->get_workspace_grid_size();
+        wlr_box view_bbox = view->get_bounding_box();
 
-        for (int horizontal_workspace = 0; horizontal_workspace < workspaces.width; horizontal_workspace++)
+        for (int horizontal = 0; horizontal < this->vwidth; horizontal++)
         {
-            for (int vertical_workspace = 0; vertical_workspace < workspaces.height; vertical_workspace++)
+            for (int vertical = 0; vertical < this->vheight; vertical++)
             {
-               wf::point_t ws = {horizontal_workspace, vertical_workspace};
-               if (output->workspace->view_visible_on(view, ws))
-               {
-                   workspace_relative_geometry = output->render->get_ws_box(ws);
-                   intersection = wf::geometry_intersection(view_relative_geometry, workspace_relative_geometry);
-                   area = 1.0 * intersection.width * intersection.height;
-                   area /= 1.0 * view_relative_geometry.width * view_relative_geometry.height;
-                  
-                   if (area < threshold)
-                   {
-                      continue;
-                   }
-                   view_workspaces.push_back(ws);
-               }
+                wf::point_t ws = {horizontal, vertical};
+                if (output->workspace->view_visible_on(view, ws))
+                {
+                    workspace_relative_geometry = output->render->get_ws_box(ws);
+                    auto intersection = wf::geometry_intersection(
+                        view_bbox, workspace_relative_geometry);
+                    double area = 1.0 * intersection.width * intersection.height;
+                    area /= 1.0 * view_bbox.width * view_bbox.height;
+
+                    if (area < threshold)
+                    {
+                        continue;
+                    }
+                    view_workspaces.push_back(ws);
+                }
             }
         }
         return view_workspaces;
@@ -588,7 +583,7 @@ class output_viewport_manager_t
             v->move(v->get_wm_geometry().x + dx,
                 v->get_wm_geometry().y + dy);
         }
-        
+
         data.output = output;
         output->emit_signal("viewport-changed", &data);
 
@@ -957,7 +952,7 @@ workspace_manager::workspace_manager(output_t *wo) : pimpl(new impl(wo)) {}
 workspace_manager::~workspace_manager() = default;
 
 /* Just pass to the appropriate function from above */
-std::vector<wf::point_t> workspace_manager::get_view_workspaces(wayfire_view view, double threshold) 
+std::vector<wf::point_t> workspace_manager::get_view_workspaces(wayfire_view view, double threshold)
 { return pimpl->viewport_manager.get_view_workspaces(view, threshold); }
 bool workspace_manager::view_visible_on(wayfire_view view, wf::point_t ws) { return pimpl->viewport_manager.view_visible_on(view, ws, true); }
 std::vector<wayfire_view> workspace_manager::get_views_on_workspace(wf::point_t ws, uint32_t layer_mask, bool wm_only)
