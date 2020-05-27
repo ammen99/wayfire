@@ -10,9 +10,8 @@ struct view_change_viewport_signal : public _view_signal
     wf::point_t from, to;
 
     /**
-     * from and to maybe null
-     * if old_viewport_invalid is false
-     * as it should trigger a full re-read
+     * Indicates whether the old viewport is known.
+     * If false, then the `from` field should be ignored.
      */
     bool old_viewport_invalid = true;
 };
