@@ -43,9 +43,9 @@ static void handle_gtk_surface_set_dbus_properties(wl_client *client,
  */
 static void handle_gtk_surface_set_modal(wl_client *client, wl_resource *resource)
 {
-   auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
-   wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-   view->store_data(std::unique_ptr<wf::custom_data_t>(), "gtk-shell-modal");
+    auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
+    wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
+    view->store_data(std::unique_ptr<wf::custom_data_t>(), "gtk-shell-modal");
 }
 
 
@@ -57,9 +57,9 @@ static void handle_gtk_surface_set_modal(wl_client *client, wl_resource *resourc
  */
 static void handle_gtk_surface_unset_modal(wl_client *client, wl_resource *resource)
 {
-   auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
-   wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-   view->erase_data("gtk-shell-modal");
+    auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
+    wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
+    view->erase_data("gtk-shell-modal");
 }
 
 
@@ -72,11 +72,11 @@ static void handle_gtk_surface_unset_modal(wl_client *client, wl_resource *resou
  */
 static void handle_gtk_surface_present(wl_client *client, wl_resource *resource, uint32_t time)
 {
-   auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
-   wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-   view_self_request_focus_signal data;
-   data.view = view;
-   view->get_output()->emit_signal("view-self-request-focus", &data);
+    auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
+    wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
+    view_self_request_focus_signal data;
+    data.view = view;
+    view->get_output()->emit_signal("view-self-request-focus", &data);
 }
 
 
@@ -87,11 +87,11 @@ static void handle_gtk_surface_present(wl_client *client, wl_resource *resource,
  */
 static void handle_gtk_surface_request_focus(struct wl_client *client, struct wl_resource *resource, const char* startup_id)
 {
-   auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
-   wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-   view_self_request_focus_signal data;
-   data.view = view;
-   view->get_output()->emit_signal("view-self-request-focus", &data);
+    auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
+    wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
+    view_self_request_focus_signal data;
+    data.view = view;
+    view->get_output()->emit_signal("view-self-request-focus", &data);
 }
 
 
@@ -106,11 +106,11 @@ static void handle_gtk_surface_destroy(wl_resource *resource) {}
  * Supported functions of the gtk_surface_interface implementation
  */
 const struct gtk_surface1_interface gtk_surface1_impl = {
-	.set_dbus_properties = handle_gtk_surface_set_dbus_properties,
-	.set_modal = handle_gtk_surface_set_modal,
-	.unset_modal = handle_gtk_surface_unset_modal,
-	.present = handle_gtk_surface_present,
-	.request_focus = handle_gtk_surface_request_focus,
+    .set_dbus_properties = handle_gtk_surface_set_dbus_properties,
+    .set_modal = handle_gtk_surface_set_modal,
+    .unset_modal = handle_gtk_surface_unset_modal,
+    .present = handle_gtk_surface_present,
+    .request_focus = handle_gtk_surface_request_focus,
 };
 
 /**
@@ -160,10 +160,10 @@ static void handle_gtk_shell_system_bell(wl_client *client, wl_resource *resourc
  * Supported functions of the gtk_shell_interface implementation
  */
 static const struct gtk_shell1_interface gtk_shell1_impl = {
-	.get_gtk_surface = handle_gtk_shell_get_gtk_surface,
-	.set_startup_id = handle_gtk_shell_set_startup_id,
-	.system_bell = handle_gtk_shell_system_bell,
-	.notify_launch = handle_gtk_shell_notify_launch,
+    .get_gtk_surface = handle_gtk_shell_get_gtk_surface,
+    .set_startup_id = handle_gtk_shell_set_startup_id,
+    .system_bell = handle_gtk_shell_system_bell,
+    .notify_launch = handle_gtk_shell_notify_launch,
 };
 
 
