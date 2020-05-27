@@ -15,6 +15,7 @@
 
 #include "snap_signal.hpp"
 #include "move-snap-helper.hpp"
+#include <wayfire/plugins/common/view-change-viewport-signal.hpp>
 
 class wf_move_mirror_view : public wf::mirror_view_t
 {
@@ -265,6 +266,11 @@ class wayfire_move : public wf::plugin_interface_t
                 /* Update slot, will hide the preview as well */
                 update_slot(0);
             }
+
+            view_change_viewport_signal workspace_may_changed;
+            workspace_may_changed.view = this->view;
+            workspace_may_changed.old_viewport_invalid = false;
+            output->emit_signal("view-change-viewport", &workspace_may_changed);
 
             this->view = nullptr;
         }
