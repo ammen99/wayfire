@@ -20,13 +20,9 @@ struct wf_gtk_shell
  *  specified as arguments here.
  *  Currently only the app_id is implemented / required.
  */
-static void handle_gtk_surface_set_dbus_properties(wl_client *client,
-    wl_resource *resource,
-    const char *application_id,
-    const char *app_menu_path,
-    const char *menubar_path,
-    const char *window_object_path,
-    const char *application_object_path,
+static void handle_gtk_surface_set_dbus_properties(wl_client *client, wl_resource *resource,
+    const char *application_id, const char *app_menu_path, const char *menubar_path,
+    const char *window_object_path, const char *application_object_path,
     const char *unique_bus_name)
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
@@ -124,19 +120,10 @@ const struct gtk_surface1_interface gtk_surface1_impl = {
 /**
  * Passes the gtk_surface object to the client.
  */
-static void handle_gtk_shell_get_gtk_surface(wl_client *client,
-    wl_resource *resource,
-    uint32_t id,
-    wl_resource *surface)
+static void handle_gtk_shell_get_gtk_surface(wl_client *client, wl_resource *resource, uint32_t id, wl_resource *surface)
 {
-    auto res = wl_resource_create(client,
-        &gtk_surface1_interface,
-        wl_resource_get_version(resource),
-        id);
-    wl_resource_set_implementation(res,
-        &gtk_surface1_impl,
-        surface,
-        handle_gtk_surface_destroy);
+    auto res = wl_resource_create(client, &gtk_surface1_interface, wl_resource_get_version(resource), id);
+    wl_resource_set_implementation(res, &gtk_surface1_impl, surface, handle_gtk_surface_destroy);
 }
 
 /**
@@ -187,14 +174,8 @@ static void handle_gtk_shell1_destroy(wl_resource *resource) {}
  */
 void bind_gtk_shell1(wl_client *client, void *data, uint32_t version, uint32_t id)
 {
-    auto resource = wl_resource_create(client,
-        &gtk_shell1_interface,
-        GTK_SHELL_VERSION,
-        id);
-    wl_resource_set_implementation(resource,
-        &gtk_shell1_impl,
-        data,
-        handle_gtk_shell1_destroy);
+    auto resource = wl_resource_create(client, &gtk_shell1_interface, GTK_SHELL_VERSION, id);
+    wl_resource_set_implementation(resource, &gtk_shell1_impl, data, handle_gtk_shell1_destroy);
 }
 
 /**
@@ -204,11 +185,7 @@ void bind_gtk_shell1(wl_client *client, void *data, uint32_t version, uint32_t i
 wf_gtk_shell* wf_gtk_shell_create(wl_display *display)
 {
     wf_gtk_shell* gtk_shell = new wf_gtk_shell;
-    wl_global* global = wl_global_create(display,
-        &gtk_shell1_interface,
-        GTK_SHELL_VERSION,
-        gtk_shell,
-        bind_gtk_shell1);
+    wl_global* global = wl_global_create(display, &gtk_shell1_interface, GTK_SHELL_VERSION, gtk_shell, bind_gtk_shell1);
     if (global == NULL)
     {
         LOGE("Failed to create gtk_shell");
@@ -223,8 +200,7 @@ wf_gtk_shell* wf_gtk_shell_create(wl_display *display)
  * Get's a 'fixed' app_id for some gnome-clients
  * to match the app_id with the desktop file.
  */
-std::string wf_gtk_shell_get_custom_app_id(wf_gtk_shell *shell,
-    wl_resource *surface)
+std::string wf_gtk_shell_get_custom_app_id(wf_gtk_shell *shell, wl_resource *surface)
 {
     return shell->surface_app_id[surface];
 }
