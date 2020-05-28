@@ -67,6 +67,10 @@ struct view_tiled_signal : public _view_signal
     wf::geometry_t desired_size;
 };
 
+/**
+ * view-self-request-focus signal is emitted on the view's output whenever the client indicates the
+ * view should become active.
+ */
 struct view_self_request_focus_signal : public _view_signal
 {
 };
