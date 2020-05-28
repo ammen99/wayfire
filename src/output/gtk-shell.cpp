@@ -45,7 +45,8 @@ static void handle_gtk_surface_set_modal(wl_client *client, wl_resource *resourc
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-    view->store_data(std::unique_ptr<wf::custom_data_t>(), "gtk-shell-modal");
+    if (view && view != nullptr)
+        view->store_data(std::unique_ptr<wf::custom_data_t>(), "gtk-shell-modal");
 }
 
 
@@ -59,7 +60,8 @@ static void handle_gtk_surface_unset_modal(wl_client *client, wl_resource *resou
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-    view->erase_data("gtk-shell-modal");
+    if (view && view != nullptr)
+        view->erase_data("gtk-shell-modal");
 }
 
 
@@ -74,9 +76,12 @@ static void handle_gtk_surface_present(wl_client *client, wl_resource *resource,
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-    view_self_request_focus_signal data;
-    data.view = view;
-    view->get_output()->emit_signal("view-self-request-focus", &data);
+    if (view && view != nullptr)
+    {
+        view_self_request_focus_signal data;
+        data.view = view;
+        view->get_output()->emit_signal("view-self-request-focus", &data);
+    }
 }
 
 
@@ -89,9 +94,12 @@ static void handle_gtk_surface_request_focus(struct wl_client *client, struct wl
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-    view_self_request_focus_signal data;
-    data.view = view;
-    view->get_output()->emit_signal("view-self-request-focus", &data);
+    if (view && view != nullptr)
+    {
+        view_self_request_focus_signal data;
+        data.view = view;
+        view->get_output()->emit_signal("view-self-request-focus", &data);
+    }
 }
 
 
