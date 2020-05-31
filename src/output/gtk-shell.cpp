@@ -101,7 +101,6 @@ static void handle_gtk_surface_request_focus(struct wl_client *client, struct wl
 
 /**
  * Destroys the gtk_surface object.
- * TODO: May this be required for some kind of leak?
  */
 static void handle_gtk_surface_destroy(wl_resource *resource) {}
 
