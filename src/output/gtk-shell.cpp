@@ -90,7 +90,7 @@ static void handle_gtk_surface_request_focus(struct wl_client *client, struct wl
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-    if (view && view != nullptr)
+    if (view)
     {
         view_self_request_focus_signal data;
         data.view = view;
