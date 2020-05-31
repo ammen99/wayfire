@@ -56,7 +56,7 @@ static void handle_gtk_surface_unset_modal(wl_client *client, wl_resource *resou
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
-    if (view && view != nullptr)
+    if (view)
         view->erase_data("gtk-shell-modal");
 }
 
