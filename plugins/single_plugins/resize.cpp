@@ -182,7 +182,7 @@ class wayfire_resize : public wf::plugin_interface_t
     bool initiate(wayfire_view view, uint32_t forced_edges = 0)
     {
         if (!view || view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT ||
-            !view->is_mapped())
+            !view->is_mapped() || view->fullscreen)
         {
             return false;
         }
@@ -210,8 +210,6 @@ class wayfire_resize : public wf::plugin_interface_t
 
         view->set_resizing(true, edges);
 
-        if (view->fullscreen)
-            view->set_fullscreen(false);
         if (view->tiled_edges)
             view->set_tiled(0);
 

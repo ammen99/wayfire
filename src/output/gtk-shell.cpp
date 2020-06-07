@@ -86,7 +86,7 @@ static void handle_gtk_surface_present(wl_client *client, wl_resource *resource,
  * gnome-control-center, gnome-clocks, dconf-editor are single instance and if
  * they are already running and launched again, this will request that they get focused.
  */
-static void handle_gtk_surface_request_focus(struct wl_client *client, struct wl_resource *resource, const char* startup_id)
+static void handle_gtk_surface_request_focus(wl_client *client, wl_resource *resource, const char* startup_id)
 {
     auto surface = static_cast<wl_resource*> (wl_resource_get_user_data(resource));
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
@@ -147,7 +147,18 @@ static void handle_gtk_shell_set_startup_id(wl_client *client, wl_resource *reso
  *  A view could use this to invoke the system bell, be it aural, visual or none at all.
  *  Not implemented.
  */
-static void handle_gtk_shell_system_bell(wl_client *client, wl_resource *resource, wl_resource *surface) {}
+static void handle_gtk_shell_system_bell(wl_client *client, wl_resource *resource, wl_resource *surface)
+{
+    auto wl_surface = static_cast<wl_resource*> (wl_resource_get_user_data(surface));
+    wayfire_view view = wf::wl_surface_to_wayfire_view(wl_surface);
+
+    if (view)
+    {
+        view_system_bell_signal data;
+        data.view = view;
+        view->get_output()->emit_signal("view-system-bell", &data);
+    }
+}
 
 
 /**

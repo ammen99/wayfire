@@ -106,18 +106,15 @@ class move_snap_helper_t : public wf::custom_data_t
   protected:
     virtual bool should_enable_snap_off() const
     {
-        return enable_snap_off &&
-            (view->tiled_edges || view->fullscreen);
+        return enable_snap_off && (view->tiled_edges || view->fullscreen);
     }
 
     /** Move the view out of its slot */
     virtual void snap_off()
     {
         view_in_slot = false;
-        if (view->fullscreen)
-            view->fullscreen_request(view->get_output(), false);
 
-        if (view->tiled_edges)
+        if (view->tiled_edges && !view->fullscreen)
             view->tile_request(0);
     }
 

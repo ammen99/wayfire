@@ -76,6 +76,23 @@ struct view_self_request_focus_signal : public _view_signal
 };
 
 /**
+ * view-hints-changed signal is emitted on the view's output whenever the client indicates the
+ * views hints have changed (example urgency hint).
+ */
+struct view_hints_changed_signal : public _view_signal
+{
+    bool demands_attention = false;
+};
+
+/**
+ * view-system-bell signal is emitted on the view's output whenever the client indicates the
+ * view wants to invoke the system bell if such is available.
+ */
+struct view_system_bell_signal : public _view_signal
+{
+};
+
+/**
  * The view-fullscreen-request and view-fullscreen signals are emitted on the view's output when the view's fullscreen state changes.
  * view-fullscreen-request is emitted when the view needs to be fullscreened, but has not been fullscreened yet.
  * view-fullscreen is emitted whenever the view's fullscreen state actually changes.

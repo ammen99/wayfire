@@ -210,10 +210,10 @@ class wayfire_move : public wf::plugin_interface_t
                 return false;
             }
 
-            view->store_data(std::make_unique<wf::move_snap_helper_t> (
-                    view, get_input_coords()));
-
             output->focus_view(view, true);
+            view->store_data(std::make_unique<wf::move_snap_helper_t> (
+                view, get_input_coords()));
+
             if (enable_snap)
                 slot.slot_id = 0;
 
@@ -256,7 +256,21 @@ class wayfire_move : public wf::plugin_interface_t
             }
 
             /* Snap the view */
-            if (enable_snap && slot.slot_id != 0)
+            /*
+             * A view that is fullscreened may break if resized i.e
+             * tiled_vertical or tiled_horizontal, games usually have
+             * their own option to be fullscreen.
+             * If the compositor resizes them and thus removes
+             * for xwayland _NET_WM_STATE fullscreen (there
+             * are not much wayland games around to test what wayland games
+             * do when they have fullscreen in their settings and
+             * the compositor puts them in another state) they break.
+             *
+             * This way fullscreened view can be moved from one
+             * output to another and be restored to fullscreen
+             * on a different output (hopefully with the same resolotion)
+            */
+            if (enable_snap && slot.slot_id != 0 && !this->view->fullscreen)
             {
                 snap_signal data;
                 data.view = view;
@@ -272,6 +286,14 @@ class wayfire_move : public wf::plugin_interface_t
             workspace_may_changed.to = output->workspace->get_current_workspace();
             workspace_may_changed.old_viewport_invalid = false;
             output->emit_signal("view-change-viewport", &workspace_may_changed);
+
+            /*
+             * Restore the fullscreen state so the window is
+             * not in a weird position afterwards, fullscreen
+             * are by spec the geometry of the output (or span outputs)
+             */
+            if (this->view->fullscreen)
+                view->fullscreen_request(output, true);
 
             this->view = nullptr;
         }
@@ -537,7 +559,7 @@ class wayfire_move : public wf::plugin_interface_t
             /* View might get destroyed when updating multi-output */
             if (view)
             {
-                if (enable_snap && !MOVE_HELPER->is_view_fixed())
+                if (enable_snap && !MOVE_HELPER->is_view_fixed() && !this->view->fullscreen)
                     update_slot(calc_slot(input.x, input.y));
             } else
             {

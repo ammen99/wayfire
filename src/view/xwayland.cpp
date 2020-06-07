@@ -7,6 +7,7 @@
 #include "wayfire/output-layout.hpp"
 #include "../core/core-impl.hpp"
 #include "view-impl.hpp"
+#include <wayfire/signal-definitions.hpp>
 
 extern "C"
 {
@@ -288,9 +289,9 @@ class wayfire_unmanaged_xwayland_view : public wayfire_xwayland_view_base
 
 class wayfire_xwayland_view : public wayfire_xwayland_view_base
 {
-    wf::wl_listener_wrapper on_request_move, on_request_resize,
-        on_request_maximize, on_request_fullscreen, on_set_parent,
-        on_set_decorations;
+    wf::wl_listener_wrapper on_request_move, on_request_resize, on_request_activate,
+        on_request_minimize, on_request_maximize, on_request_fullscreen,
+        on_set_hints, on_set_parent, on_set_decorations;
 
   public:
     wayfire_xwayland_view(wlr_xwayland_surface *xww)
@@ -305,9 +306,24 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
         on_request_move.set_callback([&] (void*) { move_request(); });
         on_request_resize.set_callback([&] (void*) { resize_request(); });
+
+        on_request_activate.set_callback([&] (void*) {
+            if (!this->activated)
+            {
+                view_self_request_focus_signal data;
+                data.view = this;
+                this->get_output()->emit_signal("view-self-request-focus", &data);
+            }
+        });
+        on_request_minimize.set_callback([&] (void*) {
+            minimize_request(xw->minimized);
+        });
         on_request_maximize.set_callback([&] (void*) {
-            tile_request((xw->maximized_horz && xw->maximized_vert) ?
-                wf::TILED_EDGES_ALL : 0);
+            if (xw->maximized_horz && xw->maximized_vert)
+                tile_request(wf::TILED_EDGES_ALL);
+            else
+                tile_request(0);
+
         });
         on_request_fullscreen.set_callback([&] (void*) {
             fullscreen_request(get_output(), xw->fullscreen);
@@ -327,11 +343,23 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             update_decorated();
         });
 
+        on_set_hints.set_callback([&] (void*) {
+            view_hints_changed_signal data;
+            data.view = this;
+            if (xw->hints_urgency)
+                data.demands_attention = true;
+
+            this->get_output()->emit_signal("view-hints-changed", &data);
+        });
+
         on_set_parent.connect(&xw->events.set_parent);
         on_set_decorations.connect(&xw->events.set_decorations);
-
+        on_set_hints.connect(&xw->events.set_hints);
+        
         on_request_move.connect(&xw->events.request_move);
         on_request_resize.connect(&xw->events.request_resize);
+        on_request_activate.connect(&xw->events.request_activate);
+        on_request_minimize.connect(&xw->events.request_minimize);
         on_request_maximize.connect(&xw->events.request_maximize);
         on_request_fullscreen.connect(&xw->events.request_fullscreen);
 
@@ -345,8 +373,12 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
     {
         on_set_parent.disconnect();
         on_set_decorations.disconnect();
+        on_set_hints.disconnect();
+
         on_request_move.disconnect();
         on_request_resize.disconnect();
+        on_request_activate.disconnect();
+        on_request_minimize.disconnect();
         on_request_maximize.disconnect();
         on_request_fullscreen.disconnect();
 
@@ -400,7 +432,9 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         }
 
         if (xw->fullscreen)
-            fullscreen_request(get_output(), true);
+        {
+                fullscreen_request(get_output(), true);
+        }
 
         if (!this->tiled_edges && !xw->fullscreen)
         {
@@ -517,6 +551,12 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
         wlr_foreign_toplevel_handle_v1_set_app_id(
             toplevel_handle, app_id.c_str());
+    }
+    
+    void set_minimized(bool mini) override
+    {
+        wf::wlr_view_t::set_minimized(mini);
+        wlr_xwayland_surface_set_minimized(xw, mini);
     }
 
     void set_fullscreen(bool full) override
