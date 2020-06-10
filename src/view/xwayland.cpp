@@ -319,10 +319,8 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             minimize_request(xw->minimized);
         });
         on_request_maximize.set_callback([&] (void*) {
-            if (xw->maximized_horz && xw->maximized_vert)
-                tile_request(wf::TILED_EDGES_ALL);
-            else
-                tile_request(0);
+            tile_request((xw->maximized_horz && xw->maximized_vert) ?
+                wf::TILED_EDGES_ALL : 0);
 
         });
         on_request_fullscreen.set_callback([&] (void*) {
