@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="scale">
+		<_short>Scale</_short>
+		<_long>Scale windows.</_long>
+		<category>Window management</category>
+		<!-- Key-bindings -->
+		<option name="initiate" type="key">
+			<_short>Initiate window picker</_short>
+			<_long>Start arranging windows in a grid for choosing one to switch to.</_long>
+			<default>&lt;super&gt; KEY_W</default>
+		</option>
+		<option name="initiate_all" type="key">
+			<_short>Initiate window picker for all windows</_short>
+			<_long>Start arranging windows from all workspaces in a grid for choosing one.</_long>
+			<default>&lt;super&gt; KEY_A</default>
+		</option>
+		<!-- Effects -->
+		<option name="speed" type="int">
+			<_short>Duration</_short>
+			<_long>Sets the duration of the animation in milliseconds.</_long>
+			<default>500</default>
+		</option>
+		<option name="spacing" type="int">
+			<_short>Spacing between windows</_short>
+			<_long>Amount of empty space to leave between windows.</_long>
+			<default>25</default>
+		</option>
+		<option name="inactive_alpha" type="double">
+			<_short>Opacity of inactive windows</_short>
+			<_long>Set the opacity value of the inactive windows.</_long>
+			<default>0.8</default>
+		</option>
+	</plugin>
+</wayfire>
