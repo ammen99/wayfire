@@ -336,7 +336,7 @@ wf::surface_interface_t *wf::compositor_core_impl_t::get_surface_at(wf::pointf_t
 wayfire_view wf::compositor_core_t::get_view_at(wf::pointf_t point)
 {
     auto surface = get_surface_at(point);
-    auto view = dynamic_cast<wf::view_interface_t*> (surface);
+    auto view = dynamic_cast<wf::view_interface_t*> (surface->get_main_surface());
 
     return view ? view->self() : nullptr;
 }
