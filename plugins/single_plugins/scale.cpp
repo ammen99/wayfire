@@ -96,6 +96,7 @@ class WayfireScale : public wf::plugin_interface_t
     //~ wf::option_wrapper_t<bool> middle_click_close{"scale/middle_click_close"};
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
 	wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
+	wf::option_wrapper_t<int> switch_thresh{"scale/workspace_switch_threshold"};
 	
     duration_t duration{speed};
     duration_t background_dim_duration{speed};
@@ -124,7 +125,8 @@ class WayfireScale : public wf::plugin_interface_t
     void init() override
     {
         grab_interface->name = "scale";
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
+        grab_interface->capabilities = wf::CAPABILITY_CUSTOM_RENDERER |
+			wf::CAPABILITY_GRAB_INPUT;
 
         output->add_key(
             wf::option_wrapper_t<wf::keybinding_t>{"scale/initiate"},
@@ -187,12 +189,12 @@ class WayfireScale : public wf::plugin_interface_t
 
     wf::key_callback initiate_cb = [=] (uint32_t)
     {
-        return init_switcher();
+        return init_switcher(false);
     };
 
     wf::key_callback initiate_all_cb = [=] (uint32_t)
     {
-        return init_switcher();
+        return init_switcher(true);
     };
 
 
@@ -325,11 +327,31 @@ class WayfireScale : public wf::plugin_interface_t
 		}
 	}
 	
+	void switch_to_active() {
+		output->focus_view(views[active_view].view, true);
+		dearrange();
+		/* switch to the workspace of the selected view if needed */
+		wf::point_t ws = output->workspace->get_current_workspace();
+		double area = get_view_workspace_rel_area(views[active_view].view, ws);
+		fprintf(stderr,"switch_to_active(): ws: (%d, %d), area: %f\n",
+			ws.x, ws.y, area);
+		if(area < 0.5 && area < switch_thresh / 100.0) {
+			/* we might need to change to a different workspace
+			 * note: if the overlap is above 0.5, then this is the
+			 * workspace with the largest share of the view's area */
+			wf::point_t target_ws = get_view_main_workspace(views[active_view].view);
+			fprintf(stderr,"switch_to_active(): target_ws(): (%d, %d)\n",
+				target_ws.x, target_ws.y);
+			/* request_workspace() does not work (vswitch plugin is incompatible with this one) 
+			if(target_ws != ws) output->workspace->request_workspace(target_ws); */
+			if(target_ws != ws) output->workspace->set_workspace(target_ws);
+		}
+	}
+	
 	void handle_left_click() {
 		if(have_mouse_view) {
 			active_view = mouse_view;
-			output->focus_view(views[mouse_view].view, true);
-			dearrange();
+			switch_to_active();
 		}
 	}
 	
@@ -348,8 +370,7 @@ class WayfireScale : public wf::plugin_interface_t
 	/* switch to view based on keyboard selection */
 	void keyboard_switch() {
 		active_view = selected_view;
-		output->focus_view(views[active_view].view, true);
-		dearrange();
+		switch_to_active();
 	}
 	
 	void handle_key_move(uint32_t key) {
@@ -388,7 +409,7 @@ class WayfireScale : public wf::plugin_interface_t
 
     /* Sets up basic hooks needed while switcher works and/or displays animations.
      * Also lower any fullscreen views that are active */
-    bool init_switcher()
+    bool init_switcher(bool all_workspaces = false)
     {
         if (!output->activate_plugin(grab_interface))
             return false;
@@ -399,7 +420,7 @@ class WayfireScale : public wf::plugin_interface_t
         output->render->add_effect(&damage, wf::OUTPUT_EFFECT_PRE);
         output->render->set_renderer(scale_renderer);
         output->render->set_redraw_always();
-        active = arrange();
+        active = arrange(all_workspaces);
         if(!active) deinit_switcher();
         return active;
     }
@@ -493,10 +514,9 @@ class WayfireScale : public wf::plugin_interface_t
     }
 
     // returns a list of mapped views
-    std::vector<wayfire_view> get_workspace_views() const
+    std::vector<wayfire_view> get_workspace_views(wf::point_t ws) const
     {
-        auto all_views = output->workspace->get_views_on_workspace(
-            output->workspace->get_current_workspace(),
+        auto all_views = output->workspace->get_views_on_workspace(ws,
             wf::WM_LAYERS | wf::LAYER_MINIMIZED, true);
 
         decltype(all_views) mapped_views;
@@ -512,18 +532,35 @@ class WayfireScale : public wf::plugin_interface_t
     /* Create the initial arrangement on the screen
      * Returns false if there are no views to arrange (in this case,
      * we might exit the switcher) */
-    bool arrange()
+    bool arrange(bool all_workspaces = false)
     {
         // clear views in case that deinit() hasn't been run
         views.clear();
         
         background_dim.set(1, background_dim_factor);
         background_dim_duration.start();
-
-        std::vector<wayfire_view> ws_views = get_workspace_views();
-        active_view = 0;
-        for (auto v : ws_views)
-            views.push_back(create_scale_view(v));
+		
+		active_view = 0;
+		auto active_view_ptr = output->get_active_view();
+		if(all_workspaces) {
+			wf::dimensions_t dim = output->workspace->get_workspace_grid_size();
+			for(int x = 0; x < dim.width; x++)
+				for(int y = 0; y < dim.height; y++) {
+					auto ws_views = get_workspace_views({x, y});
+					for(auto v : ws_views) {
+						if(v == active_view_ptr) active_view = views.size();
+						views.push_back(create_scale_view(v));
+					}
+				}
+		}
+		else {
+			auto ws_views = get_workspace_views(
+				output->workspace->get_current_workspace());
+			for(auto v : ws_views) {
+				if(v == active_view_ptr) active_view = views.size();
+				views.push_back(create_scale_view(v));
+			}
+		}
         return rearrange();
 	}
 	
@@ -728,12 +765,8 @@ class WayfireScale : public wf::plugin_interface_t
         for (auto view : get_overlay_views())
             view->render_transformed(fb, fb.geometry);
 
-        if (!duration.running())
-        {
-//            cleanup_expired();
-
-            if (!active)
-                deinit_switcher();
+        if (!duration.running()) {
+            if (!active) deinit_switcher();
         }
     };
 
@@ -750,13 +783,42 @@ class WayfireScale : public wf::plugin_interface_t
             }
         }
     }
-
-    /* Removes all expired views from the list 
-    void cleanup_expired()
-    {
-        cleanup_views([=] (ScaleView& sv)
-            { return view_expired(sv.position); });
-    }*/
+    
+    /**
+     * Get the relative area of a view visible on a given workspace
+     */
+    double get_view_workspace_rel_area(wayfire_view view, wf::point_t ws) {
+		wf::geometry_t ws_rel = output->render->get_ws_box(ws);
+        wlr_box bbox = view->get_bounding_box(scale_transformer);
+		auto intersection = wf::geometry_intersection(bbox, ws_rel);
+		double area = 1.0 * intersection.width * intersection.height;
+		area /= 1.0 * bbox.width * bbox.height;
+		return area;
+	}
+	
+	/**
+	 * Get the main workspace of a view (i.e. the workspace with the
+	 * largest area).
+	 * 
+	 * Adapted from src/output/workspace-impl.cpp
+     */
+    wf::point_t get_view_main_workspace(wayfire_view view) {
+        wf::point_t ret = {0, 0};
+        double ret_area = 0.0;
+		auto dim = output->workspace->get_workspace_grid_size();
+		
+        for (int horizontal = 0; horizontal < dim.width; horizontal++) {
+            for (int vertical = 0; vertical < dim.height; vertical++) {
+                wf::point_t ws = {horizontal, vertical};
+                double area = get_view_workspace_rel_area(view, ws);
+				if(area > ret_area) {
+					ret_area = area;
+					ret = ws;
+				}
+            }
+        }
+        return ret;
+    }
 
 
     void fini() override

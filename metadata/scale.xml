@@ -31,5 +31,10 @@
 			<_long>Set the opacity value of the inactive windows.</_long>
 			<default>0.8</default>
 		</option>
+		<option name="workspace_switch_threshold" type="int">
+			<_short>Threshold for switching workspaces</_short>
+			<_long>Switch to a new workspace if fewer percentage of selected view's area is visible on the current workspace than this.</_long>
+			<default>20</default>
+		</option>
 	</plugin>
 </wayfire>
