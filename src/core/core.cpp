@@ -342,7 +342,6 @@ wayfire_view wf::compositor_core_t::get_view_at(wf::pointf_t point)
     }
 
     auto view = dynamic_cast<wf::view_interface_t*> (surface->get_main_surface());
-
     return view ? view->self() : nullptr;
 }
 
