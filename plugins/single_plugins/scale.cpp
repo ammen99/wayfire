@@ -73,7 +73,7 @@ class wayfire_scale : public wf::plugin_interface_t
     void init() override
     {
         grab_interface->name = "scale";
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
+        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
 
         active = hook_set = button_connected = false;
 
@@ -219,8 +219,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (!interact)
         {
-            /* TODO: animate transition, possibly using another plugin */
-            output->workspace->set_workspace(get_view_main_workspace(view));
+            output->workspace->request_workspace(get_view_main_workspace(view));
         }
 
         if (scale_data[view].transformer)
@@ -301,8 +300,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 break;
             case KEY_ENTER:
                 toggle_cb(wf::activator_source_t{}, 0);
-                /* TODO: animate transition */
-                output->workspace->set_workspace(get_view_main_workspace(last_focused_view));
+                output->workspace->request_workspace(get_view_main_workspace(last_focused_view));
                 return;
             case KEY_ESC:
                 toggle_cb(wf::activator_source_t{}, 0);
