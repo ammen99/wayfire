@@ -45,7 +45,7 @@ class wf_scale : public wf::view_2D
 
 struct view_scale_data
 {
-    double x, y, w, h;
+    double x, y;
     double scale_x;
     double scale_y;
     double translation_x;
@@ -179,6 +179,69 @@ class wayfire_scale : public wf::plugin_interface_t
         process_button(ev->event->button, ev->event->state);
     };
 
+    void fade_out_all_except(wayfire_view view)
+    {
+        for (auto& e : scale_data)
+        {
+            auto v = e.first;
+            auto tr = e.second.transformer;
+            if (!v || !tr || v == view)
+            {
+                continue;
+            }
+            fade_out(v);
+	}
+    }
+
+    void fade_in(wayfire_view view)
+    {
+        if (!view || !scale_data[view].transformer)
+        {
+            return;
+        }
+        set_hook();
+        auto alpha = scale_data[view].transformer->alpha;
+        scale_data[view].fade_animation.animate(alpha, 1);
+    }
+
+    void fade_out(wayfire_view view)
+    {
+        if (!view || !scale_data[view].transformer)
+        {
+            return;
+        }
+        set_hook();
+        auto alpha = scale_data[view].transformer->alpha;
+        scale_data[view].fade_animation.animate(alpha, (double) inactive_alpha);
+    }
+
+    void select_view(wayfire_view view)
+    {
+        auto current_ws = output->workspace->get_current_workspace();
+        auto end_ws = get_view_main_workspace(view);
+        output->workspace->request_workspace(end_ws);
+        apply_transform_offset(current_ws, end_ws);
+    }
+
+    void apply_transform_offset(wf::point_t current_ws, wf::point_t end_ws)
+    {
+        if (current_ws == end_ws)
+        {
+            return;
+        }
+        auto og = output->get_relative_geometry();
+        for (auto& e : scale_data)
+        {
+            auto view = e.first;
+            if (!view)
+            {
+                continue;
+            }
+            scale_data[view].x += (current_ws.x - end_ws.x) * og.width;
+            scale_data[view].y += (current_ws.y - end_ws.y) * og.height;
+        }
+    }
+
     void process_button(uint32_t button, uint32_t state)
     {
         if (!active)
@@ -202,13 +265,7 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        output->render->schedule_redraw();
-        if (scale_data[last_focused_view].transformer)
-        {
-            set_hook();
-            auto alpha = scale_data[last_focused_view].transformer->alpha;
-            scale_data[last_focused_view].fade_animation.animate(alpha, (double) inactive_alpha);
-        }
+        fade_out_all_except(view);
 
         if (output == view->get_output())
         {
@@ -219,15 +276,10 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (!interact)
         {
-            output->workspace->request_workspace(get_view_main_workspace(view));
+            select_view(view);
         }
 
-        if (scale_data[view].transformer)
-        {
-            set_hook();
-            auto alpha = scale_data[view].transformer->alpha;
-            scale_data[view].fade_animation.animate(alpha, 1);
-        }
+        fade_in(view);
 
         if (interact)
         {
@@ -268,11 +320,7 @@ class wayfire_scale : public wf::plugin_interface_t
         if (!view)
         {
             view = find_view_in_grid(0, 0);
-            if (scale_data[view].transformer)
-            {
-                auto alpha = scale_data[view].transformer->alpha;
-                scale_data[view].fade_animation.animate(alpha, (double) inactive_alpha);
-            }
+            fade_in(view);
             output->focus_view(view, true);
             return;
         }
@@ -300,7 +348,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 break;
             case KEY_ENTER:
                 toggle_cb(wf::activator_source_t{}, 0);
-                output->workspace->request_workspace(get_view_main_workspace(last_focused_view));
+                select_view(last_focused_view);
                 return;
             case KEY_ESC:
                 toggle_cb(wf::activator_source_t{}, 0);
@@ -351,27 +399,18 @@ class wayfire_scale : public wf::plugin_interface_t
             col = 0;
         }
 
-        output->render->schedule_redraw();
         view = find_view_in_grid(row, col);
-        if (view && last_focused_view && last_focused_view != view &&
-            scale_data[last_focused_view].transformer)
+        if (view && last_focused_view != view)
         {
-            set_hook();
-            scale_data[last_focused_view].fade_animation.animate(
-                scale_data[last_focused_view].transformer->alpha, (double) inactive_alpha);
+            fade_out_all_except(view);
         }
         if (!view || last_focused_view == view)
         {
             return;
         }
-        if (scale_data[view].transformer)
-        {
-            set_hook();
-            auto alpha = scale_data[view].transformer->alpha;
-            scale_data[view].fade_animation.animate(alpha, 1);
-        }
         output->focus_view(view, true);
         last_focused_view = view;
+        fade_in(view);
     }
 
     void transform_views(std::vector<wayfire_view> views)
@@ -458,8 +497,6 @@ class wayfire_scale : public wf::plugin_interface_t
                 auto view = views[slots];
                 scale_data[view].x = x;
                 scale_data[view].y = y;
-                scale_data[view].w = width;
-                scale_data[view].h = height;
 
                 auto vg = view->get_wm_geometry();
                 double scale_x = width / vg.width;
@@ -531,14 +568,13 @@ end:
 
         if (!views.size())
         {
-            unset_hook();
             active = false;
+            unset_hook();
             finalize();
             return;
         }
 
         layout_slots(get_views());
-        output->render->schedule_redraw();
     }};
 
     wf::signal_connection_t view_geometry_changed{[this] (wf::signal_data_t *data)
@@ -570,7 +606,6 @@ end:
 
         set_hook();
         layout_slots(get_views());
-        output->render->schedule_redraw();
     }};
 
     wf::signal_connection_t view_focused{[this] (wf::signal_data_t *data)
@@ -581,16 +616,8 @@ end:
         {
             for (auto& e : scale_data)
             {
-                view = e.first;
-                if (!view || !scale_data[view].transformer)
-                {
-                    continue;
-                }
-                set_hook();
-                auto alpha = scale_data[view].transformer->alpha;
-                scale_data[view].fade_animation.animate(alpha, (double) inactive_alpha);
+                fade_out(e.first);
             }
-            output->render->schedule_redraw();
             return;
         }
 
@@ -599,10 +626,7 @@ end:
             return;
         }
 
-        set_hook();
-        auto alpha = scale_data[view].transformer->alpha;
-        scale_data[view].fade_animation.animate(alpha, 1);
-        output->render->schedule_redraw();
+        fade_in(view);
     }};
 
     bool fade_running()
@@ -691,12 +715,11 @@ end:
         for (auto& e : scale_data)
         {
             auto view = e.first;
-            if (!view || !scale_data[view].transformer || view == initial_focus_view)
+            if (view == initial_focus_view)
             {
                 continue;
             }
-            scale_data[view].fade_animation.animate(
-                scale_data[view].transformer->alpha, (double) inactive_alpha);
+            fade_out(view);
         }
 
         set_hook();
@@ -712,17 +735,16 @@ end:
 
         set_hook();
         grab_interface->ungrab();
+        view_focused.disconnect();
+        view_attached.disconnect();
+        view_detached.disconnect();
+        view_minimized.disconnect();
+        view_geometry_changed.disconnect();
         progression.animate(progression, 0);
         output->deactivate_plugin(grab_interface);
         for (auto& e : scale_data)
         {
-            auto view = e.first;
-            if (!view || !scale_data[view].transformer)
-            {
-                continue;
-            }
-            scale_data[view].fade_animation.animate(
-                scale_data[view].transformer->alpha, 1);
+            fade_in(e.first);
         }
     }
 
@@ -732,11 +754,6 @@ end:
         scale_data.clear();
         grab_interface->ungrab();
         disconnect_button_signal();
-        view_focused.disconnect();
-        view_attached.disconnect();
-        view_detached.disconnect();
-        view_minimized.disconnect();
-        view_geometry_changed.disconnect();
         output->deactivate_plugin(grab_interface);
     }
 
@@ -748,6 +765,7 @@ end:
         }
         output->render->add_effect(&post_hook, wf::OUTPUT_EFFECT_POST);
         output->render->add_effect(&pre_hook, wf::OUTPUT_EFFECT_PRE);
+        output->render->schedule_redraw();
         hook_set = true;
     }
 
