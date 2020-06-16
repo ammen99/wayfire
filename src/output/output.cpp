@@ -272,10 +272,13 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
         return;
     }
 
+    focus_view_signal data;
+
     if (!v || !v->is_mapped())
     {
         update_active_view(nullptr, flags);
-
+        data.view = nullptr;
+        emit_signal("focus-view", &data);
         return;
     }
 
@@ -289,8 +292,6 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
     {
         make_view_visible(v);
         update_active_view(v, flags);
-
-        focus_view_signal data;
         data.view = v;
         emit_signal("focus-view", &data);
     }
