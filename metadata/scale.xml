@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="scale">
+		<_short>Scale</_short>
+		<_long>Show all views on screen.</_long>
+		<category>Accessibility</category>
+		<option name="toggle" type="activator">
+			<_short>Toggle</_short>
+			<_long>Toggles scale with the specified activator.</_long>
+			<default>&lt;super&gt; KEY_P</default>
+		</option>
+		<option name="all_workspaces" type="bool">
+			<_short>Show Views From All Workspaces</_short>
+			<_long>If this option is not set, only views from the current workspace will be scaled.</_long>
+			<default>false</default>
+		</option>
+		<option name="spacing" type="int">
+			<_short>Spacing</_short>
+			<_long>Sets the spacing between the views.</_long>
+			<default>50</default>
+			<min>0</min>
+		</option>
+		<option name="duration" type="int">
+			<_short>Animation Transition Time</_short>
+			<_long>Time it takes for views to transition. Units are in milliseconds.</_long>
+			<default>750</default>
+			<min>0</min>
+		</option>
+		<option name="interact" type="bool">
+			<_short>Interact With Views</_short>
+			<_long>If this option is set, views will accept input in scale state. Otherwise, all events will be ignored except left click, which will activate the clicked view and terminate scale.</_long>
+			<default>false</default>
+		</option>
+		<option name="inactive_alpha" type="double">
+			<_short>Inactive Opacity</_short>
+			<_long>Set the opacity value of the inactive windows.</_long>
+			<default>0.75</default>
+			<precision>0.05</precision>
+			<min>0.0</min>
+			<max>1.0</max>
+		</option>
+	</plugin>
+</wayfire>
