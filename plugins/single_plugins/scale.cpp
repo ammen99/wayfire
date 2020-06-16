@@ -420,7 +420,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
         return output->workspace->get_views_on_workspace(
                 output->workspace->get_current_workspace(),
-                wf::LAYER_WORKSPACE, true);
+                wf::LAYER_WORKSPACE);
     }
 
     /* compiz scale plugin algorithm */
