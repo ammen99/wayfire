@@ -92,6 +92,8 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             process_key(key, state);
         };
+        all_workspaces.set_callback(all_workspaces_option_changed);
+        interact.set_callback(interact_option_changed);
 
         progression.set(0, 0);
     }
@@ -537,6 +539,57 @@ class wayfire_scale : public wf::plugin_interface_t
         transform_views(views);
     }
 
+    wf::config::option_base_t::updated_callback_t interact_option_changed = [=] ()
+    {
+        if (!output->is_plugin_active(grab_interface->name))
+        {
+            return;
+        }
+        if (interact)
+        {
+            connect_button_signal();
+            return;
+        }
+        grab_interface->grab();
+        disconnect_button_signal();
+    };
+
+    wf::config::option_base_t::updated_callback_t all_workspaces_option_changed = [=] ()
+    {
+        if (!output->is_plugin_active(grab_interface->name))
+        {
+            return;
+        }
+        if (all_workspaces)
+        {
+            layout_slots(get_views());
+            return;
+        }
+        bool rearrange = false;
+        auto views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
+        for (auto& view : views)
+        {
+            bool found = false;
+            for (auto& v : get_views())
+            {
+                if (v == view)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                pop_transformer(view);
+                rearrange = true;
+            }
+        }
+        if (rearrange)
+        {
+            layout_slots(get_views());
+        }
+    };
+
     wf::signal_connection_t view_attached{[this] (wf::signal_data_t *data)
     {
         auto view = get_signaled_view(data);
@@ -576,7 +629,7 @@ end:
             return;
         }
 
-        layout_slots(get_views());
+        layout_slots(views);
     }};
 
     wf::signal_connection_t view_geometry_changed{[this] (wf::signal_data_t *data)
