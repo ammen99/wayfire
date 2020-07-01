@@ -75,7 +75,7 @@ class wayfire_scale : public wf::plugin_interface_t
     void init() override
     {
         grab_interface->name = "scale";
-        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         active = hook_set = button_connected = false;
 
@@ -221,7 +221,9 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         auto current_ws = output->workspace->get_current_workspace();
         auto end_ws = get_view_main_workspace(view);
+        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
         output->workspace->request_workspace(end_ws);
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
         apply_transform_offset(current_ws, end_ws);
     }
 
@@ -741,7 +743,6 @@ end:
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
         progression.animate(progression, 0);
-        output->deactivate_plugin(grab_interface);
         for (auto& e : scale_data)
         {
             fade_in(e.first);
