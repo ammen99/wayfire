@@ -49,7 +49,10 @@ class vswitch : public wf::plugin_interface_t
     void init()
     {
         grab_interface->name = "vswitch";
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP;
+        /* note: workspace_wall_t sets a custom renderer, so we
+         * need the capability for that */
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_DESKTOP |
+			wf::CAPABILITY_CUSTOM_RENDERER;
         grab_interface->callbacks.cancel = [=] () {stop_switch();};
 
         callback_left  = [=] (wf::activator_source_t, uint32_t) { return add_direction(-1,  0); };
@@ -152,8 +155,7 @@ class vswitch : public wf::plugin_interface_t
             return;
 
         auto ev = static_cast<change_viewport_signal*> (data);
-        ev->carried_out = true;
-        add_direction(ev->new_viewport.x - ev->old_viewport.x,
+        ev->carried_out = add_direction(ev->new_viewport.x - ev->old_viewport.x,
             ev->new_viewport.y - ev->old_viewport.y);
     }};
 

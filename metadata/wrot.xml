@@ -9,5 +9,11 @@
 			<_long>Rotates the window with the specified button.</_long>
 			<default>&lt;super&gt; &lt;ctrl&gt; BTN_RIGHT</default>
 		</option>
+		<option name="reset_radius" type="double">
+			<_short>Reset Radius</_short>
+			<_long>The radius of the reset area. The reset area is located at the center of the view and resets the rotation.</_long>
+			<default>25.0</default>
+			<min>1.0</min>
+		</option>
 	</plugin>
 </wayfire>

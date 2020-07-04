@@ -30,11 +30,6 @@
 			<_long>Toggles tiling mode with the specified key.</_long>
 			<default>&lt;super&gt; KEY_T</default>
 		</option>
-		<option name="key_toggle_fullscreen" type="key">
-			<_short>Key toggle fullscreen</_short>
-			<_long>Makes focused view fullscreen with the specified key.</_long>
-			<default>&lt;super&gt; KEY_M</default>
-		</option>
 		<option name="key_focus_left" type="key">
 			<_short>Key focus left</_short>
 			<_long>Moves focus to the window left with the specified key.</_long>

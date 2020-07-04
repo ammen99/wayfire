@@ -354,6 +354,11 @@ void wf::view_interface_t::set_minimized(bool minim)
         get_output()->focus_view(self(), true);
     }
 
+    view_minimized_signal data;
+    data.view = self();
+    data.state = minimized;
+    get_output()->emit_signal("view-minimized", &data);
+
     desktop_state_updated();
 }
 

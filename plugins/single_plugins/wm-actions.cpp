@@ -40,7 +40,23 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
         return true;
     };
 
+    wf::activator_callback on_toggle_fullscreen =
+        [=](wf::activator_source_t source, uint32_t) -> bool
+    {
+        if (!output->can_activate_plugin(this->grab_interface))
+            return false;
+
+        auto view = choose_view(source);
+        if (!view || view->role != wf::VIEW_ROLE_TOPLEVEL)
+            return false;
+
+        view->fullscreen_request(view->get_output(), !view->fullscreen);
+
+        return true;
+    };
+
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_above{"wm-actions/toggle_always_on_top"};
+    wf::option_wrapper_t<wf::activatorbinding_t> toggle_fullscreen{"wm-actions/toggle_fullscreen"};
 
   public:
     void init() override
@@ -48,12 +64,14 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
         always_above = output->workspace->create_sublayer(
             wf::LAYER_WORKSPACE, wf::SUBLAYER_DOCKED_ABOVE);
         output->add_activator(toggle_above, &on_toggle_above);
+        output->add_activator(toggle_fullscreen, &on_toggle_fullscreen);
     }
 
     void fini() override
     {
         output->workspace->destroy_sublayer(always_above);
         output->rem_binding(&on_toggle_above);
+        output->rem_binding(&on_toggle_fullscreen);
     }
 };
 

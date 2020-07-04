@@ -9,5 +9,10 @@
 			<_long>Toggle the always-on-top state of a view.</_long>
 			<default>&lt;super&gt; KEY_T</default>
 		</option>
+		<option name="toggle_fullscreen" type="activator">
+			<_short>Toggle Fulsreen</_short>
+			<_long>Toggle the fullsreen state of a view.</_long>
+			<default>&lt;super&gt; KEY_M</default>
+		</option>
 	</plugin>
 </wayfire>

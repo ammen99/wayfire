@@ -18,6 +18,7 @@ static double vlen(double x1, double y1) // length of vector centered at the ori
 class wf_wrot : public wf::plugin_interface_t
 {
     wf::button_callback call;
+    wf::option_wrapper_t<double> reset_radius{"wrot/reset_radius"};
 
     int last_x, last_y;
     wayfire_view current_view;
@@ -70,7 +71,7 @@ class wf_wrot : public wf::plugin_interface_t
                 double x1 = last_x - cx, y1 = last_y - cy;
                 double x2 = x - cx, y2 = y - cy;
 
-                if (vlen(x2, y2) <= 25)
+                if (vlen(x2, y2) <= reset_radius)
                     return current_view->pop_transformer("wrot");
 
                 /* cross(a, b) = |a| * |b| * sin(a, b) */

@@ -27,6 +27,10 @@ It aims to create a customizable, extendable and lightweight environment without
 
 ## Dependencies
 
+### Wayfire Dependencies
+
+These are the dependencies needed for building Wayfire.
+
 - [Cairo](https://cairographics.org)
 - [FreeType](https://freetype.org)
 - [GLM](https://glm.g-truc.net)
@@ -45,6 +49,30 @@ It aims to create a customizable, extendable and lightweight environment without
 - [wf-config](https://github.com/WayfireWM/wf-config)
 - [wlroots](https://github.com/swaywm/wlroots)
 
+### wlroots Dependencies
+
+These are the dependencies needed for building wlroots, and should be installed before building it.
+They are relevant for cases when the system doesn't have a version of wlroots installed.
+
+#### Session Provider (optional, recommended)
+
+- [systemd](https://systemd.io/) **or**
+- [elogind](https://github.com/elogind/elogind)
+
+#### XWayland Support (optional)
+
+- [xcb](https://xcb.freedesktop.org/)
+- [xcb-composite](https://xorg.freedesktop.org/wiki/)
+- [xcb-render](https://xorg.freedesktop.org/wiki/)
+- [xcb-xfixes](https://xorg.freedesktop.org/wiki/)
+
+#### X11 Backend (optional)
+
+- [xcb](https://xcb.freedesktop.org/)
+- [x11-xcb](https://xcb.freedesktop.org/)
+- [xcb-xinput](https://xorg.freedesktop.org/wiki/)
+- [xcb-xfixes](https://xorg.freedesktop.org/wiki/)
+
 ## Installation
 
 The easiest way to install Wayfire, wf-shell and WCM to get a functional desktop is to use the [install scripts](https://github.com/WayfireWM/wf-install).
@@ -60,6 +88,8 @@ sudo ninja -C build install
 **Note**: `wf-config` and `wlroots` can be built as submodules, by specifying
 `-Duse_system_wfconfig=disabled` and `-Duse_system_wlroots=disabled` options to `meson`.
 This is the default if they are not present on your system.
+
+Installing [wf-shell](https://github.com/WayfireWM/wf-shell) is recommended for a complete experience.
 
 ###### Arch Linux
 
@@ -100,6 +130,7 @@ and to use the live version
 ```sh
 emerge --ask --verbose "=gui-wm/wayfire-9999"
 ```
+
 ###### NixOS
 
 See [nixpkgs-wayland].

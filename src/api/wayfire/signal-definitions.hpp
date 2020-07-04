@@ -102,6 +102,14 @@ struct view_minimize_request_signal : public _view_signal
     bool carried_out = false;
 };
 
+/* view-minimized: sent on view minimize state change
+ * In contrast to view_minimize_request_signal, this signal is sent after
+ * the minimized state has been finalized. */
+struct view_minimized_signal : public _view_signal
+{
+    bool state;
+};
+
 /* same as both change_viewport_request and change_viewport_notify */
 struct change_viewport_signal : public wf::signal_data_t
 {
