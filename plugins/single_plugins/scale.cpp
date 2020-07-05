@@ -753,6 +753,7 @@ end:
         }
 
         initial_focus_view = last_focused_view = output->get_active_view();
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
         if (!interact)
         {
             if (!grab_interface->grab())
@@ -778,7 +779,6 @@ end:
         set_hook();
         active = true;
         progression.animate(progression, 1);
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         return true;
     }
@@ -799,7 +799,7 @@ end:
         {
             fade_in(e.first);
         }
-        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
+        grab_interface->capabilities = 0;
     }
 
     void finalize()
