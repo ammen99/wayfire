@@ -791,7 +791,6 @@ end:
         grab_interface->ungrab();
         view_focused.disconnect();
         view_attached.disconnect();
-        view_detached.disconnect();
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
         progression.animate(progression, 0);
@@ -808,6 +807,7 @@ end:
         scale_data.clear();
         grab_interface->ungrab();
         disconnect_button_signal();
+        view_detached.disconnect();
         output->deactivate_plugin(grab_interface);
     }
 
