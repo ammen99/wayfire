@@ -518,8 +518,8 @@ class wayfire_scale : public wf::plugin_interface_t
                 scale_data[view].translation_y = translation_y;
                 scale_data[view].fade_animation =
                     wf::animation::simple_animation_t(wf::create_option<int>(1000));
-                double target_alpha = view == active_view ?
-                    1 : (double) inactive_alpha;
+                double target_alpha = active ? ((view == active_view) ?
+                    1 : (double) inactive_alpha) : 1;
                 scale_data[view].fade_animation.animate(
                     scale_data[view].transformer ?
                     scale_data[view].transformer->alpha : 1,
