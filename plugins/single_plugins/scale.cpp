@@ -50,6 +50,7 @@ struct view_scale_data
     double scale_y;
     double translation_x;
     double translation_y;
+    wlr_box view_geometry;
     int row, col;
     wf_scale *transformer;
     wf::animation::simple_animation_t fade_animation;
@@ -122,6 +123,10 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void pop_transformer(wayfire_view view)
     {
+        if (!view)
+        {
+            return;
+        }
         if (view->get_transformer(transformer_name))
         {
             view->pop_transformer(transformer_name);
@@ -132,10 +137,6 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         for (auto& e : scale_data)
         {
-            if (!e.first)
-            {
-                continue;
-            }
             pop_transformer(e.first);
         }
     }
@@ -223,9 +224,7 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         auto current_ws = output->workspace->get_current_workspace();
         auto end_ws = get_view_main_workspace(view);
-        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
         output->workspace->request_workspace(end_ws);
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
         apply_transform_offset(current_ws, end_ws);
     }
 
@@ -431,7 +430,7 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 continue;
             }
-            auto vg = view->get_wm_geometry();
+            auto vg = scale_data[view].view_geometry;
 
             double scale_x = scale_data[view].scale_x;
             double scale_y = scale_data[view].scale_y;
@@ -512,6 +511,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
                 scale_x = scale_y = std::min(scale_x, scale_y);
 
+                scale_data[view].view_geometry = vg;
                 scale_data[view].scale_x = scale_x;
                 scale_data[view].scale_y = scale_y;
                 scale_data[view].translation_x = translation_x;
@@ -616,11 +616,9 @@ end:
         auto view = get_signaled_view(data);
 
         pop_transformer(view);
-
-        auto views = get_views();
-
         scale_data.erase(view);
 
+        auto views = get_views();
         if (!views.size())
         {
             active = false;
@@ -780,6 +778,7 @@ end:
         set_hook();
         active = true;
         progression.animate(progression, 1);
+        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         return true;
     }
@@ -800,6 +799,7 @@ end:
         {
             fade_in(e.first);
         }
+        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
     }
 
     void finalize()
