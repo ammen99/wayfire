@@ -34,6 +34,25 @@
 #include <linux/input-event-codes.h>
 
 
+
+using namespace wf::animation;
+
+class scale_animation_t : public duration_t
+{
+  public:
+    using duration_t::duration_t;
+    timed_transition_t scale_x{*this};
+    timed_transition_t scale_y{*this};
+    timed_transition_t translation_x{*this};
+    timed_transition_t translation_y{*this};
+};
+
+struct wf_scale_animation_attribs
+{
+    wf::option_wrapper_t<int> duration{"scale/duration"};
+    scale_animation_t scale_animation{duration};
+};
+
 class wf_scale : public wf::view_2D
 {
   public:
@@ -46,14 +65,10 @@ class wf_scale : public wf::view_2D
 struct view_scale_data
 {
     double x, y;
-    double scale_x;
-    double scale_y;
-    double translation_x;
-    double translation_y;
-    wlr_box view_geometry;
     int row, col;
     wf_scale *transformer;
     wf::animation::simple_animation_t fade_animation;
+    wf_scale_animation_attribs animation;
 };
 
 class wayfire_scale : public wf::plugin_interface_t
@@ -66,11 +81,9 @@ class wayfire_scale : public wf::plugin_interface_t
     wayfire_view initial_focus_view, last_focused_view;
     std::map<wayfire_view, view_scale_data> scale_data;
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
-    wf::option_wrapper_t<int> duration{"scale/duration"};
     wf::option_wrapper_t<bool> interact{"scale/interact"};
     wf::option_wrapper_t<bool> all_workspaces{"scale/all_workspaces"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
-    wf::animation::simple_animation_t progression{duration};
 
   public:
     void init() override
@@ -95,8 +108,6 @@ class wayfire_scale : public wf::plugin_interface_t
         };
         all_workspaces.set_callback(all_workspaces_option_changed);
         interact.set_callback(interact_option_changed);
-
-        progression.set(0, 0);
     }
 
     void add_transformer(wayfire_view view)
@@ -111,6 +122,11 @@ class wayfire_scale : public wf::plugin_interface_t
             scale_data[view].transformer), transformer_name);
         scale_data[view].transformer->alpha = 1;
         view->connect_signal("geometry-changed", &view_geometry_changed);
+
+        scale_data[view].animation.scale_animation.scale_x.set(1, 1);
+        scale_data[view].animation.scale_animation.scale_y.set(1, 1);
+        scale_data[view].animation.scale_animation.translation_x.set(0, 0);
+        scale_data[view].animation.scale_animation.translation_y.set(0, 0);
     }
 
     void add_transformers(std::vector<wayfire_view> views)
@@ -430,21 +446,11 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 continue;
             }
-            auto vg = scale_data[view].view_geometry;
 
-            double scale_x = scale_data[view].scale_x;
-            double scale_y = scale_data[view].scale_y;
-            double translation_x = scale_data[view].translation_x;
-            double translation_y = scale_data[view].translation_y;
-
-            scale_data[view].transformer->scale_x =
-                1.0 - ((1.0 - scale_x) * (double) progression);
-            scale_data[view].transformer->scale_y =
-                1.0 - ((1.0 - scale_y) * (double) progression);
-            scale_data[view].transformer->translation_x =
-                (scale_data[view].x - vg.x + translation_x) * (double) progression;
-            scale_data[view].transformer->translation_y =
-                (scale_data[view].y - vg.y + translation_y) * (double) progression;
+            scale_data[view].transformer->scale_x = scale_data[view].animation.scale_animation.scale_x;
+            scale_data[view].transformer->scale_y = scale_data[view].animation.scale_animation.scale_y;
+            scale_data[view].transformer->translation_x = scale_data[view].animation.scale_animation.translation_x;
+            scale_data[view].transformer->translation_y = scale_data[view].animation.scale_animation.translation_y;
             scale_data[view].transformer->alpha = scale_data[view].fade_animation;
 
             view->damage();
@@ -506,16 +512,16 @@ class wayfire_scale : public wf::plugin_interface_t
                 auto vg = view->get_wm_geometry();
                 double scale_x = width / vg.width;
                 double scale_y = height / vg.height;
-                double translation_x = (width - vg.width) / 2.0;
-                double translation_y = (height - vg.height) / 2.0;
+                double translation_x = x - vg.x + ((width - vg.width) / 2.0);
+                double translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
                 scale_x = scale_y = std::min(scale_x, scale_y);
 
-                scale_data[view].view_geometry = vg;
-                scale_data[view].scale_x = scale_x;
-                scale_data[view].scale_y = scale_y;
-                scale_data[view].translation_x = translation_x;
-                scale_data[view].translation_y = translation_y;
+                scale_data[view].animation.scale_animation.scale_x.set(scale_data[view].transformer->scale_x, scale_x);
+                scale_data[view].animation.scale_animation.scale_y.set(scale_data[view].transformer->scale_y, scale_y);
+                scale_data[view].animation.scale_animation.translation_x.set(scale_data[view].transformer->translation_x, translation_x);
+                scale_data[view].animation.scale_animation.translation_y.set(scale_data[view].transformer->translation_y, translation_y);
+                scale_data[view].animation.scale_animation.start();
                 scale_data[view].fade_animation =
                     wf::animation::simple_animation_t(wf::create_option<int>(1000));
                 double target_alpha = active ? ((view == active_view) ?
@@ -682,11 +688,12 @@ end:
         fade_in(view);
     }};
 
-    bool fade_running()
+    bool animation_running()
     {
         for (auto& view : get_views())
         {
-            if (scale_data[view].fade_animation.running())
+            if (scale_data[view].fade_animation.running() ||
+                scale_data[view].animation.scale_animation.running())
             {
                 return true;
             }
@@ -703,7 +710,7 @@ end:
     {
         output->render->schedule_redraw();
 
-        if (progression.running() || fade_running())
+        if (animation_running())
         {
             return;
         }
@@ -731,7 +738,7 @@ end:
             return false;
         }
 
-        if (!progression.running())
+        if (!animation_running())
         {
             auto views = get_views();
             if (!views.size())
@@ -745,13 +752,13 @@ end:
                 connect_button_signal();
             }
 
-            layout_slots(get_views());
             output->connect_signal("layer-attach-view", &view_attached);
             output->connect_signal("layer-detach-view", &view_detached);
             output->connect_signal("view-minimized", &view_minimized);
             output->connect_signal("focus-view", &view_focused);
         }
 
+        layout_slots(get_views());
         initial_focus_view = last_focused_view = output->get_active_view();
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
         if (!interact)
@@ -778,7 +785,6 @@ end:
 
         set_hook();
         active = true;
-        progression.animate(progression, 1);
 
         return true;
     }
@@ -790,13 +796,16 @@ end:
         set_hook();
         grab_interface->ungrab();
         view_focused.disconnect();
-        view_attached.disconnect();
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
-        progression.animate(progression, 0);
         for (auto& e : scale_data)
         {
             fade_in(e.first);
+            e.second.animation.scale_animation.scale_x.set(e.second.transformer->scale_x, 1);
+            e.second.animation.scale_animation.scale_y.set(e.second.transformer->scale_y, 1);
+            e.second.animation.scale_animation.translation_x.set(e.second.transformer->translation_x, 0);
+            e.second.animation.scale_animation.translation_y.set(e.second.transformer->translation_y, 0);
+            e.second.animation.scale_animation.start();
         }
         grab_interface->capabilities = 0;
     }
@@ -807,6 +816,7 @@ end:
         scale_data.clear();
         grab_interface->ungrab();
         disconnect_button_signal();
+        view_attached.disconnect();
         view_detached.disconnect();
         output->deactivate_plugin(grab_interface);
     }
