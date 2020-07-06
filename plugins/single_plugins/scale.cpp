@@ -475,7 +475,7 @@ class wayfire_scale : public wf::plugin_interface_t
         add_transformers(views);
 
         auto workarea = output->workspace->get_workarea();
-        auto active_view = output->get_active_view();
+        auto active_view = last_focused_view = output->get_active_view();
         int lines = sqrt(views.size() + 1);
         grid_rows = lines;
         grid_cols = (int)std::ceil((double) views.size() / lines);
