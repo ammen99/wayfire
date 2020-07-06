@@ -290,11 +290,6 @@ class wayfire_scale : public wf::plugin_interface_t
 
         output->focus_view(view, true);
 
-        if (!interact)
-        {
-            select_view(view);
-        }
-
         fade_in(view);
 
         if (interact)
@@ -364,7 +359,6 @@ class wayfire_scale : public wf::plugin_interface_t
                 break;
             case KEY_ENTER:
                 toggle_cb(wf::activator_source_t{}, 0);
-                select_view(last_focused_view);
                 return;
             case KEY_ESC:
                 toggle_cb(wf::activator_source_t{}, 0);
@@ -610,17 +604,11 @@ class wayfire_scale : public wf::plugin_interface_t
             goto end;
         }
 
-        if (active)
-        {
-            view->connect_signal("geometry-changed", &view_geometry_changed);
-            add_transformer(view);
-        }
+        view->connect_signal("geometry-changed", &view_geometry_changed);
+        add_transformer(view);
 end:
-        if (active)
-        {
-            layout_slots(get_views());
-            output->render->schedule_redraw();
-        }
+        layout_slots(get_views());
+        output->render->schedule_redraw();
     }};
 
     wf::signal_connection_t view_detached{[this] (wf::signal_data_t *data)
@@ -744,7 +732,7 @@ end:
             return false;
         }
 
-        if (!animation_running())
+        if (!active)
         {
             auto views = get_views();
             if (!views.size())
@@ -762,9 +750,10 @@ end:
             output->connect_signal("layer-detach-view", &view_detached);
             output->connect_signal("view-minimized", &view_minimized);
             output->connect_signal("focus-view", &view_focused);
+
+            active = true;
         }
 
-        active = true;
         layout_slots(get_views());
         initial_focus_view = last_focused_view = output->get_active_view();
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
@@ -800,6 +789,7 @@ end:
         set_hook();
         grab_interface->ungrab();
         view_focused.disconnect();
+        view_attached.disconnect();
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
         for (auto& e : scale_data)
@@ -812,6 +802,7 @@ end:
             e.second.animation.scale_animation.start();
         }
         grab_interface->capabilities = 0;
+        select_view(last_focused_view);
     }
 
     void finalize()
@@ -820,7 +811,6 @@ end:
         scale_data.clear();
         grab_interface->ungrab();
         disconnect_button_signal();
-        view_attached.disconnect();
         view_detached.disconnect();
         output->deactivate_plugin(grab_interface);
     }
