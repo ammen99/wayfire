@@ -456,6 +456,7 @@ class wayfire_scale : public wf::plugin_interface_t
             view->damage();
         }
 
+        set_hook();
         output->render->damage_whole();
     }
 
@@ -517,10 +518,14 @@ class wayfire_scale : public wf::plugin_interface_t
 
                 scale_x = scale_y = std::min(scale_x, scale_y);
 
-                scale_data[view].animation.scale_animation.scale_x.set(scale_data[view].transformer->scale_x, scale_x);
-                scale_data[view].animation.scale_animation.scale_y.set(scale_data[view].transformer->scale_y, scale_y);
-                scale_data[view].animation.scale_animation.translation_x.set(scale_data[view].transformer->translation_x, translation_x);
-                scale_data[view].animation.scale_animation.translation_y.set(scale_data[view].transformer->translation_y, translation_y);
+                scale_data[view].animation.scale_animation.scale_x.set(
+                    scale_data[view].transformer->scale_x, active ? scale_x : 1);
+                scale_data[view].animation.scale_animation.scale_y.set(
+                    scale_data[view].transformer->scale_y, active ? scale_y : 1);
+                scale_data[view].animation.scale_animation.translation_x.set(
+                    scale_data[view].transformer->translation_x, active ? translation_x : 0);
+                scale_data[view].animation.scale_animation.translation_y.set(
+                    scale_data[view].transformer->translation_y, active ? translation_y : 0);
                 scale_data[view].animation.scale_animation.start();
                 scale_data[view].fade_animation =
                     wf::animation::simple_animation_t(wf::create_option<int>(1000));
@@ -764,6 +769,7 @@ end:
             output->connect_signal("focus-view", &view_focused);
         }
 
+        active = true;
         layout_slots(get_views());
         initial_focus_view = last_focused_view = output->get_active_view();
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
@@ -788,9 +794,6 @@ end:
             }
             fade_out(view);
         }
-
-        set_hook();
-        active = true;
 
         return true;
     }
