@@ -610,11 +610,17 @@ class wayfire_scale : public wf::plugin_interface_t
             goto end;
         }
 
-        view->connect_signal("geometry-changed", &view_geometry_changed);
-        add_transformer(view);
+        if (active)
+        {
+            view->connect_signal("geometry-changed", &view_geometry_changed);
+            add_transformer(view);
+        }
 end:
-        layout_slots(get_views());
-        output->render->schedule_redraw();
+        if (active)
+        {
+            layout_slots(get_views());
+            output->render->schedule_redraw();
+        }
     }};
 
     wf::signal_connection_t view_detached{[this] (wf::signal_data_t *data)
