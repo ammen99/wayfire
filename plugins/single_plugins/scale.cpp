@@ -233,6 +233,10 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void select_view(wayfire_view view)
     {
+        if (!view)
+        {
+            return;
+        }
         auto current_ws = output->workspace->get_current_workspace();
         auto end_ws = get_view_main_workspace(view);
         output->workspace->request_workspace(end_ws);
