@@ -89,7 +89,7 @@ class wayfire_scale : public wf::plugin_interface_t
     void init() override
     {
         grab_interface->name = "scale";
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
+        grab_interface->capabilities = 0;
 
         active = hook_set = button_connected = false;
 
@@ -730,48 +730,45 @@ end:
             return false;
         }
 
+        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
+
         if (!output->is_plugin_active(grab_interface->name) &&
             !output->activate_plugin(grab_interface))
         {
             return false;
         }
 
-        if (!active)
+        auto views = get_views();
+        if (!views.size())
         {
-            auto views = get_views();
-            if (!views.size())
-            {
-                output->deactivate_plugin(grab_interface);
-                return false;
-            }
-
-            if (interact)
-            {
-                connect_button_signal();
-            }
-
-            output->connect_signal("layer-attach-view", &view_attached);
-            output->connect_signal("layer-detach-view", &view_detached);
-            output->connect_signal("view-minimized", &view_minimized);
-            output->connect_signal("focus-view", &view_focused);
-
-            active = true;
+            output->deactivate_plugin(grab_interface);
+            return false;
         }
 
-        layout_slots(get_views());
-        initial_focus_view = last_focused_view = output->get_active_view();
-        grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
+        initial_focus_view = output->get_active_view();
         if (!interact)
         {
             if (!grab_interface->grab())
             {
-                remove_transformers();
-                scale_data.clear();
-                output->deactivate_plugin(grab_interface);
+                toggle_cb(wf::activator_source_t{}, 0);
                 return false;
             }
             output->focus_view(initial_focus_view, true);
         }
+
+        active = true;
+
+        layout_slots(get_views());
+
+        if (interact)
+        {
+            connect_button_signal();
+        }
+
+        output->connect_signal("layer-attach-view", &view_attached);
+        output->connect_signal("layer-detach-view", &view_detached);
+        output->connect_signal("view-minimized", &view_minimized);
+        output->connect_signal("focus-view", &view_focused);
 
         for (auto& e : scale_data)
         {
@@ -796,6 +793,7 @@ end:
         view_attached.disconnect();
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
+        output->deactivate_plugin(grab_interface);
         for (auto& e : scale_data)
         {
             fade_in(e.first);
@@ -816,7 +814,6 @@ end:
         grab_interface->ungrab();
         disconnect_button_signal();
         view_detached.disconnect();
-        output->deactivate_plugin(grab_interface);
     }
 
     void set_hook()
