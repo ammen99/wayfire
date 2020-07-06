@@ -122,11 +122,6 @@ class wayfire_scale : public wf::plugin_interface_t
             scale_data[view].transformer), transformer_name);
         scale_data[view].transformer->alpha = 1;
         view->connect_signal("geometry-changed", &view_geometry_changed);
-
-        scale_data[view].animation.scale_animation.scale_x.set(1, 1);
-        scale_data[view].animation.scale_animation.scale_y.set(1, 1);
-        scale_data[view].animation.scale_animation.translation_x.set(0, 0);
-        scale_data[view].animation.scale_animation.translation_y.set(0, 0);
     }
 
     void add_transformers(std::vector<wayfire_view> views)
