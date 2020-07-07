@@ -431,7 +431,6 @@ class wayfire_scale : public wf::plugin_interface_t
             view->damage();
         }
 
-        set_hook();
         output->render->damage_whole();
     }
 
@@ -533,6 +532,7 @@ class wayfire_scale : public wf::plugin_interface_t
             y += height + (int) spacing;
         }
 
+        set_hook();
         transform_views(views);
     }
 
@@ -598,14 +598,13 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (view->get_transformer(transformer_name))
         {
-            goto end;
+            layout_slots(get_views());
+            return;
         }
 
         view->connect_signal("geometry-changed", &view_geometry_changed);
         add_transformer(view);
-end:
         layout_slots(get_views());
-        output->render->schedule_redraw();
     }};
 
     wf::signal_connection_t view_detached{[this] (wf::signal_data_t *data)
@@ -630,7 +629,6 @@ end:
     wf::signal_connection_t view_geometry_changed{[this] (wf::signal_data_t *data)
     {
         layout_slots(get_views());
-        output->render->schedule_redraw();
     }};
 
     wf::signal_connection_t view_minimized{[this] (wf::signal_data_t *data)
