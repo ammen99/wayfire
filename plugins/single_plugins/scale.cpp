@@ -263,15 +263,9 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        fade_out_all_except(view);
-
-        if (output == view->get_output())
-        {
-            last_focused_view = view;
-        }
-
         output->focus_view(view, true);
-
+        fade_out_all_except(view);
+        last_focused_view = view;
         fade_in(view);
 
         if (interact)
@@ -315,6 +309,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             view = last_focused_view;
             fade_in(view);
+            fade_out_all_except(view);
             output->focus_view(view, true);
             return;
         }
@@ -399,7 +394,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             fade_out_all_except(view);
         }
-        if (!view || last_focused_view == view)
+        if (!view)
         {
             return;
         }
@@ -475,6 +470,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
         output->focus_view(active_view, true);
         fade_in(active_view);
+        fade_out_all_except(active_view);
         int lines = sqrt(views.size() + 1);
         grid_rows = lines;
         grid_cols = (int)std::ceil((double) views.size() / lines);
@@ -501,6 +497,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 auto view = views[slots];
 
                 auto vg = view->get_wm_geometry();
+
                 double scale_x = width / vg.width;
                 double scale_y = height / vg.height;
                 double translation_x = x - vg.x + ((width - vg.width) / 2.0);
@@ -649,7 +646,6 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        set_hook();
         layout_slots(get_views());
     }};
 
@@ -657,25 +653,20 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         auto view = get_signaled_view(data);
 
-        if (!view)
-        {
-            view = last_focused_view;
-            if (view && view != output->get_active_view())
-            {
-                output->focus_view(view, true);
-	    }
-	    else
-	    {
-                return;
-            }
-        }
-
-        if (!scale_data[view].transformer)
+        if (view == last_focused_view || (view && view == output->get_active_view()))
         {
             return;
         }
 
-        fade_in(view);
+        view = last_focused_view;
+
+        if (!view)
+        {
+            return;
+        }
+
+        output->focus_view(view, true);
+        layout_slots(get_views());
     }};
 
     bool animation_running()
