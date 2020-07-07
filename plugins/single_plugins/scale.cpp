@@ -457,14 +457,18 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto workarea = output->workspace->get_workarea();
         auto active_view = output->get_active_view();
-        if (!active_view)
+        if (active_view)
         {
-            active_view = last_focused_view;
-            output->focus_view(active_view, true);
+            last_focused_view = active_view;
         }
         else
         {
-            last_focused_view = active_view;
+            active_view = last_focused_view;
+        }
+        if (active_view)
+        {
+            output->focus_view(active_view, true);
+            fade_in(active_view);
         }
         int lines = sqrt(views.size() + 1);
         grid_rows = lines;
@@ -652,11 +656,8 @@ end:
 
         if (!view)
         {
-            for (auto& e : scale_data)
-            {
-                fade_out(e.first);
-            }
-            return;
+            view = last_focused_view;
+            output->focus_view(view, true);
         }
 
         if (!scale_data[view].transformer)
