@@ -457,19 +457,24 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto workarea = output->workspace->get_workarea();
         auto active_view = output->get_active_view();
+        if (active_view && output->workspace->get_view_layer(active_view) != wf::LAYER_WORKSPACE)
+        {
+            active_view = nullptr;
+        }
         if (active_view)
         {
             last_focused_view = active_view;
         }
         else
         {
-            active_view = last_focused_view;
+            active_view = last_focused_view = views.front();
         }
-        if (active_view)
+        if (!initial_focus_view)
         {
-            output->focus_view(active_view, true);
-            fade_in(active_view);
+            initial_focus_view = active_view;
         }
+        output->focus_view(active_view, true);
+        fade_in(active_view);
         int lines = sqrt(views.size() + 1);
         grid_rows = lines;
         grid_cols = (int)std::ceil((double) views.size() / lines);
@@ -656,7 +661,14 @@ class wayfire_scale : public wf::plugin_interface_t
         if (!view)
         {
             view = last_focused_view;
-            output->focus_view(view, true);
+            if (view && view != output->get_active_view())
+            {
+                output->focus_view(view, true);
+	    }
+	    else
+	    {
+                return;
+            }
         }
 
         if (!scale_data[view].transformer)
@@ -734,7 +746,10 @@ class wayfire_scale : public wf::plugin_interface_t
                 toggle_cb(wf::activator_source_t{}, 0);
                 return false;
             }
-            output->focus_view(initial_focus_view, true);
+            if (initial_focus_view)
+            {
+                output->focus_view(initial_focus_view, true);
+            }
         }
 
         active = true;
