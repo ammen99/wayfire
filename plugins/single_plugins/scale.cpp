@@ -618,8 +618,6 @@ class wayfire_scale : public wf::plugin_interface_t
         auto views = get_views();
         if (!views.size())
         {
-            active = false;
-            unset_hook();
             finalize();
             return;
         }
@@ -636,10 +634,16 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         auto ev = static_cast<view_minimized_signal*> (data);
 
+        auto views = get_views();
         if (ev->state)
         {
             pop_transformer(ev->view);
             scale_data.erase(ev->view);
+            if (!views.size())
+            {
+                finalize();
+                return;
+            }
         }
         else if (output->workspace->get_view_layer(ev->view) != wf::LAYER_WORKSPACE)
         {
@@ -647,6 +651,16 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         layout_slots(get_views());
+    }};
+
+    wf::signal_connection_t view_unmapped{[this] (wf::signal_data_t *data)
+    {
+        auto view = get_signaled_view(data);
+
+        if (view == last_focused_view)
+        {
+            last_focused_view = nullptr;
+        }
     }};
 
     wf::signal_connection_t view_focused{[this] (wf::signal_data_t *data)
@@ -755,6 +769,7 @@ class wayfire_scale : public wf::plugin_interface_t
         view_detached.disconnect();
         output->connect_signal("layer-detach-view", &view_detached);
         output->connect_signal("view-minimized", &view_minimized);
+        output->connect_signal("unmap-view", &view_unmapped);
         output->connect_signal("focus-view", &view_focused);
 
         view_geometry_changed.disconnect();
@@ -779,6 +794,7 @@ class wayfire_scale : public wf::plugin_interface_t
         set_hook();
         grab_interface->ungrab();
         view_focused.disconnect();
+        view_unmapped.disconnect();
         view_attached.disconnect();
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
@@ -797,11 +813,20 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void finalize()
     {
+        active = false;
+
+        unset_hook();
         remove_transformers();
         scale_data.clear();
         grab_interface->ungrab();
         disconnect_button_signal();
+        view_focused.disconnect();
+        view_unmapped.disconnect();
+        view_attached.disconnect();
         view_detached.disconnect();
+        view_minimized.disconnect();
+        view_geometry_changed.disconnect();
+        output->deactivate_plugin(grab_interface);
     }
 
     void set_hook()
@@ -829,10 +854,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void fini() override
     {
-        unset_hook();
-        remove_transformers();
-        grab_interface->ungrab();
-        disconnect_button_signal();
+        finalize();
         output->rem_binding(&toggle_cb);
         output->deactivate_plugin(grab_interface);
     }
