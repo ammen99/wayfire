@@ -321,7 +321,8 @@ class wayfire_scale : public wf::plugin_interface_t
         int row = scale_data[view].row;
         int col = scale_data[view].col;
 
-        if (state != WLR_KEY_PRESSED)
+        if (state != WLR_KEY_PRESSED ||
+            wf::get_core().get_keyboard_modifiers())
         {
             return;
         }
