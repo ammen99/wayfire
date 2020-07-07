@@ -607,7 +607,6 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        view->connect_signal("geometry-changed", &view_geometry_changed);
         add_transformer(view);
         layout_slots(get_views());
     }};
@@ -762,10 +761,12 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         output->connect_signal("layer-attach-view", &view_attached);
+        view_detached.disconnect();
         output->connect_signal("layer-detach-view", &view_detached);
         output->connect_signal("view-minimized", &view_minimized);
         output->connect_signal("focus-view", &view_focused);
 
+        view_geometry_changed.disconnect();
         for (auto& e : scale_data)
         {
             auto view = e.first;
@@ -773,6 +774,7 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 continue;
             }
+            view->connect_signal("geometry-changed", &view_geometry_changed);
             fade_out(view);
         }
 
