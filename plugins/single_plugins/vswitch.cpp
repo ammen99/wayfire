@@ -293,7 +293,6 @@ class vswitch : public wf::plugin_interface_t
         cws.y += animation.dy.end;
 
         auto output_g = output->get_relative_geometry();
-        output->workspace->set_workspace(cws);
 
         if (grabbed_view)
         {
@@ -311,6 +310,7 @@ class vswitch : public wf::plugin_interface_t
             data.to   = output->workspace->get_current_workspace();
             output->emit_signal("view-change-viewport", &data);
         }
+        output->workspace->set_workspace(cws);
     }
 
     void stop_switch()
