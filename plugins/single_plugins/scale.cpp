@@ -64,7 +64,6 @@ class wf_scale : public wf::view_2D
 
 struct view_scale_data
 {
-    double x, y;
     int row, col;
     wf_scale *transformer;
     wf::animation::simple_animation_t fade_animation;
@@ -237,29 +236,8 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             return;
         }
-        auto current_ws = output->workspace->get_current_workspace();
-        auto end_ws = get_view_main_workspace(view);
-        output->workspace->request_workspace(end_ws);
-        apply_transform_offset(current_ws, end_ws);
-    }
-
-    void apply_transform_offset(wf::point_t current_ws, wf::point_t end_ws)
-    {
-        if (current_ws == end_ws)
-        {
-            return;
-        }
-        auto og = output->get_relative_geometry();
-        for (auto& e : scale_data)
-        {
-            auto view = e.first;
-            if (!view)
-            {
-                continue;
-            }
-            scale_data[view].x += (current_ws.x - end_ws.x) * og.width;
-            scale_data[view].y += (current_ws.y - end_ws.y) * og.height;
-        }
+        auto ws = get_view_main_workspace(view);
+        output->workspace->request_workspace(ws);
     }
 
     void process_button(uint32_t button, uint32_t state)
@@ -303,6 +281,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         /* end scale */
         toggle_cb(wf::activator_source_t{}, 0);
+        select_view(view);
     }
 
     wf::point_t get_view_main_workspace(wayfire_view view)
@@ -326,7 +305,7 @@ class wayfire_scale : public wf::plugin_interface_t
             }
         }
 
-        return nullptr;
+        return get_views().front();
     }
 
     void process_key(uint32_t key, uint32_t state)
@@ -334,7 +313,7 @@ class wayfire_scale : public wf::plugin_interface_t
         auto view = output->get_active_view();
         if (!view)
         {
-            view = find_view_in_grid(0, 0);
+            view = last_focused_view;
             fade_in(view);
             output->focus_view(view, true);
             return;
@@ -363,10 +342,12 @@ class wayfire_scale : public wf::plugin_interface_t
                 break;
             case KEY_ENTER:
                 toggle_cb(wf::activator_source_t{}, 0);
+                select_view(last_focused_view);
                 return;
             case KEY_ESC:
                 toggle_cb(wf::activator_source_t{}, 0);
                 output->focus_view(initial_focus_view, true);
+                select_view(initial_focus_view);
                 return;
             default:
                 return;
@@ -479,6 +460,7 @@ class wayfire_scale : public wf::plugin_interface_t
         if (!active_view)
         {
             active_view = last_focused_view;
+            output->focus_view(active_view, true);
         }
         else
         {
@@ -508,8 +490,6 @@ class wayfire_scale : public wf::plugin_interface_t
             for (j = 0; j < n; j++)
             {
                 auto view = views[slots];
-                scale_data[view].x = x;
-                scale_data[view].y = y;
 
                 auto vg = view->get_wm_geometry();
                 double scale_x = width / vg.width;
@@ -644,13 +624,6 @@ end:
 
     wf::signal_connection_t view_geometry_changed{[this] (wf::signal_data_t *data)
     {
-        auto view = get_signaled_view(data);
-
-        if (output->workspace->get_view_layer(view) != wf::LAYER_WORKSPACE)
-        {
-            return;
-        }
-
         layout_slots(get_views());
         output->render->schedule_redraw();
     }};
@@ -812,7 +785,6 @@ end:
             e.second.animation.scale_animation.start();
         }
         grab_interface->capabilities = 0;
-        select_view(last_focused_view);
     }
 
     void finalize()
