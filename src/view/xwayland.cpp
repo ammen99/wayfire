@@ -316,6 +316,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             }
         });
         on_request_minimize.set_callback([&] (void*) {
+            LOG(wf::log::LOG_LEVEL_ERROR, "on_request_minimize");
             minimize_request(xw->minimized);
         });
         on_request_maximize.set_callback([&] (void*) {
