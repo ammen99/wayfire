@@ -83,6 +83,9 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::option_wrapper_t<bool> interact{"scale/interact"};
     wf::option_wrapper_t<bool> all_workspaces{"scale/all_workspaces"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
+    
+    /* maximum scale -- 1.0 means we will not "zoom in" on a view */
+    const double max_scale_factor = 1.0;
 
   public:
     void init() override
@@ -621,7 +624,9 @@ class wayfire_scale : public wf::plugin_interface_t
                 auto vg = view->get_wm_geometry();
 
                 double scale_x = width / vg.width;
+                if(scale_x > max_scale_factor) scale_x = max_scale_factor;
                 double scale_y = height / vg.height;
+                if(scale_y > max_scale_factor) scale_y = max_scale_factor;
                 double translation_x = x - vg.x + ((width - vg.width) / 2.0);
                 double translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
