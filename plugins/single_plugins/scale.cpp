@@ -642,6 +642,12 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         auto view = get_signaled_view(data);
 
+        auto it = scale_data.find(view);
+        if (it == scale_data.end())
+        {
+            return;
+        }
+
         pop_transformer(view);
         scale_data.erase(view);
 
