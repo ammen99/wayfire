@@ -397,8 +397,8 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             return;
         }
-        output->focus_view(view, true);
         last_focused_view = view;
+        output->focus_view(view, true);
         fade_in(view);
     }
 
@@ -614,6 +614,11 @@ class wayfire_scale : public wf::plugin_interface_t
         pop_transformer(view);
         scale_data.erase(view);
 
+        if (output->workspace->get_view_layer(view) != wf::LAYER_WORKSPACE)
+        {
+            return;
+        }
+
         auto views = get_views();
         if (!views.size())
         {
@@ -667,6 +672,10 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (view == last_focused_view || (view && view == output->get_active_view()))
         {
+            if (view && last_focused_view && view != last_focused_view)
+            {
+                output->focus_view(last_focused_view, true);
+            }
             return;
         }
 
