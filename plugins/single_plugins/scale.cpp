@@ -74,6 +74,7 @@ class wayfire_scale : public wf::plugin_interface_t
     int grid_cols;
     int grid_rows;
     int grid_last_row_cols;
+    bool input_release_impending = false;
     bool active, hook_set, button_connected;
     const std::string transformer_name = "scale";
     wayfire_view initial_focus_view, last_focused_view;
@@ -239,11 +240,27 @@ class wayfire_scale : public wf::plugin_interface_t
         output->workspace->request_workspace(ws);
     }
 
+    void finish_input()
+    {
+        input_release_impending = false;
+        grab_interface->ungrab();
+        if (!animation_running())
+        {
+            finalize();
+        }
+    }
+
     void process_button(uint32_t button, uint32_t state)
     {
         if (!active)
         {
+            finish_input();
             return;
+        }
+
+        if (button == BTN_LEFT || state == WLR_BUTTON_RELEASED)
+        {
+            input_release_impending = false;
         }
 
         if (button != BTN_LEFT || state != WLR_BUTTON_PRESSED)
@@ -262,9 +279,9 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
+        last_focused_view = view;
         output->focus_view(view, true);
         fade_out_all_except(view);
-        last_focused_view = view;
         fade_in(view);
 
         if (interact)
@@ -273,6 +290,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         /* end scale */
+        input_release_impending = true;
         toggle_cb(wf::activator_source_t{}, 0);
         select_view(view);
     }
@@ -303,6 +321,11 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void process_key(uint32_t key, uint32_t state)
     {
+        if (!active)
+        {
+            finish_input();
+            return;
+        }
         auto view = output->get_active_view();
         if (!view)
         {
@@ -314,6 +337,12 @@ class wayfire_scale : public wf::plugin_interface_t
         }
         int row = scale_data[view].row;
         int col = scale_data[view].col;
+
+        if (state == WLR_KEY_RELEASED &&
+            (key == KEY_ENTER || key == KEY_ESC))
+        {
+            input_release_impending = false;
+        }
 
         if (state != WLR_KEY_PRESSED ||
             wf::get_core().get_keyboard_modifiers())
@@ -336,10 +365,12 @@ class wayfire_scale : public wf::plugin_interface_t
                 col++;
                 break;
             case KEY_ENTER:
+                input_release_impending = true;
                 toggle_cb(wf::activator_source_t{}, 0);
                 select_view(last_focused_view);
                 return;
             case KEY_ESC:
+                input_release_impending = true;
                 toggle_cb(wf::activator_source_t{}, 0);
                 output->focus_view(initial_focus_view, true);
                 select_view(initial_focus_view);
@@ -614,11 +645,6 @@ class wayfire_scale : public wf::plugin_interface_t
         pop_transformer(view);
         scale_data.erase(view);
 
-        if (output->workspace->get_view_layer(view) != wf::LAYER_WORKSPACE)
-        {
-            return;
-        }
-
         auto views = get_views();
         if (!views.size())
         {
@@ -799,13 +825,16 @@ class wayfire_scale : public wf::plugin_interface_t
         active = false;
 
         set_hook();
-        grab_interface->ungrab();
         view_focused.disconnect();
         view_unmapped.disconnect();
         view_attached.disconnect();
         view_minimized.disconnect();
         view_geometry_changed.disconnect();
-        output->deactivate_plugin(grab_interface);
+        if (!input_release_impending)
+        {
+            grab_interface->ungrab();
+            output->deactivate_plugin(grab_interface);
+        }
         for (auto& e : scale_data)
         {
             fade_in(e.first);
@@ -821,6 +850,7 @@ class wayfire_scale : public wf::plugin_interface_t
     void finalize()
     {
         active = false;
+        input_release_impending = false;
 
         unset_hook();
         remove_transformers();
