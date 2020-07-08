@@ -34,7 +34,6 @@
 #include <linux/input-event-codes.h>
 
 
-
 using namespace wf::animation;
 
 class scale_animation_t : public duration_t
@@ -634,14 +633,13 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         auto ev = static_cast<view_minimized_signal*> (data);
 
-        auto views = get_views();
         if (ev->state)
         {
             pop_transformer(ev->view);
             scale_data.erase(ev->view);
-            if (!views.size())
+            if (scale_data.empty())
             {
-                finalize();
+                toggle_cb(wf::activator_source_t{}, 0);
                 return;
             }
         }
@@ -674,7 +672,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         view = last_focused_view;
 
-        if (!view)
+        if (!view || view->minimized || !view->is_mapped())
         {
             return;
         }
@@ -776,11 +774,11 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& e : scale_data)
         {
             auto view = e.first;
+            view->connect_signal("geometry-changed", &view_geometry_changed);
             if (view == initial_focus_view)
             {
                 continue;
             }
-            view->connect_signal("geometry-changed", &view_geometry_changed);
             fade_out(view);
         }
 
