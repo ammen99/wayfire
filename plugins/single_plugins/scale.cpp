@@ -694,7 +694,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (view == last_focused_view)
         {
-            last_focused_view = nullptr;
+            last_focused_view = output->get_active_view();
         }
     }};
 
@@ -707,6 +707,11 @@ class wayfire_scale : public wf::plugin_interface_t
             if (view && last_focused_view && view != last_focused_view)
             {
                 output->focus_view(last_focused_view, true);
+                fade_in(last_focused_view);
+            }
+            else
+            {
+                fade_in(view);
             }
             return;
         }
