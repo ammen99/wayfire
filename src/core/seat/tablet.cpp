@@ -25,7 +25,11 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
         core.get_current_seat(), tool);
 
     /* Free memory when the tool is destroyed */
-    this->on_destroy.set_callback([=] (void*) { delete this; });
+    this->on_destroy.set_callback([=] (void*)
+    {
+        this->tool->data = nullptr;
+        delete this;
+    });
     this->on_destroy.connect(&tool->events.destroy);
 
     /* Ungrab surface, and update focused surface if a surface is unmapped,

@@ -520,16 +520,13 @@ void wf::compositor_core_impl_t::set_active_view(wayfire_view new_focus)
 
     /* Descend into frontmost child view */
     new_focus = new_focus ? new_focus->enumerate_views().front() : nullptr;
-    bool refocus = (input->keyboard_focus == new_focus);
+    bool refocus = (last_active_view == new_focus);
 
     /* don't deactivate view if the next focus is not a toplevel */
     if (new_focus == nullptr || new_focus->role == VIEW_ROLE_TOPLEVEL)
     {
-        if (input->keyboard_focus &&
-            input->keyboard_focus->is_mapped() && !refocus)
-        {
-            input->keyboard_focus->set_activated(false);
-        }
+        if (last_active_view && last_active_view->is_mapped() && !refocus)
+            last_active_view->set_activated(false);
 
         /* make sure to deactivate the last activated toplevel */
         if (last_active_toplevel && new_focus != last_active_toplevel)
@@ -540,20 +537,15 @@ void wf::compositor_core_impl_t::set_active_view(wayfire_view new_focus)
     if (new_focus)
     {
         input->set_keyboard_focus(new_focus, seat);
-
-        /* Check that the view was actually focused */
-        if (input->keyboard_focus == new_focus)
-            new_focus->set_activated(true);
+        new_focus->set_activated(true);
     } else
     {
         input->set_keyboard_focus(nullptr, seat);
     }
 
-    if (!input->keyboard_focus ||
-        input->keyboard_focus->role == VIEW_ROLE_TOPLEVEL)
-    {
+    last_active_view = new_focus;
+    if (!new_focus || new_focus->role == VIEW_ROLE_TOPLEVEL)
         last_active_toplevel = new_focus;
-    }
 }
 
 void wf::compositor_core_impl_t::focus_view(wayfire_view v)

@@ -120,13 +120,13 @@ void input_manager::set_keyboard_focus(wayfire_view view, wlr_seat *seat)
                 kbd ? kbd->num_keycodes : 0,
                 kbd ? &kbd->modifiers : NULL);
         } else {
-            wlr_seat_keyboard_clear_focus(seat);
+            wlr_seat_keyboard_notify_clear_focus(seat);
         }
         keyboard_focus = view;
     }
     else
     {
-        wlr_seat_keyboard_clear_focus(seat);
+        wlr_seat_keyboard_notify_clear_focus(seat);
         keyboard_focus = nullptr;
     }
 }

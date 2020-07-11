@@ -35,5 +35,10 @@
 			<_long>Sets the color when the window is inactive.</_long>
 			<default>#333333dd</default>
 		</option>
+		<option name="ignore_views" type="string">
+			<_short>Decoration disabled for specified window types</_short>
+			<_long>Disables window decoration for windows matching the specified criteria.</_long>
+			<default>none</default>
+		</option>
 	</plugin>
 </wayfire>

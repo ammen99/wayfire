@@ -97,6 +97,12 @@ class compositor_core_impl_t : public compositor_core_t
 
     wayfire_view last_active_toplevel;
 
+    /**
+     * The last view which was attempted to be focused.
+     * The view might not actually have focus, because of plugin grabs.
+     */
+    wayfire_view last_active_view;
+
     compositor_core_impl_t();
     virtual ~compositor_core_impl_t();
 };

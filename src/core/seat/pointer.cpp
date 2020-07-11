@@ -123,7 +123,7 @@ void wf::LogicalPointer::update_cursor_focus(wf::surface_interface_t *focus,
             local.x, local.y);
     } else
     {
-        wlr_seat_pointer_clear_focus(input->seat);
+        wlr_seat_pointer_notify_clear_focus(input->seat);
     }
 
     if (focus_change &&

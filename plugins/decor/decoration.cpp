@@ -1,5 +1,6 @@
 #include <wayfire/singleton-plugin.hpp>
 #include <wayfire/view.hpp>
+#include <wayfire/matcher.hpp>
 #include <wayfire/workspace-manager.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/signal-definitions.hpp>
@@ -18,6 +19,8 @@ struct wayfire_decoration_global_cleanup_t
 class wayfire_decoration :
     public wf::singleton_plugin_t<wayfire_decoration_global_cleanup_t, true>
 {
+    wf::view_matcher_t ignore_views{"decoration/ignore_views"};
+
     wf::signal_connection_t view_updated {
         [=] (wf::signal_data_t *data)
         {
@@ -35,10 +38,22 @@ class wayfire_decoration :
         output->connect_signal("decoration-state-updated-view", &view_updated);
     }
 
+    /**
+     * Uses view_matcher_t to match whether the given view needs to be
+     * ignored for decoration
+     *
+     * @param view The view to match
+     * @return Whether the given view should be decorated?
+     */
+    bool ignore_decoration_of_view(wayfire_view view)
+    {
+        return ignore_views.matches(view);
+    }
+
     wf::wl_idle_call idle_deactivate;
     void update_view_decoration(wayfire_view view)
     {
-        if (view->should_be_decorated())
+        if (view->should_be_decorated() && !ignore_decoration_of_view(view))
         {
             if (output->activate_plugin(grab_interface))
             {
