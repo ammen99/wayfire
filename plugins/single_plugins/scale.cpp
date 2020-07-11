@@ -84,8 +84,13 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::option_wrapper_t<bool> all_workspaces{"scale/all_workspaces"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
     
-    /* maximum scale -- 1.0 means we will not "zoom in" on a view */
+    /* maximum scale -- 1.0 means we will not "zoom in" on a view
+     * (this could be set as an option) */
     const double max_scale_factor = 1.0;
+    /* maximum scale for child views (relative to their parents)
+     * zero means unconstrained, 1.0 means child cannot be scaled
+     * "larger" than the parent */
+    const double max_scale_child = 1.0;
 
   public:
     void init() override
@@ -287,7 +292,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             pop_transformer(child);
             scale_data.erase(child);
-	}
+    }
     }
 
     void process_button(uint32_t button, uint32_t state)
@@ -606,7 +611,8 @@ class wayfire_scale : public wf::plugin_interface_t
 
         y = workarea.y + (int) spacing;
         height = (workarea.height - (lines + 1) * (int) spacing) / lines;
-
+        width = (workarea.width - (grid_cols + 1) * (int) spacing) / grid_cols;
+        
         std::sort(views.begin(), views.end());
 
         for (i = 0; i < lines; i++)
@@ -615,7 +621,10 @@ class wayfire_scale : public wf::plugin_interface_t
 
             std::vector<size_t> row;
             x = workarea.x + (int) spacing;
-            width = (workarea.width - (n + 1) * (int) spacing) / n;
+            if (i == lines - 1)
+            {
+                x += (grid_cols - grid_last_row_cols) * width / 2.0;
+            }
 
             for (j = 0; j < n; j++)
             {
@@ -624,13 +633,11 @@ class wayfire_scale : public wf::plugin_interface_t
                 auto vg = view->get_wm_geometry();
 
                 double scale_x = width / vg.width;
-                if(scale_x > max_scale_factor) scale_x = max_scale_factor;
                 double scale_y = height / vg.height;
-                if(scale_y > max_scale_factor) scale_y = max_scale_factor;
                 double translation_x = x - vg.x + ((width - vg.width) / 2.0);
                 double translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
-                scale_x = scale_y = std::min(scale_x, scale_y);
+                scale_x = scale_y = std::min(std::min(scale_x, scale_y), max_scale_factor);
 
                 scale_data[view].animation.scale_animation.scale_x.set(
                     scale_data[view].transformer->scale_x, active ? scale_x : 1);
@@ -657,16 +664,23 @@ class wayfire_scale : public wf::plugin_interface_t
                 {
                     vg = child->get_wm_geometry();
 
-                    scale_x = width / vg.width;
-                    scale_y = height / vg.height;
+                    double child_scale_x = width / vg.width;
+                    double child_scale_y = height / vg.height;
+                    child_scale_x = child_scale_y = std::min(
+                        std::min(scale_x, scale_y), max_scale_factor);
+                    if (max_scale_child > 0.0 && child_scale_x > max_scale_child * scale_x)
+                    {
+                        child_scale_x = max_scale_child * scale_x;
+                        child_scale_y = child_scale_y;
+                    }
+                    
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
                     translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
-                    scale_x = scale_y = std::min(scale_x, scale_y);
                     scale_data[child].animation.scale_animation.scale_x.set(
-                        scale_data[child].transformer->scale_x, active ? scale_x : 1);
+                        scale_data[child].transformer->scale_x, active ? child_scale_x : 1);
                     scale_data[child].animation.scale_animation.scale_y.set(
-                        scale_data[child].transformer->scale_y, active ? scale_y : 1);
+                        scale_data[child].transformer->scale_y, active ? child_scale_y : 1);
                     scale_data[child].animation.scale_animation.translation_x.set(
                         scale_data[child].transformer->translation_x, active ? translation_x : 0);
                     scale_data[child].animation.scale_animation.translation_y.set(
