@@ -39,5 +39,10 @@
 			<min>0.0</min>
 			<max>1.0</max>
 		</option>
+		<option name="allow_zoom" type="bool">
+			<_short>Allow Zoomed Windows</_short>
+			<_long>Whether scaled windows can have a size larger than their original size.</_long>
+			<default>false</default>
+		</option>
 	</plugin>
 </wayfire>
