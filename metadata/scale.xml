@@ -9,10 +9,10 @@
 			<_long>Toggles scale with the specified activator.</_long>
 			<default>&lt;super&gt; KEY_P</default>
 		</option>
-		<option name="all_workspaces" type="bool">
-			<_short>Show Views From All Workspaces</_short>
-			<_long>If this option is not set, only views from the current workspace will be scaled.</_long>
-			<default>false</default>
+		<option name="toggle_all" type="activator">
+			<_short>Toggle for all workspaces</_short>
+			<_long>Toggles scale showing windows from all workspaces.</_long>
+			<default></default>
 		</option>
 		<option name="spacing" type="int">
 			<_short>Spacing</_short>
