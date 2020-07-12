@@ -611,20 +611,16 @@ class wayfire_scale : public wf::plugin_interface_t
 
         y = workarea.y + (int) spacing;
         height = (workarea.height - (lines + 1) * (int) spacing) / lines;
-        width = (workarea.width - (grid_cols + 1) * (int) spacing) / grid_cols;
         
         std::sort(views.begin(), views.end());
 
         for (i = 0; i < lines; i++)
         {
             n = (i == lines - 1) ? grid_last_row_cols : grid_cols;
+            width = (workarea.width - (n + 1) * (int) spacing) / n;
 
             std::vector<size_t> row;
             x = workarea.x + (int) spacing;
-            if (i == lines - 1)
-            {
-                x += (grid_cols - grid_last_row_cols) * width / 2.0;
-            }
 
             for (j = 0; j < n; j++)
             {
