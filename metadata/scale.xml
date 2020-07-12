@@ -12,7 +12,7 @@
 		<option name="toggle_all" type="activator">
 			<_short>Toggle for all workspaces</_short>
 			<_long>Toggles scale showing windows from all workspaces.</_long>
-			<default>disabled</default>
+			<default></default>
 		</option>
 		<option name="spacing" type="int">
 			<_short>Spacing</_short>

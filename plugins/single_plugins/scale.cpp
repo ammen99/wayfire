@@ -172,15 +172,18 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         if (active)
         {
-            if(all_workspaces) {
+            if (all_workspaces)
+            {
                 all_workspaces = false;
                 all_workspaces_option_changed();
             }
-            else {
+            else
+            {
                 deactivate();
             }
         }
-        else {
+        else
+        {
             all_workspaces = false;
             if (!activate())
             {
@@ -196,15 +199,18 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         if (active)
         {
-            if(!all_workspaces) {
+            if (!all_workspaces)
+            {
                 all_workspaces = true;
                 all_workspaces_option_changed();
             }
-            else {
+            else
+            {
                 deactivate();
             }
         }
-        else {
+        else
+        {
             all_workspaces = true;
             if (!activate())
             {
