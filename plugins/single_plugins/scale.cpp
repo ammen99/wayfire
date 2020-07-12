@@ -667,11 +667,11 @@ class wayfire_scale : public wf::plugin_interface_t
                     double child_scale_x = width / vg.width;
                     double child_scale_y = height / vg.height;
                     child_scale_x = child_scale_y = std::min(
-                        std::min(scale_x, scale_y), max_scale_factor);
+                        std::min(child_scale_x, child_scale_y), max_scale_factor);
                     if (max_scale_child > 0.0 && child_scale_x > max_scale_child * scale_x)
                     {
                         child_scale_x = max_scale_child * scale_x;
-                        child_scale_y = child_scale_y;
+                        child_scale_y = child_scale_x;
                     }
                     
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
