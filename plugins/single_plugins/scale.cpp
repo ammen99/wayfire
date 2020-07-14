@@ -81,8 +81,11 @@ class wayfire_scale : public wf::plugin_interface_t
     std::map<wayfire_view, view_scale_data> scale_data;
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
     wf::option_wrapper_t<bool> interact{"scale/interact"};
-    wf::option_wrapper_t<bool> all_workspaces{"scale/all_workspaces"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
+    
+    /* true if the currently running scale should include views from
+     * all workspaces */
+    bool all_workspaces;
 
   public:
     void init() override
@@ -95,6 +98,9 @@ class wayfire_scale : public wf::plugin_interface_t
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle"},
             &toggle_cb);
+        output->add_activator(
+            wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle_all"},
+            &toggle_all_cb);
 
         grab_interface->callbacks.pointer.button = [=] (uint32_t button, uint32_t state)
         {
@@ -105,7 +111,6 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             process_key(key, state);
         };
-        all_workspaces.set_callback(all_workspaces_option_changed);
         interact.set_callback(interact_option_changed);
     }
 
@@ -167,11 +172,50 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         if (active)
         {
-            deactivate();
+            if (all_workspaces)
+            {
+                all_workspaces = false;
+                all_workspaces_option_changed();
+            }
+            else
+            {
+                deactivate();
+            }
         }
-        else if (!activate())
+        else
         {
-            return false;
+            all_workspaces = false;
+            if (!activate())
+            {
+                return false;
+            }
+        }
+
+        output->render->schedule_redraw();
+        return true;
+    };
+
+    wf::activator_callback toggle_all_cb = [=] (wf::activator_source_t, uint32_t)
+    {
+        if (active)
+        {
+            if (!all_workspaces)
+            {
+                all_workspaces = true;
+                all_workspaces_option_changed();
+            }
+            else
+            {
+                deactivate();
+            }
+        }
+        else
+        {
+            all_workspaces = true;
+            if (!activate())
+            {
+                return false;
+            }
         }
 
         output->render->schedule_redraw();
@@ -328,7 +372,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         /* end scale */
         input_release_impending = true;
-        toggle_cb(wf::activator_source_t{}, 0);
+        deactivate();
         select_view(view);
     }
 
@@ -412,12 +456,12 @@ class wayfire_scale : public wf::plugin_interface_t
                 break;
             case KEY_ENTER:
                 input_release_impending = true;
-                toggle_cb(wf::activator_source_t{}, 0);
+                deactivate();
                 select_view(last_focused_view);
                 return;
             case KEY_ESC:
                 input_release_impending = true;
-                toggle_cb(wf::activator_source_t{}, 0);
+                deactivate();
                 output->focus_view(initial_focus_view, true);
                 select_view(initial_focus_view);
                 return;
@@ -705,7 +749,7 @@ class wayfire_scale : public wf::plugin_interface_t
         disconnect_button_signal();
     };
 
-    wf::config::option_base_t::updated_callback_t all_workspaces_option_changed = [=] ()
+    void all_workspaces_option_changed()
     {
         if (!output->is_plugin_active(grab_interface->name))
         {
@@ -740,7 +784,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             layout_slots(get_views());
         }
-    };
+    }
 
     wf::signal_connection_t view_attached{[this] (wf::signal_data_t *data)
     {
@@ -841,7 +885,7 @@ class wayfire_scale : public wf::plugin_interface_t
             remove_view(ev->view);
             if (scale_data.empty())
             {
-                toggle_cb(wf::activator_source_t{}, 0);
+                deactivate();
                 return;
             }
         }
@@ -975,7 +1019,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             if (!grab_interface->grab())
             {
-                toggle_cb(wf::activator_source_t{}, 0);
+                deactivate();
                 return false;
             }
             if (initial_focus_view)
@@ -1089,6 +1133,7 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         finalize();
         output->rem_binding(&toggle_cb);
+        output->rem_binding(&toggle_all_cb);
         output->deactivate_plugin(grab_interface);
     }
 };
