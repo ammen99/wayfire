@@ -93,6 +93,7 @@ class compositor_core_impl_t : public compositor_core_t
     wf::wl_listener_wrapper input_inhibit_activated;
     wf::wl_listener_wrapper input_inhibit_deactivated;
     wf::wl_listener_wrapper pointer_constraint_added;
+    wf::wl_listener_wrapper idle_inhibitor_created;
 
     wf::output_t *active_output = nullptr;
     std::vector<std::unique_ptr<wf::view_interface_t>> views;

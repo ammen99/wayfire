@@ -152,6 +152,20 @@ struct wf_pointer_constraint
     }
 };
 
+struct wlr_idle_inhibitor_t : public wf::idle_inhibitor_t
+{
+    wf::wl_listener_wrapper on_destroy;
+    wlr_idle_inhibitor_t(wlr_idle_inhibitor_v1 *wlri)
+    {
+        on_destroy.set_callback([&] (void*)
+        {
+            delete this;
+        });
+
+        on_destroy.connect(&wlri->events.destroy);
+    }
+};
+
 void wf::compositor_core_impl_t::init()
 {
     wlr_renderer_init_wl_display(renderer, display);
@@ -246,8 +260,17 @@ void wf::compositor_core_impl_t::init()
     });
     vptr_created.connect(&protocols.vptr_manager->events.new_virtual_pointer);
 
+    protocols.idle_inhibit = wlr_idle_inhibit_v1_create(display);
+    idle_inhibitor_created.set_callback([&] (void *data)
+    {
+        auto wlri = static_cast<wlr_idle_inhibitor_v1*>(data);
+        /* will be freed by the destroy request */
+        new wlr_idle_inhibitor_t(wlri);
+    });
+    idle_inhibitor_created.connect(
+        &protocols.idle_inhibit->events.new_inhibitor);
+
     protocols.idle = wlr_idle_create(display);
-    protocols.idle_inhibit     = wlr_idle_inhibit_v1_create(display);
     protocols.toplevel_manager = wlr_foreign_toplevel_manager_v1_create(display);
     protocols.pointer_gestures = wlr_pointer_gestures_v1_create(display);
     protocols.relative_pointer = wlr_relative_pointer_manager_v1_create(display);

@@ -3,6 +3,7 @@
 
 #include "wayfire/object.hpp"
 #include <wayfire/geometry.hpp>
+#include <wayfire/idle.hpp>
 
 #include <sys/types.h>
 #include <limits>
