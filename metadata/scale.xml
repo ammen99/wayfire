@@ -39,5 +39,10 @@
 			<min>0.0</min>
 			<max>1.0</max>
 		</option>
+		<option name="middle_click_close" type="bool">
+			<_short>Close views with middle click</_short>
+			<_long>Use the middle mouse button to close views in the scale state. Only applies if interactive mode is not enabled.</_long>
+			<default>false</default>
+		</option>
 	</plugin>
 </wayfire>
