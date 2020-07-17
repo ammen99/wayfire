@@ -84,7 +84,7 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
     wf::option_wrapper_t<bool> allow_scale_zoom{"scale/allow_zoom"};
     
-    /* maximum scale -- 1.0 means we will not "zoom in" on a view
+    /* maximum scale -- 1.0 means we will not "zoom in" on a view */
     const double max_scale_factor = 1.0;
     /* maximum scale for child views (relative to their parents)
      * zero means unconstrained, 1.0 means child cannot be scaled
