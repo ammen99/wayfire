@@ -84,7 +84,7 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::option_wrapper_t<bool> middle_click_close{"scale/middle_click_close"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
     wf::option_wrapper_t<bool> allow_scale_zoom{"scale/allow_zoom"};
-    
+
     /* maximum scale -- 1.0 means we will not "zoom in" on a view */
     const double max_scale_factor = 1.0;
     /* maximum scale for child views (relative to their parents)
@@ -383,7 +383,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             return;
         }
-        
+
         if (button == BTN_MIDDLE)
         {
             view->close();
@@ -733,7 +733,7 @@ class wayfire_scale : public wf::plugin_interface_t
                     double child_scale_x = width / vg.width;
                     double child_scale_y = height / vg.height;
                     child_scale_x = child_scale_y = std::min(child_scale_x, child_scale_y);
-                    
+
                     if (!allow_scale_zoom)
                     {
                         child_scale_x = child_scale_y = std::min(child_scale_x, max_scale_factor);
@@ -743,7 +743,7 @@ class wayfire_scale : public wf::plugin_interface_t
                             child_scale_y = child_scale_x;
                         }
                     }
-                        
+
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
                     translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
@@ -830,7 +830,7 @@ class wayfire_scale : public wf::plugin_interface_t
             layout_slots(get_views());
         }
     }
-    
+
     wf::config::option_base_t::updated_callback_t allow_scale_zoom_option_changed = [=] ()
     {
         if (!output->is_plugin_active(grab_interface->name))
