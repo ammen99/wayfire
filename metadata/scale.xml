@@ -40,8 +40,8 @@
 			<max>1.0</max>
 		</option>
 		<option name="allow_zoom" type="bool">
-			<_short>Allow Zoomed Windows</_short>
-			<_long>Whether scaled windows can have a size larger than their original size.</_long>
+			<_short>Allow Zoomed Views</_short>
+			<_long>Whether scaled views can have a size larger than their original size.</_long>
 			<default>false</default>
 		</option>
 	</plugin>
