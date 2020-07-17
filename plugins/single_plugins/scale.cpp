@@ -375,7 +375,8 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
         
-        if (button == BTN_MIDDLE) {
+        if (button == BTN_MIDDLE)
+        {
             view->close();
             return;
         }
