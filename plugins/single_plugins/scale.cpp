@@ -696,8 +696,8 @@ class wayfire_scale : public wf::plugin_interface_t
 
                 double scale_x = width / vg.width;
                 double scale_y = height / vg.height;
-                double translation_x = x - vg.x + ((width - vg.width) / 2.0);
-                double translation_y = y - vg.y + ((height - vg.height) / 2.0);
+                int translation_x = x - vg.x + ((width - vg.width) / 2.0);
+                int translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
                 scale_x = scale_y = std::min(scale_x, scale_y);
                 if (!allow_scale_zoom)
