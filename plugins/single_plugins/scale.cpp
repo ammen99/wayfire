@@ -81,6 +81,7 @@ class wayfire_scale : public wf::plugin_interface_t
     std::map<wayfire_view, view_scale_data> scale_data;
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
     wf::option_wrapper_t<bool> interact{"scale/interact"};
+    wf::option_wrapper_t<bool> middle_click_close{"scale/middle_click_close"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
     wf::option_wrapper_t<bool> allow_scale_zoom{"scale/allow_zoom"};
     
@@ -353,9 +354,23 @@ class wayfire_scale : public wf::plugin_interface_t
             input_release_impending = false;
         }
 
-        if (button != BTN_LEFT || state != WLR_BUTTON_PRESSED)
+        if (state != WLR_BUTTON_PRESSED)
         {
             return;
+        }
+
+        switch (button)
+        {
+            case BTN_LEFT:
+                break;
+            case BTN_MIDDLE:
+                if (!middle_click_close)
+                {
+                    return;
+                }
+                break;
+            default:
+                return;
         }
 
         auto view = wf::get_core().get_view_at(wf::get_core().get_cursor_position());
@@ -366,6 +381,12 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (!scale_view(view) && view->role != wf::VIEW_ROLE_TOPLEVEL)
         {
+            return;
+        }
+        
+        if (button == BTN_MIDDLE)
+        {
+            view->close();
             return;
         }
 
