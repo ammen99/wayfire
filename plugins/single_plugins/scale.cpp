@@ -85,7 +85,6 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::option_wrapper_t<bool> allow_scale_zoom{"scale/allow_zoom"};
     
     /* maximum scale -- 1.0 means we will not "zoom in" on a view
-     * (this could be set as an option) */
     const double max_scale_factor = 1.0;
     /* maximum scale for child views (relative to their parents)
      * zero means unconstrained, 1.0 means child cannot be scaled
@@ -338,7 +337,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             pop_transformer(child);
             scale_data.erase(child);
-    }
+	}
     }
 
     void process_button(uint32_t button, uint32_t state)
@@ -657,16 +656,16 @@ class wayfire_scale : public wf::plugin_interface_t
 
         y = workarea.y + (int) spacing;
         height = (workarea.height - (lines + 1) * (int) spacing) / lines;
-        
+
         std::sort(views.begin(), views.end());
 
         for (i = 0; i < lines; i++)
         {
             n = (i == lines - 1) ? grid_last_row_cols : grid_cols;
-            width = (workarea.width - (n + 1) * (int) spacing) / n;
 
             std::vector<size_t> row;
             x = workarea.x + (int) spacing;
+            width = (workarea.width - (n + 1) * (int) spacing) / n;
 
             for (j = 0; j < n; j++)
             {
