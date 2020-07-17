@@ -83,6 +83,14 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::option_wrapper_t<bool> interact{"scale/interact"};
     wf::option_wrapper_t<bool> middle_click_close{"scale/middle_click_close"};
     wf::option_wrapper_t<double> inactive_alpha{"scale/inactive_alpha"};
+    wf::option_wrapper_t<bool> allow_scale_zoom{"scale/allow_zoom"};
+    
+    /* maximum scale -- 1.0 means we will not "zoom in" on a view */
+    const double max_scale_factor = 1.0;
+    /* maximum scale for child views (relative to their parents)
+     * zero means unconstrained, 1.0 means child cannot be scaled
+     * "larger" than the parent */
+    const double max_scale_child = 1.0;
     
     /* true if the currently running scale should include views from
      * all workspaces */
@@ -113,6 +121,7 @@ class wayfire_scale : public wf::plugin_interface_t
             process_key(key, state);
         };
         interact.set_callback(interact_option_changed);
+        allow_scale_zoom.set_callback(allow_scale_zoom_option_changed);
     }
 
     void add_transformer(wayfire_view view)
@@ -691,6 +700,10 @@ class wayfire_scale : public wf::plugin_interface_t
                 double translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
                 scale_x = scale_y = std::min(scale_x, scale_y);
+                if (!allow_scale_zoom)
+                {
+                    scale_x = scale_y = std::min(scale_x, max_scale_factor);
+                }
 
                 scale_data[view].animation.scale_animation.scale_x.set(
                     scale_data[view].transformer->scale_x, active ? scale_x : 1);
@@ -717,16 +730,27 @@ class wayfire_scale : public wf::plugin_interface_t
                 {
                     vg = child->get_wm_geometry();
 
-                    scale_x = width / vg.width;
-                    scale_y = height / vg.height;
+                    double child_scale_x = width / vg.width;
+                    double child_scale_y = height / vg.height;
+                    child_scale_x = child_scale_y = std::min(child_scale_x, child_scale_y);
+                    
+                    if (!allow_scale_zoom)
+                    {
+                        child_scale_x = child_scale_y = std::min(child_scale_x, max_scale_factor);
+                        if (max_scale_child > 0.0 && child_scale_x > max_scale_child * scale_x)
+                        {
+                            child_scale_x = max_scale_child * scale_x;
+                            child_scale_y = child_scale_x;
+                        }
+                    }
+                        
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
                     translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
-                    scale_x = scale_y = std::min(scale_x, scale_y);
                     scale_data[child].animation.scale_animation.scale_x.set(
-                        scale_data[child].transformer->scale_x, active ? scale_x : 1);
+                        scale_data[child].transformer->scale_x, active ? child_scale_x : 1);
                     scale_data[child].animation.scale_animation.scale_y.set(
-                        scale_data[child].transformer->scale_y, active ? scale_y : 1);
+                        scale_data[child].transformer->scale_y, active ? child_scale_y : 1);
                     scale_data[child].animation.scale_animation.translation_x.set(
                         scale_data[child].transformer->translation_x, active ? translation_x : 0);
                     scale_data[child].animation.scale_animation.translation_y.set(
@@ -806,6 +830,15 @@ class wayfire_scale : public wf::plugin_interface_t
             layout_slots(get_views());
         }
     }
+    
+    wf::config::option_base_t::updated_callback_t allow_scale_zoom_option_changed = [=] ()
+    {
+        if (!output->is_plugin_active(grab_interface->name))
+        {
+            return;
+        }
+        layout_slots(get_views());
+    };
 
     wf::signal_connection_t view_attached{[this] (wf::signal_data_t *data)
     {
