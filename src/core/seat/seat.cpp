@@ -46,8 +46,13 @@ wf::point_t wf_drag_icon::get_offset()
 
 void wf_drag_icon::damage()
 {
-    wlr_box box = {0, 0, get_size().width, get_size().height};
-    damage_surface_box(box);
+    // damage previous position
+    damage_surface_box_global(last_box);
+
+    // damage new position
+    last_box = {0, 0, get_size().width, get_size().height};
+    last_box = last_box + get_offset();
+    damage_surface_box_global(last_box);
 }
 
 void wf_drag_icon::damage_surface_box(const wlr_box& box)
@@ -55,16 +60,17 @@ void wf_drag_icon::damage_surface_box(const wlr_box& box)
     if (!is_mapped())
         return;
 
-    wlr_box damage = box;
-    damage.x += get_offset().x;
-    damage.y += get_offset().y;
+    damage_surface_box_global(box + this->get_offset());
+}
 
+void wf_drag_icon::damage_surface_box_global(const wlr_box& rect)
+{
     for (auto& output : wf::get_core().output_layout->get_outputs())
     {
         auto output_geometry = output->get_layout_geometry();
-        if (output_geometry & damage)
+        if (output_geometry & rect)
         {
-            auto local = damage;
+            auto local = rect;
             local.x -= output_geometry.x;
             local.y -= output_geometry.y;
             output->render->damage(local);

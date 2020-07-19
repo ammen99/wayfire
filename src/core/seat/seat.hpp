@@ -21,8 +21,16 @@ struct wf_drag_icon : public wf::wlr_child_surface_base_t
     wf_drag_icon(wlr_drag_icon *icon);
     wf::point_t get_offset() override;
 
+    /** Called each time the DnD icon position changes. */
     void damage();
     void damage_surface_box(const wlr_box& rect) override;
+
+  private:
+    /** Last icon box. */
+    wf::geometry_t last_box = {0, 0, 0, 0};
+
+    /** Damage surface box in global coordinates. */
+    void damage_surface_box_global(const wlr_box& rect);
 };
 
 class wf_input_device_internal : public wf::input_device_t
