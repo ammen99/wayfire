@@ -1,4 +1,4 @@
-#include <string.h>
+#include <cstring>
 #include <linux/input-event-codes.h>
 
 extern "C"
@@ -7,6 +7,7 @@ extern "C"
 #include <wlr/backend/session.h>
 }
 
+#include <wayfire/util/log.hpp>
 #include "keyboard.hpp"
 #include "../core-impl.hpp"
 #include "../../output/output-impl.hpp"
@@ -77,7 +78,6 @@ void wf_keyboard::reload_input_options()
     std::string variant = this->variant;
     std::string options = this->options;
 
-
     xkb_rule_names names;
     names.rules   = rules.c_str();
     names.model   = model.c_str();
@@ -86,6 +86,17 @@ void wf_keyboard::reload_input_options()
     names.options = options.c_str();
     auto keymap = xkb_map_new_from_names(ctx, &names,
         XKB_KEYMAP_COMPILE_NO_FLAGS);
+
+    if (!keymap)
+    {
+        LOGE("Could not create keymap with given configuration:",
+            " rules=\"", rules, "\" model=\"", model, "\" layout=\"",layout,
+            "\" variant=\"", variant, "\" options=\"", options, "\"");
+
+        // reset to NULL
+        std::memset(&names, 0, sizeof(names));
+        keymap = xkb_map_new_from_names(ctx, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+    }
 
     wlr_keyboard_set_keymap(handle, keymap);
     xkb_keymap_unref(keymap);
