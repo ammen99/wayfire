@@ -310,6 +310,7 @@ class vswitch : public wf::plugin_interface_t
             data.to   = output->workspace->get_current_workspace();
             output->emit_signal("view-change-viewport", &data);
         }
+
         output->workspace->set_workspace(cws);
     }
 
