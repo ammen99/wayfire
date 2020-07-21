@@ -38,7 +38,7 @@ class wayfire_output_manager : public wf::plugin_interface_t
             return true;
         }
 
-        wf::get_core().move_view_to_output(view, next);
+        wf::get_core().move_view_to_output(view, next, true);
         idle_next_output.run_once([=] ()
         {
             wf::get_core().focus_output(next);

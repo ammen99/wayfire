@@ -713,19 +713,56 @@ std::string wf::compositor_core_impl_t::get_xwayland_display()
 }
 
 void wf::compositor_core_impl_t::move_view_to_output(wayfire_view v,
-    wf::output_t *new_output)
+    wf::output_t *new_output, bool reconfigure)
 {
+    auto old_output = v->get_output();
     wf::view_move_to_output_signal data;
     data.view = v;
-    data.old_output = v->get_output();
+    data.old_output = old_output;
     data.new_output = new_output;
     this->emit_signal("view-move-to-output", &data);
+
+    uint32_t edges;
+    bool fullscreen;
+    wf::geometry_t view_g;
+    wf::geometry_t old_output_g;
+    wf::geometry_t new_output_g;
+
+    if (reconfigure)
+    {
+        edges = v->tiled_edges;
+        fullscreen = v->fullscreen;
+        view_g     = v->get_wm_geometry();
+        old_output_g = old_output->get_relative_geometry();
+        new_output_g = new_output->get_relative_geometry();
+        auto ratio_x = (double)new_output_g.width / old_output_g.width;
+        auto ratio_y = (double)new_output_g.height / old_output_g.height;
+        view_g.x     *= ratio_x;
+        view_g.y     *= ratio_y;
+        view_g.width *= ratio_x;
+        view_g.height *= ratio_y;
+    }
 
     assert(new_output);
     v->set_output(new_output);
     new_output->workspace->add_view(v,
         v->minimized ? wf::LAYER_MINIMIZED : wf::LAYER_WORKSPACE);
     new_output->focus_view(v);
+
+    if (reconfigure)
+    {
+        if (fullscreen)
+        {
+            v->fullscreen_request(new_output, true);
+        } else if (edges)
+        {
+            v->tile_request(edges);
+        } else
+        {
+            auto new_g = wf::clamp(view_g, new_output->workspace->get_workarea());
+            v->set_geometry(new_g);
+        }
+    }
 }
 
 wf::compositor_core_t::compositor_core_t()

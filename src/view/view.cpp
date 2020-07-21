@@ -550,7 +550,7 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
      * fullscreened? We should make sure that it stays visible there */
     if (get_output() != wo)
     {
-        wf::get_core().move_view_to_output(self(), wo);
+        wf::get_core().move_view_to_output(self(), wo, false);
     }
 
     view_fullscreen_signal data;

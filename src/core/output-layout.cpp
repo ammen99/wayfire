@@ -215,7 +215,7 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
     {
         for (auto& view : views)
         {
-            wf::get_core().move_view_to_output(view, to);
+            wf::get_core().move_view_to_output(view, to, false);
             to->workspace->move_to_workspace(view,
                 to->workspace->get_current_workspace());
 

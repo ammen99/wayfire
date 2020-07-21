@@ -475,7 +475,7 @@ class wayfire_move : public wf::plugin_interface_t
          * correct position on the other output. */
         view->erase_data<wf::move_snap_helper_t>();
         view->move(wm_g.x + dx, wm_g.y + dy);
-        wf::get_core().move_view_to_output(view, new_output);
+        wf::get_core().move_view_to_output(view, new_output, false);
         wf::get_core().focus_output(new_output);
 
         new_output->emit_signal("move-request", &req);

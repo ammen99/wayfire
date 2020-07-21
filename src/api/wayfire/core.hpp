@@ -222,12 +222,12 @@ class compositor_core_t : public wf::object_base_t
     virtual wf::output_t *get_active_output() = 0;
 
     /**
-     * Change the view's output to new_output. However, the view geometry
-     * isn't changed - the caller needs to make sure that the view doesn't
-     * become unreachable, for ex. by going out of the output bounds
+     * Change the view's output to new_output. If the reconfigure flag is
+     * set, it will adjust the view geometry for the new output and clamp
+     * it to the output geometry so it is at an expected size and position.
      */
     virtual void move_view_to_output(wayfire_view v,
-        wf::output_t *new_output) = 0;
+        wf::output_t *new_output, bool reconfigure) = 0;
 
     /**
      * Add a request to focus the given layer, or update an existing request.
