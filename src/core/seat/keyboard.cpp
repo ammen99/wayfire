@@ -117,9 +117,9 @@ void input_manager::set_keyboard_focus(wayfire_view view, wlr_seat *seat)
     /* Don't focus if we have an active grab */
     if (!active_grab)
     {
-        auto kbd = wlr_seat_get_keyboard(seat);
         if (surface)
         {
+            auto kbd = wlr_seat_get_keyboard(seat);
             wlr_seat_keyboard_notify_enter(seat, surface,
                 kbd ? kbd->keycodes : NULL,
                 kbd ? kbd->num_keycodes : 0,
