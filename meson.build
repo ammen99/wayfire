@@ -134,6 +134,8 @@ endif
 
 configure_file(input: 'config.h.in',
                output: 'config.h',
+               install: true,
+               install_dir: join_paths('include', 'wayfire'),
                configuration: conf_data)
 
 subdir('proto')
