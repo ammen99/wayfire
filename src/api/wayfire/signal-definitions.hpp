@@ -32,9 +32,25 @@ namespace wf
 
 class input_device_t;
 /**
+<<<<<<< HEAD
  * name: input-device-added, input-device-removed
  * on: core
  * when: Whenever a new input device is added or removed.
+=======
+ * view-hints-changed signal is emitted on the view's output whenever the client
+ * indicates the views hints have changed (example urgency hint).
+ */
+struct wf::view_hints_changed_signal : public _view_signal
+{
+    bool demands_attention = false;
+};
+
+/**
+ * view-system-bell signal is emitted whenever the client indicates
+ * the view wants to invoke the system bell if such is available.
+ *
+ * Note: system-bell may be invoked with a nullptr view.
+>>>>>>> 463b75f... implement self-request-focus and demands_attention for xwayland
  */
 struct input_device_signal : public wf::signal_data_t
 {
