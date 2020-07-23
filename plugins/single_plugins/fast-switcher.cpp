@@ -3,7 +3,6 @@
 #include <wayfire/view-transform.hpp>
 #include <wayfire/view.hpp>
 #include <wayfire/workspace-manager.hpp>
-#include <linux/input-event-codes.h>
 
 /*
  * This plugin provides abilities to switch between views.

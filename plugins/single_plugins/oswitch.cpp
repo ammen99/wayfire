@@ -3,7 +3,6 @@
 #include <wayfire/core.hpp>
 #include <wayfire/view.hpp>
 #include <wayfire/output-layout.hpp>
-#include <linux/input-event-codes.h>
 
 class wayfire_output_manager : public wf::plugin_interface_t
 {
