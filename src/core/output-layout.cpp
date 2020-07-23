@@ -725,7 +725,8 @@ struct output_layout_output_t
             current_state.mirror_from);
         if (!wo)
         {
-            LOGE("Cannot find mirrored output ", current_state.mirror_from);
+            LOGE("Cannot find mirrored output ", current_state.mirror_from,
+                " for output ", handle->name);
 
             return;
         }
@@ -733,7 +734,7 @@ struct output_layout_output_t
         wlr_dmabuf_attributes attributes;
         if (!wlr_output_export_dmabuf(wo->handle, &attributes))
         {
-            LOGE("Failed reading mirrored output contents");
+            LOGE("Failed reading mirrored output contents from ", wo->handle);
 
             return;
         }
@@ -1178,6 +1179,135 @@ class output_layout_t::impl
         }
     }
 
+    /**
+     * Calculate the output layout geometry for the state.
+     * The state represents a non-automatically positioned enabled output.
+     */
+    wf::geometry_t calculate_geometry_from_state(
+        const output_state_t& state) const
+    {
+        wf::geometry_t geometry = {
+            state.position.x,
+            state.position.y,
+            (int32_t)(state.mode.width / state.scale),
+            (int32_t)(state.mode.height / state.scale),
+        };
+
+        if (state.transform & 1)
+        {
+            std::swap(geometry.width, geometry.height);
+        }
+
+        return geometry;
+    }
+
+    /** @return A list of geometries of fixed position outputs. */
+    std::vector<wf::geometry_t> calculate_fixed_geometries(
+        const output_configuration_t& config)
+    {
+        std::vector<wf::geometry_t> geometries;
+        for (auto& entry : config)
+        {
+            if (!(entry.second.source & OUTPUT_IMAGE_SOURCE_SELF) ||
+                entry.second.automatic_positioning)
+            {
+                continue;
+            }
+
+            geometries.push_back(calculate_geometry_from_state(entry.second));
+        }
+
+        return geometries;
+    }
+
+    /** @return true if there are overlapping outputs */
+    bool test_overlapping_outputs(const output_configuration_t& config)
+    {
+        auto geometries = calculate_fixed_geometries(config);
+        for (size_t i = 0; i < geometries.size(); i++)
+        {
+            for (size_t j = i + 1; j < geometries.size(); j++)
+            {
+                if (geometries[i] & geometries[j])
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** @return true if all outputs are disabled. */
+    bool test_all_disabled_outputs(const output_configuration_t& config)
+    {
+        int count_enabled = 0;
+        for (auto& entry : config)
+        {
+            if (entry.second.source & OUTPUT_IMAGE_SOURCE_SELF)
+            {
+                ++count_enabled;
+            }
+        }
+
+        return count_enabled == 0;
+    }
+
+    /* @return true if rectangles have a common interior or border point. */
+    bool rectangles_touching(const wf::geometry_t& a, const wf::geometry_t& b)
+    {
+        return !(a.x + a.width < b.x || a.y + a.height < b.y ||
+            b.x + b.width < a.x || b.y + b.height < a.y);
+    }
+
+    /** @return true if fixed position outputs do not form a continuous space */
+    bool test_disjoint_outputs(const output_configuration_t& config)
+    {
+        auto geometries = calculate_fixed_geometries(config);
+        if (geometries.empty())
+        {
+            /* Not disjoint */
+            return false;
+        }
+
+        /* Create graph with a vertex for each rectangle.
+         * Configuration is disjoint iff the graph has more than one component */
+        std::vector<std::vector<int>> graph(geometries.size());
+        for (size_t i = 0; i < geometries.size(); i++)
+        {
+            for (size_t j = i + 1; j < geometries.size(); j++)
+            {
+                if (rectangles_touching(geometries[i], geometries[j]))
+                {
+                    graph[i].push_back(j);
+                    graph[j].push_back(i);
+                }
+            }
+        }
+
+        /* Do a depth-first-search */
+        std::vector<int> visited(geometries.size(), 0);
+        std::function<void(int)> dfs;
+        dfs = [&] (int u)
+        {
+            if (visited[u] == 1)
+            {
+                return;
+            }
+
+            visited[u] = 1;
+            for (int v : graph[u])
+            {
+                dfs(v);
+            }
+        };
+
+        dfs(0);
+
+        // If we have a zero somewhere it means the vertex was not reached
+        return *std::min_element(visited.begin(), visited.end()) == 0;
+    }
+
     /** Check whether the given configuration can be applied */
     bool test_configuration(const output_configuration_t& config)
     {
@@ -1197,13 +1327,25 @@ class output_layout_t::impl
             ok &= this->outputs[entry.first]->test_state(entry.second);
         }
 
-        /* TODO: reject overlapping outputs */
-        /* TODO: possibly reject disjoint outputs? Note: this doesn't apply
-         * if an output was destroyed */
-        /*
-         * TODO: reject no enabled output setups
-         * TODO: reject bad mirror configurations
-         */
+        /* Check overlapping outputs */
+        if (test_overlapping_outputs(config))
+        {
+            LOGE("Overlapping outputs in the output configuration, ",
+                "unexpected behavior might occur");
+        }
+
+        if (test_all_disabled_outputs(config))
+        {
+            LOGW("All wayfire outputs have been disabled!");
+        }
+
+        if (test_disjoint_outputs(config))
+        {
+            LOGW("Wayfire outputs have been configured with gaps between them, ",
+                "pointer will not be movable between them. Note this might ",
+                "be ok before all outputs are connected.");
+        }
+
         return ok;
     }
 
