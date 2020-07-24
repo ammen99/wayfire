@@ -476,7 +476,10 @@ class wf::render_manager::impl
         if (output_inhibit_counter == 0)
         {
             output_damage->damage_whole_idle();
-            output->emit_signal("start-rendering", nullptr);
+
+            wf::output_start_rendering_signal data;
+            data.output = output;
+            output->emit_signal("start-rendering", &data);
         }
     }
 

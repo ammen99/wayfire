@@ -119,7 +119,7 @@ class WayfireSwitcher : public wf::plugin_interface_t
         output->add_gesture(
             wf::option_wrapper_t<wf::touchgesture_t>{"switcher/gesture_toggle"},
             &touch_activate);
-        output->connect_signal("detach-view", &view_removed);
+        output->connect_signal("view-detached", &view_removed);
 
         grab_interface->callbacks.keyboard.mod = [=] (uint32_t mod, uint32_t state)
         {
@@ -872,7 +872,7 @@ class WayfireSwitcher : public wf::plugin_interface_t
         output->rem_binding(&next_view_binding);
         output->rem_binding(&prev_view_binding);
         output->rem_binding(&touch_activate);
-        output->disconnect_signal("detach-view", &view_removed);
+        output->disconnect_signal("view-detached", &view_removed);
     }
 };
 

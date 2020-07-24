@@ -62,9 +62,11 @@ void wf::plugin_interface_t::fini()
 wf::plugin_interface_t::~plugin_interface_t()
 {}
 
+namespace wf
+{
 wayfire_view get_signaled_view(wf::signal_data_t *data)
 {
-    auto conv = static_cast<_view_signal*>(data);
+    auto conv = static_cast<wf::_view_signal*>(data);
     if (!conv)
     {
         LOGE("Got a bad _view_signal");
@@ -77,7 +79,8 @@ wayfire_view get_signaled_view(wf::signal_data_t *data)
 
 wf::output_t *get_signaled_output(wf::signal_data_t *data)
 {
-    auto result = static_cast<_output_signal*>(data);
+    auto result = static_cast<wf::_output_signal*>(data);
 
     return result ? result->output : nullptr;
+}
 }

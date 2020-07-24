@@ -500,13 +500,13 @@ class wf_wobbly : public wf::view_transformer_t
 
     wf::signal_callback_t view_geometry_changed = [=] (wf::signal_data_t *data)
     {
-        auto sig = static_cast<view_geometry_changed_signal*>(data);
+        auto sig = static_cast<wf::view_geometry_changed_signal*>(data);
         state->handle_wm_geometry(sig->old_geometry);
     };
 
     wf::signal_callback_t view_output_changed = [=] (wf::signal_data_t *data)
     {
-        auto sig = static_cast<_output_signal*>(data);
+        auto sig = static_cast<wf::_output_signal*>(data);
 
         if (!view->get_output())
         {
@@ -562,7 +562,7 @@ class wf_wobbly : public wf::view_transformer_t
         pre_hook = [=] () { update_model(); };
         view->get_output()->render->add_effect(&pre_hook, wf::OUTPUT_EFFECT_PRE);
 
-        view->connect_signal("unmap", &view_removed);
+        view->connect_signal("unmapped", &view_removed);
         view->connect_signal("tiled", &view_state_changed);
         view->connect_signal("fullscreen", &view_state_changed);
         view->connect_signal("set-output", &view_output_changed);
@@ -774,7 +774,7 @@ class wf_wobbly : public wf::view_transformer_t
         wobbly_fini(model.get());
         view->get_output()->render->rem_effect(&pre_hook);
 
-        view->disconnect_signal("unmap", &view_removed);
+        view->disconnect_signal("unmapped", &view_removed);
         view->disconnect_signal("tiled", &view_state_changed);
         view->disconnect_signal("fullscreen", &view_state_changed);
         view->disconnect_signal("set-output", &view_output_changed);

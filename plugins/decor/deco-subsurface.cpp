@@ -178,17 +178,17 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
     void send_move_request()
     {
-        move_request_signal move_request;
+        wf::view_move_request_signal move_request;
         move_request.view = view;
-        get_output()->emit_signal("move-request", &move_request);
+        get_output()->emit_signal("view-move-request", &move_request);
     }
 
     void send_resize_request(uint32_t edges)
     {
-        resize_request_signal resize_request;
+        wf::view_resize_request_signal resize_request;
         resize_request.view  = view;
         resize_request.edges = edges;
-        get_output()->emit_signal("resize-request", &resize_request);
+        get_output()->emit_signal("view-resize-request", &resize_request);
     }
 
     virtual void on_pointer_button(uint32_t button, uint32_t state) override

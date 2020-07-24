@@ -197,7 +197,7 @@ class wayfire_expo : public wf::plugin_interface_t
             finalize_and_exit();
         };
 
-        output->connect_signal("detach-view", &view_removed);
+        output->connect_signal("view-detached", &view_removed);
         output->connect_signal("view-disappeared", &view_removed);
     }
 
@@ -505,7 +505,7 @@ class wayfire_expo : public wf::plugin_interface_t
 
     void fini() override
     {
-        output->disconnect_signal("detach-view", &view_removed);
+        output->disconnect_signal("view-detached", &view_removed);
         output->disconnect_signal("view-disappeared", &view_removed);
 
         if (state.active)

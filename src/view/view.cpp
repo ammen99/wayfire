@@ -186,12 +186,13 @@ void wf::view_interface_t::set_output(wf::output_t *new_output)
     /* Make sure the view doesn't stay on the old output */
     if (get_output() && (get_output() != new_output))
     {
-        /* Emit layer-detach-view first */
+        /* Emit view-layer-detached first */
         get_output()->workspace->remove_view(self());
 
-        detach_view_signal data;
+        view_detached_signal data;
         data.view = self();
-        get_output()->emit_signal("detach-view", &data);
+        get_output()->emit_signal("view-disappeared", &data);
+        get_output()->emit_signal("view-detached", &data);
     }
 
     _output_signal data;
@@ -200,9 +201,9 @@ void wf::view_interface_t::set_output(wf::output_t *new_output)
     surface_interface_t::set_output(new_output);
     if ((new_output != data.output) && new_output)
     {
-        attach_view_signal data;
+        view_attached_signal data;
         data.view = self();
-        get_output()->emit_signal("attach-view", &data);
+        get_output()->emit_signal("view-attached", &data);
     }
 
     emit_signal("set-output", &data);
@@ -364,8 +365,6 @@ void wf::view_interface_t::set_minimized(bool minim)
     {
         view_disappeared_signal data;
         data.view = self();
-        emit_signal("disappeared", &data);
-
         get_output()->emit_signal("view-disappeared", &data);
         get_output()->workspace->add_view(self(), wf::LAYER_MINIMIZED);
 
@@ -386,6 +385,7 @@ void wf::view_interface_t::set_minimized(bool minim)
     view_minimized_signal data;
     data.view  = self();
     data.state = minimized;
+    this->emit_signal("minimized", &data);
     get_output()->emit_signal("view-minimized", &data);
 
     desktop_state_updated();
@@ -399,13 +399,22 @@ void wf::view_interface_t::set_tiled(uint32_t edges)
         this->view_impl->last_windowed_geometry = get_wm_geometry();
     }
 
+    wf::view_tiled_signal data;
+    data.old_edges = this->tiled_edges;
+    data.new_edges = edges;
+
     this->tiled_edges = edges;
     if (view_impl->frame)
     {
         view_impl->frame->notify_view_tiled();
     }
 
-    this->emit_signal("tiled", nullptr);
+    this->emit_signal("tiled", &data);
+    if (this->get_output())
+    {
+        get_output()->emit_signal("view-tiled", &data);
+    }
+
     desktop_state_updated();
 }
 
@@ -462,9 +471,9 @@ void wf::view_interface_t::desktop_state_updated()
 
 void wf::view_interface_t::move_request()
 {
-    move_request_signal data;
+    view_move_request_signal data;
     data.view = self();
-    get_output()->emit_signal("move-request", &data);
+    get_output()->emit_signal("view-move-request", &data);
 }
 
 void wf::view_interface_t::focus_request()
@@ -475,10 +484,10 @@ void wf::view_interface_t::focus_request()
 
 void wf::view_interface_t::resize_request(uint32_t edges)
 {
-    resize_request_signal data;
+    view_resize_request_signal data;
     data.view  = self();
     data.edges = edges;
-    get_output()->emit_signal("resize-request", &data);
+    get_output()->emit_signal("view-resize-request", &data);
 }
 
 void wf::view_interface_t::tile_request(uint32_t edges)
@@ -488,7 +497,7 @@ void wf::view_interface_t::tile_request(uint32_t edges)
         return;
     }
 
-    view_tiled_signal data;
+    view_tile_request_signal data;
     data.view  = self();
     data.edges = edges;
     data.desired_size = edges ? get_output()->workspace->get_workarea() :
@@ -497,7 +506,7 @@ void wf::view_interface_t::tile_request(uint32_t edges)
     set_tiled(edges);
     if (is_mapped())
     {
-        get_output()->emit_signal("view-maximized-request", &data);
+        get_output()->emit_signal("view-tile-request", &data);
     }
 
     if (!data.carried_out)
@@ -1191,7 +1200,7 @@ void wf::view_damage_raw(wayfire_view view, const wlr_box& box)
         output->render->damage(box);
     }
 
-    view->emit_signal("damaged-region", nullptr);
+    view->emit_signal("region-damaged", nullptr);
 }
 
 void wf::view_interface_t::destruct()

@@ -36,7 +36,6 @@ wf::output_impl_t::output_impl_t(wlr_output *handle,
     };
 
     connect_signal("view-disappeared", &view_disappeared_cb);
-    connect_signal("detach-view", &view_disappeared_cb);
 }
 
 void wf::output_impl_t::start_plugins()
@@ -292,7 +291,7 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
 
         focus_view_signal data;
         data.view = v;
-        emit_signal("focus-view", &data);
+        emit_signal("view-focused", &data);
     }
 }
 

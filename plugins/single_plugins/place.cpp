@@ -21,7 +21,7 @@ class wayfire_place_window : public wf::plugin_interface_t
 
         created_cb = [=] (wf::signal_data_t *data)
         {
-            auto ev   = (map_view_signal*)(data);
+            auto ev   = (wf::view_mapped_signal*)(data);
             auto view = get_signaled_view(data);
 
             if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || view->parent ||
@@ -65,8 +65,8 @@ class wayfire_place_window : public wf::plugin_interface_t
             }
         };
 
-        output->connect_signal("reserved-workarea", &workarea_changed_cb);
-        output->connect_signal("map-view", &created_cb);
+        output->connect_signal("workarea-changed", &workarea_changed_cb);
+        output->connect_signal("view-mapped", &created_cb);
     }
 
     void cascade(wayfire_view & view, wf::geometry_t workarea)
@@ -125,8 +125,8 @@ class wayfire_place_window : public wf::plugin_interface_t
 
     void fini() override
     {
-        output->disconnect_signal("reserved-workarea", &workarea_changed_cb);
-        output->disconnect_signal("map-view", &created_cb);
+        output->disconnect_signal("workarea-changed", &workarea_changed_cb);
+        output->disconnect_signal("view-mapped", &created_cb);
     }
 };
 

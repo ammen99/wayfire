@@ -571,7 +571,7 @@ struct output_layout_output_t
         LOGE("disabling output: ", output->handle->name);
 
         auto wo = output.get();
-        output_removed_signal data;
+        output_pre_remove_signal data;
         data.output = wo;
 
         wo->emit_signal("pre-remove", &data);

@@ -619,7 +619,7 @@ class output_viewport_manager_t
             return;
         }
 
-        change_viewport_signal data;
+        wf::workspace_changed_signal data;
         data.old_viewport = {current_vx, current_vy};
         data.new_viewport = {nws.x, nws.y};
 
@@ -767,13 +767,13 @@ class output_workarea_manager_t
             }
         }
 
-        reserved_workarea_signal data;
+        wf::workarea_changed_signal data;
         data.old_workarea = old_workarea;
         data.new_workarea = current_workarea;
 
         if (data.old_workarea != data.new_workarea)
         {
-            output->emit_signal("reserved-workarea", &data);
+            output->emit_signal("workarea-changed", &data);
         }
     }
 };
@@ -842,7 +842,7 @@ class workspace_manager::impl
         o->connect_signal("view-change-viewport", &view_changed_viewport);
         o->connect_signal("output-configuration-changed", &output_geometry_changed);
         o->connect_signal("view-fullscreen", &on_view_state_updated);
-        o->connect_signal("unmap-view", &on_view_state_updated);
+        o->connect_signal("view-unmapped", &on_view_state_updated);
     }
 
     workspace_implementation_t *get_implementation()
@@ -898,7 +898,7 @@ class workspace_manager::impl
             return;
         }
 
-        change_viewport_signal data;
+        wf::workspace_change_request_signal data;
         data.carried_out  = false;
         data.old_viewport = viewport_manager.get_current_workspace();
         data.new_viewport = ws;
@@ -941,9 +941,9 @@ class workspace_manager::impl
 
     void handle_view_first_add(wayfire_view view)
     {
-        attach_view_signal data;
+        view_layer_attached_signal data;
         data.view = view;
-        output->emit_signal("layer-attach-view", &data);
+        output->emit_signal("view-layer-attached", &data);
     }
 
     void add_view_to_layer(wayfire_view view, layer_t layer)
@@ -1036,9 +1036,9 @@ class workspace_manager::impl
         uint32_t view_layer = layer_manager.get_view_layer(view);
         layer_manager.remove_view(view);
 
-        detach_view_signal data;
+        view_layer_detached_signal data;
         data.view = view;
-        output->emit_signal("layer-detach-view", &data);
+        output->emit_signal("view-layer-detached", &data);
 
         /* Check if the next focused view is fullscreen. If so, then we need
          * to make sure it is in the fullscreen layer */

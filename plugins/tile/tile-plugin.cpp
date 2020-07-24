@@ -28,7 +28,7 @@ class tile_workspace_implementation_t : public wf::workspace_implementation_t
  * When a view is moved from one output to the other, we want to keep its tiled
  * status. To achieve this, we do the following:
  *
- * 1. In view-move-to-output handler, we set view_auto_tile_t custom data.
+ * 1. In view-pre-moved-to-output handler, we set view_auto_tile_t custom data.
  * 2. In detach handler, we just remove the view as usual.
  * 3. We now know we will receive attach as next event.
  *    Check for view_auto_tile_t, and tile the view again.
@@ -249,9 +249,9 @@ class tile_plugin_t : public wf::plugin_interface_t
         stop_controller(true);
     };
 
-    signal_connection_t on_view_move_to_output = {[=] (signal_data_t *data)
+    signal_connection_t on_view_pre_moved_to_output = {[=] (signal_data_t *data)
         {
-            auto ev   = static_cast<wf::view_move_to_output_signal*>(data);
+            auto ev   = static_cast<wf::view_pre_moved_to_output_signal*>(data);
             auto node = wf::tile::view_node_t::get_node(ev->view);
             if ((ev->new_output == this->output) && node)
             {
@@ -301,7 +301,7 @@ class tile_plugin_t : public wf::plugin_interface_t
 
     signal_callback_t on_tile_request = [=] (signal_data_t *data)
     {
-        auto ev = static_cast<view_tiled_signal*>(data);
+        auto ev = static_cast<view_tile_request_signal*>(data);
         if (ev->carried_out || !tile::view_node_t::get_node(ev->view))
         {
             return;
@@ -524,18 +524,18 @@ class tile_plugin_t : public wf::plugin_interface_t
         output->workspace->set_workspace_implementation(
             std::make_unique<tile_workspace_implementation_t>(), true);
 
-        output->connect_signal("unmap-view", &on_view_unmapped);
-        output->connect_signal("layer-attach-view", &on_view_attached);
-        output->connect_signal("layer-detach-view", &on_view_detached);
-        output->connect_signal("reserved-workarea", &on_workarea_changed);
-        output->connect_signal("view-maximized-request", &on_tile_request);
+        output->connect_signal("view-unmapped", &on_view_unmapped);
+        output->connect_signal("view-layer-attached", &on_view_attached);
+        output->connect_signal("view-layer-detached", &on_view_detached);
+        output->connect_signal("workarea-changed", &on_workarea_changed);
+        output->connect_signal("view-tile-request", &on_tile_request);
         output->connect_signal("view-fullscreen-request",
             &on_fullscreen_request);
-        output->connect_signal("focus-view", &on_focus_changed);
+        output->connect_signal("view-focused", &on_focus_changed);
         output->connect_signal("view-change-viewport", &on_view_change_viewport);
         output->connect_signal("view-minimize-request", &on_view_minimized);
-        wf::get_core().connect_signal("view-move-to-output",
-            &on_view_move_to_output);
+        wf::get_core().connect_signal("view-pre-moved-to-output",
+            &on_view_pre_moved_to_output);
         setup_callbacks();
     }
 
@@ -556,14 +556,14 @@ class tile_plugin_t : public wf::plugin_interface_t
         output->rem_binding(&on_toggle_tiled_state);
         output->rem_binding(&on_focus_adjacent);
 
-        output->disconnect_signal("unmap-view", &on_view_unmapped);
-        output->disconnect_signal("layer-attach-view", &on_view_attached);
-        output->disconnect_signal("layer-detach-view", &on_view_detached);
-        output->disconnect_signal("reserved-workarea", &on_workarea_changed);
-        output->disconnect_signal("view-maximized-request", &on_tile_request);
+        output->disconnect_signal("view-unmapped", &on_view_unmapped);
+        output->disconnect_signal("view-layer-attached", &on_view_attached);
+        output->disconnect_signal("view-layer-detached", &on_view_detached);
+        output->disconnect_signal("workarea-changed", &on_workarea_changed);
+        output->disconnect_signal("view-tile-request", &on_tile_request);
         output->disconnect_signal("view-fullscreen-request",
             &on_fullscreen_request);
-        output->disconnect_signal("focus-view", &on_focus_changed);
+        output->disconnect_signal("view-focused", &on_focus_changed);
         output->disconnect_signal("view-change-viewport",
             &on_view_change_viewport);
         output->disconnect_signal("view-minimize-request", &on_view_minimized);

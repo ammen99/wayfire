@@ -281,9 +281,9 @@ wf::dimensions_t wf::wlr_surface_base_t::_get_size() const
 void wf::emit_map_state_change(wf::surface_interface_t *surface)
 {
     std::string state =
-        surface->is_mapped() ? "_surface_mapped" : "_surface_unmapped";
+        surface->is_mapped() ? "surface-mapped" : "surface-unmapped";
 
-    _surface_map_state_changed_signal data;
+    surface_map_state_changed_signal data;
     data.surface = surface;
     wf::get_core().emit_signal(state, &data);
 }

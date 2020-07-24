@@ -122,7 +122,7 @@ class vswitch : public wf::plugin_interface_t
         output->connect_signal("set-workspace-request", &on_set_workspace_request);
 
         output->connect_signal("view-disappeared", &on_grabbed_view_disappear);
-        output->connect_signal("detach-view", &on_grabbed_view_disappear);
+        output->connect_signal("view-detached", &on_grabbed_view_disappear);
 
         wall = std::make_unique<wf::workspace_wall_t>(output);
         wall->connect_signal("frame", &on_frame);
@@ -195,17 +195,16 @@ class vswitch : public wf::plugin_interface_t
         }
     };
 
-    wf::signal_connection_t on_set_workspace_request = {[=] (wf::signal_data_t *data)
+    wf::signal_connection_t on_set_workspace_request = [=] (wf::signal_data_t *data)
+    {
+        if (is_active())
         {
-            if (is_active())
-            {
-                return;
-            }
-
-            auto ev = static_cast<change_viewport_signal*>(data);
-            ev->carried_out = add_direction(ev->new_viewport.x - ev->old_viewport.x,
-                ev->new_viewport.y - ev->old_viewport.y);
+            return;
         }
+
+        auto ev = static_cast<wf::workspace_change_request_signal*>(data);
+        ev->carried_out = add_direction(ev->new_viewport.x - ev->old_viewport.x,
+            ev->new_viewport.y - ev->old_viewport.y);
     };
 
     bool start_switch()

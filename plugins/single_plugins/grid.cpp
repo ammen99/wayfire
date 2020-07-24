@@ -70,7 +70,6 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
 
         output->render->set_redraw_always(true);
         output->connect_signal("view-disappeared", &unmapped);
-        output->connect_signal("detach-view", &unmapped);
     }
 
     void destroy()
@@ -158,7 +157,6 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
         output->deactivate_plugin(iface);
         output->render->set_redraw_always(false);
         output->disconnect_signal("view-disappeared", &unmapped);
-        output->disconnect_signal("detach-view", &unmapped);
     }
 };
 
@@ -294,10 +292,10 @@ class wayfire_grid : public wf::plugin_interface_t
 
         output->add_activator(restore_opt, &restore);
 
-        output->connect_signal("reserved-workarea", &on_workarea_changed);
+        output->connect_signal("workarea-changed", &on_workarea_changed);
         output->connect_signal("view-snap", &on_snap_signal);
         output->connect_signal("query-snap-geometry", &on_snap_query);
-        output->connect_signal("view-maximized-request", &on_maximize_signal);
+        output->connect_signal("view-tile-request", &on_maximize_signal);
         output->connect_signal("view-fullscreen-request", &on_fullscreen_signal);
     }
 
@@ -357,7 +355,7 @@ class wayfire_grid : public wf::plugin_interface_t
 
     wf::signal_callback_t on_workarea_changed = [=] (wf::signal_data_t *data)
     {
-        auto ev = static_cast<reserved_workarea_signal*>(data);
+        auto ev = static_cast<wf::workarea_changed_signal*>(data);
         for (auto& view : output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
         {
             if (!view->is_mapped())
@@ -408,7 +406,7 @@ class wayfire_grid : public wf::plugin_interface_t
 
     wf::signal_callback_t on_maximize_signal = [=] (wf::signal_data_t *ddata)
     {
-        auto data = static_cast<view_tiled_signal*>(ddata);
+        auto data = static_cast<wf::view_tile_request_signal*>(ddata);
 
         if (data->carried_out || (data->desired_size.width <= 0) ||
             !can_adjust_view(data->view))
@@ -430,7 +428,7 @@ class wayfire_grid : public wf::plugin_interface_t
 
     wf::signal_callback_t on_fullscreen_signal = [=] (wf::signal_data_t *ev)
     {
-        auto data = static_cast<view_fullscreen_signal*>(ev);
+        auto data = static_cast<wf::view_fullscreen_signal*>(ev);
         static const std::string fs_data_name = "grid-saved-fs";
 
         if (data->carried_out || (data->desired_size.width <= 0) ||
@@ -453,10 +451,10 @@ class wayfire_grid : public wf::plugin_interface_t
 
         output->rem_binding(&restore);
 
-        output->disconnect_signal("reserved-workarea", &on_workarea_changed);
+        output->disconnect_signal("workarea-changed", &on_workarea_changed);
         output->disconnect_signal("view-snap", &on_snap_signal);
         output->disconnect_signal("query-snap-geometry", &on_snap_query);
-        output->disconnect_signal("view-maximized-request", &on_maximize_signal);
+        output->disconnect_signal("view-tile-request", &on_maximize_signal);
         output->disconnect_signal("view-fullscreen-request", &on_fullscreen_signal);
     }
 };

@@ -185,8 +185,8 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
         grab_interface->name = "animate";
         grab_interface->capabilities = 0;
 
-        output->connect_signal("map-view", &on_view_mapped);
-        output->connect_signal("pre-unmap-view", &on_view_unmapped);
+        output->connect_signal("view-mapped", &on_view_mapped);
+        output->connect_signal("view-pre-unmapped", &on_view_unmapped);
         output->connect_signal("start-rendering", &on_render_start);
         output->connect_signal("view-minimize-request", &on_minimize_request);
     }
@@ -279,7 +279,7 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
 
     wf::signal_callback_t on_minimize_request = [=] (wf::signal_data_t *data)
     {
-        auto ev = static_cast<view_minimize_request_signal*>(data);
+        auto ev = static_cast<wf::view_minimize_request_signal*>(data);
         if (ev->state)
         {
             ev->carried_out = true;
@@ -299,8 +299,8 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
 
     void fini() override
     {
-        output->disconnect_signal("map-view", &on_view_mapped);
-        output->disconnect_signal("pre-unmap-view", &on_view_unmapped);
+        output->disconnect_signal("view-mapped", &on_view_mapped);
+        output->disconnect_signal("view-pre-unmapped", &on_view_unmapped);
         output->disconnect_signal("start-rendering", &on_render_start);
         output->disconnect_signal("view-minimize-request", &on_minimize_request);
 

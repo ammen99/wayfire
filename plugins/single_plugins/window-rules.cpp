@@ -237,7 +237,7 @@ class wayfire_window_rules : public wf::plugin_interface_t
         {
             exec.action = [action] (wayfire_view view)
             {
-                view_fullscreen_signal data;
+                wf::view_fullscreen_signal data;
                 data.view  = view;
                 data.state = starts_with(action, "set");
                 view->get_output()->emit_signal("view-fullscreen-request", &data);
@@ -312,14 +312,14 @@ class wayfire_window_rules : public wf::plugin_interface_t
                 rule(get_signaled_view(data));
             }
         };
-        output->connect_signal("map-view", &created);
+        output->connect_signal("view-mapped", &created);
 
         maximized = [=] (wf::signal_data_t *data)
         {
-            auto conv = static_cast<view_tiled_signal*>(data);
+            auto conv = static_cast<wf::view_tiled_signal*>(data);
             assert(conv);
 
-            if (conv->edges != wf::TILED_EDGES_ALL)
+            if (conv->new_edges != wf::TILED_EDGES_ALL)
             {
                 return;
             }
@@ -333,7 +333,7 @@ class wayfire_window_rules : public wf::plugin_interface_t
 
         fullscreened = [=] (wf::signal_data_t *data)
         {
-            auto conv = static_cast<view_fullscreen_signal*>(data);
+            auto conv = static_cast<wf::view_fullscreen_signal*>(data);
             assert(conv);
 
             if (!conv->state || conv->carried_out)
@@ -353,7 +353,7 @@ class wayfire_window_rules : public wf::plugin_interface_t
 
     void fini()
     {
-        output->disconnect_signal("map-view", &created);
+        output->disconnect_signal("view-mapped", &created);
         output->disconnect_signal("view-maximized", &maximized);
         output->disconnect_signal("view-fullscreen", &fullscreened);
     }

@@ -268,9 +268,9 @@ class wayfire_blur : public wf::plugin_interface_t
             auto view = get_signaled_view(data);
             pop_transformer(view);
         };
-        output->connect_signal("attach-view", &view_attached);
-        output->connect_signal("map-view", &view_attached);
-        output->connect_signal("detach-view", &view_detached);
+        output->connect_signal("view-attached", &view_attached);
+        output->connect_signal("view-mapped", &view_attached);
+        output->connect_signal("view-detached", &view_detached);
 
         /* frame_pre_paint is called before each frame has started.
          * It expands the damage by the blur radius.
@@ -419,9 +419,9 @@ class wayfire_blur : public wf::plugin_interface_t
         remove_transformers();
 
         output->rem_binding(&button_toggle);
-        output->disconnect_signal("attach-view", &view_attached);
-        output->disconnect_signal("map-view", &view_attached);
-        output->disconnect_signal("detach-view", &view_detached);
+        output->disconnect_signal("view-attached", &view_attached);
+        output->disconnect_signal("view-mapped", &view_attached);
+        output->disconnect_signal("view-detached", &view_detached);
         output->render->rem_effect(&frame_pre_paint);
         output->render->disconnect_signal("workspace-stream-pre",
             &workspace_stream_pre);

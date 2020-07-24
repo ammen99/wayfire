@@ -21,8 +21,10 @@ wf_drag_icon::wf_drag_icon(wlr_drag_icon *ic) :
     {
         /* we don't dec_keep_count() because the surface memory is
          * managed by the unique_ptr */
+        wf::dnd_signal data;
+        data.icon = wf::get_core_impl().input->drag_icon.get();
+        wf::get_core().emit_signal("drag-stopped", &data);
         wf::get_core_impl().input->drag_icon = nullptr;
-        wf::get_core().emit_signal("drag-stopped", nullptr);
     });
 
     on_map.connect(&icon->events.map);
@@ -139,7 +141,10 @@ void input_manager::create_seat()
         auto d = static_cast<wlr_drag*>(data);
         wf::get_core_impl().input->drag_icon =
             std::make_unique<wf_drag_icon>(d->icon);
-        wf::get_core().emit_signal("drag-started", nullptr);
+
+        wf::dnd_signal evdata;
+        evdata.icon = wf::get_core_impl().input->drag_icon.get();
+        wf::get_core().emit_signal("drag-started", &evdata);
     });
     start_drag.connect(&seat->events.start_drag);
 

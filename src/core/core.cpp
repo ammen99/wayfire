@@ -466,7 +466,11 @@ void wf::compositor_core_impl_t::focus_output(wf::output_t *wo)
     }
 
     wlr_output_schedule_frame(active_output->handle);
-    active_output->emit_signal("output-gain-focus", nullptr);
+
+    wf::output_gain_focus_signal data;
+    data.output = active_output;
+    active_output->emit_signal("gain-focus", &data);
+    this->emit_signal("output-gain-focus", &data);
 }
 
 wf::output_t*wf::compositor_core_impl_t::get_active_output()
@@ -716,11 +720,11 @@ void wf::compositor_core_impl_t::move_view_to_output(wayfire_view v,
     wf::output_t *new_output, bool reconfigure)
 {
     auto old_output = v->get_output();
-    wf::view_move_to_output_signal data;
+    wf::view_pre_moved_to_output_signal data;
     data.view = v;
     data.old_output = old_output;
     data.new_output = new_output;
-    this->emit_signal("view-move-to-output", &data);
+    this->emit_signal("view-pre-moved-to-output", &data);
 
     uint32_t edges;
     bool fullscreen;
@@ -763,6 +767,8 @@ void wf::compositor_core_impl_t::move_view_to_output(wayfire_view v,
             v->set_geometry(new_g);
         }
     }
+
+    this->emit_signal("view-moved-to-output", &data);
 }
 
 wf::compositor_core_t::compositor_core_t()

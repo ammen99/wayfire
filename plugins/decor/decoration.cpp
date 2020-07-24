@@ -37,8 +37,8 @@ class wayfire_decoration :
         grab_interface->name = "simple-decoration";
         grab_interface->capabilities = wf::CAPABILITY_VIEW_DECORATOR;
 
-        output->connect_signal("map-view", &view_updated);
-        output->connect_signal("decoration-state-updated-view", &view_updated);
+        output->connect_signal("view-mapped", &view_updated);
+        output->connect_signal("view-decoration-state-updated", &view_updated);
     }
 
     /**

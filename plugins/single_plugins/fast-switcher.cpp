@@ -171,7 +171,6 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         switch_next();
 
         output->connect_signal("view-disappeared", &cleanup_view);
-        output->connect_signal("detach-view", &cleanup_view);
 
         return true;
     };
@@ -190,7 +189,6 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         active = false;
 
         output->disconnect_signal("view-disappeared", &cleanup_view);
-        output->disconnect_signal("detach-view", &cleanup_view);
     }
 
     void switch_next()

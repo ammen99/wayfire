@@ -19,7 +19,7 @@ enum wobbly_corner
     WOBBLY_CORNER_BR = 3,
 };
 
-struct wobbly_signal : public _view_signal
+struct wobbly_signal : public wf::_view_signal
 {
     wobbly_event events;
     int grab_x, grab_y; // set only with events & WOBBLY_EVENT_GRAB

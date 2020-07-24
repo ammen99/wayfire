@@ -26,14 +26,14 @@ wf::mirror_view_t::mirror_view_t(wayfire_view base_view) :
         close();
     };
 
-    base_view->connect_signal("unmap", &base_view_unmapped);
+    base_view->connect_signal("unmapped", &base_view_unmapped);
 
     base_view_damaged = [=] (wf::signal_data_t*)
     {
         damage();
     };
 
-    base_view->connect_signal("damaged-region", &base_view_damaged);
+    base_view->connect_signal("region-damaged", &base_view_damaged);
 }
 
 wf::mirror_view_t::~mirror_view_t()
@@ -48,8 +48,8 @@ void wf::mirror_view_t::close()
 
     emit_view_pre_unmap();
 
-    base_view->disconnect_signal("unmap", &base_view_unmapped);
-    base_view->disconnect_signal("damaged-region", &base_view_damaged);
+    base_view->disconnect_signal("unmapped", &base_view_unmapped);
+    base_view->disconnect_signal("region-damaged", &base_view_damaged);
     base_view = nullptr;
 
     emit_map_state_change(this);

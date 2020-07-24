@@ -174,7 +174,7 @@ class wayfire_move : public wf::plugin_interface_t
 
         move_request =
             std::bind(std::mem_fn(&wayfire_move::move_requested), this, _1);
-        output->connect_signal("move-request", &move_request);
+        output->connect_signal("view-move-request", &move_request);
 
         view_destroyed = [=] (wf::signal_data_t *data)
         {
@@ -183,7 +183,6 @@ class wayfire_move : public wf::plugin_interface_t
                 input_pressed(WLR_BUTTON_RELEASED, true);
             }
         };
-        output->connect_signal("detach-view", &view_destroyed);
         output->connect_signal("view-disappeared", &view_destroyed);
     }
 
@@ -461,7 +460,7 @@ class wayfire_move : public wf::plugin_interface_t
     /* Moves the view to another output and sends a move request */
     void move_to_output(wf::output_t *new_output)
     {
-        move_request_signal req;
+        wf::view_move_request_signal req;
         req.view = view;
 
         auto old_g = output->get_layout_geometry();
@@ -478,7 +477,7 @@ class wayfire_move : public wf::plugin_interface_t
         wf::get_core().move_view_to_output(view, new_output, false);
         wf::get_core().focus_output(new_output);
 
-        new_output->emit_signal("move-request", &req);
+        new_output->emit_signal("view-move-request", &req);
     }
 
     struct wf_move_output_state : public wf::custom_data_t
@@ -531,7 +530,7 @@ class wayfire_move : public wf::plugin_interface_t
     {
         auto view = get_signaled_view(data);
         delete_mirror_view_from_output(view->get_output(), true, true);
-        view->disconnect_signal("unmap", &handle_mirror_view_unmapped);
+        view->disconnect_signal("unmapped", &handle_mirror_view_unmapped);
     };
 
     /* Creates a new mirror view on output wo if it doesn't exist already */
@@ -554,7 +553,7 @@ class wayfire_move : public wf::plugin_interface_t
 
         auto wo_state = wo->get_data_safe<wf_move_output_state>(get_data_name());
         wo_state->view = nonstd::make_observer(mirror);
-        mirror->connect_signal("unmap", &handle_mirror_view_unmapped);
+        mirror->connect_signal("unmapped", &handle_mirror_view_unmapped);
     }
 
     /* Update the view position, with respect to the multi-output configuration
@@ -639,8 +638,7 @@ class wayfire_move : public wf::plugin_interface_t
 
         output->rem_binding(&activate_binding);
         output->rem_binding(&touch_activate_binding);
-        output->disconnect_signal("move-request", &move_request);
-        output->disconnect_signal("detach-view", &view_destroyed);
+        output->disconnect_signal("view-move-request", &move_request);
         output->disconnect_signal("view-disappeared", &view_destroyed);
     }
 };

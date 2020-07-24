@@ -130,7 +130,7 @@ class wfs_hotspot : public noncopyable_t
         // setup output destroy listener
         on_output_removed = [this, output] (wf::signal_data_t *data)
         {
-            auto ev = static_cast<output_removed_signal*>(data);
+            auto ev = static_cast<wf::output_removed_signal*>(data);
             if (ev->output == output)
             {
                 /* Make hotspot inactive by setting the region to empty */
@@ -200,7 +200,7 @@ class wfs_output : public noncopyable_t
 
     wf::signal_callback_t on_output_removed = [=] (wf::signal_data_t *data)
     {
-        auto ev = static_cast<output_removed_signal*>(data);
+        auto ev = static_cast<wf::output_removed_signal*>(data);
         if (ev->output == this->output)
         {
             disconnect_from_output();
@@ -346,14 +346,14 @@ class wfs_surface : public noncopyable_t
         wl_resource_set_implementation(resource, &zwf_surface_impl,
             this, handle_surface_destroy);
 
-        view->connect_signal("unmap", &on_unmap);
+        view->connect_signal("unmapped", &on_unmap);
     }
 
     ~wfs_surface()
     {
         if (this->view)
         {
-            view->disconnect_signal("unmap", &on_unmap);
+            view->disconnect_signal("unmapped", &on_unmap);
         }
     }
 

@@ -259,13 +259,13 @@ void wf::wlr_view_t::set_decoration_mode(bool use_csd)
     this->has_client_decoration = use_csd;
     if ((was_decorated != should_be_decorated()) && is_mapped())
     {
-        wf::decoration_state_updated_signal data;
+        wf::view_decoration_state_updated_signal data;
         data.view = self();
 
         this->emit_signal("decoration-state-updated", &data);
         if (get_output())
         {
-            get_output()->emit_signal("decoration-state-updated-view", &data);
+            get_output()->emit_signal("view-decoration-state-updated", &data);
         }
     }
 }
@@ -348,11 +348,11 @@ void wf::wlr_view_t::unmap()
 
 void wf::emit_view_map_signal(wayfire_view view, bool has_position)
 {
-    map_view_signal data;
+    wf::view_mapped_signal data;
     data.view = view;
     data.is_positioned = has_position;
-    view->get_output()->emit_signal("map-view", &data);
-    view->emit_signal("map", &data);
+    view->get_output()->emit_signal("view-mapped", &data);
+    view->emit_signal("mapped", &data);
 }
 
 void wf::view_interface_t::emit_view_map()
@@ -362,30 +362,29 @@ void wf::view_interface_t::emit_view_map()
 
 void wf::view_interface_t::emit_view_unmap()
 {
-    unmap_view_signal data;
+    view_unmapped_signal data;
     data.view = self();
 
     if (get_output())
     {
-        get_output()->emit_signal("unmap-view", &data);
+        get_output()->emit_signal("view-unmapped", &data);
         get_output()->emit_signal("view-disappeared", &data);
     }
 
-    emit_signal("unmap", &data);
-    emit_signal("disappeared", &data);
+    emit_signal("unmapped", &data);
 }
 
 void wf::view_interface_t::emit_view_pre_unmap()
 {
-    pre_unmap_view_signal data;
+    view_pre_unmap_signal data;
     data.view = self();
 
     if (get_output())
     {
-        get_output()->emit_signal("pre-unmap-view", &data);
+        get_output()->emit_signal("view-pre-unmapped", &data);
     }
 
-    emit_signal("pre-unmap", &data);
+    emit_signal("pre-unmapped", &data);
 }
 
 void wf::wlr_view_t::destroy()
