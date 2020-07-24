@@ -83,11 +83,19 @@ conf_data.set('SYSCONFDIR', sysconfdir)
 # -E is for RTTI/dynamic_cast across plugins
 add_project_arguments(['-DWLR_USE_UNSTABLE'], language: ['cpp', 'c'])
 add_project_link_arguments(['-rdynamic', '-Wl,-E'], language: 'cpp')
+
 # Needed on some older compilers
-add_project_link_arguments(['-lstdc++fs'], language: 'cpp')
+  cpp = meson.get_compiler('cpp')
+if cpp.has_link_argument('-lc++fs')
+  add_project_link_arguments(['-lc++fs'], language: 'cpp')
+elif cpp.has_link_argument('-lc++experimental')
+  add_project_link_arguments(['-lc++experimental'], language: 'cpp')
+elif cpp.has_link_argument('-lstdc++fs')
+  add_project_link_arguments(['-lstdc++fs'], language: 'cpp')
+endif
 
 if get_option('enable_gles32')
-  meson.get_compiler('cpp').check_header('GLES3/gl32.h', dependencies: glesv2, required: true)
+  cpp.check_header('GLES3/gl32.h', dependencies: glesv2, required: true)
   conf_data.set('USE_GLES32', true)
 else
   conf_data.set('USE_GLES32', false)
@@ -106,7 +114,6 @@ add_project_arguments(['-Wno-unused-parameter'], language: 'cpp')
 have_xwayland = false
 have_x11_backend = false
 if use_system_wlroots
-  cpp = meson.get_compiler('cpp')
   have_xwayland = cpp.get_define('WLR_HAS_XWAYLAND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
   have_x11_backend = cpp.get_define('WLR_HAS_X11_BACKEND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
 else
