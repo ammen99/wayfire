@@ -145,7 +145,6 @@ class wayfire_scale : public wf::plugin_interface_t
         wf_scale *tr = new wf_scale(view);
         scale_data[view].transformer = tr;
         view->add_transformer(std::unique_ptr<wf_scale>(tr), transformer_name);
-        tr->alpha = 1;
         view->connect_signal("geometry-changed", &view_geometry_changed);
     }
 
@@ -623,8 +622,9 @@ class wayfire_scale : public wf::plugin_interface_t
                 auto it = scale_data.find(child);
                 if ((it == scale_data.end()) || !it->second.transformer)
                 {
-                    /* this should not happen?
-                     * child views can show up here before they are attached */
+                    /* note: child views can show up here before they
+                     * should be visible (between they are attached and
+                     * mapped), these should be skipped */
                     continue;
                 }
 
@@ -816,7 +816,6 @@ class wayfire_scale : public wf::plugin_interface_t
 
                     auto& view_data = scale_data[child];
 
-                    scale_x = scale_y = std::min(scale_x, scale_y);
                     view_data.animation.scale_animation.scale_x.set(
                         view_data.transformer->scale_x, active ? scale_x : 1);
                     view_data.animation.scale_animation.scale_y.set(
@@ -1008,7 +1007,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            layout_slots(views);
+            layout_slots(std::move(views));
         }
     };
 
@@ -1020,7 +1019,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            layout_slots(views);
+            layout_slots(std::move(views));
         }
     };
 
