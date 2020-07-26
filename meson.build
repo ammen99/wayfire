@@ -78,6 +78,7 @@ metadata_dir_suffix = 'share/wayfire/metadata'
 conf_data.set('PLUGIN_XML_DIR', join_paths(get_option('prefix'), metadata_dir_suffix))
 sysconfdir = join_paths(get_option('prefix'), get_option('sysconfdir'))
 conf_data.set('SYSCONFDIR', sysconfdir)
+pkgdatadir = join_paths(get_option('prefix'), 'share', 'wayfire', 'protocols')
 
 # needed to dlopen() plugins
 # -E is for RTTI/dynamic_cast across plugins

@@ -51,3 +51,6 @@ wf_protos = declare_dependency(
 	link_with: lib_wl_protos,
 	sources: wl_protos_headers,
 )
+
+# Install wayfire-shell protocol, so that other projects can find it
+install_data('wayfire-shell-unstable-v2.xml', install_dir: join_paths(pkgdatadir, 'unstable'))

@@ -109,5 +109,6 @@ pkgconfig.generate(
     variables:    ['metadatadir=${prefix}/' + metadata_dir_suffix,
                    'sysconfdir=' + sysconfdir,
                    'plugindir=${libdir}/wayfire',
-                   'icondir=${prefix}/share/wayfire/icons']
+                   'icondir=${prefix}/share/wayfire/icons',
+                   'pkgdatadir='+pkgdatadir]
     )
