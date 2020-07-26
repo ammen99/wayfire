@@ -585,6 +585,14 @@ struct view_resize_request_signal : public _view_signal
     uint32_t edges;
 };
 
+/* view-hints-changed signal is emitted on the view's output whenever the client
+ * indicates the views hints have changed (example urgency hint).
+ */
+struct view_hints_changed_signal : public _view_signal
+{
+    bool demands_attention = false;
+};
+
 /**
  * name: view-self-request-focus
  * on: output
