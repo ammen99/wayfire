@@ -28,6 +28,11 @@ wf::LogicalPointer::LogicalPointer(nonstd::observer_ptr<input_manager> input)
             update_cursor_position(get_current_time(), false);
         }
     });
+
+    on_views_updated = [&] (wf::signal_data_t *)
+    {
+        update_cursor_position(get_current_time(), false);
+    };
 }
 
 wf::LogicalPointer::~LogicalPointer()

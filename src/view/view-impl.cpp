@@ -136,6 +136,11 @@ void wf::wlr_view_t::set_position(int x, int y,
     if (send_signal)
     {
         emit_signal("geometry-changed", &data);
+        wf::get_core().emit_signal("view-geometry-changed", &data);
+        if (get_output())
+        {
+            get_output()->emit_signal("view-geometry-changed", &data);
+        }
     }
 
     last_bounding_box = get_bounding_box();
@@ -195,6 +200,11 @@ void wf::wlr_view_t::update_size()
     last_bounding_box = get_bounding_box();
     view_damage_raw(self(), last_bounding_box);
     emit_signal("geometry-changed", &data);
+    wf::get_core().emit_signal("view-geometry-changed", &data);
+    if (get_output())
+    {
+        get_output()->emit_signal("view-geometry-changed", &data);
+    }
 
     if (view_impl->frame)
     {

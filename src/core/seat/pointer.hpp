@@ -87,6 +87,8 @@ class LogicalPointer
     nonstd::observer_ptr<input_manager> input;
     SurfaceMapStateListener on_surface_map_state_change;
 
+    wf::signal_callback_t on_views_updated;
+
     /** The surface which currently has cursor focus */
     wf::surface_interface_t *cursor_focus = nullptr;
     /** Whether focusing is enabled */

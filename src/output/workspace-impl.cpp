@@ -911,6 +911,14 @@ class workspace_manager::impl
         }
     }
 
+    void emit_stack_order_changed()
+    {
+        stack_order_changed_signal data;
+        data.output = output;
+        output->emit_signal("stack-order-changed", &data);
+        wf::get_core().emit_signal("output-stack-order-changed", &data);
+    }
+
     void update_promoted_views()
     {
         auto vp = viewport_manager.get_current_workspace();
@@ -937,6 +945,12 @@ class workspace_manager::impl
         }
 
         check_autohide_panels();
+
+        /**
+         * We update promoted views when the stack order of the middle layers
+         * changes
+         */
+        emit_stack_order_changed();
     }
 
     void handle_view_first_add(wayfire_view view)
@@ -1045,6 +1059,10 @@ class workspace_manager::impl
         if (view_layer & MIDDLE_LAYERS)
         {
             update_promoted_views();
+        } else
+        {
+            /* For panels, backgrounds, etc. */
+            emit_stack_order_changed();
         }
     }
 };
