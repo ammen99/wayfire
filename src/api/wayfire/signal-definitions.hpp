@@ -570,7 +570,7 @@ struct view_resize_request_signal : public _view_signal
 };
 
 /**
- * name: view_hints_changed_signal
+ * name: hints-changed
  * on: view and core(view-)
  * when: the client indicates the views hints have changed (example urgency hint).
  */
