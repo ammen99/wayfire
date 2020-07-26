@@ -581,7 +581,7 @@ struct view_hints_changed_signal : public _view_signal
 
 /**
  * name: self-request-focus
- * on: view and core
+ * on: view, core(view-)
  * when: Whenever the client requests that a view be focused.
  */
 using self_request_focus_signal = _view_signal;
