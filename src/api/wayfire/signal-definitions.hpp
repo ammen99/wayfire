@@ -584,7 +584,7 @@ struct view_hints_changed_signal : public _view_signal
  * on: view, core(view-)
  * when: Whenever the client requests that a view be focused.
  */
-using self_request_focus_signal = _view_signal;
+using view_self_request_focus_signal = _view_signal;
 
 /**
  * name: view-system-bell
