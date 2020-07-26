@@ -104,7 +104,8 @@ static void handle_gtk_surface_request_focus(struct wl_client *client,
     {
         wf::view_self_request_focus_signal data;
         data.view = view;
-        view->get_output()->emit_signal("self-request-focus", &data);
+        view->emit_signal("self-request-focus", &data);
+        wf::get_core().emit_signal("view-self-request-focus", &data);
     }
 }
 
