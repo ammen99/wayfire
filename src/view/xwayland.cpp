@@ -376,7 +376,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             }
 
             wf::get_core().emit_signal("view-hints-changed", &data);
-            this->emit_signal("view-hints-changed", &data);
+            this->emit_signal("hints-changed", &data);
         });
         on_set_parent.connect(&xw->events.set_parent);
         on_set_decorations.connect(&xw->events.set_decorations);
