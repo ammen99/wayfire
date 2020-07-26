@@ -570,11 +570,21 @@ struct view_resize_request_signal : public _view_signal
 };
 
 /**
- * name: view-self-request-focus
- * on: output
+ * name: view_hints_changed_signal
+ * on: view and core
+ * when: the client indicates the views hints have changed (example urgency hint).
+ */
+struct view_hints_changed_signal : public _view_signal
+{
+    bool demands_attention = false;
+};
+
+/**
+ * name: self-request-focus
+ * on: view and core
  * when: Whenever the client requests that a view be focused.
  */
-using view_self_request_focus_signal = _view_signal;
+using self_request_focus_signal = _view_signal;
 
 /**
  * name: view-system-bell
