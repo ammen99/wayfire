@@ -191,16 +191,30 @@ input_manager::input_manager()
                 our_touch->end_touch_down_grab();
             }
 
-            auto touch_points = our_touch->gesture_recognizer.current;
-            for (auto f : touch_points)
-            {
-                our_touch->gesture_recognizer.update_touch(wf::get_current_time(),
-                    f.first, f.second.current, false);
-            }
+            on_views_updated(nullptr);
         }
     };
+
     wf::get_core().connect_signal("surface-mapped", &surface_map_state_changed);
     wf::get_core().connect_signal("surface-unmapped", &surface_map_state_changed);
+
+    on_views_updated = [&] (wf::signal_data_t *data)
+    {
+        if (!our_touch)
+        {
+            return;
+        }
+
+        auto touch_points = our_touch->gesture_recognizer.current;
+        for (auto f : touch_points)
+        {
+            our_touch->gesture_recognizer.update_touch(wf::get_current_time(),
+                f.first, f.second.current, false);
+        }
+    };
+
+    wf::get_core().connect_signal("output-stack-order-changed", &on_views_updated);
+    wf::get_core().connect_signal("view-geometry-changed", &on_views_updated);
 
     config_updated = [=] (wf::signal_data_t*)
     {

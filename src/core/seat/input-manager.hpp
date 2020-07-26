@@ -87,6 +87,7 @@ class input_manager
         uint32_t mod_binding_key = 0);
 
     wf::signal_callback_t surface_map_state_changed;
+    wf::signal_callback_t on_views_updated;
     wf::signal_callback_t output_added;
 
     void refresh_device_mappings();

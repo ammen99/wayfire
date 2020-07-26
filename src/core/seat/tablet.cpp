@@ -51,6 +51,14 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
     wf::get_core().connect_signal("surface-unmapped",
         &on_surface_map_state_changed);
 
+    on_views_updated = [&] (wf::signal_data_t *data)
+    {
+        update_tool_position();
+    };
+
+    wf::get_core().connect_signal("output-stack-order-changed", &on_views_updated);
+    wf::get_core().connect_signal("view-geometry-changed", &on_views_updated);
+
     /* Just pass cursor set requests to core, but translate them to
      * regular pointer set requests */
     on_set_cursor.set_callback([=] (void *data)
