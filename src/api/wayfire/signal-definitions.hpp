@@ -410,6 +410,11 @@ struct view_fullscreen_signal : public _view_signal
      * by core and plugins may override it. It may also be undefined (0,0 0x0).
      */
     wf::geometry_t desired_size;
+
+    /**
+     * The workspace the view will be fullscreened on.
+     */
+    wf::point_t workspace;
 };
 
 /**

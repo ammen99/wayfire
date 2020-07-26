@@ -249,7 +249,8 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      */
     virtual void tile_request(uint32_t tiled_edges);
     /** Request that the view is (un)fullscreened on the given output */
-    virtual void fullscreen_request(wf::output_t *output, bool state);
+    virtual void fullscreen_request(wf::output_t *output, bool state,
+        wf::point_t workspace = {-1, -1});
 
     /** @return true if the view is visible */
     virtual bool is_visible();

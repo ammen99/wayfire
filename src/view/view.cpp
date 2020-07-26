@@ -550,7 +550,8 @@ void wf::view_interface_t::minimize_request(bool state)
     }
 }
 
-void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
+void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state,
+    wf::point_t workspace)
 {
     auto wo = (out ?: (get_output() ?: wf::get_core().get_active_output()));
     assert(wo);
@@ -565,6 +566,7 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
     view_fullscreen_signal data;
     data.view  = self();
     data.state = state;
+    data.workspace    = workspace;
     data.desired_size = get_output()->get_relative_geometry();
 
     if (!state)
@@ -575,9 +577,19 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
     }
 
     set_fullscreen(state);
+
     if (is_mapped())
     {
         wo->emit_signal("view-fullscreen-request", &data);
+    }
+
+    /**
+     * needs to happen after the signal is emitted
+     * otherwise it happens to early
+     */
+    if (workspace != wf::point_t{-1, -1})
+    {
+        wo->workspace->move_to_workspace(data.view, workspace);
     }
 
     if (!data.carried_out)
