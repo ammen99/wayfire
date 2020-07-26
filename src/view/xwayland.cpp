@@ -333,7 +333,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             {
                 wf::view_self_request_focus_signal data;
                 data.view = this;
-                wf::get_core().emit_signal("self-request-focus", &data);
+                wf::get_core().emit_signal("view-self-request-focus", &data);
                 this->emit_signal("self-request-focus", &data);
             }
         });
