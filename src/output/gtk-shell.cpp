@@ -45,7 +45,7 @@ static void handle_gtk_surface_set_modal(wl_client *client, wl_resource *resourc
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
     if (view)
     {
-        view->store_data(std::unique_ptr<wf::custom_data_t>(), "gtk-shell-modal");
+        view->store_data(std::make_unique<wf::custom_data_t>(), "gtk-shell-modal");
     }
 }
 
