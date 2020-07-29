@@ -1,0 +1,17 @@
+#pragma once
+
+extern "C"
+{
+#include <wlr/types/wlr_surface.h>
+}
+
+#include <string>
+#include <wayfire/view.hpp>
+
+/**
+ * Get's a 'fixed' app_id for some gnome-clients
+ * to match the app_id with the desktop file.
+ * Not all clients provide this in which case
+ * an empty string will be returned - ""
+ */
+std::string get_gtk_shell_app_id(wayfire_view view);

@@ -97,7 +97,8 @@ install_headers(['api/wayfire/compositor-surface.hpp',
                  'api/wayfire/workspace-stream.hpp',
                  'api/wayfire/input-device.hpp',
                  'api/wayfire/output-layout.hpp',
-                 'api/wayfire/matcher.hpp'],
+                 'api/wayfire/matcher.hpp',
+                 'api/wayfire/gtk-shell.hpp'],
                 subdir: 'wayfire')
 
 pkgconfig = import('pkgconfig')

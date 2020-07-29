@@ -239,3 +239,21 @@ std::string wf_gtk_shell_get_custom_app_id(wf_gtk_shell *shell, wl_resource *sur
 {
     return shell->surface_app_id[surface];
 }
+
+std::string get_gtk_shell_app_id(wayfire_view view)
+{
+    if (!view)
+    {
+        return "";
+    }
+
+    auto surface = view->get_wlr_surface();
+
+    if (!surface)
+    {
+        return "";
+    }
+
+    return wf_gtk_shell_get_custom_app_id(
+        wf::get_core_impl().gtk_shell, surface->resource);
+}
