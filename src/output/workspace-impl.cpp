@@ -643,7 +643,7 @@ class output_viewport_manager_t
         }
 
         data.output = output;
-        output->emit_signal("viewport-changed", &data);
+        output->emit_signal("workspace-changed", &data);
 
         /* unfocus view from last workspace */
         output->focus_view(nullptr);
