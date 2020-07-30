@@ -219,6 +219,7 @@ static void wlr_log_handler(wlr_log_importance level,
     wf::log::log_plain(wlevel, buffer);
 }
 
+#ifndef ASAN_ENABLED
 static void signal_handler(int signal)
 {
     std::string error;
@@ -244,6 +245,8 @@ static void signal_handler(int signal)
     wf::print_trace(false);
     std::exit(0);
 }
+
+#endif
 
 int main(int argc, char *argv[])
 {
