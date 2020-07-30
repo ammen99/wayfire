@@ -106,7 +106,7 @@ bool wf::view_matcher_t::matches(wayfire_view view)
 {
     if (this->priv->condition)
     {
-        bool ignored;
+        bool ignored = false;
         wf::view_access_interface_t access_interface{view};
 
         return this->priv->condition->evaluate(access_interface, ignored);
