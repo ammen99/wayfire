@@ -374,6 +374,7 @@ void wayfire_layer_shell_view::initialize()
 
 void wayfire_layer_shell_view::destroy()
 {
+    this->lsurface = nullptr;
     on_map.disconnect();
     on_unmap.disconnect();
     on_destroy.disconnect();
@@ -463,8 +464,11 @@ void wayfire_layer_shell_view::commit()
 
 void wayfire_layer_shell_view::close()
 {
-    wf::wlr_view_t::close();
-    wlr_layer_surface_v1_close(lsurface);
+    if (lsurface)
+    {
+        wf::wlr_view_t::close();
+        wlr_layer_surface_v1_close(lsurface);
+    }
 }
 
 void wayfire_layer_shell_view::configure(wf::geometry_t box)

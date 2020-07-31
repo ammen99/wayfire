@@ -491,15 +491,21 @@ void wayfire_xdg_view<wlr_xdg_toplevel_v6>::request_native_size()
 template<>
 void wayfire_xdg_view<wlr_xdg_toplevel>::close()
 {
-    wlr_xdg_toplevel_send_close(xdg_toplevel->base);
-    wf::wlr_view_t::close();
+    if (xdg_toplevel)
+    {
+        wlr_xdg_toplevel_send_close(xdg_toplevel->base);
+        wf::wlr_view_t::close();
+    }
 }
 
 template<>
 void wayfire_xdg_view<wlr_xdg_toplevel_v6>::close()
 {
-    wlr_xdg_surface_v6_send_close(xdg_toplevel->base);
-    wf::wlr_view_t::close();
+    if (xdg_toplevel)
+    {
+        wlr_xdg_surface_v6_send_close(xdg_toplevel->base);
+        wf::wlr_view_t::close();
+    }
 }
 
 template<class XdgToplevelVersion>

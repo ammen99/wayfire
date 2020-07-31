@@ -247,11 +247,7 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
             continue;
         }
 
-        if (view->is_mapped())
-        {
-            view->close();
-        }
-
+        view->close();
         view->set_output(nullptr);
     }
 
