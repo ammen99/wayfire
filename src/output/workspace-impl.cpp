@@ -493,7 +493,7 @@ class output_viewport_manager_t
     bool view_visible_on(wayfire_view view, wf::point_t vp)
     {
         auto g = output->get_relative_geometry();
-        if (view->role != VIEW_ROLE_DESKTOP_ENVIRONMENT)
+        if (!view->sticky)
         {
             g.x += (vp.x - current_vx) * g.width;
             g.y += (vp.y - current_vy) * g.height;
@@ -518,6 +518,13 @@ class output_viewport_manager_t
             LOGE("Cannot ensure view visibility for a view from a different output!");
 
             return;
+        }
+
+        // Sticky views are visible on all workspaces, so we just have to make
+        // it visible on the current workspace
+        if (view->sticky)
+        {
+            ws = {current_vx, current_vy};
         }
 
         auto box     = view->get_wm_geometry();
@@ -654,7 +661,7 @@ class output_viewport_manager_t
         for (auto& view : output->workspace->get_views_in_layer(MIDDLE_LAYERS))
         {
             auto it = std::find(fixed_views.cbegin(), fixed_views.cend(), view);
-            if (it == fixed_views.end())
+            if ((it == fixed_views.end()) && !view->sticky)
             {
                 for (auto v : view->enumerate_views())
                 {

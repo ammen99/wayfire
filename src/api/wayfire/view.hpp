@@ -215,6 +215,9 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     /** Whether the view is in minimized state, usually you want to use either
      * set_minizied() or minimize_request() */
     bool minimized = false;
+    /** Whether the view is sticky. If a view is sticky it will not be affected
+     * by changes of the current workspace. */
+    bool sticky = false;
     /** The tiled edges of the view, usually you want to use set_tiled().
      * If the view is tiled to all edges, it is considered maximized. */
     uint32_t tiled_edges = 0;
@@ -227,6 +230,8 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     virtual void set_fullscreen(bool fullscreen);
     /** Set the view's activated state.  */
     virtual void set_activated(bool active);
+    /** Set the view's sticky state. */
+    virtual void set_sticky(bool sticky);
 
     /** Request that an interactive move starts for this view */
     virtual void move_request();

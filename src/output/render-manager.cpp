@@ -999,7 +999,7 @@ class wf::render_manager::impl
                     continue;
                 }
 
-                if (view->role == VIEW_ROLE_DESKTOP_ENVIRONMENT)
+                if (view->sticky)
                 {
                     view_delta = {repaint.ws_dx, repaint.ws_dy};
                 }

@@ -392,6 +392,27 @@ void wf::view_interface_t::set_minimized(bool minim)
     desktop_state_updated();
 }
 
+void wf::view_interface_t::set_sticky(bool sticky)
+{
+    if (this->sticky == sticky)
+    {
+        return;
+    }
+
+    damage();
+    this->sticky = sticky;
+    damage();
+
+    wf::view_set_sticky_signal data;
+    data.view = self();
+
+    this->emit_signal("set-sticky", &data);
+    if (this->get_output())
+    {
+        this->get_output()->emit_signal("view-set-sticky", &data);
+    }
+}
+
 void wf::view_interface_t::set_tiled(uint32_t edges)
 {
     // store last unmaximized geometry for restoring
@@ -1186,9 +1207,8 @@ void wf::view_damage_raw(wayfire_view view, const wlr_box& box)
         return;
     }
 
-    /* shell views are visible in all workspaces. That's why we must apply
-     * their damage to all workspaces as well */
-    if (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT)
+    /* Sticky views are visible on all workspaces. */
+    if (view->sticky)
     {
         auto wsize = output->workspace->get_workspace_grid_size();
         auto cws   = output->workspace->get_current_workspace();

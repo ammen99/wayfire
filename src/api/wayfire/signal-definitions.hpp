@@ -454,6 +454,13 @@ struct view_fullscreen_signal : public _view_signal
 using view_fullscreen_request_signal = view_fullscreen_signal;
 
 /**
+ * name: set-sticky
+ * on: view, output(view-)
+ * when: Whenever the view's sticky state changes.
+ */
+using view_set_sticky_signal = _view_signal;
+
+/**
  * name: title-changed
  * on: view
  * when: After the view's title has changed.
