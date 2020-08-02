@@ -1025,7 +1025,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
     wf::signal_connection_t view_minimized{[this] (wf::signal_data_t *data)
         {
-            auto ev = static_cast<view_minimized_signal*>(data);
+            auto ev = static_cast<wf::view_minimized_signal*>(data);
 
             if (ev->state)
             {
@@ -1197,13 +1197,13 @@ class wayfire_scale : public wf::plugin_interface_t
             connect_button_signal();
         }
 
-        output->connect_signal("layer-attach-view", &view_attached);
-        output->connect_signal("attach-view", &view_attached);
+        output->connect_signal("view-layer-attached", &view_attached);
+        output->connect_signal("view-attached", &view_attached);
         view_detached.disconnect();
-        output->connect_signal("layer-detach-view", &view_detached);
+        output->connect_signal("view-layer-detached", &view_detached);
         output->connect_signal("view-minimized", &view_minimized);
-        output->connect_signal("unmap-view", &view_unmapped);
-        output->connect_signal("focus-view", &view_focused);
+        output->connect_signal("view-unmapped", &view_unmapped);
+        output->connect_signal("view-focused", &view_focused);
 
         view_geometry_changed.disconnect();
         for (auto& e : scale_data)
