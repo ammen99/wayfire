@@ -69,7 +69,7 @@ class wf_scale : public wf::view_2D
 struct view_scale_data
 {
     int row, col;
-    wf_scale *transformer;
+    wf_scale *transformer = 0; /* avoid potential UB from uninitialized member */
     wf::animation::simple_animation_t fade_animation;
     wf_scale_animation_attribs animation;
 };
@@ -142,10 +142,9 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        scale_data[view].transformer = new wf_scale(view);
-        view->add_transformer(std::unique_ptr<wf_scale>(
-            scale_data[view].transformer), transformer_name);
-        scale_data[view].transformer->alpha = 1;
+        wf_scale *tr = new wf_scale(view);
+        scale_data[view].transformer = tr;
+        view->add_transformer(std::unique_ptr<wf_scale>(tr), transformer_name);
         view->connect_signal("geometry-changed", &view_geometry_changed);
     }
 
@@ -595,43 +594,53 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& e : scale_data)
         {
             auto view = e.first;
-            if (!view || !scale_data[view].transformer || !scale_view(view))
+            auto& view_data = e.second;
+            if (!view || !view_data.transformer || !scale_view(view))
             {
                 continue;
             }
 
-            scale_data[view].transformer->scale_x =
-                scale_data[view].animation.scale_animation.scale_x;
-            scale_data[view].transformer->scale_y =
-                scale_data[view].animation.scale_animation.scale_y;
-            scale_data[view].transformer->translation_x =
-                scale_data[view].animation.scale_animation.translation_x;
-            scale_data[view].transformer->translation_y =
-                scale_data[view].animation.scale_animation.translation_y;
-            scale_data[view].transformer->alpha = scale_data[view].fade_animation;
+            view_data.transformer->scale_x =
+                view_data.animation.scale_animation.scale_x;
+            view_data.transformer->scale_y =
+                view_data.animation.scale_animation.scale_y;
+            view_data.transformer->translation_x =
+                view_data.animation.scale_animation.translation_x;
+            view_data.transformer->translation_y =
+                view_data.animation.scale_animation.translation_y;
+            view_data.transformer->alpha = view_data.fade_animation;
 
             view->damage();
 
             for (auto& child : view->children)
             {
-                view = child;
-                if (!view || !scale_data[view].transformer)
+                if (!child)
                 {
                     continue;
                 }
 
-                scale_data[view].transformer->scale_x =
-                    scale_data[view].animation.scale_animation.scale_x;
-                scale_data[view].transformer->scale_y =
-                    scale_data[view].animation.scale_animation.scale_y;
-                scale_data[view].transformer->translation_x =
-                    scale_data[view].animation.scale_animation.translation_x;
-                scale_data[view].transformer->translation_y =
-                    scale_data[view].animation.scale_animation.translation_y;
-                scale_data[view].transformer->alpha =
-                    scale_data[view].fade_animation;
+                auto it = scale_data.find(child);
+                if ((it == scale_data.end()) || !it->second.transformer)
+                {
+                    /* note: child views can show up here before they
+                     * should be visible (between they are attached and
+                     * mapped), these should be skipped */
+                    continue;
+                }
 
-                view->damage();
+                auto& view_data = it->second;
+
+                view_data.transformer->scale_x =
+                    view_data.animation.scale_animation.scale_x;
+                view_data.transformer->scale_y =
+                    view_data.animation.scale_animation.scale_y;
+                view_data.transformer->translation_x =
+                    view_data.animation.scale_animation.translation_x;
+                view_data.transformer->translation_y =
+                    view_data.animation.scale_animation.translation_y;
+                view_data.transformer->alpha = view_data.fade_animation;
+
+                child->damage();
             }
         }
 
@@ -743,6 +752,7 @@ class wayfire_scale : public wf::plugin_interface_t
             for (j = 0; j < n; j++)
             {
                 auto view = views[slots];
+                auto& view_data = scale_data[view];
 
                 auto vg = view->get_wm_geometry();
 
@@ -757,28 +767,28 @@ class wayfire_scale : public wf::plugin_interface_t
                     scale_x = scale_y = std::min(scale_x, max_scale_factor);
                 }
 
-                scale_data[view].animation.scale_animation.scale_x.set(
-                    scale_data[view].transformer->scale_x, active ? scale_x : 1);
-                scale_data[view].animation.scale_animation.scale_y.set(
-                    scale_data[view].transformer->scale_y, active ? scale_y : 1);
-                scale_data[view].animation.scale_animation.translation_x.set(
-                    scale_data[view].transformer->translation_x,
+                view_data.animation.scale_animation.scale_x.set(
+                    view_data.transformer->scale_x, active ? scale_x : 1);
+                view_data.animation.scale_animation.scale_y.set(
+                    view_data.transformer->scale_y, active ? scale_y : 1);
+                view_data.animation.scale_animation.translation_x.set(
+                    view_data.transformer->translation_x,
                     active ? translation_x : 0);
-                scale_data[view].animation.scale_animation.translation_y.set(
-                    scale_data[view].transformer->translation_y,
+                view_data.animation.scale_animation.translation_y.set(
+                    view_data.transformer->translation_y,
                     active ? translation_y : 0);
-                scale_data[view].animation.scale_animation.start();
-                scale_data[view].fade_animation =
+                view_data.animation.scale_animation.start();
+                view_data.fade_animation =
                     wf::animation::simple_animation_t(wf::create_option<int>(1000));
                 double target_alpha = active ? ((view == active_view) ?
                     1 : (double)inactive_alpha) : 1;
-                scale_data[view].fade_animation.animate(
-                    scale_data[view].transformer ?
-                    scale_data[view].transformer->alpha : 1,
+                view_data.fade_animation.animate(
+                    view_data.transformer ?
+                    view_data.transformer->alpha : 1,
                     target_alpha);
 
-                scale_data[view].row = i;
-                scale_data[view].col = j;
+                view_data.row = i;
+                view_data.col = j;
 
                 for (auto& child : view->children)
                 {
@@ -804,29 +814,29 @@ class wayfire_scale : public wf::plugin_interface_t
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
                     translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
-                    scale_data[child].animation.scale_animation.scale_x.set(
-                        scale_data[child].transformer->scale_x,
-                        active ? child_scale_x : 1);
-                    scale_data[child].animation.scale_animation.scale_y.set(
-                        scale_data[child].transformer->scale_y,
-                        active ? child_scale_y : 1);
-                    scale_data[child].animation.scale_animation.translation_x.set(
-                        scale_data[child].transformer->translation_x,
+                    auto& view_data = scale_data[child];
+
+                    view_data.animation.scale_animation.scale_x.set(
+                        view_data.transformer->scale_x, active ? scale_x : 1);
+                    view_data.animation.scale_animation.scale_y.set(
+                        view_data.transformer->scale_y, active ? scale_y : 1);
+                    view_data.animation.scale_animation.translation_x.set(
+                        view_data.transformer->translation_x,
                         active ? translation_x : 0);
-                    scale_data[child].animation.scale_animation.translation_y.set(
-                        scale_data[child].transformer->translation_y,
+                    view_data.animation.scale_animation.translation_y.set(
+                        view_data.transformer->translation_y,
                         active ? translation_y : 0);
-                    scale_data[child].animation.scale_animation.start();
-                    scale_data[child].fade_animation =
+                    view_data.animation.scale_animation.start();
+                    view_data.fade_animation =
                         wf::animation::simple_animation_t(wf::create_option<int>(
                             1000));
-                    scale_data[child].fade_animation.animate(
-                        scale_data[child].transformer ?
-                        scale_data[child].transformer->alpha : 1,
+                    view_data.fade_animation.animate(
+                        view_data.transformer ?
+                        view_data.transformer->alpha : 1,
                         target_alpha);
 
-                    scale_data[child].row = i;
-                    scale_data[child].col = j;
+                    view_data.row = i;
+                    view_data.col = j;
                 }
 
                 x += width + (int)spacing;
@@ -997,7 +1007,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            layout_slots(views);
+            layout_slots(std::move(views));
         }
     };
 
@@ -1009,7 +1019,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            layout_slots(views);
+            layout_slots(std::move(views));
         }
     };
 
