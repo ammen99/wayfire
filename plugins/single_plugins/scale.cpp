@@ -187,20 +187,13 @@ class wayfire_scale : public wf::plugin_interface_t
 
     bool all_same_as_current_workspace_views()
     {
-        bool saved_all_workspaces = all_workspaces, ret;
-
-        all_workspaces = true;
-        auto all_workspace_views = get_views();
-        all_workspaces = false;
-        auto current_workspace_views = get_views();
+        auto all_workspace_views     = get_all_workspace_views();
+        auto current_workspace_views = get_current_workspace_views();
 
         std::sort(all_workspace_views.begin(), all_workspace_views.end());
         std::sort(current_workspace_views.begin(), current_workspace_views.end());
-        ret = all_workspace_views == current_workspace_views;
 
-        all_workspaces = saved_all_workspaces;
-
-        return ret;
+        return all_workspace_views == current_workspace_views;
     }
 
     wf::activator_callback toggle_cb = [=] (wf::activator_source_t, uint32_t)
@@ -681,36 +674,54 @@ class wayfire_scale : public wf::plugin_interface_t
         output->render->damage_whole();
     }
 
-    std::vector<wayfire_view> get_views()
+    std::vector<wayfire_view> get_all_workspace_views()
     {
         std::vector<wayfire_view> views;
-        if (all_workspaces)
+
+        views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
+
+        return std::move(views);
+    }
+
+    std::vector<wayfire_view> get_current_workspace_views()
+    {
+        std::vector<wayfire_view> views;
+
+        for (auto& view :
+             output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
         {
-            views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
-        } else
-        {
-            auto ws = output->workspace->get_current_workspace();
-            for (auto& view :
-                 output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
+            if (view->role != wf::VIEW_ROLE_TOPLEVEL)
             {
-                if (view->role != wf::VIEW_ROLE_TOPLEVEL)
-                {
-                    continue;
-                }
+                continue;
+            }
 
-                auto vg = view->get_wm_geometry();
-                auto og = output->get_relative_geometry();
-                wf::region_t wr{og};
-                wf::point_t center{vg.x + vg.width / 2, vg.y + vg.height / 2};
+            auto vg = view->get_wm_geometry();
+            auto og = output->get_relative_geometry();
+            wf::region_t wr{og};
+            wf::point_t center{vg.x + vg.width / 2, vg.y + vg.height / 2};
 
-                if (wr.contains_point(center))
-                {
-                    views.push_back(view);
-                }
+            if (wr.contains_point(center))
+            {
+                views.push_back(view);
             }
         }
 
-        return views;
+        return std::move(views);
+    }
+
+    std::vector<wayfire_view> get_views()
+    {
+        std::vector<wayfire_view> views;
+
+        if (all_workspaces)
+        {
+            views = get_all_workspace_views();
+        } else
+        {
+            views = get_current_workspace_views();
+        }
+
+        return std::move(views);
     }
 
     bool scale_view(wayfire_view view)
@@ -1067,6 +1078,15 @@ class wayfire_scale : public wf::plugin_interface_t
         }
     };
 
+    wf::signal_connection_t workspace_changed{[this] (wf::signal_data_t *data)
+        {
+            if (last_focused_view)
+            {
+                output->focus_view(last_focused_view, true);
+            }
+        }
+    };
+
     wf::signal_connection_t view_geometry_changed{[this] (wf::signal_data_t *data)
         {
             auto views = get_views();
@@ -1159,6 +1179,24 @@ class wayfire_scale : public wf::plugin_interface_t
             layout_slots(get_views());
         }
     };
+
+    void refocus()
+    {
+        wayfire_view next_focus = nullptr;
+        auto views = get_current_workspace_views();
+
+        for (auto v : views)
+        {
+            if (v->is_mapped() &&
+                v->get_keyboard_focus_surface())
+            {
+                next_focus = v;
+                break;
+            }
+        }
+
+        output->focus_view(next_focus, true);
+    }
 
     bool animation_running()
     {
@@ -1258,6 +1296,7 @@ class wayfire_scale : public wf::plugin_interface_t
         output->connect_signal("view-layer-attached", &view_attached);
         output->connect_signal("view-attached", &view_attached);
         view_detached.disconnect();
+        output->connect_signal("workspace-changed", &workspace_changed);
         output->connect_signal("view-layer-detached", &view_detached);
         output->connect_signal("view-minimized", &view_minimized);
         output->connect_signal("view-unmapped", &view_unmapped);
@@ -1288,6 +1327,7 @@ class wayfire_scale : public wf::plugin_interface_t
         view_unmapped.disconnect();
         view_attached.disconnect();
         view_minimized.disconnect();
+        workspace_changed.disconnect();
         view_geometry_changed.disconnect();
 
         if (!input_release_impending)
@@ -1302,11 +1342,7 @@ class wayfire_scale : public wf::plugin_interface_t
             setup_view_transform(e.second, 1, 1, 0, 0, 1);
         }
 
-        if (last_focused_view)
-        {
-            output->focus_view(last_focused_view, true);
-        }
-
+        refocus();
         grab_interface->capabilities = 0;
     }
 
@@ -1325,6 +1361,7 @@ class wayfire_scale : public wf::plugin_interface_t
         view_attached.disconnect();
         view_detached.disconnect();
         view_minimized.disconnect();
+        workspace_changed.disconnect();
         view_geometry_changed.disconnect();
         output->deactivate_plugin(grab_interface);
     }
