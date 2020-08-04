@@ -28,6 +28,7 @@ libinput       = dependency('libinput', version: '>=1.7.0')
 pixman         = dependency('pixman-1')
 threads        = dependency('threads')
 xkbcommon      = dependency('xkbcommon')
+libdl          = meson.get_compiler('cpp').find_library('dl')
 wlroots        = dependency('wlroots', version: ['>=0.14.0', '<0.15.0'], required: get_option('use_system_wlroots'))
 wfconfig       = dependency('wf-config', version: ['>=0.7.0', '<0.8.0'], required: get_option('use_system_wfconfig'))
 
@@ -164,6 +165,12 @@ subdir('src')
 subdir('metadata')
 subdir('plugins')
 
+# Unit tests
+doctest = dependency('doctest', required: get_option('tests'))
+if doctest.found()
+    subdir('test')
+endif
+
 summary = [
 	'',
 	'----------------',
@@ -176,6 +183,7 @@ summary = [
     '        imageio: @0@'.format(conf_data.get('BUILD_WITH_IMAGEIO')),
     '         gles32: @0@'.format(conf_data.get('USE_GLES32')),
     '    print trace: @0@'.format(print_trace),
+    '     unit tests: @0@'.format(doctest.found()),
     '----------------',
     ''
 ]

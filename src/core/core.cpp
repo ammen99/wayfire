@@ -27,6 +27,7 @@
 #include "../output/wayfire-shell.hpp"
 #include "../output/output-impl.hpp"
 #include "../output/gtk-shell.hpp"
+#include "main.hpp"
 
 #include "core-impl.hpp"
 
@@ -907,4 +908,21 @@ wf::compositor_core_t& wf::get_core()
 wf::compositor_core_impl_t& wf::get_core_impl()
 {
     return wf::compositor_core_impl_t::get();
+}
+
+// TODO: move this to a better location
+wf_runtime_config runtime_config;
+
+// TODO: move this to a better location
+namespace wf
+{
+namespace _safe_list_detail
+{
+wl_event_loop *event_loop;
+void idle_cleanup_func(void *data)
+{
+    auto priv = reinterpret_cast<std::function<void()>*>(data);
+    (*priv)();
+}
+}
 }

@@ -1,5 +1,4 @@
-wayfire_sources = ['main.cpp',
-                   'util.cpp',
+wayfire_sources = ['util.cpp',
 
                    'core/output-layout.cpp',
                    'core/matcher.cpp',
@@ -43,7 +42,7 @@ wayfire_sources = ['main.cpp',
                    'output/gtk-shell.cpp']
 
 wayfire_dependencies = [wayland_server, wlroots, xkbcommon, libinput,
-                       pixman, drm, egl, glesv2, glm, wf_protos,
+                       pixman, drm, egl, glesv2, glm, wf_protos, libdl,
                        wfconfig, libinotify, backtrace, wfutils, xcb, wftouch]
 
 if conf_data.get('BUILD_WITH_IMAGEIO')
@@ -71,12 +70,25 @@ if print_trace
   debug_arguments += ['-DPRINT_TRACE']
 endif
 
-executable('wayfire', wayfire_sources,
+# First build a static library of all sources, so that it can be reused
+# in tests
+libwayfire_sta = static_library('libwayfire', wayfire_sources,
     dependencies: wayfire_dependencies,
     include_directories: [wayfire_conf_inc, wayfire_api_inc],
     cpp_args: debug_arguments,
-    link_args: '-ldl',
-    install: true)
+    install: false)
+
+libwayfire = declare_dependency(link_with: libwayfire_sta,
+    include_directories: [wayfire_conf_inc, wayfire_api_inc],
+    dependencies: wayfire_dependencies)
+
+tests_include_dirs = include_directories('.')
+
+# Generate main executable
+executable('wayfire', ['main.cpp'],
+    dependencies: libwayfire,
+    install: true,
+    cpp_args: debug_arguments)
 
 shared_module('default-config-backend', 'default-config-backend.cpp',
     dependencies: wayfire_dependencies,
@@ -84,7 +96,6 @@ shared_module('default-config-backend', 'default-config-backend.cpp',
     cpp_args: debug_arguments,
     install_dir: conf_data.get('PLUGIN_PATH'),
     install: true)
-
 
 install_subdir('api/wayfire',
     install_dir: get_option('includedir'))

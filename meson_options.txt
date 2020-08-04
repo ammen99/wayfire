@@ -4,3 +4,4 @@ option('use_system_wlroots', type: 'feature', value: 'auto', description: 'Use t
 option('xwayland', type: 'feature', value: 'auto', description: 'Build with xwayland support. Requires wlroots also built with xwayland support')
 option('default_config_backend', type: 'string', value: 'default', description: 'Default configuration backend to use')
 option('print_trace', type: 'boolean', value: true, description: 'Print stack trace in debug logs (disables coredump)')
+option('tests', type: 'feature', value: 'auto', description: 'Enable unit tests')

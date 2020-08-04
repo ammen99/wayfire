@@ -17,9 +17,6 @@
 #include "core/core-impl.hpp"
 #include "wayfire/output.hpp"
 
-wf_runtime_config runtime_config;
-
-
 static void print_version()
 {
     std::cout << WAYFIRE_VERSION << std::endl;
@@ -42,19 +39,6 @@ static void print_help()
     std::cout << " -R,  --damage-rerender   rerender damaged regions" << std::endl;
     std::cout << " -v,  --version           print version and exit" << std::endl;
     exit(0);
-}
-
-namespace wf
-{
-namespace _safe_list_detail
-{
-wl_event_loop *event_loop;
-void idle_cleanup_func(void *data)
-{
-    auto priv = reinterpret_cast<std::function<void()>*>(data);
-    (*priv)();
-}
-}
 }
 
 static bool drop_permissions(void)
