@@ -13,7 +13,7 @@ namespace wf
 using wm_actions_toggle_above = wf::_view_signal;
 
 /**
- * name: wm-actions-toggle-above-changed
+ * name: wm-actions-above-changed
  * on: output
  * when: Emitted whenever a views above layer has been changed.
  */
