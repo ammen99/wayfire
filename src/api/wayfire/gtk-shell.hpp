@@ -1,10 +1,5 @@
 #pragma once
 
-extern "C"
-{
-#include <wlr/types/wlr_surface.h>
-}
-
 #include <string>
 #include <wayfire/view.hpp>
 

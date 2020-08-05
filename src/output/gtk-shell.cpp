@@ -1,12 +1,16 @@
+extern "C"
+{
+#include <wlr/types/wlr_surface.h>
+}
 #include "gtk-shell.hpp"
 #include "gtk-shell-protocol.h"
-
 #include <wayfire/util/log.hpp>
 #include <wayfire/view.hpp>
 #include "../core/core-impl.hpp"
 #include <wayfire/core.hpp>
 #include <map>
 #include <wayfire/signal-definitions.hpp>
+#include <wayfire/gtk-shell.hpp>
 #define GTK_SHELL_VERSION 3
 
 struct wf_gtk_shell
