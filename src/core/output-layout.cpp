@@ -306,13 +306,13 @@ struct output_layout_output_t
     {
         std::string output_name = handle->name;
         auto& config = wf::get_core().config;
-        if (!config.get_section(output_name))
+        auto section = config.get_section(output_name);
+        if (!section)
         {
             config.merge_section(
                 std::make_shared<wf::config::section_t>(output_name));
         }
 
-        auto section = config.get_section(output_name);
         auto add_if_missing = [&] (std::string name, std::string defval)
         {
             if (!section->get_option_or(name))
