@@ -680,7 +680,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
 
-        return std::move(views);
+        return views;
     }
 
     std::vector<wayfire_view> get_current_workspace_views()
@@ -706,7 +706,7 @@ class wayfire_scale : public wf::plugin_interface_t
             }
         }
 
-        return std::move(views);
+        return views;
     }
 
     std::vector<wayfire_view> get_views()
@@ -721,7 +721,7 @@ class wayfire_scale : public wf::plugin_interface_t
             views = get_current_workspace_views();
         }
 
-        return std::move(views);
+        return views;
     }
 
     bool scale_view(wayfire_view view)
