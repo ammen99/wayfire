@@ -130,34 +130,30 @@ class wayfire_scale : public wf::plugin_interface_t
         allow_scale_zoom.set_callback(allow_scale_zoom_option_changed);
     }
 
-    void add_transformer(wayfire_view view)
+    /* Add the transformer used by the scale plugin to a view.
+     * Also ensures that the view is present in the scale_data map.
+     * Returns true if a transformer was added, false if the transformer
+     * was already present. */
+    bool add_transformer(wayfire_view view)
     {
         if (!view)
         {
-            return;
+            return false;
         }
 
         if (view->get_transformer(transformer_name))
         {
-            return;
+            return false;
         }
 
         wf_scale *tr = new wf_scale(view);
         scale_data[view].transformer = tr;
         view->add_transformer(std::unique_ptr<wf_scale>(tr), transformer_name);
-        view->connect_signal("geometry-changed", &view_geometry_changed);
-    }
 
-    void add_transformers(std::vector<wayfire_view> views)
-    {
-        for (auto& view : views)
-        {
-            add_transformer(view);
-            for (auto& child : view->children)
-            {
-                add_transformer(child);
-            }
-        }
+        return true;
+        /* note: moved connecting the geometry-changed signal to
+         * view_attached() -- need to be able to listen to that
+         * even if a view is not yet transformed */
     }
 
     void pop_transformer(wayfire_view view)
@@ -678,7 +674,16 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         std::vector<wayfire_view> views;
 
-        views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
+        for (auto& view :
+             output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
+        {
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
+            {
+                continue;
+            }
+
+            views.push_back(view);
+        }
 
         return views;
     }
@@ -690,7 +695,7 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& view :
              output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
         {
-            if (view->role != wf::VIEW_ROLE_TOPLEVEL)
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
             {
                 continue;
             }
@@ -780,8 +785,6 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        add_transformers(views);
-
         auto workarea    = output->workspace->get_workarea();
         auto active_view = output->get_active_view();
         if (active_view && !scale_view(active_view))
@@ -835,6 +838,7 @@ class wayfire_scale : public wf::plugin_interface_t
             for (j = 0; j < n; j++)
             {
                 auto view = views[slots];
+                add_transformer(view);
                 auto& view_data = scale_data[view];
 
                 auto vg = view->get_wm_geometry();
@@ -890,19 +894,28 @@ class wayfire_scale : public wf::plugin_interface_t
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
                     translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
-                    auto& view_data = scale_data[child];
+                    bool new_child = add_transformer(child);
+                    auto& child_view_data = scale_data[child];
+
+                    if (new_child)
+                    {
+                        child_view_data.transformer->translation_x =
+                            view_data.transformer->translation_x;
+                        child_view_data.transformer->translation_y =
+                            view_data.transformer->translation_y;
+                    }
 
                     if (active)
                     {
-                        setup_view_transform(view_data, scale_x, scale_y,
+                        setup_view_transform(child_view_data, scale_x, scale_y,
                             translation_x, translation_y, target_alpha);
                     } else
                     {
-                        setup_view_transform(view_data, 1, 1, 0, 0, 1);
+                        setup_view_transform(child_view_data, 1, 1, 0, 0, 1);
                     }
 
-                    view_data.row = i;
-                    view_data.col = j;
+                    child_view_data.row = i;
+                    child_view_data.col = j;
                 }
 
                 x += width + (int)spacing;
@@ -1026,7 +1039,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            add_transformer(view);
+            view->connect_signal("geometry-changed", &view_geometry_changed);
             layout_slots(get_views());
         }
     };
