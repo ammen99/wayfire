@@ -197,14 +197,18 @@ class vswitch : public wf::plugin_interface_t
 
     wf::signal_connection_t on_set_workspace_request = [=] (wf::signal_data_t *data)
     {
+        auto ev = static_cast<wf::workspace_change_request_signal*>(data);
         if (is_active())
         {
-            return;
+            auto cws = output->workspace->get_current_workspace();
+            ev->carried_out =
+                add_direction(ev->new_viewport.x - (cws.x + animation.dx.end),
+                    ev->new_viewport.y - (cws.y + animation.dy.end));
+        } else
+        {
+            ev->carried_out = add_direction(ev->new_viewport.x - ev->old_viewport.x,
+                ev->new_viewport.y - ev->old_viewport.y);
         }
-
-        auto ev = static_cast<wf::workspace_change_request_signal*>(data);
-        ev->carried_out = add_direction(ev->new_viewport.x - ev->old_viewport.x,
-            ev->new_viewport.y - ev->old_viewport.y);
     };
 
     bool start_switch()
