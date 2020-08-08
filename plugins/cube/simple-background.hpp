@@ -7,7 +7,7 @@ class wf_cube_simple_background : public wf_cube_background_base
 {
     wf::option_wrapper_t<wf::color_t> background_color{"cube/background"};
 
-    public:
+  public:
     wf_cube_simple_background();
     virtual void render_frame(const wf::framebuffer_t& fb,
         wf_cube_animation_attribs& attribs) override;

@@ -12,96 +12,106 @@ class wayfire_zoom_screen : public wf::plugin_interface_t
     wf::animation::simple_animation_t progression{smoothing_duration};
     bool hook_set = false;
 
-    public:
-        void init() override
+  public:
+    void init() override
+    {
+        grab_interface->name = "zoom";
+        grab_interface->capabilities = 0;
+
+        progression.set(1, 1);
+
+        output->add_axis(modifier, &axis);
+    }
+
+    void update_zoom_target(float delta)
+    {
+        float target = progression.end;
+        target -= target * delta * speed;
+        target  = wf::clamp(target, 1.0f, 50.0f);
+
+        if (target != progression.end)
         {
-            grab_interface->name = "zoom";
-            grab_interface->capabilities = 0;
+            progression.animate(target);
 
-            progression.set(1, 1);
-
-            output->add_axis(modifier, &axis);
-        }
-
-        void update_zoom_target(float delta)
-        {
-            float target = progression.end;
-            target -= target * delta * speed;
-            target = wf::clamp(target, 1.0f, 50.0f);
-
-            if (target != progression.end)
+            if (!hook_set)
             {
-                progression.animate(target);
-
-                if (!hook_set)
-                {
-                    hook_set = true;
-                    output->render->add_post(&render_hook);
-                    output->render->set_redraw_always();
-                }
+                hook_set = true;
+                output->render->add_post(&render_hook);
+                output->render->set_redraw_always();
             }
         }
+    }
 
-        wf::axis_callback axis = [=] (wlr_event_pointer_axis* ev)
+    wf::axis_callback axis = [=] (wlr_event_pointer_axis *ev)
+    {
+        if (!output->can_activate_plugin(grab_interface))
         {
-            if (!output->can_activate_plugin(grab_interface))
-                return false;
-            if (ev->orientation != WLR_AXIS_ORIENTATION_VERTICAL)
-                return false;
+            return false;
+        }
 
-            update_zoom_target(ev->delta);
-            return true;
-        };
-
-        wf::post_hook_t render_hook = [=] (const wf::framebuffer_base_t& source,
-            const wf::framebuffer_base_t& destination)
+        if (ev->orientation != WLR_AXIS_ORIENTATION_VERTICAL)
         {
-            auto w = destination.viewport_width;
-            auto h = destination.viewport_height;
-            auto oc = output->get_cursor_position();
-            double x, y;
-            wlr_box b = output->get_relative_geometry();
-            wlr_box_closest_point(&b, oc.x, oc.y, &x, &y);
+            return false;
+        }
 
-            /* get rotation & scale */
-            wlr_box box = {int(x), int(y), 1, 1};
-            box = output->render->get_target_framebuffer().
-                framebuffer_box_from_geometry_box(box);
+        update_zoom_target(ev->delta);
 
-            x = box.x;
-            y = h - box.y;
+        return true;
+    };
 
-            const float scale = (progression - 1) / progression;
+    wf::post_hook_t render_hook = [=] (const wf::framebuffer_base_t& source,
+                                       const wf::framebuffer_base_t& destination)
+    {
+        auto w = destination.viewport_width;
+        auto h = destination.viewport_height;
+        auto oc = output->get_cursor_position();
+        double x, y;
+        wlr_box b = output->get_relative_geometry();
+        wlr_box_closest_point(&b, oc.x, oc.y, &x, &y);
 
-            const float tw = w / progression, th = h / progression;
-            const float x1 = x * scale;
-            const float y1 = y * scale;
+        /* get rotation & scale */
+        wlr_box box = {int(x), int(y), 1, 1};
+        box = output->render->get_target_framebuffer().
+            framebuffer_box_from_geometry_box(box);
 
-            OpenGL::render_begin(source);
-            GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
-            GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination.fb));
-            GL_CALL(glBlitFramebuffer(x1, y1, x1 + tw, y1 + th, 0, 0, w, h,
-                    GL_COLOR_BUFFER_BIT, GL_LINEAR));
-            OpenGL::render_end();
+        x = box.x;
+        y = h - box.y;
 
-            if (!progression.running() && progression - 1 <= 0.01)
-                unset_hook();
-        };
+        const float scale = (progression - 1) / progression;
 
-        void unset_hook()
+        const float tw = w / progression, th = h / progression;
+        const float x1 = x * scale;
+        const float y1 = y * scale;
+
+        OpenGL::render_begin(source);
+        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
+        GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination.fb));
+        GL_CALL(glBlitFramebuffer(x1, y1, x1 + tw, y1 + th, 0, 0, w, h,
+            GL_COLOR_BUFFER_BIT, GL_LINEAR));
+        OpenGL::render_end();
+
+        if (!progression.running() && (progression - 1 <= 0.01))
         {
-            output->render->set_redraw_always(false);
+            unset_hook();
+        }
+    };
+
+    void unset_hook()
+    {
+        output->render->set_redraw_always(false);
+        output->render->rem_post(&render_hook);
+        hook_set = false;
+    }
+
+    void fini() override
+    {
+        if (hook_set)
+        {
             output->render->rem_post(&render_hook);
-            hook_set = false;
         }
 
-        void fini() override
-        {
-            if (hook_set)
-                output->render->rem_post(&render_hook);
-
-            output->rem_binding(&axis);
-        }
+        output->rem_binding(&axis);
+    }
 };
 
 DECLARE_WAYFIRE_PLUGIN(wayfire_zoom_screen);

@@ -28,7 +28,8 @@ wf_cursor::wf_cursor()
     setup_listeners();
     init_xcursor();
 
-    config_reloaded = [=] (wf::signal_data_t*) {
+    config_reloaded = [=] (wf::signal_data_t*)
+    {
         init_xcursor();
     };
 
@@ -40,7 +41,8 @@ void wf_cursor::setup_listeners()
     auto& core = wf::get_core_impl();
 
     /* Dispatch pointer events to the LogicalPointer */
-    on_frame.set_callback([&] (void *) {
+    on_frame.set_callback([&] (void*)
+    {
         core.input->lpointer->handle_pointer_frame();
         wlr_idle_notify_activity(core.protocols.idle,
             core.get_current_seat());
@@ -48,13 +50,13 @@ void wf_cursor::setup_listeners()
     on_frame.connect(&cursor->events.frame);
 
 #define setup_passthrough_callback(evname) \
-    on_##evname.set_callback([&] (void *data) { \
-        auto ev = static_cast<wlr_event_pointer_##evname *> (data); \
+    on_ ## evname.set_callback([&] (void *data) { \
+        auto ev = static_cast<wlr_event_pointer_ ## evname*>(data); \
         emit_device_event_signal("pointer_" #evname, ev); \
-        core.input->lpointer->handle_pointer_##evname (ev); \
+        core.input->lpointer->handle_pointer_ ## evname(ev); \
         wlr_idle_notify_activity(core.protocols.idle, core.get_current_seat()); \
     }); \
-    on_##evname.connect(&cursor->events.evname);
+    on_ ## evname.connect(&cursor->events.evname);
 
     setup_passthrough_callback(button);
     setup_passthrough_callback(motion);
@@ -73,18 +75,18 @@ void wf_cursor::setup_listeners()
      * manage them
      */
 #define setup_tablet_callback(evname) \
-    on_tablet_##evname.set_callback([&] (void *data) { \
-        auto ev = static_cast<wlr_event_tablet_tool_##evname *> (data); \
+    on_tablet_ ## evname.set_callback([&] (void *data) { \
+        auto ev = static_cast<wlr_event_tablet_tool_ ## evname*>(data); \
         emit_device_event_signal("tablet_" #evname, ev); \
         if (ev->device->tablet->data) { \
             auto tablet = \
-                static_cast<wf::tablet_t*> (ev->device->tablet->data); \
-            tablet->handle_##evname (ev); \
+                static_cast<wf::tablet_t*>(ev->device->tablet->data); \
+            tablet->handle_ ## evname(ev); \
         } \
         wlr_idle_notify_activity(wf::get_core().protocols.idle, \
-            wf::get_core().get_current_seat()); \
+        wf::get_core().get_current_seat()); \
     }); \
-    on_tablet_##evname.connect(&cursor->events.tablet_tool_##evname);
+    on_tablet_ ## evname.connect(&cursor->events.tablet_tool_ ## evname);
 
     setup_tablet_callback(tip);
     setup_tablet_callback(axis);
@@ -95,12 +97,14 @@ void wf_cursor::setup_listeners()
 
 void wf_cursor::init_xcursor()
 {
-    std::string theme = wf::option_wrapper_t<std::string> ("input/cursor_theme");
-    int size = wf::option_wrapper_t<int> ("input/cursor_size");
+    std::string theme = wf::option_wrapper_t<std::string>("input/cursor_theme");
+    int size = wf::option_wrapper_t<int>("input/cursor_size");
     auto theme_ptr = (theme == "default") ? NULL : theme.c_str();
 
     if (xcursor)
+    {
         wlr_xcursor_manager_destroy(xcursor);
+    }
 
     xcursor = wlr_xcursor_manager_create(theme_ptr, size);
 
@@ -108,14 +112,17 @@ void wf_cursor::init_xcursor()
     for (auto& wo : wf::get_core().output_layout->get_current_configuration())
     {
         if (wo.second.source & wf::OUTPUT_IMAGE_SOURCE_SELF)
+        {
             load_xcursor_scale(wo.first->scale);
+        }
     }
 
     set_cursor("default");
 
     auto default_cursor =
         wlr_xcursor_manager_get_xcursor(xcursor, "left_ptr", 1);
-    if (default_cursor) {
+    if (default_cursor)
+    {
         wf::xwayland_set_cursor(default_cursor->images[0]);
     }
 }
@@ -138,7 +145,9 @@ void wf_cursor::detach_device(wlr_input_device *device)
 void wf_cursor::set_cursor(std::string name)
 {
     if (name == "default")
+    {
         name = "left_ptr";
+    }
 
     wlr_xcursor_manager_set_cursor_image(xcursor, name.c_str(), cursor);
 }
@@ -166,7 +175,9 @@ void wf_cursor::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev,
     {
         auto pointer_client = input->seat->pointer_state.focused_client;
         if (pointer_client != ev->seat_client)
+        {
             return;
+        }
     }
 
     if (!wf::get_core_impl().input->input_grabbed())

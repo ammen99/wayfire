@@ -11,10 +11,13 @@
 
 wlr_box wf::view_transformer_t::get_bounding_box(wf::geometry_t view, wlr_box region)
 {
-    const auto p1 = transform_point(view, {1.0 * region.x,                1.0 * region.y});
-    const auto p2 = transform_point(view, {1.0 * region.x + region.width, 1.0 * region.y});
-    const auto p3 = transform_point(view, {1.0 * region.x,                1.0 * region.y + region.height});
-    const auto p4 = transform_point(view, {1.0 * region.x + region.width, 1.0 * region.y + region.height});
+    const auto p1 = transform_point(view, {1.0 * region.x, 1.0 * region.y});
+    const auto p2 = transform_point(view, {1.0 * region.x + region.width,
+        1.0 * region.y});
+    const auto p3 = transform_point(view, {1.0 * region.x,
+        1.0 * region.y + region.height});
+    const auto p4 = transform_point(view, {1.0 * region.x + region.width,
+        1.0 * region.y + region.height});
 
     const int x1 = std::min({p1.x, p2.x, p3.x, p4.x});
     const int x2 = std::max({p1.x, p2.x, p3.x, p4.x});
@@ -30,11 +33,14 @@ wf::region_t wf::view_transformer_t::transform_opaque_region(
     return {};
 }
 
-void wf::view_transformer_t::render_with_damage(wf::texture_t src_tex, wlr_box src_box,
-            const wf::region_t& damage, const wf::framebuffer_t& target_fb)
+void wf::view_transformer_t::render_with_damage(wf::texture_t src_tex,
+    wlr_box src_box,
+    const wf::region_t& damage, const wf::framebuffer_t& target_fb)
 {
     for (const auto& rect : damage)
+    {
         render_box(src_tex, src_box, wlr_box_from_pixman_box(rect), target_fb);
+    }
 }
 
 struct transformable_quad
@@ -47,11 +53,12 @@ static wf::point_t get_center(wf::geometry_t view)
 {
     return {
         view.x + view.width / 2,
-        view.y + view.height/ 2
+        view.y + view.height / 2
     };
 }
 
-static wf::pointf_t get_center_relative_coords(wf::geometry_t view, wf::pointf_t point)
+static wf::pointf_t get_center_relative_coords(wf::geometry_t view,
+    wf::pointf_t point)
 {
     return {
         (point.x - view.x) - view.width / 2.0,
@@ -59,7 +66,8 @@ static wf::pointf_t get_center_relative_coords(wf::geometry_t view, wf::pointf_t
     };
 }
 
-static wf::pointf_t get_absolute_coords_from_relative(wf::geometry_t view, wf::pointf_t point)
+static wf::pointf_t get_absolute_coords_from_relative(wf::geometry_t view,
+    wf::pointf_t point)
 {
     return {
         point.x + view.x + view.width / 2.0,
@@ -68,8 +76,8 @@ static wf::pointf_t get_absolute_coords_from_relative(wf::geometry_t view, wf::p
 }
 
 static transformable_quad center_geometry(wf::geometry_t output_geometry,
-                                          wf::geometry_t geometry,
-                                          wf::point_t target_center)
+    wf::geometry_t geometry,
+    wf::point_t target_center)
 {
     transformable_quad quad;
 
@@ -80,12 +88,12 @@ static transformable_quad center_geometry(wf::geometry_t output_geometry,
     target_center.y -= output_geometry.y;
 
     quad.geometry.x1 = -(target_center.x - geometry.x);
-    quad.geometry.y1 =  (target_center.y - geometry.y);
+    quad.geometry.y1 = (target_center.y - geometry.y);
 
     quad.geometry.x2 = quad.geometry.x1 + geometry.width;
     quad.geometry.y2 = quad.geometry.y1 - geometry.height;
 
-    quad.off_x = (geometry.x - output_geometry.width / 2.0)  - quad.geometry.x1;
+    quad.off_x = (geometry.x - output_geometry.width / 2.0) - quad.geometry.x1;
     quad.off_y = (output_geometry.height / 2.0 - geometry.y) - quad.geometry.y1;
 
     return quad;
@@ -98,7 +106,7 @@ wf::view_2D::view_2D(wayfire_view view)
 
 static void rotate_xy(float& x, float& y, float angle)
 {
-    auto v = glm::vec4{x, y, 0, 1};
+    auto v   = glm::vec4{x, y, 0, 1};
     auto rot = glm::rotate(glm::mat4(1.0), angle, {0, 0, 1});
     v = rot * v;
     x = v.x;
@@ -108,16 +116,17 @@ static void rotate_xy(float& x, float& y, float angle)
 wf::pointf_t wf::view_2D::transform_point(
     wf::geometry_t geometry, wf::pointf_t point)
 {
-
     auto p2 = get_center_relative_coords(view->get_wm_geometry(), point);
     float x = p2.x, y = p2.y;
 
-    x *= scale_x; y *= scale_y;
+    x *= scale_x;
+    y *= scale_y;
     rotate_xy(x, y, angle);
     x += translation_x;
     y -= translation_y;
 
     auto r = get_absolute_coords_from_relative(view->get_wm_geometry(), {x, y});
+
     return r;
 }
 
@@ -130,7 +139,8 @@ wf::pointf_t wf::view_2D::untransform_point(
     x -= translation_x;
     y += translation_y;
     rotate_xy(x, y, -angle);
-    x /= scale_x; y /= scale_y;
+    x /= scale_x;
+    y /= scale_y;
 
     return get_absolute_coords_from_relative(view->get_wm_geometry(), {x, y});
 }
@@ -138,31 +148,32 @@ wf::pointf_t wf::view_2D::untransform_point(
 void wf::view_2D::render_box(wf::texture_t src_tex, wlr_box src_box,
     wlr_box scissor_box, const wf::framebuffer_t& fb)
 {
-    auto quad = center_geometry(fb.geometry, src_box, get_center(view->get_wm_geometry()));
+    auto quad =
+        center_geometry(fb.geometry, src_box, get_center(view->get_wm_geometry()));
 
     quad.geometry.x1 *= scale_x;
     quad.geometry.x2 *= scale_x;
     quad.geometry.y1 *= scale_y;
     quad.geometry.y2 *= scale_y;
 
-    auto rotate = glm::rotate(glm::mat4(1.0), angle, {0, 0, 1});
+    auto rotate    = glm::rotate(glm::mat4(1.0), angle, {0, 0, 1});
     auto translate = glm::translate(glm::mat4(1.0),
-                                    {quad.off_x + translation_x,
-                                     quad.off_y - translation_y, 0});
+    {quad.off_x + translation_x,
+        quad.off_y - translation_y, 0});
 
-    auto ortho = glm::ortho(-fb.geometry.width  / 2.0f, fb.geometry.width  / 2.0f,
-                            -fb.geometry.height / 2.0f, fb.geometry.height / 2.0f);
+    auto ortho = glm::ortho(-fb.geometry.width / 2.0f, fb.geometry.width / 2.0f,
+        -fb.geometry.height / 2.0f, fb.geometry.height / 2.0f);
 
     auto transform = fb.transform * ortho * translate * rotate;
 
     OpenGL::render_begin(fb);
     fb.logic_scissor(scissor_box);
     OpenGL::render_transformed_texture(src_tex, quad.geometry, {},
-                                       transform, {1.0f, 1.0f, 1.0f, alpha});
+        transform, {1.0f, 1.0f, 1.0f, alpha});
     OpenGL::render_end();
 }
 
-const float wf::view_3D::fov = PI/4;
+const float wf::view_3D::fov = PI / 4;
 glm::mat4 wf::view_3D::default_view_matrix()
 {
     return glm::lookAt(
@@ -179,14 +190,16 @@ glm::mat4 wf::view_3D::default_proj_matrix()
 wf::view_3D::view_3D(wayfire_view view)
 {
     this->view = view;
-    view_proj = default_proj_matrix() * default_view_matrix();
+    view_proj  = default_proj_matrix() * default_view_matrix();
 }
 
 /* TODO: cache total_transform, because it is often unnecessarily recomputed */
 glm::mat4 wf::view_3D::calculate_total_transform()
 {
     auto og = view->get_output()->get_relative_geometry();
-    glm::mat4 depth_scale = glm::scale(glm::mat4(1.0), {1, 1, 2.0 / std::min(og.width, og.height)});
+    glm::mat4 depth_scale =
+        glm::scale(glm::mat4(1.0), {1, 1, 2.0 / std::min(og.width, og.height)});
+
     return translation * view_proj * depth_scale * rotation * scaling;
 }
 
@@ -197,14 +210,25 @@ wf::pointf_t wf::view_3D::transform_point(
     glm::vec4 v(1.0f * p.x, 1.0f * p.y, 0, 1);
     v = calculate_total_transform() * v;
 
-    v.x /= v.w;
-    v.y /= v.w;
+    if (std::abs(v.w) < 1e-6)
+    {
+        /* This should never happen as long as we use well-behaving matrices.
+         * However if we set transform to the zero matrix we might get
+         * this case where v.w is zero. In this case we assume the view is
+         * just a single point at 0,0 */
+        v.x = v.y = 0;
+    } else
+    {
+        v.x /= v.w;
+        v.y /= v.w;
+    }
 
     return get_absolute_coords_from_relative(geometry, {v.x, v.y});
 }
 
 /* TODO: is there a way to realiably reverse projective transformations? */
-wf::pointf_t wf::view_3D::untransform_point(wf::geometry_t geometry, wf::pointf_t point)
+wf::pointf_t wf::view_3D::untransform_point(wf::geometry_t geometry,
+    wf::pointf_t point)
 {
     return {wf::compositor_core_t::invalid_coordinate,
         wf::compositor_core_t::invalid_coordinate};
@@ -217,17 +241,17 @@ void wf::view_3D::render_box(wf::texture_t src_tex, wlr_box src_box,
 
     auto transform = calculate_total_transform();
     auto translate = glm::translate(glm::mat4(1.0), {quad.off_x, quad.off_y, 0});
-    auto scale = glm::scale(glm::mat4(1.0), {
-                                2.0 / fb.geometry.width,
-                                2.0 / fb.geometry.height,
-                                1.0
-                            });
+    auto scale     = glm::scale(glm::mat4(1.0), {
+        2.0 / fb.geometry.width,
+        2.0 / fb.geometry.height,
+        1.0
+    });
 
     transform = fb.transform * scale * translate * transform;
 
     OpenGL::render_begin(fb);
     fb.logic_scissor(scissor_box);
     OpenGL::render_transformed_texture(src_tex, quad.geometry, {},
-                                       transform, color);
+        transform, color);
     OpenGL::render_end();
 }

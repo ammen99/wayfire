@@ -27,17 +27,12 @@ class wf::signal_connection_t::impl
 
 wf::signal_connection_t::signal_connection_t()
 {
-    this->priv = std::make_unique<impl> ();
+    this->priv = std::make_unique<impl>();
 }
+
 wf::signal_connection_t::~signal_connection_t()
 {
     disconnect();
-}
-
-wf::signal_connection_t::signal_connection_t(signal_callback_t callback)
-    : signal_connection_t()
-{
-    priv->callback = callback;
 }
 
 void wf::signal_connection_t::set_callback(signal_callback_t callback)
@@ -48,14 +43,18 @@ void wf::signal_connection_t::set_callback(signal_callback_t callback)
 void wf::signal_connection_t::emit(signal_data_t *data)
 {
     if (this->priv->callback)
+    {
         this->priv->callback(data);
+    }
 }
 
 void wf::signal_connection_t::disconnect()
 {
     auto connected = this->priv->connected_providers;
     for (auto& provider : connected)
+    {
         provider->disconnect_signal(this);
+    }
 }
 
 class wf::signal_provider_t::sprovider_impl
@@ -70,27 +69,28 @@ class wf::signal_provider_t::sprovider_impl
 
 wf::signal_provider_t::signal_provider_t()
 {
-    this->sprovider_priv = std::make_unique<sprovider_impl> ();
+    this->sprovider_priv = std::make_unique<sprovider_impl>();
 }
 
 wf::signal_provider_t::~signal_provider_t()
 {
     for (auto& s : sprovider_priv->signals)
     {
-        s.second.for_each([=] (signal_connection_t *connection) {
+        s.second.for_each([=] (signal_connection_t *connection)
+        {
             connection->priv->remove(this);
         });
     }
 }
 
 void wf::signal_provider_t::connect_signal(std::string name,
-    signal_connection_t* callback)
+    signal_connection_t *callback)
 {
     sprovider_priv->signals[name].push_back(callback);
     callback->priv->add(this);
 }
 
-void wf::signal_provider_t::disconnect_signal(signal_connection_t* connection)
+void wf::signal_provider_t::disconnect_signal(signal_connection_t *connection)
 {
     for (auto& s : sprovider_priv->signals)
     {
@@ -99,8 +99,10 @@ void wf::signal_provider_t::disconnect_signal(signal_connection_t* connection)
             if (connected == connection)
             {
                 connected->priv->remove(this);
+
                 return true;
             }
+
             return false;
         });
     }
@@ -108,14 +110,14 @@ void wf::signal_provider_t::disconnect_signal(signal_connection_t* connection)
 
 /* Deprecated: */
 void wf::signal_provider_t::connect_signal(std::string name,
-    signal_callback_t* callback)
+    signal_callback_t *callback)
 {
     sprovider_priv->deprecated_signals[name].push_back(callback);
 }
 
 /* Deprecated: */
 void wf::signal_provider_t::disconnect_signal(std::string name,
-    signal_callback_t* callback)
+    signal_callback_t *callback)
 {
     sprovider_priv->deprecated_signals[name].remove_all(callback);
 }
@@ -123,12 +125,14 @@ void wf::signal_provider_t::disconnect_signal(std::string name,
 /* Emit the given signal. No type checking for data is required */
 void wf::signal_provider_t::emit_signal(std::string name, wf::signal_data_t *data)
 {
-    sprovider_priv->signals[name].for_each([data] (auto call) {
+    sprovider_priv->signals[name].for_each([data] (auto call)
+    {
         call->emit(data);
     });
 
     /* Deprecated: */
-    sprovider_priv->deprecated_signals[name].for_each([data] (auto call) {
+    sprovider_priv->deprecated_signals[name].for_each([data] (auto call)
+    {
         (*call)(data);
     });
 }
@@ -149,8 +153,7 @@ wf::object_base_t::object_base_t()
 }
 
 wf::object_base_t::~object_base_t()
-{
-}
+{}
 
 std::string wf::object_base_t::to_string() const
 {
@@ -174,16 +177,18 @@ void wf::object_base_t::erase_data(std::string name)
     data.reset();
 }
 
-wf::custom_data_t *wf::object_base_t::_fetch_data(std::string name)
+wf::custom_data_t*wf::object_base_t::_fetch_data(std::string name)
 {
     auto it = obase_priv->data.find(name);
     if (it == obase_priv->data.end())
+    {
         return nullptr;
+    }
 
     return it->second.get();
 }
 
-wf::custom_data_t *wf::object_base_t::_fetch_erase(std::string name)
+wf::custom_data_t*wf::object_base_t::_fetch_erase(std::string name)
 {
     auto data = obase_priv->data[name].release();
     erase_data(name);

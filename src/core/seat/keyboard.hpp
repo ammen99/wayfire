@@ -14,8 +14,8 @@ struct wf_keyboard
     wlr_input_device *device;
 
     wf::option_wrapper_t<std::string>
-        model, variant, layout, options, rules;
-    wf::option_wrapper_t<int>repeat_rate, repeat_delay;
+    model, variant, layout, options, rules;
+    wf::option_wrapper_t<int> repeat_rate, repeat_delay;
 
     wf_keyboard(wlr_input_device *keyboard);
     void reload_input_options();

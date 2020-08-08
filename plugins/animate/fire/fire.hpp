@@ -15,7 +15,7 @@ class FireAnimation : public animation_base
     nonstd::observer_ptr<FireTransformer> transformer;
     wf::animation::simple_animation_t progression;
 
-    public:
+  public:
 
     ~FireAnimation();
     void init(wayfire_view view, int duration, wf_animation_type type) override;

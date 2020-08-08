@@ -25,61 +25,61 @@ struct Particle
 };
 
 /* a function to initialize a particle */
-using ParticleIniter = std::function<void(Particle&)>;
+using ParticleIniter = std::function<void (Particle&)>;
 
 class ParticleSystem
 {
-    public:
-        /* the user of this class has to set up a proper GL context
-         * before creating the ParticleSystem */
-        ParticleSystem(int num_part,
-                       ParticleIniter part_init_func);
-        ~ParticleSystem();
+  public:
+    /* the user of this class has to set up a proper GL context
+     * before creating the ParticleSystem */
+    ParticleSystem(int num_part,
+        ParticleIniter part_init_func);
+    ~ParticleSystem();
 
-        /* spawn at most num new particles.
-         * returns the number of actually spawned particles */
-        int spawn(int num);
+    /* spawn at most num new particles.
+     * returns the number of actually spawned particles */
+    int spawn(int num);
 
-        /* change the maximal number of particles
-         * Warning: This might kill a lot of particles */
-        void resize(int num);
+    /* change the maximal number of particles
+     * Warning: This might kill a lot of particles */
+    void resize(int num);
 
-        // return the maximal number of particles
-        int size();
+    // return the maximal number of particles
+    int size();
 
-        /* update all particles */
-        void update();
+    /* update all particles */
+    void update();
 
-        // number of particles alive
-        int statistic();
+    // number of particles alive
+    int statistic();
 
-        /* render particles, each will be multiplied by matrix
-         * The user of this class has to set up the same GL context that was
-         * used during the creation of the particle system */
-        void render(glm::mat4 matrix);
+    /* render particles, each will be multiplied by matrix
+     * The user of this class has to set up the same GL context that was
+     * used during the creation of the particle system */
+    void render(glm::mat4 matrix);
 
-    private:
-        ParticleSystem() = delete;
+  private:
+    ParticleSystem() = delete;
 
-        ParticleIniter pinit_func;
-        uint32_t last_update_msec;
+    ParticleIniter pinit_func;
+    uint32_t last_update_msec;
 
-        std::atomic<int> particles_alive;
-        std::vector<Particle> ps;
+    std::atomic<int> particles_alive;
+    std::vector<Particle> ps;
 
-        static constexpr int color_per_particle = 4;
-        std::vector<float> color, dark_color;
+    static constexpr int color_per_particle = 4;
+    std::vector<float> color, dark_color;
 
-        static constexpr int radius_per_particle = 1;
-        std::vector<float> radius;
+    static constexpr int radius_per_particle = 1;
+    std::vector<float> radius;
 
-        static constexpr int center_per_particle = 2;
-        std::vector<float> center;
+    static constexpr int center_per_particle = 2;
+    std::vector<float> center;
 
-        OpenGL::program_t program;
-        void exec_worker_threads(std::function<void(int, int)> spawn_worker);
-        void update_worker(float time, int start, int end);
-        void create_program();
+    OpenGL::program_t program;
+    void exec_worker_threads(std::function<void(int, int)> spawn_worker);
+    void update_worker(float time, int start, int end);
+    void create_program();
 };
 
 

@@ -16,35 +16,40 @@ extern "C"
 }
 
 /* Implementation of mirror_view_t */
-wf::mirror_view_t::mirror_view_t(wayfire_view base_view)
-    : wf::view_interface_t()
+wf::mirror_view_t::mirror_view_t(wayfire_view base_view) :
+    wf::view_interface_t()
 {
     this->base_view = base_view;
 
-    base_view_unmapped = [=] (wf::signal_data_t*) {
+    base_view_unmapped = [=] (wf::signal_data_t*)
+    {
         close();
     };
 
-    base_view->connect_signal("unmap", &base_view_unmapped);
+    base_view->connect_signal("unmapped", &base_view_unmapped);
 
-    base_view_damaged = [=] (wf::signal_data_t* ) {
+    base_view_damaged = [=] (wf::signal_data_t*)
+    {
         damage();
     };
 
-    base_view->connect_signal("damaged-region", &base_view_damaged);
+    base_view->connect_signal("region-damaged", &base_view_damaged);
 }
 
-wf::mirror_view_t::~mirror_view_t() { }
+wf::mirror_view_t::~mirror_view_t()
+{}
 
 void wf::mirror_view_t::close()
 {
     if (!base_view)
+    {
         return;
+    }
 
     emit_view_pre_unmap();
 
-    base_view->disconnect_signal("unmap", &base_view_unmapped);
-    base_view->disconnect_signal("damaged-region", &base_view_damaged);
+    base_view->disconnect_signal("unmapped", &base_view_unmapped);
+    base_view->disconnect_signal("region-damaged", &base_view_damaged);
     base_view = nullptr;
 
     emit_map_state_change(this);
@@ -61,9 +66,12 @@ bool wf::mirror_view_t::is_mapped() const
 wf::dimensions_t wf::mirror_view_t::get_size() const
 {
     if (!is_mapped())
+    {
         return {0, 0};
+    }
 
     auto box = base_view->get_bounding_box();
+
     return {box.width, box.height};
 }
 
@@ -71,7 +79,9 @@ void wf::mirror_view_t::simple_render(const wf::framebuffer_t& fb, int x, int y,
     const wf::region_t& damage)
 {
     if (!is_mapped())
+    {
         return;
+    }
 
     /* Normally we shouldn't copy framebuffers. But in this case we can assume
      * nothing will break, because the copy will be destroyed immediately */
@@ -107,30 +117,43 @@ void wf::mirror_view_t::move(int x, int y)
 wf::geometry_t wf::mirror_view_t::get_output_geometry()
 {
     if (!is_mapped())
+    {
         return get_bounding_box();
+    }
 
     wf::geometry_t geometry;
     geometry.x = this->x;
     geometry.y = this->y;
 
     auto dims = get_size();
-    geometry.width = dims.width;
+    geometry.width  = dims.width;
     geometry.height = dims.height;
 
     return geometry;
 }
 
-wlr_surface *wf::mirror_view_t::get_keyboard_focus_surface() { return nullptr; }
-bool wf::mirror_view_t::is_focuseable() const { return false; }
-bool wf::mirror_view_t::should_be_decorated() { return false; }
+wlr_surface*wf::mirror_view_t::get_keyboard_focus_surface()
+{
+    return nullptr;
+}
+
+bool wf::mirror_view_t::is_focuseable() const
+{
+    return false;
+}
+
+bool wf::mirror_view_t::should_be_decorated()
+{
+    return false;
+}
 
 /* Implementation of color_rect_view_t */
 
 wf::color_rect_view_t::color_rect_view_t() : wf::view_interface_t()
 {
-    this->geometry = {0, 0, 1, 1};
-    this->_color = {0, 0, 0, 1};
-    this->border = 0;
+    this->geometry   = {0, 0, 1, 1};
+    this->_color     = {0, 0, 0, 1};
+    this->border     = 0;
     this->_is_mapped = true;
 }
 
@@ -239,7 +262,7 @@ void wf::color_rect_view_t::resize(int w, int h)
     view_geometry_changed_signal data;
     data.old_geometry = get_wm_geometry();
 
-    this->geometry.width = w;
+    this->geometry.width  = w;
     this->geometry.height = h;
 
     damage();
@@ -251,6 +274,17 @@ wf::geometry_t wf::color_rect_view_t::get_output_geometry()
     return geometry;
 }
 
-wlr_surface *wf::color_rect_view_t::get_keyboard_focus_surface() { return nullptr; }
-bool wf::color_rect_view_t::is_focuseable() const { return false; }
-bool wf::color_rect_view_t::should_be_decorated() { return false; }
+wlr_surface*wf::color_rect_view_t::get_keyboard_focus_surface()
+{
+    return nullptr;
+}
+
+bool wf::color_rect_view_t::is_focuseable() const
+{
+    return false;
+}
+
+bool wf::color_rect_view_t::should_be_decorated()
+{
+    return false;
+}

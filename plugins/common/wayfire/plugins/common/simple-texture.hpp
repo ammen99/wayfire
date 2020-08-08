@@ -7,7 +7,7 @@ namespace wf
 struct simple_texture_t : public noncopyable_t
 {
     GLuint tex = -1;
-    int width = 0;
+    int width  = 0;
     int height = 0;
 
     /**
@@ -16,8 +16,10 @@ struct simple_texture_t : public noncopyable_t
      */
     void release()
     {
-        if (this->tex == (GLuint)-1)
+        if (this->tex == (GLuint) - 1)
+        {
             return;
+        }
 
         OpenGL::render_begin();
         GL_CALL(glDeleteTextures(1, &tex));

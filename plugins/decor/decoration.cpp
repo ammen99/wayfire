@@ -12,7 +12,9 @@ struct wayfire_decoration_global_cleanup_t
     ~wayfire_decoration_global_cleanup_t()
     {
         for (auto view : wf::get_core().get_all_views())
-            view->set_decoration(nullptr);
+        {
+            deinit_view(view);
+        }
     }
 };
 
@@ -21,11 +23,12 @@ class wayfire_decoration :
 {
     wf::view_matcher_t ignore_views{"decoration/ignore_views"};
 
-    wf::signal_connection_t view_updated {
+    wf::signal_connection_t view_updated{
         [=] (wf::signal_data_t *data)
         {
             update_view_decoration(get_signaled_view(data));
-        }};
+        }
+    };
 
   public:
     void init() override
@@ -34,8 +37,8 @@ class wayfire_decoration :
         grab_interface->name = "simple-decoration";
         grab_interface->capabilities = wf::CAPABILITY_VIEW_DECORATOR;
 
-        output->connect_signal("map-view", &view_updated);
-        output->connect_signal("decoration-state-updated-view", &view_updated);
+        output->connect_signal("view-mapped", &view_updated);
+        output->connect_signal("view-decoration-state-updated", &view_updated);
     }
 
     /**
@@ -58,20 +61,24 @@ class wayfire_decoration :
             if (output->activate_plugin(grab_interface))
             {
                 init_view(view);
-                idle_deactivate.run_once([this] () {
+                idle_deactivate.run_once([this] ()
+                {
                     output->deactivate_plugin(grab_interface);
                 });
             }
         } else
         {
-            view->set_decoration(nullptr);
+            deinit_view(view);
         }
     }
 
     void fini() override
     {
         for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
-            view->set_decoration(nullptr);
+        {
+            deinit_view(view);
+        }
+
         singleton_plugin_t::fini();
     }
 };

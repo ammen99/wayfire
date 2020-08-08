@@ -2,7 +2,7 @@
 #define DEBUG_HPP
 
 #ifndef WAYFIRE_PLUGIN
-#include "config.h"
+ #include "config.h"
 #endif
 
 #define nonull(x) ((x) ? (x) : ("nil"))
@@ -25,8 +25,8 @@ void print_trace(bool fast_mode);
 #include <glm/glm.hpp>
 #include <wayfire/geometry.hpp>
 
-std::ostream& operator << (std::ostream& out, const glm::mat4& mat);
-wf::pointf_t operator * (const glm::mat4& m, const wf::pointf_t& p);
-wf::pointf_t operator * (const glm::mat4& m, const wf::point_t& p);
+std::ostream& operator <<(std::ostream& out, const glm::mat4& mat);
+wf::pointf_t operator *(const glm::mat4& m, const wf::pointf_t& p);
+wf::pointf_t operator *(const glm::mat4& m, const wf::point_t& p);
 
 #endif

@@ -16,16 +16,24 @@ namespace wf
 class compositor_surface_t
 {
   public:
-    virtual ~compositor_surface_t() {}
+    virtual ~compositor_surface_t()
+    {}
 
-    virtual void on_pointer_enter(int x, int y) {}
-    virtual void on_pointer_leave() {}
-    virtual void on_pointer_motion(int x, int y) {}
-    virtual void on_pointer_button(uint32_t button, uint32_t state) {}
+    virtual void on_pointer_enter(int x, int y)
+    {}
+    virtual void on_pointer_leave()
+    {}
+    virtual void on_pointer_motion(int x, int y)
+    {}
+    virtual void on_pointer_button(uint32_t button, uint32_t state)
+    {}
 
-    virtual void on_touch_down(int x, int y) {}
-    virtual void on_touch_up() {}
-    virtual void on_touch_motion(int x, int y) {}
+    virtual void on_touch_down(int x, int y)
+    {}
+    virtual void on_touch_up()
+    {}
+    virtual void on_touch_motion(int x, int y)
+    {}
 };
 
 compositor_surface_t *compositor_surface_from_surface(

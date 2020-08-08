@@ -53,25 +53,29 @@ static int handle_config_updated(int fd, uint32_t mask, void *data)
     reload_config(fd);
 
     wf::get_core().emit_signal("reload-config", nullptr);
+
     return 0;
 }
 
 static void print_version()
 {
-     std::cout << WAYFIRE_VERSION << std::endl;
-     exit(0);
+    std::cout << WAYFIRE_VERSION << std::endl;
+    exit(0);
 }
+
 static void print_help()
 {
-     std::cout << "Wayfire " << WAYFIRE_VERSION                                           << std::endl;
-     std::cout << "Usage: wayfire [OPTION]...\n"                                          << std::endl;
-     std::cout << " -c,  --config            specify config file to use"                  << std::endl;
-     std::cout << " -h,  --help              print this help"                             << std::endl;
-     std::cout << " -d,  --debug             enable debug logging"                        << std::endl;
-     std::cout << " -D,  --damage-debug      enable additional debug for damaged regions" << std::endl;
-     std::cout << " -R,  --damage-rerender   rerender damaged regions"                    << std::endl;
-     std::cout << " -v,  --version           print version and exit"                      << std::endl;
-     exit(0);
+    std::cout << "Wayfire " << WAYFIRE_VERSION << std::endl;
+    std::cout << "Usage: wayfire [OPTION]...\n" << std::endl;
+    std::cout << " -c,  --config            specify config file to use" << std::endl;
+    std::cout << " -h,  --help              print this help" << std::endl;
+    std::cout << " -d,  --debug             enable debug logging" << std::endl;
+    std::cout <<
+        " -D,  --damage-debug      enable additional debug for damaged regions" <<
+        std::endl;
+    std::cout << " -R,  --damage-rerender   rerender damaged regions" << std::endl;
+    std::cout << " -v,  --version           print version and exit" << std::endl;
+    exit(0);
 }
 
 std::map<EGLint, EGLint> default_attribs = {
@@ -104,13 +108,14 @@ static std::vector<EGLint> generate_config_attribs(EGLint *renderer_attribs)
     }
 
     /* Then pack all values we want */
-    for (auto &p : default_attribs)
+    for (auto & p : default_attribs)
     {
         attribs.push_back(p.first);
         attribs.push_back(p.second);
     }
 
     attribs.push_back(EGL_NONE);
+
     return attribs;
 }
 
@@ -124,6 +129,7 @@ wlr_renderer *add_egl_depth_renderer(wlr_egl *egl, EGLenum platform,
     if (!r)
     {
         LOGE("Failed to initialize EGL");
+
         return NULL;
     }
 
@@ -132,50 +138,56 @@ wlr_renderer *add_egl_depth_renderer(wlr_egl *egl, EGLenum platform,
     {
         LOGE("Failed to create GLES2 renderer");
         wlr_egl_finish(egl);
+
         return NULL;
     }
 
     egl_for_renderer[renderer] = egl;
+
     return renderer;
 }
 
 namespace wf
 {
-    namespace _safe_list_detail
-    {
-        wl_event_loop* event_loop;
-        void idle_cleanup_func(void *data)
-        {
-            auto priv = reinterpret_cast<std::function<void()>*> (data);
-            (*priv)();
-        }
-    }
+namespace _safe_list_detail
+{
+wl_event_loop *event_loop;
+void idle_cleanup_func(void *data)
+{
+    auto priv = reinterpret_cast<std::function<void()>*>(data);
+    (*priv)();
+}
+}
 }
 
 static bool drop_permissions(void)
 {
-    if (getuid() != geteuid() || getgid() != getegid())
+    if ((getuid() != geteuid()) || (getgid() != getegid()))
     {
-        //Set the gid and uid in the correct order.
-        if (setgid(getgid()) != 0 || setuid(getuid()) != 0)
+        // Set the gid and uid in the correct order.
+        if ((setgid(getgid()) != 0) || (setuid(getuid()) != 0))
         {
             LOGE("Unable to drop root, refusing to start");
+
             return false;
         }
     }
-    if (setgid(0) != -1 || setuid(0) != -1)
+
+    if ((setgid(0) != -1) || (setuid(0) != -1))
     {
         LOGE("Unable to drop root (we shouldn't be able to "
-            "restore it after setuid), refusing to start");
+             "restore it after setuid), refusing to start");
+
         return false;
     }
+
     return true;
 }
 
 static wf::log::color_mode_t detect_color_mode()
 {
     return isatty(STDOUT_FILENO) ?
-        wf::log::LOG_COLOR_MODE_ON : wf::log::LOG_COLOR_MODE_OFF;
+           wf::log::LOG_COLOR_MODE_ON : wf::log::LOG_COLOR_MODE_OFF;
 }
 
 static void wlr_log_handler(wlr_log_importance level,
@@ -188,38 +200,45 @@ static void wlr_log_handler(wlr_log_importance level,
     wf::log::log_level_t wlevel;
     switch (level)
     {
-        case WLR_ERROR:
-            wlevel = wf::log::LOG_LEVEL_ERROR;
-            break;
-        case WLR_INFO:
-            wlevel = wf::log::LOG_LEVEL_INFO;
-            break;
-        case WLR_DEBUG:
-            wlevel = wf::log::LOG_LEVEL_DEBUG;
-            break;
-        default:
-            return;
+      case WLR_ERROR:
+        wlevel = wf::log::LOG_LEVEL_ERROR;
+        break;
+
+      case WLR_INFO:
+        wlevel = wf::log::LOG_LEVEL_INFO;
+        break;
+
+      case WLR_DEBUG:
+        wlevel = wf::log::LOG_LEVEL_DEBUG;
+        break;
+
+      default:
+        return;
     }
 
     wf::log::log_plain(wlevel, buffer);
 }
 
+#ifndef ASAN_ENABLED
 static void signal_handler(int signal)
 {
     std::string error;
     switch (signal)
     {
-        case SIGSEGV:
-            error = "Segmentation fault";
-            break;
-        case SIGFPE:
-            error = "Floating-point exception";
-            break;
-        case SIGABRT:
-            error = "Fatal error(SIGABRT)";
-            break;
-        default:
-            error = "Unknown";
+      case SIGSEGV:
+        error = "Segmentation fault";
+        break;
+
+      case SIGFPE:
+        error = "Floating-point exception";
+        break;
+
+      case SIGABRT:
+        error = "Fatal error(SIGABRT)";
+        break;
+
+      default:
+        error = "Unknown";
     }
 
     LOGE("Fatal error: ", error);
@@ -227,49 +246,63 @@ static void signal_handler(int signal)
     std::exit(0);
 }
 
+#endif
+
 int main(int argc, char *argv[])
 {
     config_dir = nonull(getenv("XDG_CONFIG_HOME"));
     if (!config_dir.compare("nil"))
+    {
         config_dir = std::string(nonull(getenv("HOME"))) + "/.config";
+    }
+
     config_file = config_dir + "/wayfire.ini";
 
     wf::log::log_level_t log_level = wf::log::LOG_LEVEL_INFO;
     struct option opts[] = {
-        { "config",          required_argument, NULL, 'c' },
-        { "debug",           no_argument,       NULL, 'd' },
-        { "damage-debug",    no_argument,       NULL, 'D' },
-        { "damage-rerender", no_argument,       NULL, 'R' },
-        { "help",            no_argument,       NULL, 'h' },
-        { "version",         no_argument,       NULL, 'v' },
-        { 0,                 0,                 NULL,  0  }
+        {
+            "config", required_argument, NULL, 'c'
+        },
+        {"debug", no_argument, NULL, 'd'},
+        {"damage-debug", no_argument, NULL, 'D'},
+        {"damage-rerender", no_argument, NULL, 'R'},
+        {"help", no_argument, NULL, 'h'},
+        {"version", no_argument, NULL, 'v'},
+        {0, 0, NULL, 0}
     };
 
     int c, i;
-    while((c = getopt_long(argc, argv, "c:dDhRv", opts, &i)) != -1)
+    while ((c = getopt_long(argc, argv, "c:dDhRv", opts, &i)) != -1)
     {
-        switch(c)
+        switch (c)
         {
-            case 'c':
-                config_file = optarg;
-                break;
-            case 'D':
-                runtime_config.damage_debug = true;
-                break;
-            case 'R':
-                runtime_config.no_damage_track = true;
-                break;
-            case 'h':
-                print_help();
-                break;
-            case 'd':
-                log_level = wf::log::LOG_LEVEL_DEBUG;
-                break;
-            case 'v':
-                print_version();
-                break;
-            default:
-                std::cerr << "Unrecognized command line argument " << optarg << "\n" << std::endl;
+          case 'c':
+            config_file = optarg;
+            break;
+
+          case 'D':
+            runtime_config.damage_debug = true;
+            break;
+
+          case 'R':
+            runtime_config.no_damage_track = true;
+            break;
+
+          case 'h':
+            print_help();
+            break;
+
+          case 'd':
+            log_level = wf::log::LOG_LEVEL_DEBUG;
+            break;
+
+          case 'v':
+            print_version();
+            break;
+
+          default:
+            std::cerr << "Unrecognized command line argument " << optarg << "\n" <<
+                std::endl;
         }
     }
 
@@ -306,12 +339,26 @@ int main(int argc, char *argv[])
     {
         wl_display_destroy_clients(core.display);
         wl_display_destroy(core.display);
+
         return EXIT_FAILURE;
     }
 
+    std::vector<std::string> xmldirs;
+    if (char *plugin_xml_path = getenv("WAYFIRE_PLUGIN_XML_PATH"))
+    {
+        std::stringstream ss(plugin_xml_path);
+        std::string entry;
+        while (std::getline(ss, entry, ':'))
+        {
+            xmldirs.push_back(entry);
+        }
+    }
+
+    xmldirs.push_back(PLUGIN_XML_DIR);
+
     LOGI("using config file: ", config_file.c_str());
     core.config = wf::config::build_configuration(
-        PLUGIN_XML_DIR, SYSCONFDIR "/wayfire/defaults.ini", config_file);
+        xmldirs, SYSCONFDIR "/wayfire/defaults.ini", config_file);
 
     int inotify_fd = inotify_init1(IN_CLOEXEC);
     reload_config(inotify_fd);
@@ -324,6 +371,7 @@ int main(int argc, char *argv[])
     if (!server_name)
     {
         LOGE("failed to create wayland, socket, exiting");
+
         return -1;
     }
 
@@ -335,6 +383,7 @@ int main(int argc, char *argv[])
         LOGE("failed to initialize backend, exiting");
         wlr_backend_destroy(core.backend);
         wl_display_destroy(core.display);
+
         return -1;
     }
 

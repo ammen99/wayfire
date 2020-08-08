@@ -10,7 +10,7 @@
 extern "C"
 {
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
-struct wlr_xcursor_image;
+    struct wlr_xcursor_image;
 }
 
 // for emit_map_*()
@@ -47,28 +47,31 @@ class view_interface_t::view_priv_impl
 
     /* For window restoration from maximized or fullscreen
      * -1 means that no such geometry has been stored. */
-    wf::geometry_t last_windowed_geometry = {0, 0, -1, -1};
+    wf::geometry_t last_windowed_geometry  = {0, 0, -1, -1};
     wf::geometry_t last_maximized_geometry = {0, 0, -1, -1};
 
     /* those two point to the same object. Two fields are used to avoid
      * constant casting to and from types */
     surface_interface_t *decoration = NULL;
-    wf::decorator_frame_t_t *frame = NULL;
+    wf::decorator_frame_t_t *frame  = NULL;
 
     uint32_t edges = 0;
-    int in_continuous_move = 0;
+    int in_continuous_move   = 0;
     int in_continuous_resize = 0;
-    int visibility_counter = 1;
+    int visibility_counter   = 1;
 
     wf::safe_list_t<std::shared_ptr<view_transform_block_t>> transforms;
 
     struct offscreen_buffer_t : public wf::framebuffer_t
     {
         wf::region_t cached_damage;
-        bool valid() { return this->fb != (uint32_t)-1; }
+        bool valid()
+        {
+            return this->fb != (uint32_t)-1;
+        }
     } offscreen_buffer;
 
-    wlr_box minimize_hint = { 0, 0, 0, 0 };
+    wlr_box minimize_hint = {0, 0, 0, 0};
 };
 
 /**
@@ -91,7 +94,8 @@ class wlr_view_t :
 {
   public:
     wlr_view_t();
-    virtual ~wlr_view_t() {};
+    virtual ~wlr_view_t()
+    {}
 
     /* Functions which are shell-independent */
     virtual void set_role(view_role_t new_role) override final;
@@ -129,7 +133,7 @@ class wlr_view_t :
      * transformer changes because the view is resized, we can't reliably
      * calculate the old view region to damage.
      */
-    wf::geometry_t last_bounding_box {0, 0, 0, 0};
+    wf::geometry_t last_bounding_box{0, 0, 0, 0};
 
     /**
      * Adjust the view position when resizing the view so that its apparent
@@ -138,7 +142,7 @@ class wlr_view_t :
     void adjust_anchored_edge(wf::dimensions_t new_size);
 
     /** The output geometry of the view */
-    wf::geometry_t geometry {100, 100, 0, 0};
+    wf::geometry_t geometry{100, 100, 0, 0};
 
     /** Set the view position and optionally send the geometry changed signal
      * @param old_geometry The geometry to report as previous, in case the
@@ -189,10 +193,19 @@ class wlr_view_t :
 
   public:
     /* Just pass to the default wlr surface implementation */
-    virtual bool is_mapped() const override { return _is_mapped(); }
-    virtual wf::dimensions_t get_size() const override { return _get_size(); }
+    virtual bool is_mapped() const override
+    {
+        return _is_mapped();
+    }
+
+    virtual wf::dimensions_t get_size() const override
+    {
+        return _get_size();
+    }
+
     virtual void simple_render(const wf::framebuffer_t& fb, int x, int y,
-        const wf::region_t& damage) override {
+        const wf::region_t& damage) override
+    {
         _simple_render(fb, x, y, damage);
     }
 };
@@ -200,8 +213,8 @@ class wlr_view_t :
 /** Emit the map signal for the given view */
 void emit_view_map_signal(wayfire_view view, bool has_position);
 
-wf::surface_interface_t* wf_surface_from_void(void *handle);
-wf::view_interface_t* wf_view_from_void(void *handle);
+wf::surface_interface_t *wf_surface_from_void(void *handle);
+wf::view_interface_t *wf_view_from_void(void *handle);
 
 void init_xdg_shell();
 void init_xwayland();

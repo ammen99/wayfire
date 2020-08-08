@@ -15,24 +15,23 @@ struct workspace_stream_t;
  * to the screen. Workspace streams however are not affected.
  *
  * @param fb Indicates the framebuffer that the custom renderer should draw to */
-using render_hook_t = std::function<void(const wf::framebuffer_t& fb)>;
+using render_hook_t = std::function<void (const wf::framebuffer_t& fb)>;
 
 /* Effect hooks provide the plugins with a way to execute custom code
  * at certain parts of the repaint cycle */
-using effect_hook_t = std::function<void()>;
+using effect_hook_t = std::function<void ()>;
 
 enum output_effect_type_t
 {
     /* Pre hooks are called immediately before repainting the output */
-    OUTPUT_EFFECT_PRE = 0,
+    OUTPUT_EFFECT_PRE     = 0,
     /* Overlay hooks are called right after repainting the output, but
      * before post hooks and before swapping buffers */
     OUTPUT_EFFECT_OVERLAY = 1,
     /* Post hooks are called after the buffers have been swapped */
-    OUTPUT_EFFECT_POST = 2,
-
+    OUTPUT_EFFECT_POST    = 2,
     /* Invalid type for a hook, used internally */
-    OUTPUT_EFFECT_TOTAL = 3,
+    OUTPUT_EFFECT_TOTAL   = 3,
 };
 
 /** Post hooks are called just before swapping buffers. In contrast to
@@ -48,7 +47,7 @@ enum output_effect_type_t
  *
  * @param destination Indicates where the processed image should be stored.
  */
-using post_hook_t = std::function<void(const wf::framebuffer_base_t& source,
+using post_hook_t = std::function<void (const wf::framebuffer_base_t& source,
     const wf::framebuffer_base_t& destination)>;
 
 /** Render manager
@@ -100,26 +99,26 @@ class render_manager : public wf::signal_provider_t
      * @param hook The hook callback
      * @param type The type of the effect hook
      */
-    void add_effect(effect_hook_t* hook, output_effect_type_t type);
+    void add_effect(effect_hook_t *hook, output_effect_type_t type);
     /**
      * Remove an added effect hook. No-op if the hook wasn't really added.
      * @param hook The hook callback to be removed
      */
-    void rem_effect(effect_hook_t* hook);
+    void rem_effect(effect_hook_t *hook);
 
     /**
      * Add a new post hook.
      *
      * @param hook The hook callack
      */
-    void add_post(post_hook_t* hook);
+    void add_post(post_hook_t *hook);
 
     /**
      * Remove a post hook. No-op if hook isn't active.
      *
      * @param hook The hook to be removed.
      */
-    void rem_post(post_hook_t* hook);
+    void rem_post(post_hook_t *hook);
 
     /**
      * @return The damaged region on the current output for the current
@@ -202,6 +201,7 @@ class render_manager : public wf::signal_provider_t
      * @param stream The stream to be stopped
      */
     void workspace_stream_stop(workspace_stream_t& stream);
+
   private:
     class impl;
     std::unique_ptr<impl> pimpl;

@@ -10,15 +10,16 @@
 
 namespace wf
 {
-
 /**
  * signal_data_t is the base class for all signal data.
  */
 struct signal_data_t
 {
-    virtual ~signal_data_t() {};
+    virtual ~signal_data_t()
+    {}
 };
-using signal_callback_t = std::function<void(signal_data_t*)>;
+
+using signal_callback_t = std::function<void (signal_data_t*)>;
 class signal_provider_t;
 
 /**
@@ -36,7 +37,13 @@ class signal_connection_t : public noncopyable_t
     ~signal_connection_t();
 
     /** Initialize a signal connection with the given callback */
-    signal_connection_t(signal_callback_t callback);
+    template<class T> using convertible_to_callback_t =
+        std::enable_if_t<std::is_constructible_v<wf::signal_callback_t, T>, void>;
+    template<class T, class U = convertible_to_callback_t<T>>
+    signal_connection_t(T callback) : signal_connection_t()
+    {
+        set_callback(callback);
+    }
 
     /** Set the signal callback or override the existing signal callback. */
     void set_callback(signal_callback_t callback);
@@ -49,17 +56,18 @@ class signal_connection_t : public noncopyable_t
 
     class impl;
     std::unique_ptr<impl> priv;
+
   private:
     /* Non-movable, non-copyable */
     signal_connection_t(signal_connection_t&& other) = delete;
-    signal_connection_t& operator= (signal_connection_t&& other) = delete;
+    signal_connection_t& operator =(signal_connection_t&& other) = delete;
 };
 
 class signal_provider_t
 {
   public:
     /** Register a connection to be called when the given signal is emitted. */
-    void connect_signal(std::string name, signal_connection_t* callback);
+    void connect_signal(std::string name, signal_connection_t *callback);
     /** Unregister a connection. */
     void disconnect_signal(signal_connection_t *callback);
 
@@ -67,12 +75,12 @@ class signal_provider_t
      * Deprecated.
      * Register a callback to be called whenever the given signal is emitted
      */
-    void connect_signal(std::string name, signal_callback_t* callback);
+    void connect_signal(std::string name, signal_callback_t *callback);
     /**
      * Deprecated.
      * Unregister a registered callback.
      */
-    void disconnect_signal(std::string name, signal_callback_t* callback);
+    void disconnect_signal(std::string name, signal_callback_t *callback);
 
     /** Emit the given signal. No type checking for data is required */
     void emit_signal(std::string name, signal_data_t *data);
@@ -92,8 +100,9 @@ class signal_provider_t
  */
 class custom_data_t
 {
-    public:
-    virtual ~custom_data_t() {};
+  public:
+    virtual ~custom_data_t()
+    {}
 };
 
 /**
@@ -116,35 +125,42 @@ class object_base_t : public signal_provider_t
      * REQUIRES a default constructor
      * If your type doesn't have one, use store_data + get_data
      */
-    template<class T> nonstd::observer_ptr<T> get_data_safe(
+    template<class T>
+    nonstd::observer_ptr<T> get_data_safe(
         std::string name = typeid(T).name())
     {
         auto data = get_data<T>(name);
-        if (data) {
+        if (data)
+        {
             return data;
-        } else {
+        } else
+        {
             store_data<T>(std::make_unique<T>(), name);
+
             return get_data<T>(name);
         }
     }
 
     /* Retrieve custom data stored with the given name. If no such
      * data exists, NULL is returned */
-    template<class T> nonstd::observer_ptr<T> get_data(
+    template<class T>
+    nonstd::observer_ptr<T> get_data(
         std::string name = typeid(T).name())
     {
-        return nonstd::make_observer(dynamic_cast<T*> (_fetch_data(name)));
+        return nonstd::make_observer(dynamic_cast<T*>(_fetch_data(name)));
     }
 
     /* Assigns the given data to the given name */
-    template<class T> void store_data(std::unique_ptr<T> stored_data,
+    template<class T>
+    void store_data(std::unique_ptr<T> stored_data,
         std::string name = typeid(T).name())
     {
         _store_data(std::move(stored_data), name);
     }
 
     /* Returns true if there is saved data under the given name */
-    template<class T> bool has_data()
+    template<class T>
+    bool has_data()
     {
         return has_data(typeid(T).name());
     }
@@ -156,20 +172,25 @@ class object_base_t : public signal_provider_t
     void erase_data(std::string name);
 
     /** Remove the saved data for the type T */
-    template<class T> void erase_data()
+    template<class T>
+    void erase_data()
     {
         erase_data(typeid(T).name());
     }
 
     /* Erase the saved data from the store and return the pointer */
-    template<class T> std::unique_ptr<T> release_data(
+    template<class T>
+    std::unique_ptr<T> release_data(
         std::string name = typeid(T).name())
     {
         if (!has_data(name))
+        {
             return {nullptr};
+        }
 
         auto stored = _fetch_erase(name);
-        return std::unique_ptr<T> (dynamic_cast<T*>(stored));
+
+        return std::unique_ptr<T>(dynamic_cast<T*>(stored));
     }
 
     virtual ~object_base_t();
@@ -179,6 +200,7 @@ class object_base_t : public signal_provider_t
 
     /** Clear all stored data. */
     void _clear_data();
+
   private:
     /** Just get the data under the given name, or nullptr, if it does not exist */
     custom_data_t *_fetch_data(std::string name);

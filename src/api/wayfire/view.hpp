@@ -10,7 +10,7 @@
 
 extern "C"
 {
-struct wlr_surface;
+    struct wlr_surface;
 #include <wlr/util/edges.h>
 }
 
@@ -102,7 +102,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      * If the new output is different from the previous, the view will be
      * removed from the layer it was on the old output.
      */
-    virtual void set_output(wf::output_t* new_output) override;
+    virtual void set_output(wf::output_t *new_output) override;
 
     /** Move the view to the given output-local coordinates.  */
     virtual void move(int x, int y) = 0;
@@ -189,7 +189,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      * @return The point in surface-local coordinates
      */
     virtual wf::pointf_t global_to_local_point(const wf::pointf_t& arg,
-        surface_interface_t* surface);
+        surface_interface_t *surface);
 
     /**
      * @return the wlr_surface which should receive focus when focusing this
@@ -265,9 +265,16 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     virtual void damage();
 
     /** @return the app-id of the view */
-    virtual std::string get_app_id() { return ""; }
+    virtual std::string get_app_id()
+    {
+        return "";
+    }
+
     /** @return the title of the view */
-    virtual std::string get_title() { return ""; }
+    virtual std::string get_title()
+    {
+        return "";
+    }
 
     /**
      * Get the minimize target for this view, i.e when displaying a minimize
@@ -279,7 +286,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
 
     /**
      * Sets the minimize target for this view, i.e when displaying a minimize
-     * animation, where the animation's target should be. 
+     * animation, where the animation's target should be.
      * @param hint The new minimize target rectangle, in output-local coordinates.
      */
     virtual void set_minimize_hint(wlr_box hint);
@@ -298,6 +305,11 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      * hold (excluding the default one)
      */
     virtual void set_decoration(surface_interface_t *frame);
+
+    /**
+     * Get the decoration surface for a view. May be nullptr.
+     */
+    virtual nonstd::observer_ptr<surface_interface_t> get_decoration();
 
     /*
      *                        View transforms
@@ -357,7 +369,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
 
     /** @return a bounding box of the given box after applying the
      * transformers of the view */
-    wlr_box transform_region(const wlr_box &box);
+    wlr_box transform_region(const wlr_box & box);
 
     /** @return a bounding box of the given box after applying the transformers
      * of the view up to the given transformer */
@@ -423,6 +435,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
 
     class view_priv_impl;
     std::unique_ptr<view_priv_impl> view_impl;
+
   protected:
     view_interface_t();
 
@@ -451,7 +464,10 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     virtual void deinitialize();
 
     /** get_offset() is not valid for views */
-    virtual wf::point_t get_offset() override { return {0, 0}; }
+    virtual wf::point_t get_offset() override
+    {
+        return {0, 0};
+    }
 
     /** Damage the given box, in surface-local coordinates */
     virtual void damage_surface_box(const wlr_box& box) override;

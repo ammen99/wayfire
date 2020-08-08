@@ -8,7 +8,7 @@ extern "C"
 #include <wlr/types/wlr_xcursor_manager.h>
 }
 
-#define BUTTON_ASPECT_RATIO (25.0/16.0)
+#define BUTTON_ASPECT_RATIO (25.0 / 16.0)
 #define BUTTON_HEIGHT_PC 0.8
 
 namespace wf
@@ -20,7 +20,7 @@ namespace decor
  */
 decoration_area_t::decoration_area_t(decoration_area_type_t type, wf::geometry_t g)
 {
-    this->type = type;
+    this->type     = type;
     this->geometry = g;
 
     assert(type != DECORATION_AREA_BUTTON);
@@ -33,10 +33,10 @@ decoration_area_t::decoration_area_t(wf::geometry_t g,
     std::function<void(wlr_box)> damage_callback,
     const decoration_theme_t& theme)
 {
-    this->type  = DECORATION_AREA_BUTTON;
+    this->type     = DECORATION_AREA_BUTTON;
     this->geometry = g;
 
-    this->button = std::make_unique<button_t> (theme,
+    this->button = std::make_unique<button_t>(theme,
         std::bind(damage_callback, g));
 }
 
@@ -48,6 +48,7 @@ wf::geometry_t decoration_area_t::get_geometry() const
 button_t& decoration_area_t::as_button()
 {
     assert(button);
+
     return *button;
 }
 
@@ -66,7 +67,7 @@ decoration_layout_t::decoration_layout_t(const decoration_theme_t& th,
     button_padding((titlebar_size - button_height) / 2),
     theme(th),
     damage_callback(callback)
-{ }
+{}
 
 wf::geometry_t decoration_layout_t::create_buttons(int width, int)
 {
@@ -76,11 +77,19 @@ wf::geometry_t decoration_layout_t::create_buttons(int width, int)
     while (stream >> button_name)
     {
         if (button_name == "minimize")
+        {
             buttons.push_back(BUTTON_MINIMIZE);
+        }
+
         if (button_name == "maximize")
+        {
             buttons.push_back(BUTTON_TOGGLE_MAXIMIZE);
+        }
+
         if (button_name == "close")
+        {
             buttons.push_back(BUTTON_CLOSE);
+        }
     }
 
     int per_button = 2 * button_padding + button_width;
@@ -95,11 +104,12 @@ wf::geometry_t decoration_layout_t::create_buttons(int width, int)
     {
         button_geometry.x -= per_button;
         this->layout_areas.push_back(std::make_unique<decoration_area_t>(
-                button_geometry, damage_callback, theme));
+            button_geometry, damage_callback, theme));
         this->layout_areas.back()->as_button().set_button_type(type);
     }
 
     int total_width = -button_padding + buttons.size() * per_button;
+
     return {
         button_geometry.x, border_size,
         total_width, titlebar_size
@@ -115,8 +125,8 @@ void decoration_layout_t::resize(int width, int height)
         auto button_geometry_expanded = create_buttons(width, height);
 
         /* Padding around the button, allows move */
-        this->layout_areas.push_back(std::make_unique<decoration_area_t> (
-                DECORATION_AREA_MOVE, button_geometry_expanded));
+        this->layout_areas.push_back(std::make_unique<decoration_area_t>(
+            DECORATION_AREA_MOVE, button_geometry_expanded));
 
         /* Titlebar dragging area (for move) */
         wf::geometry_t title_geometry = {
@@ -128,42 +138,44 @@ void decoration_layout_t::resize(int width, int height)
             titlebar_size,
         };
         this->layout_areas.push_back(std::make_unique<decoration_area_t>(
-                DECORATION_AREA_TITLE, title_geometry));
+            DECORATION_AREA_TITLE, title_geometry));
     }
 
     /* Resizing edges - left */
-    wf::geometry_t border_geometry = { 0, 0, border_size, height };
-    this->layout_areas.push_back(std::make_unique<decoration_area_t> (
-            DECORATION_AREA_RESIZE_LEFT, border_geometry));
+    wf::geometry_t border_geometry = {0, 0, border_size, height};
+    this->layout_areas.push_back(std::make_unique<decoration_area_t>(
+        DECORATION_AREA_RESIZE_LEFT, border_geometry));
 
     /* Resizing edges - right */
-    border_geometry = { width - border_size, 0, border_size, height };
-    this->layout_areas.push_back(std::make_unique<decoration_area_t> (
-            DECORATION_AREA_RESIZE_RIGHT, border_geometry));
+    border_geometry = {width - border_size, 0, border_size, height};
+    this->layout_areas.push_back(std::make_unique<decoration_area_t>(
+        DECORATION_AREA_RESIZE_RIGHT, border_geometry));
 
     /* Resizing edges - top */
-    border_geometry = { 0, 0, width, border_size };
-    this->layout_areas.push_back(std::make_unique<decoration_area_t> (
-            DECORATION_AREA_RESIZE_TOP, border_geometry));
+    border_geometry = {0, 0, width, border_size};
+    this->layout_areas.push_back(std::make_unique<decoration_area_t>(
+        DECORATION_AREA_RESIZE_TOP, border_geometry));
 
     /* Resizing edges - bottom */
-    border_geometry = { 0, height - border_size, width, border_size };
-    this->layout_areas.push_back(std::make_unique<decoration_area_t> (
-            DECORATION_AREA_RESIZE_BOTTOM, border_geometry));
+    border_geometry = {0, height - border_size, width, border_size};
+    this->layout_areas.push_back(std::make_unique<decoration_area_t>(
+        DECORATION_AREA_RESIZE_BOTTOM, border_geometry));
 }
 
 /**
  * @return The decoration areas which need to be rendered, in top to bottom
  *  order.
  */
-std::vector<nonstd::observer_ptr<decoration_area_t>>
-decoration_layout_t::get_renderable_areas()
+std::vector<nonstd::observer_ptr<decoration_area_t>> decoration_layout_t::
+get_renderable_areas()
 {
     std::vector<nonstd::observer_ptr<decoration_area_t>> renderable;
     for (auto& area : layout_areas)
     {
         if (area->get_type() & DECORATION_AREA_RENDERABLE_BIT)
+        {
             renderable.push_back({area});
+        }
     }
 
     return renderable;
@@ -173,7 +185,9 @@ wf::region_t decoration_layout_t::calculate_region() const
 {
     wf::region_t r{};
     for (auto& area : layout_areas)
+    {
         r |= area->get_geometry();
+    }
 
     return r;
 }
@@ -181,20 +195,24 @@ wf::region_t decoration_layout_t::calculate_region() const
 void decoration_layout_t::unset_hover(wf::point_t position)
 {
     auto area = find_area_at(position);
-    if (area && area->get_type() == DECORATION_AREA_BUTTON)
+    if (area && (area->get_type() == DECORATION_AREA_BUTTON))
+    {
         area->as_button().set_hover(false);
+    }
 }
 
 /** Handle motion event to (x, y) relative to the decoration */
 void decoration_layout_t::handle_motion(int x, int y)
 {
     auto previous_area = find_area_at(current_input);
-    auto current_area = find_area_at({x, y});
+    auto current_area  = find_area_at({x, y});
     if (previous_area != current_area)
     {
         unset_hover(current_input);
-        if (current_area && current_area->get_type() == DECORATION_AREA_BUTTON)
+        if (current_area && (current_area->get_type() == DECORATION_AREA_BUTTON))
+        {
             current_area->as_button().set_hover(true);
+        }
     }
 
     this->current_input = {x, y};
@@ -208,44 +226,54 @@ void decoration_layout_t::handle_motion(int x, int y)
  * @return The action which needs to be carried out in response to this
  *  event.
  * */
-decoration_layout_t::action_response_t
-decoration_layout_t::handle_press_event(bool pressed)
+decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
+    bool pressed)
 {
     if (pressed)
     {
         auto area = find_area_at(current_input);
         if (area && (area->get_type() & DECORATION_AREA_MOVE_BIT))
+        {
             return {DECORATION_ACTION_MOVE, 0};
+        }
+
         if (area && (area->get_type() & DECORATION_AREA_RESIZE_BIT))
+        {
             return {DECORATION_ACTION_RESIZE, calculate_resize_edges()};
+        }
 
-        if (area && area->get_type() == DECORATION_AREA_BUTTON)
+        if (area && (area->get_type() == DECORATION_AREA_BUTTON))
+        {
             area->as_button().set_pressed(true);
+        }
 
-        is_grabbed = true;
+        is_grabbed  = true;
         grab_origin = current_input;
     }
 
     if (!pressed && is_grabbed)
     {
         auto begin_area = find_area_at(grab_origin);
-        auto end_area = find_area_at(current_input);
+        auto end_area   = find_area_at(current_input);
 
-        if (begin_area && begin_area->get_type() == DECORATION_AREA_BUTTON)
+        if (begin_area && (begin_area->get_type() == DECORATION_AREA_BUTTON))
         {
             begin_area->as_button().set_pressed(false);
-            if (end_area && begin_area == end_area)
+            if (end_area && (begin_area == end_area))
             {
                 switch (begin_area->as_button().get_button_type())
                 {
-                    case BUTTON_CLOSE:
-                        return {DECORATION_ACTION_CLOSE, 0};
-                    case BUTTON_TOGGLE_MAXIMIZE:
-                        return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
-                    case BUTTON_MINIMIZE:
-                        return {DECORATION_ACTION_MINIMIZE, 0};
-                    default:
-                        break;
+                  case BUTTON_CLOSE:
+                    return {DECORATION_ACTION_CLOSE, 0};
+
+                  case BUTTON_TOGGLE_MAXIMIZE:
+                    return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
+
+                  case BUTTON_MINIMIZE:
+                    return {DECORATION_ACTION_MINIMIZE, 0};
+
+                  default:
+                    break;
                 }
             }
         }
@@ -258,13 +286,15 @@ decoration_layout_t::handle_press_event(bool pressed)
  * Find the layout area at the given coordinates, if any
  * @return The layout area or null on failure
  */
-nonstd::observer_ptr<decoration_area_t>
-decoration_layout_t::find_area_at(wf::point_t point)
+nonstd::observer_ptr<decoration_area_t> decoration_layout_t::find_area_at(
+    wf::point_t point)
 {
     for (auto& area : this->layout_areas)
     {
         if (area->get_geometry() & point)
+        {
             return {area};
+        }
     }
 
     return nullptr;
@@ -279,7 +309,9 @@ uint32_t decoration_layout_t::calculate_resize_edges() const
         if (area->get_geometry() & this->current_input)
         {
             if (area->get_type() & DECORATION_AREA_RESIZE_BIT)
+            {
                 edges |= (area->get_type() & ~DECORATION_AREA_RESIZE_BIT);
+            }
         }
     }
 
@@ -289,9 +321,9 @@ uint32_t decoration_layout_t::calculate_resize_edges() const
 /** Update the cursor based on @current_input */
 void decoration_layout_t::update_cursor() const
 {
-    uint32_t edges = calculate_resize_edges();
+    uint32_t edges   = calculate_resize_edges();
     auto cursor_name = edges > 0 ?
-        wlr_xcursor_get_resize_name((wlr_edges) edges) : "default";
+        wlr_xcursor_get_resize_name((wlr_edges)edges) : "default";
     wf::get_core().set_cursor(cursor_name);
 }
 
@@ -301,12 +333,13 @@ void decoration_layout_t::handle_focus_lost()
     {
         this->is_grabbed = false;
         auto area = find_area_at(grab_origin);
-        if (area && area->get_type() == DECORATION_AREA_BUTTON)
+        if (area && (area->get_type() == DECORATION_AREA_BUTTON))
+        {
             area->as_button().set_pressed(false);
+        }
     }
 
     this->unset_hover(current_input);
 }
-
 }
 }

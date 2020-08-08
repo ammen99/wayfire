@@ -27,7 +27,7 @@ class preview_indication_view_t : public wf::color_rect_view_t
     wf::output_t *output;
 
     /* Default colors */
-    const wf::color_t base_color = {0.5, 0.5, 1, 0.5};
+    const wf::color_t base_color  = {0.5, 0.5, 1, 0.5};
     const wf::color_t base_border = {0.25, 0.25, 0.5, 0.8};
     const int base_border_w = 3;
 
@@ -42,8 +42,8 @@ class preview_indication_view_t : public wf::color_rect_view_t
      * @param start_geometry The geometry the preview should have, relative to
      *                       the output
      */
-    preview_indication_view_t(wf::output_t *output, wf::geometry_t start_geometry)
-        : wf::color_rect_view_t(), animation(wf::create_option<int>(200))
+    preview_indication_view_t(wf::output_t *output, wf::geometry_t start_geometry) :
+        wf::color_rect_view_t(), animation(wf::create_option<int>(200))
     {
         this->output = output;
         set_output(output);
@@ -67,9 +67,9 @@ class preview_indication_view_t : public wf::color_rect_view_t
     }
 
     /** A convenience wrapper around the full version */
-    preview_indication_view_t(wf::output_t *output, wf::point_t start)
-        :preview_indication_view_t(output, wf::geometry_t{start.x, start.y, 1, 1})
-    { }
+    preview_indication_view_t(wf::output_t *output, wf::point_t start) :
+        preview_indication_view_t(output, wf::geometry_t{start.x, start.y, 1, 1})
+    {}
 
     /**
      * Animate the preview to the given target geometry and alpha.
@@ -109,7 +109,9 @@ class preview_indication_view_t : public wf::color_rect_view_t
     {
         wf::geometry_t current = animation;
         if (current != geometry)
+        {
             set_geometry(current);
+        }
 
         double alpha = animation.alpha;
         if (base_color.a * alpha != _color.a)
@@ -123,7 +125,9 @@ class preview_indication_view_t : public wf::color_rect_view_t
 
         /* The end of unmap animation, just exit */
         if (!animation.running() && should_close)
+        {
             close();
+        }
     }
 };
 }

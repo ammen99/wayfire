@@ -3,7 +3,6 @@
 #include <wayfire/core.hpp>
 #include <wayfire/view.hpp>
 #include <wayfire/output-layout.hpp>
-#include <linux/input-event-codes.h>
 
 class wayfire_output_manager : public wf::plugin_interface_t
 {
@@ -16,14 +15,16 @@ class wayfire_output_manager : public wf::plugin_interface_t
          * so we postpone the switch */
         auto next =
             wf::get_core().output_layout->get_next_output(output);
-        idle_next_output.run_once([=] () {
+        idle_next_output.run_once([=] ()
+        {
             wf::get_core().focus_output(next);
         });
 
         return true;
     };
 
-    wf::activator_callback switch_output_with_window = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback switch_output_with_window =
+        [=] (wf::activator_source_t, uint32_t)
     {
         auto next =
             wf::get_core().output_layout->get_next_output(output);
@@ -32,16 +33,19 @@ class wayfire_output_manager : public wf::plugin_interface_t
         if (!view)
         {
             switch_output(wf::ACTIVATOR_SOURCE_KEYBINDING, 0);
+
             return true;
         }
 
-        wf::get_core().move_view_to_output(view, next);
-        idle_next_output.run_once([=] () {
+        wf::get_core().move_view_to_output(view, next, true);
+        idle_next_output.run_once([=] ()
+        {
             wf::get_core().focus_output(next);
         });
 
         return true;
     };
+
   public:
     void init()
     {

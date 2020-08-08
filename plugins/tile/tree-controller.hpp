@@ -50,14 +50,16 @@ class tile_controller_t
     virtual ~tile_controller_t() = default;
 
     /** Called when the input is moved */
-    virtual void input_motion(wf::point_t input) {}
+    virtual void input_motion(wf::point_t input)
+    {}
 
     /**
      * Called when the input is released or the controller should stop
      * Note that a controller may be deleted without receiving input_released(),
      * in which case it should simply stop operation.
      */
-    virtual void input_released() {}
+    virtual void input_released()
+    {}
 };
 
 /**
@@ -84,7 +86,7 @@ class move_view_controller_t : public tile_controller_t
   protected:
     std::unique_ptr<tree_node_t>& root;
     nonstd::observer_ptr<view_node_t> grabbed_view;
-    wf::output_t* output;
+    wf::output_t *output;
     wf::point_t current_input;
 
     nonstd::observer_ptr<wf::preview_indication_view_t> preview;
@@ -105,7 +107,7 @@ class move_view_controller_t : public tile_controller_t
 class resize_view_controller_t : public tile_controller_t
 {
   public:
-   /**
+    /**
      * Start the drag-to-resize action.
      *
      * @param root The root of the tiling tree which is currently being
@@ -137,7 +139,7 @@ class resize_view_controller_t : public tile_controller_t
      * The first one is always to the left/above the second one.
      */
     using resizing_pair_t = std::pair<nonstd::observer_ptr<tree_node_t>,
-          nonstd::observer_ptr<tree_node_t>>;
+        nonstd::observer_ptr<tree_node_t>>;
 
     /** The horizontally-aligned pair we're resizing */
     resizing_pair_t horizontal_pair;
@@ -165,10 +167,8 @@ class resize_view_controller_t : public tile_controller_t
     void adjust_geometry(int32_t& x1, int32_t& len1,
         int32_t& x2, int32_t& len2, int32_t delta);
 };
-
 }
 }
 
 
 #endif /* end of include guard: WF_TILE_PLUGIN_TREE_CONTROLLER_HPP */
-

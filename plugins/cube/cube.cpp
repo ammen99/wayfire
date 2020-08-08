@@ -22,7 +22,7 @@
 #define ZOOM_MIN 0.1f
 
 #ifdef USE_GLES32
-#include <GLES3/gl32.h>
+ #include <GLES3/gl32.h>
 #endif
 
 #include "shaders.tpp"
@@ -39,7 +39,8 @@ class wayfire_cube : public wf::plugin_interface_t
 
     std::vector<wf::workspace_stream_t> streams;
 
-    wf::option_wrapper_t<double> XVelocity{"cube/speed_spin_horiz"}, YVelocity{"cube/speed_spin_vert"}, ZVelocity{"cube/speed_zoom"};
+    wf::option_wrapper_t<double> XVelocity{"cube/speed_spin_horiz"},
+    YVelocity{"cube/speed_spin_vert"}, ZVelocity{"cube/speed_zoom"};
     wf::option_wrapper_t<double> zoom_opt{"cube/zoom"};
 
     /* the Z camera distance so that (-1, 1) is mapped to the whole screen
@@ -64,27 +65,32 @@ class wayfire_cube : public wf::plugin_interface_t
     void reload_background()
     {
         if (!last_background_mode.compare(background_mode))
+        {
             return;
+        }
 
         last_background_mode = background_mode;
 
         if (last_background_mode == "simple")
-            background = std::make_unique<wf_cube_simple_background> ();
-        else if (last_background_mode == "skydome")
-            background = std::make_unique<wf_cube_background_skydome> (output);
-        else if (last_background_mode == "cubemap")
-            background = std::make_unique<wf_cube_background_cubemap> ();
-        else
+        {
+            background = std::make_unique<wf_cube_simple_background>();
+        } else if (last_background_mode == "skydome")
+        {
+            background = std::make_unique<wf_cube_background_skydome>(output);
+        } else if (last_background_mode == "cubemap")
+        {
+            background = std::make_unique<wf_cube_background_cubemap>();
+        } else
         {
             LOGE("cube: Unrecognized background mode %s. Using default \"simple\"",
                 last_background_mode.c_str());
-            background = std::make_unique<wf_cube_simple_background> ();
+            background = std::make_unique<wf_cube_simple_background>();
         }
     }
 
     bool tessellation_support;
 
-    public:
+  public:
     void init() override
     {
         grab_interface->name = "cube";
@@ -100,15 +106,18 @@ class wayfire_cube : public wf::plugin_interface_t
 
         reload_background();
 
-        activate_binding = [=] (uint32_t, int, int) {
+        activate_binding = [=] (uint32_t, int, int)
+        {
             return input_grabbed();
         };
 
-        rotate_left = [=] (wf::activator_source_t, uint32_t) {
+        rotate_left = [=] (wf::activator_source_t, uint32_t)
+        {
             return move_vp(-1);
         };
 
-        rotate_right = [=] (wf::activator_source_t, uint32_t) {
+        rotate_right = [=] (wf::activator_source_t, uint32_t)
+        {
             return move_vp(1);
         };
 
@@ -120,27 +129,34 @@ class wayfire_cube : public wf::plugin_interface_t
         grab_interface->callbacks.pointer.button = [=] (uint32_t b, uint32_t s)
         {
             if (s == WL_POINTER_BUTTON_STATE_RELEASED)
+            {
                 input_ungrabbed();
+            }
         };
 
-        grab_interface->callbacks.pointer.relative_motion = [=] (wlr_event_pointer_motion* ev)
+        grab_interface->callbacks.pointer.relative_motion =
+            [=] (wlr_event_pointer_motion *ev)
         {
             pointer_moved(ev);
         };
 
         grab_interface->callbacks.pointer.axis = [=] (
-                wlr_event_pointer_axis *ev) {
+            wlr_event_pointer_axis *ev)
+        {
             if (ev->orientation == WLR_AXIS_ORIENTATION_VERTICAL)
+            {
                 pointer_scrolled(ev->delta);
+            }
         };
 
-        grab_interface->callbacks.cancel = [=] () {
+        grab_interface->callbacks.cancel = [=] ()
+        {
             deactivate();
         };
 
         auto wsize = output->workspace->get_workspace_grid_size();
         animation.side_angle = 2 * M_PI / float(wsize.width);
-        identity_z_offset = 0.5 / std::tan(animation.side_angle / 2);
+        identity_z_offset    = 0.5 / std::tan(animation.side_angle / 2);
         animation.cube_animation.offset_z.set(identity_z_offset + Z_OFFSET_NEAR,
             identity_z_offset + Z_OFFSET_NEAR);
 
@@ -153,19 +169,22 @@ class wayfire_cube : public wf::plugin_interface_t
 
     void load_program()
     {
-
 #ifdef USE_GLES32
-        std::string ext_string(reinterpret_cast<const char*> (glGetString(GL_EXTENSIONS)));
+        std::string ext_string(reinterpret_cast<const char*>(glGetString(
+            GL_EXTENSIONS)));
         tessellation_support =
-            ext_string.find(std::string("GL_EXT_tessellation_shader")) != std::string::npos;
+            ext_string.find(std::string("GL_EXT_tessellation_shader")) !=
+            std::string::npos;
 #else
         tessellation_support = false;
 #endif
 
-        if (!tessellation_support) {
+        if (!tessellation_support)
+        {
             program.set_simple(OpenGL::compile_program(
                 cube_vertex_2_0, cube_fragment_2_0));
-        } else {
+        } else
+        {
 #ifdef USE_GLES32
             auto id = GL_CALL(glCreateProgram());
             GLuint vss, fss, tcs, tes, gss;
@@ -206,16 +225,20 @@ class wayfire_cube : public wf::plugin_interface_t
         d->carried_out = true;
     };
 
-    void rotate_and_zoom_cube(double angle, double zoom, double ease, bool last_frame)
+    void rotate_and_zoom_cube(double angle, double zoom, double ease,
+        bool last_frame)
     {
         if (last_frame)
         {
             deactivate();
+
             return;
         }
 
         if (!activate())
+        {
             return;
+        }
 
         float offset_z = identity_z_offset + Z_OFFSET_NEAR;
 
@@ -235,20 +258,26 @@ class wayfire_cube : public wf::plugin_interface_t
     bool activate()
     {
         if (output->is_plugin_active(grab_interface->name))
+        {
             return true;
+        }
 
         if (!output->activate_plugin(grab_interface))
+        {
             return false;
+        }
 
         output->render->set_renderer(renderer);
         output->render->schedule_redraw();
         grab_interface->grab();
+
         return true;
     }
 
     int calculate_viewport_dx_from_rotation()
     {
         float dx = -animation.cube_animation.rotation / animation.side_angle;
+
         return std::floor(dx + 0.5);
     }
 
@@ -256,7 +285,9 @@ class wayfire_cube : public wf::plugin_interface_t
     void deactivate()
     {
         if (!output->is_plugin_active(grab_interface->name))
+        {
             return;
+        }
 
         output->render->set_renderer(nullptr);
 
@@ -265,10 +296,10 @@ class wayfire_cube : public wf::plugin_interface_t
 
         /* Figure out how much we have rotated and switch workspace */
         int size = streams.size();
-        int dvx = calculate_viewport_dx_from_rotation();
+        int dvx  = calculate_viewport_dx_from_rotation();
 
         auto cws = output->workspace->get_current_workspace();
-        int nvx = (cws.x + (dvx % size) + size) % size;
+        int nvx  = (cws.x + (dvx % size) + size) % size;
         output->workspace->set_workspace({nvx, cws.y});
 
         /* We are finished with rotation, make sure the next time cube is used
@@ -276,7 +307,9 @@ class wayfire_cube : public wf::plugin_interface_t
         animation.cube_animation.rotation.set(0, 0);
 
         for (auto& stream : streams)
+        {
             output->render->workspace_stream_stop(stream);
+        }
     }
 
     /* Sets attributes target to such values that the cube effect isn't visible,
@@ -287,7 +320,8 @@ class wayfire_cube : public wf::plugin_interface_t
     void reset_attribs()
     {
         animation.cube_animation.zoom.restart_with_end(1.0);
-        animation.cube_animation.offset_z.restart_with_end(identity_z_offset + Z_OFFSET_NEAR);
+        animation.cube_animation.offset_z.restart_with_end(
+            identity_z_offset + Z_OFFSET_NEAR);
         animation.cube_animation.offset_y.restart_with_end(0);
         animation.cube_animation.ease_deformation.restart_with_end(0);
     }
@@ -296,15 +330,19 @@ class wayfire_cube : public wf::plugin_interface_t
     bool move_vp(int dir)
     {
         if (!activate())
+        {
             return false;
+        }
 
-        /* After the rotation is done, we want to exit cube and focus the target workspace */
+        /* After the rotation is done, we want to exit cube and focus the target
+         * workspace */
         animation.in_exit = true;
 
         /* Set up rotation target to the next workspace in the given direction,
          * and reset other attribs */
         reset_attribs();
-        animation.cube_animation.rotation.restart_with_end(animation.cube_animation.rotation.end - dir * animation.side_angle);
+        animation.cube_animation.rotation.restart_with_end(
+            animation.cube_animation.rotation.end - dir * animation.side_angle);
 
         animation.cube_animation.start();
         update_view_matrix();
@@ -317,23 +355,27 @@ class wayfire_cube : public wf::plugin_interface_t
     bool input_grabbed()
     {
         if (!activate())
+        {
             return false;
+        }
 
         saved_pointer_position = wf::get_core().get_cursor_position();
         wf::get_core().hide_cursor();
 
-        /* Rotations, offset_y and zoom stay as they are now, as they have been grabbed.
+        /* Rotations, offset_y and zoom stay as they are now, as they have been
+         * grabbed.
          * offset_z changes to the default one.
          *
          * We also need to make sure the cube gets deformed */
         animation.in_exit = false;
         float current_rotation = animation.cube_animation.rotation;
         float current_offset_y = animation.cube_animation.offset_y;
-        float current_zoom = animation.cube_animation.zoom;
+        float current_zoom     = animation.cube_animation.zoom;
 
         animation.cube_animation.rotation.set(current_rotation, current_rotation);
         animation.cube_animation.offset_y.set(current_offset_y, current_offset_y);
-        animation.cube_animation.offset_z.restart_with_end(zoom_opt + identity_z_offset + Z_OFFSET_NEAR);
+        animation.cube_animation.offset_z.restart_with_end(
+            zoom_opt + identity_z_offset + Z_OFFSET_NEAR);
 
         animation.cube_animation.zoom.set(current_zoom, current_zoom);
         animation.cube_animation.ease_deformation.restart_with_end(1);
@@ -357,8 +399,10 @@ class wayfire_cube : public wf::plugin_interface_t
         /* Rotate cube so that selected workspace aligns with the output */
         float current_rotation = animation.cube_animation.rotation;
         int dvx = calculate_viewport_dx_from_rotation();
-        animation.cube_animation.rotation.set(current_rotation, -dvx * animation.side_angle);
-        /* And reset other attributes, again to align the workspace with the output */
+        animation.cube_animation.rotation.set(current_rotation,
+            -dvx * animation.side_angle);
+        /* And reset other attributes, again to align the workspace with the output
+         * */
         reset_attribs();
 
         animation.cube_animation.start();
@@ -374,7 +418,7 @@ class wayfire_cube : public wf::plugin_interface_t
             glm::vec3(0.f, 0.f, -animation.cube_animation.offset_z));
 
         auto rotation = glm::rotate(glm::mat4(1.0),
-            (float) animation.cube_animation.offset_y,
+            (float)animation.cube_animation.offset_y,
             glm::vec3(1., 0., 0.));
 
         auto view = glm::lookAt(glm::vec3(0., 0., 0.),
@@ -387,7 +431,7 @@ class wayfire_cube : public wf::plugin_interface_t
     void update_workspace_streams()
     {
         auto cws = output->workspace->get_current_workspace();
-        for(size_t i = 0; i < streams.size(); i++)
+        for (size_t i = 0; i < streams.size(); i++)
         {
             if (!streams[i].running)
             {
@@ -412,11 +456,14 @@ class wayfire_cube : public wf::plugin_interface_t
     /* Calculate the base model matrix for the i-th side of the cube */
     glm::mat4 calculate_model_matrix(int i, glm::mat4 fb_transform)
     {
-        auto rotation = glm::rotate(glm::mat4(1.0),
+        auto rotation = glm::rotate(glm::mat4(
+            1.0),
             float(i) * animation.side_angle + float(animation.cube_animation.rotation),
             glm::vec3(0, 1, 0));
 
-        auto translation = glm::translate(glm::mat4(1.0), glm::vec3(0, 0, identity_z_offset));
+        auto translation =
+            glm::translate(glm::mat4(1.0), glm::vec3(0, 0, identity_z_offset));
+
         return rotation * translation * glm::inverse(fb_transform);
     }
 
@@ -424,10 +471,10 @@ class wayfire_cube : public wf::plugin_interface_t
     void render_cube(GLuint front_face, glm::mat4 fb_transform)
     {
         GL_CALL(glFrontFace(front_face));
-        static const GLuint indexData[] = { 0, 1, 2, 0, 2, 3 };
+        static const GLuint indexData[] = {0, 1, 2, 0, 2, 3};
 
         auto cws = output->workspace->get_current_workspace();
-        for(size_t i = 0; i < streams.size(); i++)
+        for (size_t i = 0; i < streams.size(); i++)
         {
             int index = (cws.x + i) % streams.size();
             GL_CALL(glBindTexture(GL_TEXTURE_2D, streams[index].buffer.tex));
@@ -435,12 +482,15 @@ class wayfire_cube : public wf::plugin_interface_t
             auto model = calculate_model_matrix(i, fb_transform);
             program.uniformMatrix4f("model", model);
 
-            if (tessellation_support) {
+            if (tessellation_support)
+            {
 #ifdef USE_GLES32
                 GL_CALL(glDrawElements(GL_PATCHES, 6, GL_UNSIGNED_INT, &indexData));
 #endif
-            } else {
-                GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, &indexData));
+            } else
+            {
+                GL_CALL(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+                    &indexData));
             }
         }
     }
@@ -449,7 +499,9 @@ class wayfire_cube : public wf::plugin_interface_t
     {
         update_workspace_streams();
         if (program.get_program_id(wf::TEXTURE_TYPE_RGBA) == 0)
+        {
             load_program();
+        }
 
         OpenGL::render_begin(dest);
         GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
@@ -466,8 +518,8 @@ class wayfire_cube : public wf::plugin_interface_t
         GL_CALL(glDepthFunc(GL_LESS));
 
         static GLfloat vertexData[] = {
-            -0.5,  0.5,
-            0.5,  0.5,
+            -0.5, 0.5,
+            0.5, 0.5,
             0.5, -0.5,
             -0.5, -0.5
         };
@@ -508,34 +560,39 @@ class wayfire_cube : public wf::plugin_interface_t
         if (animation.cube_animation.running())
         {
             output->render->schedule_redraw();
-        }
-        else if (animation.in_exit)
+        } else if (animation.in_exit)
         {
             deactivate();
         }
     }
 
-    void pointer_moved(wlr_event_pointer_motion* ev)
+    void pointer_moved(wlr_event_pointer_motion *ev)
     {
         if (animation.in_exit)
+        {
             return;
+        }
 
         double xdiff = ev->delta_x;
         double ydiff = ev->delta_y;
 
-        animation.cube_animation.zoom.restart_with_end(animation.cube_animation.zoom.end);
+        animation.cube_animation.zoom.restart_with_end(
+            animation.cube_animation.zoom.end);
 
         double current_off_y = animation.cube_animation.offset_y;
         double off_y = current_off_y + ydiff * YVelocity;
 
         off_y = wf::clamp(off_y, -1.5, 1.5);
         animation.cube_animation.offset_y.set(current_off_y, off_y);
-        animation.cube_animation.offset_z.restart_with_end(animation.cube_animation.offset_z.end);
+        animation.cube_animation.offset_z.restart_with_end(
+            animation.cube_animation.offset_z.end);
 
         float current_rotation = animation.cube_animation.rotation;
-        animation.cube_animation.rotation.restart_with_end(current_rotation + xdiff * XVelocity);
+        animation.cube_animation.rotation.restart_with_end(
+            current_rotation + xdiff * XVelocity);
 
-        animation.cube_animation.ease_deformation.restart_with_end(animation.cube_animation.ease_deformation.end);
+        animation.cube_animation.ease_deformation.restart_with_end(
+            animation.cube_animation.ease_deformation.end);
 
         animation.cube_animation.start();
         output->render->schedule_redraw();
@@ -544,17 +601,24 @@ class wayfire_cube : public wf::plugin_interface_t
     void pointer_scrolled(double amount)
     {
         if (animation.in_exit)
+        {
             return;
+        }
 
-        animation.cube_animation.offset_y.restart_with_end(animation.cube_animation.offset_y.end);
-        animation.cube_animation.offset_z.restart_with_end(animation.cube_animation.offset_z.end);
-        animation.cube_animation.rotation.restart_with_end(animation.cube_animation.rotation.end);
-        animation.cube_animation.ease_deformation.restart_with_end(animation.cube_animation.ease_deformation.end);
+        animation.cube_animation.offset_y.restart_with_end(
+            animation.cube_animation.offset_y.end);
+        animation.cube_animation.offset_z.restart_with_end(
+            animation.cube_animation.offset_z.end);
+        animation.cube_animation.rotation.restart_with_end(
+            animation.cube_animation.rotation.end);
+        animation.cube_animation.ease_deformation.restart_with_end(
+            animation.cube_animation.ease_deformation.end);
 
         float target_zoom = animation.cube_animation.zoom;
-        float start_zoom = target_zoom;
+        float start_zoom  = target_zoom;
 
-        target_zoom +=  std::min(std::pow(target_zoom, 1.5f), ZOOM_MAX) * amount * ZVelocity;
+        target_zoom +=
+            std::min(std::pow(target_zoom, 1.5f), ZOOM_MAX) * amount * ZVelocity;
         target_zoom = std::min(std::max(target_zoom, ZOOM_MIN), ZOOM_MAX);
         animation.cube_animation.zoom.set(start_zoom, target_zoom);
 
@@ -565,11 +629,16 @@ class wayfire_cube : public wf::plugin_interface_t
     void fini() override
     {
         if (output->is_plugin_active(grab_interface->name))
+        {
             deactivate();
+        }
 
         OpenGL::render_begin();
         for (size_t i = 0; i < streams.size(); i++)
+        {
             streams[i].buffer.release();
+        }
+
         program.free_resources();
         OpenGL::render_end();
 

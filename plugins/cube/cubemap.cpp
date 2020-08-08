@@ -31,7 +31,9 @@ void wf_cube_background_cubemap::create_program()
 void wf_cube_background_cubemap::reload_texture()
 {
     if (!last_background_image.compare(background_image))
+    {
         return;
+    }
 
     last_background_image = background_image;
 
@@ -44,7 +46,8 @@ void wf_cube_background_cubemap::reload_texture()
     GL_CALL(glBindTexture(GL_TEXTURE_CUBE_MAP, tex));
     for (int i = 0; i < 6; i++)
     {
-        if (!image_io::load_from_file(last_background_image, GL_TEXTURE_CUBE_MAP_POSITIVE_X + i))
+        if (!image_io::load_from_file(last_background_image,
+            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i))
         {
             LOGE("Failed to load cubemap background image from \"%s\".",
                 last_background_image.c_str());
@@ -57,11 +60,16 @@ void wf_cube_background_cubemap::reload_texture()
 
     if (tex != (uint32_t)-1)
     {
-        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
-        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE));
+        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER,
+            GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER,
+            GL_LINEAR));
+        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S,
+            GL_CLAMP_TO_EDGE));
+        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T,
+            GL_CLAMP_TO_EDGE));
+        GL_CALL(glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R,
+            GL_CLAMP_TO_EDGE));
     }
 
     GL_CALL(glBindTexture(GL_TEXTURE_CUBE_MAP, 0));
@@ -81,8 +89,10 @@ void wf_cube_background_cubemap::render_frame(const wf::framebuffer_t& fb,
         GL_CALL(glClearColor(TEX_ERROR_FLAG_COLOR));
         GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
         OpenGL::render_end();
+
         return;
     }
+
     program.use(wf::TEXTURE_TYPE_RGBA);
     GL_CALL(glDepthMask(GL_FALSE));
 
@@ -94,11 +104,11 @@ void wf_cube_background_cubemap::render_frame(const wf::framebuffer_t& fb,
         glm::vec3(0, 1, 0));
 
     glm::vec3 look_at{0.,
-        (double) -attribs.cube_animation.offset_y,
-        (double) attribs.cube_animation.offset_z};
+        (double)-attribs.cube_animation.offset_y,
+        (double)attribs.cube_animation.offset_z};
 
     auto view = glm::lookAt(glm::vec3(0., 0., 0.), look_at, glm::vec3(0., 1., 0.));
-    auto vp = fb.transform * attribs.projection * view;
+    auto vp   = fb.transform * attribs.projection * view;
 
     model = vp * model;
     program.uniformMatrix4f("cubeMapMatrix", model);

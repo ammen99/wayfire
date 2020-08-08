@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -28,8 +28,8 @@
 #include <wayfire/util/duration.hpp>
 #include <wayfire/render-manager.hpp>
 
-static const char* vertex_shader =
-R"(
+static const char *vertex_shader =
+    R"(
 #version 100
 
 attribute mediump vec2 position;
@@ -40,8 +40,8 @@ void main() {
 }
 )";
 
-static const char* fragment_shader =
-R"(
+static const char *fragment_shader =
+    R"(
 #version 100
 precision mediump float;
 
@@ -107,110 +107,120 @@ class wayfire_fisheye : public wf::plugin_interface_t
     wf::option_wrapper_t<double> zoom{"fisheye/zoom"};
 
     OpenGL::program_t program;
-    public:
-        void init() override
+
+  public:
+    void init() override
+    {
+        grab_interface->name = "fisheye";
+        grab_interface->capabilities = 0;
+
+        hook_set = active = false;
+        output->add_activator(
+            wf::option_wrapper_t<wf::activatorbinding_t>{"fisheye/toggle"},
+            &toggle_cb);
+
+        target_zoom = zoom;
+        zoom.set_callback([=] ()
         {
-            grab_interface->name = "fisheye";
-            grab_interface->capabilities = 0;
-
-            hook_set = active = false;
-            output->add_activator(
-                wf::option_wrapper_t<wf::activatorbinding_t>{"fisheye/toggle"},
-                &toggle_cb);
-
-            target_zoom = zoom;
-            zoom.set_callback([=] () {
-                if (active)
-                    this->progression.animate(zoom);
-            });
-
-            OpenGL::render_begin();
-            program.set_simple(
-                OpenGL::compile_program(vertex_shader, fragment_shader));
-            OpenGL::render_end();
-        }
-
-        wf::activator_callback toggle_cb = [=] (wf::activator_source_t, uint32_t)
-        {
-            if (!output->can_activate_plugin(grab_interface))
-                return false;
-
             if (active)
             {
-                active = false;
-                progression.animate(0);
-            } else
-            {
-                active = true;
-                progression.animate(zoom);
-                if (!hook_set)
-                {
-                    hook_set = true;
-                    output->render->add_post(&render_hook);
-                    output->render->set_redraw_always();
-                }
+                this->progression.animate(zoom);
             }
+        });
 
-            return true;
-        };
+        OpenGL::render_begin();
+        program.set_simple(
+            OpenGL::compile_program(vertex_shader, fragment_shader));
+        OpenGL::render_end();
+    }
 
-        wf::post_hook_t render_hook = [=](const wf::framebuffer_base_t& source,
-            const wf::framebuffer_base_t& dest)
+    wf::activator_callback toggle_cb = [=] (wf::activator_source_t, uint32_t)
+    {
+        if (!output->can_activate_plugin(grab_interface))
         {
-            auto oc = output->get_cursor_position();
-            wlr_box box = {(int)oc.x, (int)oc.y, 1, 1};
-            box = output->render->get_target_framebuffer().
-                framebuffer_box_from_geometry_box(box);
-            oc.x = box.x;
-            oc.y = box.y;
-
-            static const float vertexData[] = {
-                -1.0f, -1.0f,
-                 1.0f, -1.0f,
-                 1.0f,  1.0f,
-                -1.0f,  1.0f
-            };
-
-            OpenGL::render_begin(dest);
-            program.use(wf::TEXTURE_TYPE_RGBA);
-            GL_CALL(glBindTexture(GL_TEXTURE_2D, source.tex));
-            GL_CALL(glActiveTexture(GL_TEXTURE0));
-
-            program.uniform2f("u_mouse", oc.x, oc.y);
-            program.uniform2f("u_resolution", dest.viewport_width, dest.viewport_height);
-            program.uniform1f("u_radius", radius);
-            program.uniform1f("u_zoom", progression);
-
-            program.attrib_pointer("position", 2, 0, vertexData);
-
-            GL_CALL(glDrawArrays (GL_TRIANGLE_FAN, 0, 4));
-            GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-
-            program.deactivate();
-            OpenGL::render_end();
-
-            if (!active && !progression.running())
-                finalize();
-        };
-
-        void finalize()
-        {
-            output->render->rem_post(&render_hook);
-            output->render->set_redraw_always(false);
-            hook_set = false;
+            return false;
         }
 
-        void fini() override
+        if (active)
         {
-            if (hook_set)
-                finalize();
-
-            OpenGL::render_begin();
-            program.free_resources();
-            OpenGL::render_end();
-
-            output->rem_binding(&toggle_cb);
+            active = false;
+            progression.animate(0);
+        } else
+        {
+            active = true;
+            progression.animate(zoom);
+            if (!hook_set)
+            {
+                hook_set = true;
+                output->render->add_post(&render_hook);
+                output->render->set_redraw_always();
+            }
         }
+
+        return true;
+    };
+
+    wf::post_hook_t render_hook = [=] (const wf::framebuffer_base_t& source,
+                                       const wf::framebuffer_base_t& dest)
+    {
+        auto oc     = output->get_cursor_position();
+        wlr_box box = {(int)oc.x, (int)oc.y, 1, 1};
+        box = output->render->get_target_framebuffer().
+            framebuffer_box_from_geometry_box(box);
+        oc.x = box.x;
+        oc.y = box.y;
+
+        static const float vertexData[] = {
+            -1.0f, -1.0f,
+            1.0f, -1.0f,
+            1.0f, 1.0f,
+            -1.0f, 1.0f
+        };
+
+        OpenGL::render_begin(dest);
+        program.use(wf::TEXTURE_TYPE_RGBA);
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, source.tex));
+        GL_CALL(glActiveTexture(GL_TEXTURE0));
+
+        program.uniform2f("u_mouse", oc.x, oc.y);
+        program.uniform2f("u_resolution", dest.viewport_width, dest.viewport_height);
+        program.uniform1f("u_radius", radius);
+        program.uniform1f("u_zoom", progression);
+
+        program.attrib_pointer("position", 2, 0, vertexData);
+
+        GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
+
+        program.deactivate();
+        OpenGL::render_end();
+
+        if (!active && !progression.running())
+        {
+            finalize();
+        }
+    };
+
+    void finalize()
+    {
+        output->render->rem_post(&render_hook);
+        output->render->set_redraw_always(false);
+        hook_set = false;
+    }
+
+    void fini() override
+    {
+        if (hook_set)
+        {
+            finalize();
+        }
+
+        OpenGL::render_begin();
+        program.free_resources();
+        OpenGL::render_end();
+
+        output->rem_binding(&toggle_cb);
+    }
 };
 
 DECLARE_WAYFIRE_PLUGIN(wayfire_fisheye);

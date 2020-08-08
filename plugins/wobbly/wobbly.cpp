@@ -16,7 +16,8 @@ namespace wobbly_graphics
 {
 namespace
 {
-const char* vertex_source = R"(
+const char *vertex_source =
+    R"(
 #version 100
 attribute mediump vec2 position;
 attribute mediump vec2 uvPosition;
@@ -29,7 +30,8 @@ void main() {
 }
 )";
 
-const char *frag_source = R"(
+const char *frag_source =
+    R"(
 #version 100
 @builtin_ext@
 
@@ -49,7 +51,9 @@ int times_loaded = 0;
 void load_program()
 {
     if (times_loaded++ > 0)
+    {
         return;
+    }
 
     OpenGL::render_begin();
     program.compile(vertex_source, frag_source);
@@ -121,7 +125,8 @@ void prepare_geometry(wobbly_surface *model, wf::geometry_t src_box,
 }
 
 /* Requires bound opengl context */
-void render_triangles(wf::texture_t tex, glm::mat4 mat, float *pos, float *uv, int cnt)
+void render_triangles(wf::texture_t tex, glm::mat4 mat, float *pos, float *uv,
+    int cnt)
 {
     program.use(tex.type);
     program.set_active_texture(tex);
@@ -133,31 +138,31 @@ void render_triangles(wf::texture_t tex, glm::mat4 mat, float *pos, float *uv, i
     GL_CALL(glEnable(GL_BLEND));
     GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
 
-    GL_CALL(glDrawArrays (GL_TRIANGLES, 0, 3 * cnt));
+    GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 3 * cnt));
     GL_CALL(glDisable(GL_BLEND));
 
     program.deactivate();
 }
-};
+}
 
 namespace wobbly_settings
 {
-    wf::option_wrapper_t<double> friction{"wobbly/friction"};
-    wf::option_wrapper_t<double> spring_k{"wobbly/spring_k"};
-    wf::option_wrapper_t<int> resolution{"wobbly/grid_resolution"};
-};
+wf::option_wrapper_t<double> friction{"wobbly/friction"};
+wf::option_wrapper_t<double> spring_k{"wobbly/spring_k"};
+wf::option_wrapper_t<int> resolution{"wobbly/grid_resolution"};
+}
 
 extern "C"
 {
     double wobbly_settings_get_friction()
     {
-        return wf::clamp((double) wobbly_settings::friction,
+        return wf::clamp((double)wobbly_settings::friction,
             MINIMAL_FRICTION, MAXIMAL_FRICTION);
     }
 
     double wobbly_settings_get_spring_k()
     {
-        return wf::clamp((double) wobbly_settings::spring_k,
+        return wf::clamp((double)wobbly_settings::spring_k,
             MINIMAL_SPRING_K, MAXIMAL_SPRING_K);
     }
 }
@@ -185,32 +190,40 @@ enum ewobbly_state_t
 class iwobbly_state_t
 {
   public:
-    virtual ~iwobbly_state_t() {}
+    virtual ~iwobbly_state_t()
+    {}
 
     /** Called when a grab starts */
-    virtual void handle_grab_start(wf::point_t grab, bool takeover) {};
+    virtual void handle_grab_start(wf::point_t grab, bool takeover)
+    {}
 
     /** Called when the wobbly grab is moved. */
-    virtual void handle_grab_move(wf::point_t grab) {};
+    virtual void handle_grab_move(wf::point_t grab)
+    {}
 
     /** Query the last grab point */
-    virtual wf::point_t get_grab_position() const { return {0, 0}; };
+    virtual wf::point_t get_grab_position() const
+    {
+        return {0, 0};
+    }
 
     /**
      * Called when the wobbly grab is ended.
      * @param release_grab Whether to remove the grabbed object in the model.
      */
-    virtual void handle_grab_end(bool release_grab) {};
+    virtual void handle_grab_end(bool release_grab)
+    {}
 
     /** Called when the next frame is being prepared */
     virtual void handle_frame()
     {
         this->bounding_box = view->get_bounding_box("wobbly");
-        this->wm_geometry = view->get_wm_geometry();
+        this->wm_geometry  = view->get_wm_geometry();
     }
 
     /** Called when the view wm geometry changes */
-    virtual void handle_wm_geometry(const wf::geometry_t& old_wm_geometry) { }
+    virtual void handle_wm_geometry(const wf::geometry_t& old_wm_geometry)
+    {}
 
     /** @return true if the wobbly animation is done. */
     virtual bool is_wobbly_done() const
@@ -225,10 +238,10 @@ class iwobbly_state_t
      * This isn't really meant to be used standalone, only subclasses should
      * be instantiated.
      */
-    iwobbly_state_t(const wobbly_model_t& m, wayfire_view v)
-        : view(v), model(m)
+    iwobbly_state_t(const wobbly_model_t& m, wayfire_view v) :
+        view(v), model(m)
     {
-        wm_geometry = v->get_wm_geometry();
+        wm_geometry  = v->get_wm_geometry();
         bounding_box = {0, 0, 1, 1};
     }
 
@@ -240,8 +253,8 @@ class iwobbly_state_t
         wobbly_translate(model.get(), dx, dy);
         wobbly_add_geometry(model.get());
 
-        wm_geometry.x += dx;
-        wm_geometry.y += dy;
+        wm_geometry.x  += dx;
+        wm_geometry.y  += dy;
         bounding_box.x += dx;
         bounding_box.y += dy;
     }
@@ -265,7 +278,9 @@ class wobbly_state_grabbed_t : public iwobbly_state_t
     {
         this->last_grab = {(int)grab.x, (int)grab.y};
         if (!takeover)
+        {
             wobbly_grab_notify(model.get(), last_grab.x, last_grab.y);
+        }
     }
 
     virtual wf::point_t get_grab_position() const override
@@ -282,7 +297,9 @@ class wobbly_state_grabbed_t : public iwobbly_state_t
     virtual void handle_grab_end(bool release_grab) override
     {
         if (release_grab)
+        {
             wobbly_ungrab_notify(model.get());
+        }
     }
 
     virtual void translate_model(int dx, int dy) override
@@ -408,17 +425,19 @@ class wobbly_state_floating_t : public iwobbly_state_t
 
         int target_x = model->x + wm.x - new_bbox.x;
         int target_y = model->y + wm.y - new_bbox.y;
-        if (target_x != wm.x || target_y != wm.y)
+        if ((target_x != wm.x) || (target_y != wm.y))
+        {
             view->move(model->x + wm.x - new_bbox.x, model->y + wm.y - new_bbox.y);
+        }
 
-        if (new_bbox.width != this->bounding_box.width ||
-            new_bbox.height != this->bounding_box.height)
+        if ((new_bbox.width != this->bounding_box.width) ||
+            (new_bbox.height != this->bounding_box.height))
         {
             wobbly_resize(model.get(), new_bbox.width, new_bbox.height);
         }
 
         this->bounding_box = new_bbox;
-        this->wm_geometry = wm;
+        this->wm_geometry  = wm;
     }
 
     void handle_wm_geometry(const wf::geometry_t& old_wm) override
@@ -469,26 +488,30 @@ class wf_wobbly : public wf::view_transformer_t
     wayfire_view view;
     wf::effect_hook_t pre_hook;
 
-    wf::signal_callback_t view_removed = [=] (wf::signal_data_t *) {
+    wf::signal_callback_t view_removed = [=] (wf::signal_data_t*)
+    {
         destroy_self();
     };
 
-    wf::signal_callback_t view_state_changed = [=] (wf::signal_data_t *) {
+    wf::signal_callback_t view_state_changed = [=] (wf::signal_data_t*)
+    {
         update_wobbly_state(false, {0, 0}, false);
     };
 
     wf::signal_callback_t view_geometry_changed = [=] (wf::signal_data_t *data)
     {
-        auto sig = static_cast<view_geometry_changed_signal*> (data);
+        auto sig = static_cast<wf::view_geometry_changed_signal*>(data);
         state->handle_wm_geometry(sig->old_geometry);
     };
 
     wf::signal_callback_t view_output_changed = [=] (wf::signal_data_t *data)
     {
-        auto sig = static_cast<_output_signal*> (data);
+        auto sig = static_cast<wf::_output_signal*>(data);
 
         if (!view->get_output())
+        {
             return destroy_self();
+        }
 
         /* Wobbly is active only when there's already been an output */
         assert(sig->output);
@@ -510,21 +533,21 @@ class wf_wobbly : public wf::view_transformer_t
 
     void init_model()
     {
-        model = std::make_unique<wobbly_surface> ();
+        model = std::make_unique<wobbly_surface>();
         auto g = view->get_bounding_box();
 
-        model->x = g.x;
-        model->y = g.y;
+        model->x     = g.x;
+        model->y     = g.y;
         model->width = g.width;
         model->height = g.height;
 
         model->grabbed = 0;
-        model->synced = 1;
+        model->synced  = 1;
 
         model->x_cells = wobbly_settings::resolution;
         model->y_cells = wobbly_settings::resolution;
 
-        model->v = NULL;
+        model->v  = NULL;
         model->uv = NULL;
         wobbly_init(model.get());
     }
@@ -539,26 +562,29 @@ class wf_wobbly : public wf::view_transformer_t
         pre_hook = [=] () { update_model(); };
         view->get_output()->render->add_effect(&pre_hook, wf::OUTPUT_EFFECT_PRE);
 
-        view->connect_signal("unmap", &view_removed);
+        view->connect_signal("unmapped", &view_removed);
         view->connect_signal("tiled", &view_state_changed);
         view->connect_signal("fullscreen", &view_state_changed);
         view->connect_signal("set-output", &view_output_changed);
         view->connect_signal("geometry-changed", &view_geometry_changed);
 
         /* Set to free state initially but then look for the correct state */
-        this->state = std::make_unique<wf::wobbly_state_free_t> (model, view);
+        this->state = std::make_unique<wf::wobbly_state_free_t>(model, view);
         update_wobbly_state(false, {0, 0}, false);
     }
 
+    uint32_t get_z_order() override
+    {
+        return wf::TRANSFORMER_HIGHLEVEL;
+    }
 
-    uint32_t get_z_order() override { return wf::TRANSFORMER_HIGHLEVEL; }
     wlr_box get_bounding_box(wf::geometry_t, wf::geometry_t) override
     {
         auto box = wobbly_boundingbox(model.get());
 
         wlr_box result;
-        result.x = box.tlx;
-        result.y = box.tly;
+        result.x     = box.tlx;
+        result.y     = box.tly;
         result.width = std::ceil(box.brx - box.tlx);
         result.height = std::ceil(box.bry - box.tly);
 
@@ -599,7 +625,9 @@ class wf_wobbly : public wf::view_transformer_t
         view->damage();
 
         if (state->is_wobbly_done())
+        {
             destroy_self();
+        }
     }
 
     void render_box(wf::texture_t src_tex, wlr_box src_box,
@@ -633,66 +661,79 @@ class wf_wobbly : public wf::view_transformer_t
         bool tiled = view->tiled_edges || view->fullscreen;
         bool was_grabbed =
             (state->get_wobbly_state() == wf::WOBBLY_STATE_GRABBED ||
-            state->get_wobbly_state() == wf::WOBBLY_STATE_TILED_GRABBED);
+                state->get_wobbly_state() == wf::WOBBLY_STATE_TILED_GRABBED);
         bool grabbed = (start_grab || was_grabbed) && !end_grab;
 
         uint32_t next_state_mask = 0;
-        if (tiled && grabbed) {
+        if (tiled && grabbed)
+        {
             next_state_mask = wf::WOBBLY_STATE_TILED_GRABBED;
-        } else if (tiled) {
+        } else if (tiled)
+        {
             next_state_mask = wf::WOBBLY_STATE_TILED;
-        } else if (grabbed) {
+        } else if (grabbed)
+        {
             next_state_mask = wf::WOBBLY_STATE_GRABBED;
         } else if (was_grabbed ||
-            state->get_wobbly_state() == wf::WOBBLY_STATE_FLOATING) {
+                   (state->get_wobbly_state() == wf::WOBBLY_STATE_FLOATING))
+        {
             /* If previously grabbed, we can let the view float freely */
             next_state_mask = wf::WOBBLY_STATE_FLOATING;
-        } else {
+        } else
+        {
             /* Otherwise, we need to keep the position */
             next_state_mask = wf::WOBBLY_STATE_FREE;
         }
+
         if (next_state_mask == state->get_wobbly_state())
+        {
             return;
+        }
 
         std::unique_ptr<wf::iwobbly_state_t> next_state;
         switch (next_state_mask)
         {
-            case wf::WOBBLY_STATE_FREE:
-                next_state = std::make_unique<
-                    wf::wobbly_state_free_t> (model, view);
-                break;
+          case wf::WOBBLY_STATE_FREE:
+            next_state = std::make_unique<
+                wf::wobbly_state_free_t>(model, view);
+            break;
 
-            case wf::WOBBLY_STATE_FLOATING:
-                next_state = std::make_unique<
-                    wf::wobbly_state_floating_t> (model, view);
-                break;
+          case wf::WOBBLY_STATE_FLOATING:
+            next_state = std::make_unique<
+                wf::wobbly_state_floating_t>(model, view);
+            break;
 
-            case wf::WOBBLY_STATE_TILED:
-                next_state = std::make_unique<
-                    wf::wobbly_state_tiled_t> (model, view);
-                break;
+          case wf::WOBBLY_STATE_TILED:
+            next_state = std::make_unique<
+                wf::wobbly_state_tiled_t>(model, view);
+            break;
 
-            case wf::WOBBLY_STATE_GRABBED:
-                next_state = std::make_unique<
-                    wf::wobbly_state_grabbed_t> (model, view);
-                break;
+          case wf::WOBBLY_STATE_GRABBED:
+            next_state = std::make_unique<
+                wf::wobbly_state_grabbed_t>(model, view);
+            break;
 
-            case wf::WOBBLY_STATE_TILED_GRABBED:
-                next_state = std::make_unique<
-                    wf::wobbly_state_tiled_grabbed_t> (model, view);
-                break;
-            default:
-                /* Not reached except by a bug */
-                assert(false);
+          case wf::WOBBLY_STATE_TILED_GRABBED:
+            next_state = std::make_unique<
+                wf::wobbly_state_tiled_grabbed_t>(model, view);
+            break;
+
+          default:
+            /* Not reached except by a bug */
+            assert(false);
         }
 
         if (was_grabbed)
+        {
             this->state->handle_grab_end(end_grab);
+        }
 
         if (grabbed)
         {
             if (was_grabbed)
+            {
                 grab = this->state->get_grab_position();
+            }
 
             next_state->handle_grab_start(grab, was_grabbed);
         }
@@ -733,7 +774,7 @@ class wf_wobbly : public wf::view_transformer_t
         wobbly_fini(model.get());
         view->get_output()->render->rem_effect(&pre_hook);
 
-        view->disconnect_signal("unmap", &view_removed);
+        view->disconnect_signal("unmapped", &view_removed);
         view->disconnect_signal("tiled", &view_state_changed);
         view->disconnect_signal("fullscreen", &view_state_changed);
         view->disconnect_signal("set-output", &view_output_changed);
@@ -744,65 +785,81 @@ class wf_wobbly : public wf::view_transformer_t
 class wayfire_wobbly : public wf::plugin_interface_t
 {
     wf::signal_callback_t wobbly_changed;
-    public:
-        void init() override
+
+  public:
+    void init() override
+    {
+        grab_interface->capabilities = 0;
+        grab_interface->name = "wobbly";
+
+        wobbly_changed = [=] (wf::signal_data_t *data)
         {
-            grab_interface->capabilities = 0;
-            grab_interface->name = "wobbly";
+            adjust_wobbly(static_cast<wobbly_signal*>(data));
+        };
 
-            wobbly_changed = [=] (wf::signal_data_t *data)
-            {
-                adjust_wobbly(static_cast<wobbly_signal*> (data));
-            };
+        output->connect_signal("wobbly-event", &wobbly_changed);
 
-            output->connect_signal("wobbly-event", &wobbly_changed);
+        wobbly_graphics::load_program();
+    }
 
-            wobbly_graphics::load_program();
+    void adjust_wobbly(wobbly_signal *data)
+    {
+        if (data->view->get_output() != output)
+        {
+            return;
         }
 
-        void adjust_wobbly(wobbly_signal *data)
+        if ((data->events & (WOBBLY_EVENT_GRAB | WOBBLY_EVENT_ACTIVATE)) &&
+            (data->view->get_transformer("wobbly") == nullptr))
         {
-            if (data->view->get_output() != output)
-                return;
+            data->view->add_transformer(
+                std::make_unique<wf_wobbly>(data->view),
+                "wobbly");
+        }
 
-            if ((data->events & (WOBBLY_EVENT_GRAB | WOBBLY_EVENT_ACTIVATE))
-                && data->view->get_transformer("wobbly") == nullptr)
+        auto wobbly = dynamic_cast<wf_wobbly*>(
+            data->view->get_transformer("wobbly").get());
+        if (!wobbly)
+        {
+            return;
+        }
+
+        if (data->events & WOBBLY_EVENT_ACTIVATE)
+        {
+            wobbly->wobble();
+        }
+
+        if (data->events & WOBBLY_EVENT_GRAB)
+        {
+            wobbly->start_grab(data->grab_x, data->grab_y);
+        }
+
+        if (data->events & WOBBLY_EVENT_MOVE)
+        {
+            wobbly->move({data->grab_x, data->grab_y});
+        }
+
+        if (data->events & WOBBLY_EVENT_END)
+        {
+            wobbly->end_grab();
+        }
+    }
+
+    void fini() override
+    {
+        for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
+        {
+            auto wobbly =
+                dynamic_cast<wf_wobbly*>(view->get_transformer("wobbly").get());
+            if (wobbly)
             {
-                data->view->add_transformer(
-                    std::make_unique<wf_wobbly> (data->view),
-                    "wobbly");
+                wobbly->destroy_self();
             }
-
-            auto wobbly = dynamic_cast<wf_wobbly*> (
-                data->view->get_transformer("wobbly").get());
-            if (!wobbly)
-                return;
-
-            if (data->events & WOBBLY_EVENT_ACTIVATE)
-                wobbly->wobble();
-
-            if (data->events & WOBBLY_EVENT_GRAB)
-                wobbly->start_grab(data->grab_x, data->grab_y);
-
-            if (data->events & WOBBLY_EVENT_MOVE)
-                wobbly->move({data->grab_x, data->grab_y});
-
-            if (data->events & WOBBLY_EVENT_END)
-                wobbly->end_grab();
         }
 
-        void fini() override
-        {
-            for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
-            {
-                auto wobbly = dynamic_cast<wf_wobbly*> (view->get_transformer("wobbly").get());
-                if (wobbly)
-                    wobbly->destroy_self();
-            }
-
-            wobbly_graphics::destroy_program();
-            output->disconnect_signal("wobbly-event", &wobbly_changed);
-        }
+        wobbly_graphics::destroy_program();
+        output->disconnect_signal("wobbly-event", &wobbly_changed);
+    }
 };
 
 DECLARE_WAYFIRE_PLUGIN(wayfire_wobbly);

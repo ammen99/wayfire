@@ -12,6 +12,7 @@ namespace wf
 {
 class output_t;
 }
+
 class wayfire_config;
 
 using wayfire_plugin = std::unique_ptr<wf::plugin_interface_t>;
@@ -23,7 +24,7 @@ struct plugin_manager
     void reload_dynamic_plugins();
     wf::wl_idle_call idle_reaload_plugins;
 
-private:
+  private:
     wf::output_t *output;
     wf::option_wrapper_t<std::string> plugins_opt;
     std::unordered_map<std::string, wayfire_plugin> loaded_plugins;

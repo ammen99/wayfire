@@ -32,12 +32,12 @@
 			<_long>Sets the model of the keyboard.  This has an influence for some extra keys your keyboard might have.</_long>
 			<default></default>
 		</option>
-		<option name="xkb_option" type="string">
+		<option name="xkb_options" type="string">
 			<_short>XKB options</_short>
 			<_long>Sets extra XKB configuration options for the keyboard.  Multiple options can be specified by separating them with commas.</_long>
 			<default></default>
 		</option>
-		<option name="xkb_rule" type="string">
+		<option name="xkb_rules" type="string">
 			<_short>XKB rules</_short>
 			<_long>Sets files of rules to be used for keyboard mapping composition.</_long>
 			<default>evdev</default>
@@ -141,7 +141,7 @@
 				<_name>On-button down</_name>
 			</desc>
 		</option>
-		<option name="disable_while_typing" type="bool">
+		<option name="disable_touchpad_while_typing" type="bool">
 			<_short>Disable touchpad while typing</_short>
 			<_long>Disables the touchpad while typing.</_long>
 			<default>false</default>

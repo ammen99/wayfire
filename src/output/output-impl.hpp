@@ -18,7 +18,7 @@ class output_impl_t : public output_t
     enum focus_view_flags_t
     {
         /* Raise the view which is being focused */
-        FOCUS_VIEW_RAISE = (1 << 0),
+        FOCUS_VIEW_RAISE        = (1 << 0),
         /* Close popups of non-focused views */
         FOCUS_VIEW_CLOSE_POPUPS = (1 << 1),
     };
@@ -82,11 +82,9 @@ class output_impl_t : public output_t
     /**
      * @return The currently active input grab interface, or nullptr if none
      */
-    plugin_grab_interface_t* get_input_grab_interface();
+    plugin_grab_interface_t *get_input_grab_interface();
 
     /** Set the effective resolution of the output */
     void set_effective_size(const wf::dimensions_t& size);
-
 };
 }
-

@@ -28,11 +28,17 @@ struct workspace_stream_t
     wf::color_t background = {0.0f, 0.0f, 0.0f, -1.0f};
 };
 
-/** Emitted whenever a workspace stream is being started or stopped */
+/**
+ * name: workspace-stream-pre, workspace-stream-post
+ * on: render-manager
+ * when: Immediately before(after) repainting a workspace stream.
+ */
 struct stream_signal_t : public wf::signal_data_t
 {
-    stream_signal_t(wf::point_t _ws, wf::region_t& damage, const wf::framebuffer_t& _fb)
-        : ws(_ws), raw_damage(damage), fb(_fb) { }
+    stream_signal_t(wf::point_t _ws, wf::region_t& damage,
+        const wf::framebuffer_t& _fb) :
+        ws(_ws), raw_damage(damage), fb(_fb)
+    {}
 
     /** The coordinates of the workspace this workspace stream is for. */
     wf::point_t ws;
@@ -44,4 +50,3 @@ struct stream_signal_t : public wf::signal_data_t
 }
 
 #endif /* end of include guard: WF_WORKSPACE_STREAM_HPP */
-

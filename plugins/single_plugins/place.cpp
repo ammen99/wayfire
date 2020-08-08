@@ -12,7 +12,7 @@ class wayfire_place_window : public wf::plugin_interface_t
 
     int cascade_x, cascade_y;
 
-    public:
+  public:
     void init() override
     {
         auto workarea = output->workspace->get_workarea();
@@ -21,10 +21,10 @@ class wayfire_place_window : public wf::plugin_interface_t
 
         created_cb = [=] (wf::signal_data_t *data)
         {
-            auto ev = (map_view_signal*) (data);
+            auto ev   = (wf::view_mapped_signal*)(data);
             auto view = get_signaled_view(data);
 
-            if (view->role != wf::VIEW_ROLE_TOPLEVEL || view->parent ||
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || view->parent ||
                 view->fullscreen || view->tiled_edges || ev->is_positioned)
             {
                 return;
@@ -35,34 +35,46 @@ class wayfire_place_window : public wf::plugin_interface_t
 
             std::string mode = placement_mode;
             if (mode == "cascade")
+            {
                 cascade(view, workarea);
-            else if (mode == "maximize")
+            } else if (mode == "maximize")
+            {
                 maximize(view, workarea);
-            else if (mode == "random")
+            } else if (mode == "random")
+            {
                 random(view, workarea);
-            else
+            } else
+            {
                 center(view, workarea);
+            }
         };
 
         workarea_changed_cb = [=] (wf::signal_data_t *data)
         {
             auto workarea = output->workspace->get_workarea();
-            if (cascade_x < workarea.x || cascade_x > workarea.x + workarea.width)
+            if ((cascade_x < workarea.x) ||
+                (cascade_x > workarea.x + workarea.width))
+            {
                 cascade_x = workarea.x;
-            if (cascade_y < workarea.y || cascade_y > workarea.y + workarea.height)
+            }
+
+            if ((cascade_y < workarea.y) ||
+                (cascade_y > workarea.y + workarea.height))
+            {
                 cascade_y = workarea.y;
+            }
         };
 
-        output->connect_signal("reserved-workarea", &workarea_changed_cb);
-        output->connect_signal("map-view", &created_cb);
+        output->connect_signal("workarea-changed", &workarea_changed_cb);
+        output->connect_signal("view-mapped", &created_cb);
     }
 
-    void cascade(wayfire_view &view, wf::geometry_t workarea)
+    void cascade(wayfire_view & view, wf::geometry_t workarea)
     {
         wf::geometry_t window = view->get_wm_geometry();
 
-        if (cascade_x + window.width > workarea.x + workarea.width ||
-            cascade_y + window.height > workarea.y + workarea.height)
+        if ((cascade_x + window.width > workarea.x + workarea.width) ||
+            (cascade_y + window.height > workarea.y + workarea.height))
         {
             cascade_x = workarea.x;
             cascade_y = workarea.y;
@@ -74,20 +86,21 @@ class wayfire_place_window : public wf::plugin_interface_t
         cascade_y += workarea.height * .03;
     }
 
-    void random(wayfire_view &view, wf::geometry_t workarea)
+    void random(wayfire_view & view, wf::geometry_t workarea)
     {
         wf::geometry_t window = view->get_wm_geometry();
         wf::geometry_t area;
         int pos_x, pos_y;
 
-        area.x = workarea.x;
-        area.y = workarea.y;
+        area.x     = workarea.x;
+        area.y     = workarea.y;
         area.width = workarea.width - window.width;
         area.height = workarea.height - window.height;
 
-        if (area.width < 0 || area.height < 0)
+        if ((area.width < 0) || (area.height < 0))
         {
             center(view, workarea);
+
             return;
         }
 
@@ -95,10 +108,9 @@ class wayfire_place_window : public wf::plugin_interface_t
         pos_y = rand() % area.height + area.y;
 
         view->move(pos_x, pos_y);
-
     }
 
-    void center(wayfire_view &view, wf::geometry_t workarea)
+    void center(wayfire_view & view, wf::geometry_t workarea)
     {
         wf::geometry_t window = view->get_wm_geometry();
         window.x = workarea.x + (workarea.width / 2) - (window.width / 2);
@@ -106,15 +118,15 @@ class wayfire_place_window : public wf::plugin_interface_t
         view->move(window.x, window.y);
     }
 
-    void maximize(wayfire_view &view, wf::geometry_t workarea)
+    void maximize(wayfire_view & view, wf::geometry_t workarea)
     {
         view->tile_request(wf::TILED_EDGES_ALL);
     }
 
     void fini() override
     {
-        output->disconnect_signal("reserved-workarea", &workarea_changed_cb);
-        output->disconnect_signal("map-view", &created_cb);
+        output->disconnect_signal("workarea-changed", &workarea_changed_cb);
+        output->disconnect_signal("view-mapped", &created_cb);
     }
 };
 

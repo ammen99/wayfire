@@ -12,11 +12,10 @@ extern "C"
 
 namespace wf
 {
-
 class surface_interface_t::impl
 {
   public:
-    surface_interface_t* parent_surface;
+    surface_interface_t *parent_surface;
     std::vector<std::unique_ptr<surface_interface_t>> surface_children_above;
     std::vector<std::unique_ptr<surface_interface_t>> surface_children_below;
 
@@ -59,7 +58,7 @@ class wlr_surface_base_t
 
     /** Update the surface output */
     virtual void update_output(wf::output_t *old_output,
-        wf::output_t* new_output);
+        wf::output_t *new_output);
 
     /*
      * Functions that need to be implemented/overridden from the
@@ -92,13 +91,24 @@ class wlr_child_surface_base_t :
     virtual ~wlr_child_surface_base_t();
 
     /* Just pass to the default wlr surface implementation */
-    virtual bool is_mapped() const override { return _is_mapped(); }
-    virtual wf::dimensions_t get_size() const override { return _get_size(); }
+    virtual bool is_mapped() const override
+    {
+        return _is_mapped();
+    }
+
+    virtual wf::dimensions_t get_size() const override
+    {
+        return _get_size();
+    }
+
     virtual void simple_render(const wf::framebuffer_t& fb, int x, int y,
-        const wf::region_t& damage) override {
+        const wf::region_t& damage) override
+    {
         _simple_render(fb, x, y, damage);
     }
-    virtual void set_output(wf::output_t *output) override {
+
+    virtual void set_output(wf::output_t *output) override
+    {
         update_output(get_output(), output);
         surface_interface_t::set_output(output);
     }

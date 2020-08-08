@@ -6,101 +6,114 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
-#include <wlr/config.h>
 #include <wlr/util/edges.h>
+#include "config.h"
 
-#if WLR_HAS_XWAYLAND
+#if WF_HAS_XWAYLAND
 extern "C"
 {
-#define static
-#define class class_t
-#define namespace namespace_t
-#include <wlr/xwayland.h>
-#undef static
-#undef class
-#undef namespace
+ #define static
+ #define class class_t
+ #define namespace namespace_t
+ #include <wlr/xwayland.h>
+ #undef static
+ #undef class
+ #undef namespace
 }
 #endif
 
 namespace wf
 {
-
 view_access_interface_t::view_access_interface_t()
-{
-}
+{}
 
 view_access_interface_t::view_access_interface_t(wayfire_view view) : _view(view)
-{
-}
+{}
 
 view_access_interface_t::~view_access_interface_t()
-{
-}
+{}
 
-variant_t view_access_interface_t::get(const std::string &identifier, bool &error)
+variant_t view_access_interface_t::get(const std::string & identifier, bool & error)
 {
     variant_t out = std::string(""); // Default to empty string as output.
     error = false; // Assume things will go well.
 
     // Cannot operate if no view is set.
-    if (_view == nullptr) {
+    if (_view == nullptr)
+    {
         error = true;
+
         return out;
     }
 
-    if (identifier == "app_id") {
+    if (identifier == "app_id")
+    {
         out = _view->get_app_id();
-    } else if (identifier == "title") {
+    } else if (identifier == "title")
+    {
         out = _view->get_title();
-    }
-    else if (identifier == "role")
+    } else if (identifier == "role")
     {
         switch (_view->role)
         {
-        case VIEW_ROLE_TOPLEVEL:
+          case VIEW_ROLE_TOPLEVEL:
             out = std::string("TOPLEVEL");
             break;
-        case VIEW_ROLE_UNMANAGED:
+
+          case VIEW_ROLE_UNMANAGED:
             out = std::string("UNMANAGED");
             break;
-        case VIEW_ROLE_DESKTOP_ENVIRONMENT:
+
+          case VIEW_ROLE_DESKTOP_ENVIRONMENT:
             out = std::string("DESKTOP_ENVIRONMENT");
             break;
-        default:
-            std::cerr << "View access interface: View has unsupported value for role: " << static_cast<int>(_view->role) << std::endl;
+
+          default:
+            std::cerr <<
+                "View access interface: View has unsupported value for role: " <<
+                static_cast<int>(_view->role) << std::endl;
             error = true;
             break;
         }
-    }
-    else if (identifier == "fullscreen") {
-        out = _view->fullscreen;
-    } else if (identifier == "activated") {
-        out = _view->activated;
-    } else if (identifier == "minimized") {
-        out = _view->minimized;
-    } else if (identifier == "visible") {
-        out = _view->is_visible();
-    } else if (identifier == "focusable") {
-        out = _view->is_focuseable();
-    } else if (identifier == "mapped") {
-        out = _view->is_mapped();
-    } else if (identifier == "tiled-left") {
-        out = (_view->tiled_edges & WLR_EDGE_LEFT) > 0;
-    } else if (identifier == "tiled-right") {
-        out = (_view->tiled_edges & WLR_EDGE_RIGHT) > 0;
-    } else if (identifier == "tiled-top") {
-        out = (_view->tiled_edges & WLR_EDGE_TOP) > 0;
-    } else if (identifier == "tiled-bottom") {
-        out = (_view->tiled_edges & WLR_EDGE_BOTTOM) > 0;
-    } else if (identifier == "maximized") {
-        out = _view->tiled_edges == TILED_EDGES_ALL;
-    } else if (identifier == "floating") {
-        out = _view->tiled_edges == 0;
-    }
-    else if (identifier == "type")
+    } else if (identifier == "fullscreen")
     {
-        do
-        {
+        out = _view->fullscreen;
+    } else if (identifier == "activated")
+    {
+        out = _view->activated;
+    } else if (identifier == "minimized")
+    {
+        out = _view->minimized;
+    } else if (identifier == "visible")
+    {
+        out = _view->is_visible();
+    } else if (identifier == "focusable")
+    {
+        out = _view->is_focuseable();
+    } else if (identifier == "mapped")
+    {
+        out = _view->is_mapped();
+    } else if (identifier == "tiled-left")
+    {
+        out = (_view->tiled_edges & WLR_EDGE_LEFT) > 0;
+    } else if (identifier == "tiled-right")
+    {
+        out = (_view->tiled_edges & WLR_EDGE_RIGHT) > 0;
+    } else if (identifier == "tiled-top")
+    {
+        out = (_view->tiled_edges & WLR_EDGE_TOP) > 0;
+    } else if (identifier == "tiled-bottom")
+    {
+        out = (_view->tiled_edges & WLR_EDGE_BOTTOM) > 0;
+    } else if (identifier == "maximized")
+    {
+        out = _view->tiled_edges == TILED_EDGES_ALL;
+    } else if (identifier == "floating")
+    {
+        out = _view->tiled_edges == 0;
+    } else if (identifier == "type")
+    {
+        do {
             if (_view->role == VIEW_ROLE_TOPLEVEL)
             {
                 out = std::string("toplevel");
@@ -109,12 +122,14 @@ variant_t view_access_interface_t::get(const std::string &identifier, bool &erro
 
             if (_view->role == VIEW_ROLE_UNMANAGED)
             {
+#if WF_HAS_XWAYLAND
                 auto surf = _view->get_wlr_surface();
-#if WLR_HAS_XWAYLAND
-                if (surf && wlr_surface_is_xwayland_surface(surf)) {
+                if (surf && wlr_surface_is_xwayland_surface(surf))
+                {
                     out = std::string("x-or");
                     break;
                 }
+
 #endif
                 out = std::string("unmanaged");
                 break;
@@ -127,21 +142,25 @@ variant_t view_access_interface_t::get(const std::string &identifier, bool &erro
             }
 
             uint32_t layer = _view->get_output()->workspace->get_view_layer(_view);
-            if (layer == LAYER_BACKGROUND || layer == LAYER_BOTTOM) {
+            if ((layer == LAYER_BACKGROUND) || (layer == LAYER_BOTTOM))
+            {
                 out = std::string("background");
-            } else if (layer == LAYER_TOP) {
+            } else if (layer == LAYER_TOP)
+            {
                 out = std::string("panel");
-            } else if (layer == LAYER_LOCK) {
+            } else if (layer == LAYER_LOCK)
+            {
                 out = std::string("overlay");
             }
+
             break;
 
             out = std::string("unknown");
-        }
-        while (false);
-    }
-    else {
-        std::cerr << "View access interface: Get operation triggered to unsupported view property " << identifier << std::endl;
+        } while (false);
+    } else
+    {
+        std::cerr << "View access interface: Get operation triggered to" <<
+            " unsupported view property " << identifier << std::endl;
     }
 
     return out;
@@ -151,5 +170,4 @@ void view_access_interface_t::set_view(wayfire_view view)
 {
     _view = view;
 }
-
 } // End namespace wf.

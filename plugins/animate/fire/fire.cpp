@@ -13,6 +13,7 @@ static wf::option_wrapper_t<double> fire_particle_size{"animate/fire_particle_si
 static float random(float s, float e)
 {
     double r = 1.0 * (std::rand() % RAND_MAX) / (RAND_MAX - 1);
+
     return (s * r + (1 - r) * e);
 }
 
@@ -27,39 +28,52 @@ class FireTransformer : public wf::view_transformer_t
 {
     wf::geometry_t last_boundingbox;
 
-    public:
+  public:
     ParticleSystem ps;
 
     FireTransformer(wayfire_view view) :
         ps(fire_particles,
-           [=] (Particle& p) {init_particle(p); })
+            [=] (Particle& p) {init_particle(p); })
     {
         last_boundingbox = view->get_bounding_box();
         ps.resize(particle_count_for_width(last_boundingbox.width));
     }
 
-    ~FireTransformer() { }
+    ~FireTransformer()
+    {}
 
-    wf::pointf_t transform_point(wf::geometry_t view, wf::pointf_t point) override { return point; }
-    wf::pointf_t untransform_point(wf::geometry_t view, wf::pointf_t point) override { return point; }
+    wf::pointf_t transform_point(wf::geometry_t view, wf::pointf_t point) override
+    {
+        return point;
+    }
 
-    static constexpr int left_border = 50;
-    static constexpr int right_border = 50;
-    static constexpr int top_border = 100;
+    wf::pointf_t untransform_point(wf::geometry_t view, wf::pointf_t point) override
+    {
+        return point;
+    }
+
+    static constexpr int left_border   = 50;
+    static constexpr int right_border  = 50;
+    static constexpr int top_border    = 100;
     static constexpr int bottom_border = 50;
 
-    uint32_t get_z_order() override { return wf::TRANSFORMER_HIGHLEVEL + 1; }
+    uint32_t get_z_order() override
+    {
+        return wf::TRANSFORMER_HIGHLEVEL + 1;
+    }
+
     wlr_box get_bounding_box(wf::geometry_t view, wlr_box region) override
     {
         last_boundingbox = view;
         ps.resize(particle_count_for_width(last_boundingbox.width));
 
-         // TODO
+        // TODO
         //
-        view.x -= left_border;
-        view.y -= top_border;
+        view.x     -= left_border;
+        view.y     -= top_border;
         view.width += left_border + right_border;
         view.height += top_border + bottom_border;
+
         return view;
     }
 
@@ -78,11 +92,11 @@ class FireTransformer : public wf::view_transformer_t
 
         p.pos = {random(0, last_boundingbox.width),
             random(last_boundingbox.height * progress_line - 10,
-                   last_boundingbox.height * progress_line + 10)};
+                last_boundingbox.height * progress_line + 10)};
         p.start_pos = p.pos;
 
         p.speed = {random(-10, 10), random(-25, 5)};
-        p.g = {-1, -3};
+        p.g     = {-1, -3};
 
         double size = fire_particle_size;
         p.base_radius = p.radius = random(size * 0.8, size * 1.2);
@@ -122,20 +136,22 @@ static float fire_duration_mod_for_height(int height)
 
 void FireAnimation::init(wayfire_view view, int dur, wf_animation_type type)
 {
-
     this->view = view;
 
     int msec = dur * fire_duration_mod_for_height(
         view->get_bounding_box().height);
-    this->progression = wf::animation::simple_animation_t(wf::create_option<int>(msec), wf::animation::smoothing::linear);
+    this->progression = wf::animation::simple_animation_t(wf::create_option<int>(
+        msec), wf::animation::smoothing::linear);
     this->progression.animate(0, 1);
 
     if (type & HIDING_ANIMATION)
+    {
         this->progression.flip();
+    }
 
     name = "animation-fire-" + std::to_string(type);
     auto tr = std::make_unique<FireTransformer>(view);
-    transformer = decltype(transformer) (tr.get());
+    transformer = decltype(transformer)(tr.get());
 
     view->add_transformer(std::move(tr), name);
 }
@@ -144,9 +160,12 @@ bool FireAnimation::step()
 {
     transformer->set_progress_line(this->progression);
     if (this->progression.running())
+    {
         transformer->ps.spawn(transformer->ps.size() / 10);
+    }
 
     transformer->ps.update();
+
     return this->progression.running() || transformer->ps.statistic();
 }
 

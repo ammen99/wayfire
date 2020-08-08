@@ -36,7 +36,9 @@ void wf_cube_background_skydome::load_program()
 void wf_cube_background_skydome::reload_texture()
 {
     if (!last_background_image.compare(background_image))
+    {
         return;
+    }
 
     last_background_image = background_image;
     OpenGL::render_begin();
@@ -54,8 +56,7 @@ void wf_cube_background_skydome::reload_texture()
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
         GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-    }
-    else
+    } else
     {
         LOGE("Failed to load skydome image from \"%s\".",
             last_background_image.c_str());
@@ -71,7 +72,9 @@ void wf_cube_background_skydome::reload_texture()
 void wf_cube_background_skydome::fill_vertices()
 {
     if (mirror_opt == last_mirror)
+    {
         return;
+    }
 
     last_mirror = mirror_opt;
 
@@ -88,7 +91,7 @@ void wf_cube_background_skydome::fill_vertices()
         for (int j = 0; j < gw; j++)
         {
             float theta = ((2 * M_PI) / (gw - 1)) * j;
-            float phi = (M_PI / gh) * i;
+            float phi   = (M_PI / gh) * i;
 
             vertices.push_back(cos(theta) * sin(phi) * scale);
             vertices.push_back(cos(phi) * scale);
@@ -96,21 +99,20 @@ void wf_cube_background_skydome::fill_vertices()
 
             if (last_mirror == 0)
             {
-                coords.push_back((float) j / (gw - 1));
-                coords.push_back((float) (i - 1) / (gh - 2));
-            }
-            else
+                coords.push_back((float)j / (gw - 1));
+                coords.push_back((float)(i - 1) / (gh - 2));
+            } else
             {
-                float u = ((float) j / (gw - 1)) * 2.0;
+                float u = ((float)j / (gw - 1)) * 2.0;
                 coords.push_back(u - ((u > 1.0) ? (2.0 * (u - 1.0)) : 0));
-                coords.push_back((float) (i - 1) / (gh - 2));
+                coords.push_back((float)(i - 1) / (gh - 2));
             }
         }
     }
 
     for (int i = 1; i < gh - 1; i++)
     {
-        for(int j = 0; j < gw - 1; j++)
+        for (int j = 0; j < gw - 1; j++)
         {
             indices.push_back((i - 1) * gw + j);
             indices.push_back((i - 1) * gw + j + gw);
@@ -123,7 +125,7 @@ void wf_cube_background_skydome::fill_vertices()
 }
 
 void wf_cube_background_skydome::render_frame(const wf::framebuffer_t& fb,
-        wf_cube_animation_attribs& attribs)
+    wf_cube_animation_attribs& attribs)
 {
     fill_vertices();
     reload_texture();
@@ -132,6 +134,7 @@ void wf_cube_background_skydome::render_frame(const wf::framebuffer_t& fb,
     {
         GL_CALL(glClearColor(TEX_ERROR_FLAG_COLOR));
         GL_CALL(glClear(GL_COLOR_BUFFER_BIT));
+
         return;
     }
 
@@ -139,7 +142,7 @@ void wf_cube_background_skydome::render_frame(const wf::framebuffer_t& fb,
     program.use(wf::TEXTURE_TYPE_RGBA);
 
     auto rotation = glm::rotate(glm::mat4(1.0),
-        (float) (attribs.cube_animation.offset_y * 0.5),
+        (float)(attribs.cube_animation.offset_y * 0.5),
         glm::vec3(1., 0., 0.));
 
     auto view = glm::lookAt(glm::vec3(0., 0., 0.),
@@ -152,7 +155,7 @@ void wf_cube_background_skydome::render_frame(const wf::framebuffer_t& fb,
     program.attrib_pointer("position", 3, 0, vertices.data());
     program.attrib_pointer("uvPosition", 2, 0, coords.data());
 
-    auto cws = output->workspace->get_current_workspace();
+    auto cws   = output->workspace->get_current_workspace();
     auto model = glm::rotate(glm::mat4(1.0),
         float(attribs.cube_animation.rotation) - cws.x * attribs.side_angle,
         glm::vec3(0, 1, 0));
@@ -163,8 +166,8 @@ void wf_cube_background_skydome::render_frame(const wf::framebuffer_t& fb,
     GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
 
     GL_CALL(glDrawElements(GL_TRIANGLES,
-            6 * SKYDOME_GRID_WIDTH * (SKYDOME_GRID_HEIGHT - 2),
-            GL_UNSIGNED_INT, indices.data()));
+        6 * SKYDOME_GRID_WIDTH * (SKYDOME_GRID_HEIGHT - 2),
+        GL_UNSIGNED_INT, indices.data()));
 
     program.deactivate();
     OpenGL::render_end();

@@ -7,14 +7,14 @@
 
 class wf_cube_background_skydome : public wf_cube_background_base
 {
-    public:
+  public:
     wf_cube_background_skydome(wf::output_t *output);
     virtual void render_frame(const wf::framebuffer_t& fb,
         wf_cube_animation_attribs& attribs) override;
 
     virtual ~wf_cube_background_skydome();
 
-    private:
+  private:
     wf::output_t *output;
 
     void load_program();

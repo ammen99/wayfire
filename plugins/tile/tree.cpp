@@ -1,5 +1,6 @@
 #include "tree.hpp"
 #include <wayfire/util.hpp>
+#include <wayfire/util/log.hpp>
 
 #include <wayfire/output.hpp>
 #include <wayfire/workspace-manager.hpp>
@@ -17,17 +18,17 @@ void tree_node_t::set_geometry(wf::geometry_t geometry)
 
 nonstd::observer_ptr<split_node_t> tree_node_t::as_split_node()
 {
-    return nonstd::make_observer(dynamic_cast<split_node_t*> (this));
+    return nonstd::make_observer(dynamic_cast<split_node_t*>(this));
 }
 
 nonstd::observer_ptr<view_node_t> tree_node_t::as_view_node()
 {
-    return nonstd::make_observer(dynamic_cast<view_node_t*> (this));
+    return nonstd::make_observer(dynamic_cast<view_node_t*>(this));
 }
 
 wf::point_t get_output_local_coordinates(wf::output_t *output, wf::point_t p)
 {
-    auto vp = output->workspace->get_current_workspace();
+    auto vp   = output->workspace->get_current_workspace();
     auto size = output->get_screen_size();
     p.x -= vp.x * size.width;
     p.y -= vp.y * size.height;
@@ -51,15 +52,15 @@ wf::geometry_t split_node_t::get_child_geometry(
     wf::geometry_t child_geometry = this->geometry;
     switch (get_split_direction())
     {
-        case SPLIT_HORIZONTAL:
-            child_geometry.y += child_pos;
-            child_geometry.height = child_size;
-            break;
+      case SPLIT_HORIZONTAL:
+        child_geometry.y += child_pos;
+        child_geometry.height = child_size;
+        break;
 
-        case SPLIT_VERTICAL:
-            child_geometry.x += child_pos;
-            child_geometry.width = child_size;
-            break;
+      case SPLIT_VERTICAL:
+        child_geometry.x    += child_pos;
+        child_geometry.width = child_size;
+        break;
     }
 
     return child_geometry;
@@ -69,10 +70,11 @@ int32_t split_node_t::calculate_splittable(wf::geometry_t available) const
 {
     switch (get_split_direction())
     {
-        case SPLIT_HORIZONTAL:
-            return available.height;
-        case SPLIT_VERTICAL:
-            return available.width;
+      case SPLIT_HORIZONTAL:
+        return available.height;
+
+      case SPLIT_VERTICAL:
+        return available.width;
     }
 
     return -1;
@@ -86,18 +88,23 @@ int32_t split_node_t::calculate_splittable() const
 void split_node_t::recalculate_children(wf::geometry_t available)
 {
     if (this->children.empty())
+    {
         return;
+    }
 
     double old_child_sum = 0.0;
     for (auto& child : this->children)
+    {
         old_child_sum += calculate_splittable(child->geometry);
+    }
 
     int32_t total_splittable = calculate_splittable(available);
 
     /* Sum of children sizes up to now */
     double up_to_now = 0.0;
 
-    auto progress = [=] (double current) {
+    auto progress = [=] (double current)
+    {
         return (current / old_child_sum) * total_splittable;
     };
 
@@ -114,6 +121,8 @@ void split_node_t::recalculate_children(wf::geometry_t available)
         int32_t child_size = child_end - child_start;
         child->set_geometry(get_child_geometry(child_start, child_size));
     }
+
+    set_gaps(this->gaps);
 }
 
 void split_node_t::add_child(std::unique_ptr<tree_node_t> child, int index)
@@ -127,10 +136,12 @@ void split_node_t::add_child(std::unique_ptr<tree_node_t> child, int index)
 
     /* Calculate where the new child should be, in current proportions */
     int size_new_child;
-    if (num_children > 0) {
+    if (num_children > 0)
+    {
         size_new_child =
             (calculate_splittable() + num_children - 1) / num_children;
-    } else {
+    } else
+    {
         size_new_child = calculate_splittable();
     }
 
@@ -138,8 +149,10 @@ void split_node_t::add_child(std::unique_ptr<tree_node_t> child, int index)
      * recalculated */
     int pos_new_child = 0;
 
-    if (index == -1 || index > num_children)
+    if ((index == -1) || (index > num_children))
+    {
         index = num_children;
+    }
 
     child->set_geometry(get_child_geometry(pos_new_child, size_new_child));
 
@@ -163,7 +176,7 @@ std::unique_ptr<tree_node_t> split_node_t::remove_child(
         if (it->get() == child.get())
         {
             result = std::move(*it);
-            it = this->children.erase(it);
+            it     = this->children.erase(it);
         } else
         {
             ++it;
@@ -173,6 +186,7 @@ std::unique_ptr<tree_node_t> split_node_t::remove_child(
     /* Remaining children have the full geometry */
     recalculate_children(this->geometry);
     result->parent = nullptr;
+
     return result;
 }
 
@@ -180,6 +194,46 @@ void split_node_t::set_geometry(wf::geometry_t geometry)
 {
     tree_node_t::set_geometry(geometry);
     recalculate_children(geometry);
+}
+
+void split_node_t::set_gaps(const gap_size_t& gaps)
+{
+    this->gaps = gaps;
+    for (const auto& child : this->children)
+    {
+        gap_size_t child_gaps = gaps;
+
+        /* See which edges are modified by this split */
+        int32_t *first_edge, *second_edge;
+        switch (this->split_direction)
+        {
+          case SPLIT_HORIZONTAL:
+            first_edge  = &child_gaps.top;
+            second_edge = &child_gaps.bottom;
+            break;
+
+          case SPLIT_VERTICAL:
+            first_edge  = &child_gaps.left;
+            second_edge = &child_gaps.right;
+            break;
+
+          default:
+            assert(false);
+        }
+
+        /* Override internal edges */
+        if (child != this->children.front())
+        {
+            *first_edge = gaps.internal;
+        }
+
+        if (child != this->children.back())
+        {
+            *second_edge = gaps.internal;
+        }
+
+        child->set_gaps(child_gaps);
+    }
 }
 
 split_direction_t split_node_t::get_split_direction() const
@@ -213,8 +267,8 @@ struct view_node_t::scale_transformer_t : public wf::view_2D
 {
     wf::geometry_t box;
 
-    scale_transformer_t(wayfire_view view, wf::geometry_t box)
-        : wf::view_2D(view)
+    scale_transformer_t(wayfire_view view, wf::geometry_t box) :
+        wf::view_2D(view)
     {
         set_box(box);
     }
@@ -226,14 +280,14 @@ struct view_node_t::scale_transformer_t : public wf::view_2D
         this->view->damage();
 
         auto current = this->view->get_wm_geometry();
-        if (current.width <= 0 || current.height <= 0)
+        if ((current.width <= 0) || (current.height <= 0))
         {
             /* view possibly unmapped?? */
             return;
         }
 
         double scale_horiz = 1.0 * box.width / current.width;
-        double scale_vert = 1.0 * box.height / current.height;
+        double scale_vert  = 1.0 * box.height / current.height;
 
         /* Position of top-left corner after scaling */
         double scaled_x = current.x + (current.width / 2.0 * (1 - scale_horiz));
@@ -249,10 +303,11 @@ struct view_node_t::scale_transformer_t : public wf::view_2D
 view_node_t::view_node_t(wayfire_view view)
 {
     this->view = view;
-    view->store_data(std::make_unique<view_node_custom_data_t> (this));
+    view->store_data(std::make_unique<view_node_custom_data_t>(this));
 
-    this->on_geometry_changed = [=] (wf::signal_data_t*) {update_transformer(); };
-    this->on_decoration_changed = [=] (wf::signal_data_t*) {
+    this->on_geometry_changed   = [=] (wf::signal_data_t*) {update_transformer(); };
+    this->on_decoration_changed = [=] (wf::signal_data_t*)
+    {
         set_geometry(geometry);
     };
     view->connect_signal("geometry-changed", &on_geometry_changed);
@@ -267,6 +322,18 @@ view_node_t::~view_node_t()
     view->erase_data<view_node_custom_data_t>();
 }
 
+void view_node_t::set_gaps(const gap_size_t& size)
+{
+    if ((this->gaps.top != size.top) ||
+        (this->gaps.bottom != size.bottom) ||
+        (this->gaps.left != size.left) ||
+        (this->gaps.right != size.right))
+    {
+        this->gaps = size;
+        this->set_geometry(this->geometry);
+    }
+}
+
 wf::geometry_t view_node_t::calculate_target_geometry()
 {
     /* Calculate view geometry in coordinates local to the active workspace,
@@ -275,10 +342,15 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     auto local_geometry = get_output_local_coordinates(
         view->get_output(), geometry);
 
+    local_geometry.x     += gaps.left;
+    local_geometry.y     += gaps.top;
+    local_geometry.width -= gaps.left + gaps.right;
+    local_geometry.height -= gaps.top + gaps.bottom;
+
     /* If view is maximized, we want to use the full available geometry */
     if (view->fullscreen)
     {
-        auto vp = output->workspace->get_current_workspace();
+        auto vp   = output->workspace->get_current_workspace();
         auto size = output->get_screen_size();
 
         int view_vp_x = std::floor(1.0 * geometry.x / size.width);
@@ -300,7 +372,9 @@ void view_node_t::set_geometry(wf::geometry_t geometry)
     tree_node_t::set_geometry(geometry);
 
     if (!view->is_mapped())
+    {
         return;
+    }
 
     view->set_tiled(TILED_EDGES_ALL);
     view->set_geometry(calculate_target_geometry());
@@ -309,11 +383,13 @@ void view_node_t::set_geometry(wf::geometry_t geometry)
 void view_node_t::update_transformer()
 {
     auto target_geometry = calculate_target_geometry();
-    if (target_geometry.width <= 0 || target_geometry.height <= 0)
+    if ((target_geometry.width <= 0) || (target_geometry.height <= 0))
+    {
         return;
+    }
 
     auto wm = view->get_wm_geometry();
-    auto transformer = static_cast<scale_transformer_t*> (
+    auto transformer = static_cast<scale_transformer_t*>(
         view->get_transformer(scale_transformer_name).get());
 
     if (wm != target_geometry)
@@ -327,18 +403,21 @@ void view_node_t::update_transformer()
         {
             transformer->set_box(target_geometry);
         }
-    }
-    else
+    } else
     {
         if (transformer)
+        {
             view->pop_transformer(scale_transformer_name);
+        }
     }
 }
 
 nonstd::observer_ptr<view_node_t> view_node_t::get_node(wayfire_view view)
 {
     if (!view->has_data<view_node_custom_data_t>())
+    {
         return nullptr;
+    }
 
     return view->get_data<view_node_custom_data_t>()->ptr;
 }
@@ -348,13 +427,17 @@ void flatten_tree(std::unique_ptr<tree_node_t>& root)
 {
     /* Cannot flatten a view node */
     if (root->as_view_node())
+    {
         return;
+    }
 
     /* No flattening required on this level */
     if (root->children.size() >= 2)
     {
         for (auto& child : root->children)
+        {
             flatten_tree(child);
+        }
 
         return;
     }
@@ -363,7 +446,9 @@ void flatten_tree(std::unique_ptr<tree_node_t>& root)
     assert(!root->parent || root->children.size());
 
     if (root->children.empty())
+    {
         return;
+    }
 
     nonstd::observer_ptr<tree_node_t> child_ptr = {root->children.front()};
 
@@ -371,7 +456,9 @@ void flatten_tree(std::unique_ptr<tree_node_t>& root)
     if (child_ptr->as_view_node())
     {
         if (!root->parent)
+        {
             return;
+        }
     }
 
     /* Rewire the tree, skipping the current root */
@@ -385,10 +472,11 @@ nonstd::observer_ptr<split_node_t> get_root(
     nonstd::observer_ptr<tree_node_t> node)
 {
     if (!node->parent)
-        return {dynamic_cast<split_node_t*> (node.get())};
+    {
+        return {dynamic_cast<split_node_t*>(node.get())};
+    }
 
     return get_root(node->parent);
 }
-
 }
 }

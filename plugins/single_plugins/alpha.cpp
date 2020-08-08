@@ -10,8 +10,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,7 +34,7 @@ class wayfire_alpha : public wf::plugin_interface_t
     wf::option_wrapper_t<wf::keybinding_t> modifier{"alpha/modifier"};
     wf::option_wrapper_t<double> min_value{"alpha/min_value"};
 
-    public:
+  public:
     void init() override
     {
         grab_interface->name = "alpha";
@@ -50,18 +50,25 @@ class wayfire_alpha : public wf::plugin_interface_t
         float alpha;
 
         if (!view->get_transformer("alpha"))
-            view->add_transformer(std::make_unique<wf::view_2D> (view), "alpha");
+        {
+            view->add_transformer(std::make_unique<wf::view_2D>(view), "alpha");
+        }
 
-        transformer = dynamic_cast<wf::view_2D*> (view->get_transformer("alpha").get());
+        transformer =
+            dynamic_cast<wf::view_2D*>(view->get_transformer("alpha").get());
         alpha = transformer->alpha;
 
         alpha -= delta * 0.003;
 
         if (alpha > 1.0)
+        {
             alpha = 1.0;
+        }
 
         if (alpha == 1.0)
+        {
             return view->pop_transformer("alpha");
+        }
 
         alpha = std::max(alpha, (float)min_value);
         if (transformer->alpha != alpha)
@@ -71,24 +78,32 @@ class wayfire_alpha : public wf::plugin_interface_t
         }
     }
 
-    wf::axis_callback axis_cb = [=] (wlr_event_pointer_axis* ev)
+    wf::axis_callback axis_cb = [=] (wlr_event_pointer_axis *ev)
     {
         if (!output->activate_plugin(grab_interface))
+        {
             return false;
+        }
 
         output->deactivate_plugin(grab_interface);
 
         auto view = wf::get_core().get_cursor_focus_view();
         if (!view)
+        {
             return false;
+        }
 
         auto layer = output->workspace->get_view_layer(view);
 
         if (layer == wf::LAYER_BACKGROUND)
+        {
             return false;
+        }
 
-        if (ev->orientation == WLR_AXIS_ORIENTATION_VERTICAL) {
+        if (ev->orientation == WLR_AXIS_ORIENTATION_VERTICAL)
+        {
             update_alpha(view, ev->delta);
+
             return true;
         }
 
@@ -100,16 +115,18 @@ class wayfire_alpha : public wf::plugin_interface_t
         for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
         {
             if (!view->get_transformer("alpha"))
+            {
                 continue;
+            }
 
-            wf::view_2D *transformer = dynamic_cast<wf::view_2D*> (view->get_transformer("alpha").get());
+            wf::view_2D *transformer =
+                dynamic_cast<wf::view_2D*>(view->get_transformer("alpha").get());
 
             if (transformer->alpha < min_value)
             {
                 transformer->alpha = min_value;
                 view->damage();
             }
-
         }
     };
 
@@ -118,7 +135,9 @@ class wayfire_alpha : public wf::plugin_interface_t
         for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
         {
             if (view->get_transformer("alpha"))
+            {
                 view->pop_transformer("alpha");
+            }
         }
 
         output->rem_binding(&axis_cb);

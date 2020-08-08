@@ -1,15 +1,17 @@
 #include "subsurface.hpp"
 #include <cassert>
 
-wf::subsurface_implementation_t::
-subsurface_implementation_t(wlr_subsurface *_sub) : wlr_child_surface_base_t(this)
+wf::subsurface_implementation_t::subsurface_implementation_t(wlr_subsurface *_sub) :
+    wlr_child_surface_base_t(this)
 {
     this->sub = _sub;
-    on_map.set_callback([&] (void*) {
+    on_map.set_callback([&] (void*)
+    {
         this->map(this->sub->surface);
     });
     on_unmap.set_callback([&] (void*) { this->unmap(); });
-    on_destroy.set_callback([&] (void*) {
+    on_destroy.set_callback([&] (void*)
+    {
         on_map.disconnect();
         on_unmap.disconnect();
         on_destroy.disconnect();

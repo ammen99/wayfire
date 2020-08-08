@@ -27,23 +27,26 @@ class geometry_animation_t : public duration_t
 
     operator wf::geometry_t() const
     {
-        return { (int)x, (int)y, (int)width, (int)height };
+        return {(int)x, (int)y, (int)width, (int)height};
     }
 
   protected:
-    void copy_fields(wf::geometry_t geometry, double timed_transition_t::* member)
+    void copy_fields(wf::geometry_t geometry, double timed_transition_t::*member)
     {
-        this->x.*member = geometry.x;
-        this->y.*member = geometry.y;
+        this->x.*member     = geometry.x;
+        this->y.*member     = geometry.y;
         this->width.*member = geometry.width;
         this->height.*member = geometry.height;
     }
 };
 
-/** Interpolate the geometry between a and b with alpha (in [0..1]), i.e a * (1-alpha) + b * alpha */
-static inline wf::geometry_t interpolate(wf::geometry_t a, wf::geometry_t b, double alpha)
+/** Interpolate the geometry between a and b with alpha (in [0..1]), i.e a *
+ * (1-alpha) + b * alpha */
+static inline wf::geometry_t interpolate(wf::geometry_t a, wf::geometry_t b,
+    double alpha)
 {
-    const auto& interp = [=] (int32_t wf::geometry_t::* member) -> int32_t {
+    const auto& interp = [=] (int32_t wf::geometry_t::*member) -> int32_t
+    {
         return std::round((1 - alpha) * a.*member + alpha * b.*member);
     };
 
@@ -54,5 +57,4 @@ static inline wf::geometry_t interpolate(wf::geometry_t a, wf::geometry_t b, dou
         interp(&wf::geometry_t::height)
     };
 }
-
 }

@@ -12,15 +12,15 @@
 
 enum wf_animation_type
 {
-    ANIMATION_TYPE_MAP  = SHOWING_ANIMATION | MAP_STATE_ANIMATION,
-    ANIMATION_TYPE_UNMAP = HIDING_ANIMATION | MAP_STATE_ANIMATION,
+    ANIMATION_TYPE_MAP      = SHOWING_ANIMATION | MAP_STATE_ANIMATION,
+    ANIMATION_TYPE_UNMAP    = HIDING_ANIMATION | MAP_STATE_ANIMATION,
     ANIMATION_TYPE_MINIMIZE = HIDING_ANIMATION | MINIMIZE_STATE_ANIMATION,
-    ANIMATION_TYPE_RESTORE = SHOWING_ANIMATION | MINIMIZE_STATE_ANIMATION,
+    ANIMATION_TYPE_RESTORE  = SHOWING_ANIMATION | MINIMIZE_STATE_ANIMATION,
 };
 
 class animation_base
 {
-    public:
+  public:
     virtual void init(wayfire_view view, int duration, wf_animation_type type);
     virtual bool step(); /* return true if continue, false otherwise */
     virtual ~animation_base();

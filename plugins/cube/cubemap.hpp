@@ -5,14 +5,14 @@
 
 class wf_cube_background_cubemap : public wf_cube_background_base
 {
-    public:
+  public:
     wf_cube_background_cubemap();
     virtual void render_frame(const wf::framebuffer_t& fb,
         wf_cube_animation_attribs& attribs) override;
 
     ~wf_cube_background_cubemap();
 
-    private:
+  private:
     void reload_texture();
     void create_program();
 

@@ -6,24 +6,31 @@
 void Particle::update(float time)
 {
     if (life <= 0) // ignore
+    {
         return;
+    }
 
     const float slowdown = 0.8;
 
-    pos += speed * 0.2f * slowdown;
+    pos   += speed * 0.2f * slowdown;
     speed += g * 0.3f * slowdown;
 
     if (life != 0)
+    {
         color.a /= life;
+    }
 
-    life -= fade * 0.3 * slowdown;
-    radius = base_radius * std::pow(life, 0.5);
+    life    -= fade * 0.3 * slowdown;
+    radius   = base_radius * std::pow(life, 0.5);
     color.a *= life;
 
     if (start_pos.x < pos.x)
+    {
         g.x = -1;
-    else
+    } else
+    {
         g.x = 1;
+    }
 
     if (life <= 0)
     {
@@ -70,13 +77,17 @@ int ParticleSystem::spawn(int num)
 void ParticleSystem::resize(int num)
 {
     if (num == (int)ps.size())
+    {
         return;
+    }
 
     // TODO: multithread this
     for (int i = num; i < (int)ps.size(); i++)
     {
         if (ps[i].life >= 0)
+        {
             --particles_alive;
+        }
     }
 
     ps.resize(num);
@@ -98,13 +109,17 @@ void ParticleSystem::update_worker(float time, int start, int end)
     for (int i = start; i < end; ++i)
     {
         if (ps[i].life <= 0)
+        {
             continue;
+        }
 
-    //    printf("%d\n", i);
+        // printf("%d\n", i);
         ps[i].update(time);
 
         if (ps[i].life <= 0)
+        {
             --particles_alive;
+        }
 
         for (int j = 0; j < 4; j++) // maybe use memcpy?
         {
@@ -112,8 +127,8 @@ void ParticleSystem::update_worker(float time, int start, int end)
             dark_color[4 * i + j] = ps[i].color[j] * 0.5;
         }
 
-     //   printf("center %d gets %f", 2 * i, ps[i].pos[0]);
-        center[2 * i] = ps[i].pos[0];
+        // printf("center %d gets %f", 2 * i, ps[i].pos[0]);
+        center[2 * i]     = ps[i].pos[0];
         center[2 * i + 1] = ps[i].pos[1];
 
         radius[i] = ps[i].radius;
@@ -122,7 +137,7 @@ void ParticleSystem::update_worker(float time, int start, int end)
 
 void ParticleSystem::exec_worker_threads(std::function<void(int, int)> spawn_worker)
 {
-//    return spawn_worker(0, ps.size());
+// return spawn_worker(0, ps.size());
 
     const int num_threads = std::thread::hardware_concurrency();
     const int worker_load = (ps.size() + num_threads - 1) / num_threads;
@@ -131,14 +146,16 @@ void ParticleSystem::exec_worker_threads(std::function<void(int, int)> spawn_wor
     for (int i = 0; i < num_threads; i++)
     {
         int thread_start = i * worker_load;
-        int thread_end = (i + 1) * worker_load;
+        int thread_end   = (i + 1) * worker_load;
         thread_end = std::min(thread_end, (int)ps.size());
 
         workers[i] = std::thread([=] () { spawn_worker(thread_start, thread_end); });
     }
 
     for (auto& w : workers)
+    {
         w.join();
+    }
 }
 
 void ParticleSystem::update()
@@ -147,7 +164,8 @@ void ParticleSystem::update()
     float time = (wf::get_current_time() - last_update_msec) / 16.0;
     last_update_msec = wf::get_current_time();
 
-    exec_worker_threads([=] (int start, int end) {
+    exec_worker_threads([=] (int start, int end)
+    {
         update_worker(time, start, end);
     });
 }
@@ -171,9 +189,9 @@ void ParticleSystem::render(glm::mat4 matrix)
     program.use(wf::TEXTURE_TYPE_RGBA);
     static float vertex_data[] = {
         -1, -1,
-         1, -1,
-         1,  1,
-        -1,  1
+        1, -1,
+        1, 1,
+        -1, 1
     };
 
     program.attrib_pointer("position", 2, 0, vertex_data);

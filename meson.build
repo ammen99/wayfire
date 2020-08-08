@@ -2,7 +2,7 @@ project(
 	'wayfire',
 	'c',
 	'cpp',
-	version: '0.4.0',
+	version: '0.5.0',
 	license: 'MIT',
 	meson_version: '>=0.50.0',
 	default_options: [
@@ -13,7 +13,6 @@ project(
 	],
 )
 
-so_version = ['0', '4', '0']
 wayfire_api_inc  = include_directories('src/api')
 
 wayland_server = dependency('wayland-server')
@@ -29,8 +28,8 @@ libinput       = dependency('libinput', version: '>=1.7.0')
 pixman         = dependency('pixman-1')
 threads        = dependency('threads')
 xkbcommon      = dependency('xkbcommon')
-wlroots        = dependency('wlroots', version: ['>=0.9.0', '<0.11.0'], required: get_option('use_system_wlroots'))
-wfconfig       = dependency('wf-config', version: ['>=0.4.0', '<0.5.0'], required: get_option('use_system_wfconfig'))
+wlroots        = dependency('wlroots', version: ['>=0.11.0', '<0.12.0'], required: get_option('use_system_wlroots'))
+wfconfig       = dependency('wf-config', version: ['>=0.5.0', '<0.6.0'], required: get_option('use_system_wfconfig'))
 
 use_system_wlroots = not get_option('use_system_wlroots').disabled() and wlroots.found()
 if not use_system_wlroots
@@ -50,7 +49,7 @@ libinotify       = dependency('libinotify', required: needs_libinotify)
 jpeg = dependency('libjpeg', required: false)
 png  = dependency('libpng',  required: false)
 
-# backtrace() is in a separate library on FreeBSD
+# backtrace() is in a separate library on FreeBSD and Linux with musl
 backtrace = meson.get_compiler('cpp').find_library('execinfo', required: false)
 
 conf_data = configuration_data()
@@ -78,14 +77,25 @@ metadata_dir_suffix = 'share/wayfire/metadata'
 conf_data.set('PLUGIN_XML_DIR', join_paths(get_option('prefix'), metadata_dir_suffix))
 sysconfdir = join_paths(get_option('prefix'), get_option('sysconfdir'))
 conf_data.set('SYSCONFDIR', sysconfdir)
+pkgdatadir = join_paths(get_option('prefix'), 'share', 'wayfire', 'protocols')
 
 # needed to dlopen() plugins
 # -E is for RTTI/dynamic_cast across plugins
 add_project_arguments(['-DWLR_USE_UNSTABLE'], language: ['cpp', 'c'])
 add_project_link_arguments(['-rdynamic', '-Wl,-E'], language: 'cpp')
 
+# Needed on some older compilers
+  cpp = meson.get_compiler('cpp')
+if cpp.has_link_argument('-lc++fs')
+  add_project_link_arguments(['-lc++fs'], language: 'cpp')
+elif cpp.has_link_argument('-lc++experimental')
+  add_project_link_arguments(['-lc++experimental'], language: 'cpp')
+elif cpp.has_link_argument('-lstdc++fs')
+  add_project_link_arguments(['-lstdc++fs'], language: 'cpp')
+endif
+
 if get_option('enable_gles32')
-  meson.get_compiler('cpp').check_header('GLES3/gl32.h', dependencies: glesv2, required: true)
+  cpp.check_header('GLES3/gl32.h', dependencies: glesv2, required: true)
   conf_data.set('USE_GLES32', true)
 else
   conf_data.set('USE_GLES32', false)
@@ -97,30 +107,43 @@ else
   conf_data.set('BUILD_WITH_IMAGEIO', false)
 endif
 
-configure_file(input: 'config.h.in',
-               output: 'config.h',
-               configuration: conf_data)
-
 wayfire_conf_inc = include_directories(['.'])
 
 add_project_arguments(['-Wno-unused-parameter'], language: 'cpp')
 
-wlroots_has_xwayland = false
-wlroots_has_x11_backend = false
+have_xwayland = false
+have_x11_backend = false
 if use_system_wlroots
-  cpp = meson.get_compiler('cpp')
-  wlroots_has_xwayland = cpp.get_define('WLR_HAS_XWAYLAND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
-  wlroots_has_x11_backend = cpp.get_define('WLR_HAS_X11_BACKEND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
+  have_xwayland = cpp.get_define('WLR_HAS_XWAYLAND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
+  have_x11_backend = cpp.get_define('WLR_HAS_X11_BACKEND', prefix: '#include <wlr/config.h>', dependencies: wlroots) == '1'
 else
-  wlroots_has_xwayland = subproject('wlroots').get_variable('conf_data').get('WLR_HAS_XWAYLAND', false) == 1
-  wlroots_has_x11_backend = subproject('wlroots').get_variable('conf_data').get('WLR_HAS_X11_BACKEND', false) == 1
+  have_xwayland = subproject('wlroots').get_variable('conf_data').get('WLR_HAS_XWAYLAND', false) == 1
+  have_x11_backend = subproject('wlroots').get_variable('conf_data').get('WLR_HAS_X11_BACKEND', false) == 1
 endif
 
-if wlroots_has_xwayland
+if get_option('xwayland').enabled() and not have_xwayland
+  error('Cannot enable Xwayland in wayfire: wlroots has been built without Xwayland support')
+endif
+
+if get_option('xwayland').enabled()
+  have_xwayland = true
+elif get_option('xwayland').disabled()
+  have_xwayland = false
+endif
+
+if have_xwayland
   xcb = dependency('xcb')
+  conf_data.set('WF_HAS_XWAYLAND', 1)
 else
   xcb = declare_dependency() # dummy dep
+  conf_data.set('WF_HAS_XWAYLAND', 0)
 endif
+
+configure_file(input: 'config.h.in',
+               output: 'config.h',
+               install: true,
+               install_dir: join_paths('include', 'wayfire'),
+               configuration: conf_data)
 
 subdir('proto')
 subdir('src')
@@ -134,8 +157,8 @@ summary = [
 	'',
     'system wfconfig: @0@'.format(use_system_wfconfig),
     ' system wlroots: @0@'.format(use_system_wlroots),
-    '       xwayland: @0@'.format(wlroots_has_xwayland),
-    '    x11-backend: @0@'.format(wlroots_has_x11_backend),
+    '       xwayland: @0@'.format(have_xwayland),
+    '    x11-backend: @0@'.format(have_x11_backend),
     '        imageio: @0@'.format(conf_data.get('BUILD_WITH_IMAGEIO')),
     '         gles32: @0@'.format(conf_data.get('USE_GLES32')),
     '----------------',

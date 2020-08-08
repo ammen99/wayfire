@@ -28,7 +28,7 @@ struct wf_gesture_recognizer
     void register_touch(int time, int id, wf::pointf_t point);
     void unregister_touch(int32_t time, int32_t id);
 
-private:
+  private:
 
     bool in_gesture = false, gesture_emitted = false;
     int start_sum_dist;

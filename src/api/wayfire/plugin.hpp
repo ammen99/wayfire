@@ -24,15 +24,14 @@ class output_t;
 enum plugin_capabilities_t
 {
     /** The plugin provides view decorations */
-    CAPABILITY_VIEW_DECORATOR  = 1 << 0,
+    CAPABILITY_VIEW_DECORATOR    = 1 << 0,
     /** The plugin grabs input.
      * Required in order to use plugin_grab_interface_t::grab() */
-    CAPABILITY_GRAB_INPUT      = 1 << 1,
+    CAPABILITY_GRAB_INPUT        = 1 << 1,
     /** The plugin uses custom renderer */
-    CAPABILITY_CUSTOM_RENDERER = 1 << 2,
+    CAPABILITY_CUSTOM_RENDERER   = 1 << 2,
     /** The plugin manages the whole desktop, for ex. switches workspaces. */
-    CAPABILITY_MANAGE_DESKTOP  = 1 << 3,
-
+    CAPABILITY_MANAGE_DESKTOP    = 1 << 3,
     /* Compound capabilities */
 
     /** The plugin manages the whole compositor state */
@@ -55,7 +54,7 @@ struct plugin_grab_interface_t
     /** The plugin capabilities. A bitmask of the values specified above */
     uint32_t capabilities;
     /** The output the grab interface is on */
-    wf::output_t * const output;
+    wf::output_t*const output;
 
     plugin_grab_interface_t(wf::output_t *_output);
 
@@ -88,8 +87,8 @@ struct plugin_grab_interface_t
 
         struct
         {
-            std::function<void(uint32_t,uint32_t)> key; // button, state
-            std::function<void(uint32_t,uint32_t)> mod; // modifier, state
+            std::function<void(uint32_t, uint32_t)> key; // button, state
+            std::function<void(uint32_t, uint32_t)> mod; // modifier, state
         } keyboard;
 
         struct
@@ -110,6 +109,7 @@ struct plugin_grab_interface_t
         std::function<void()> cancel;
     } callbacks;
 };
+
 using plugin_grab_interface_uptr = std::unique_ptr<plugin_grab_interface_t>;
 
 class plugin_interface_t
@@ -148,7 +148,10 @@ class plugin_interface_t
      * output the plugin is running on is destroyed. So non-unloadable plugins
      * should still provide proper fini() methods.
      */
-    virtual bool is_unloadable() { return true; }
+    virtual bool is_unloadable()
+    {
+        return true;
+    }
 
     virtual ~plugin_interface_t();
 
@@ -164,10 +167,10 @@ class plugin_interface_t
  * This function must have the name newInstance() and should be declared with
  * extern "C" so that the loader can find it.
  */
-using wayfire_plugin_load_func = wf::plugin_interface_t* (*)();
+using wayfire_plugin_load_func = wf::plugin_interface_t * (*)();
 
 /** The version of Wayfire's API/ABI */
-constexpr uint32_t WAYFIRE_API_ABI_VERSION = 2020'06'05;
+constexpr uint32_t WAYFIRE_API_ABI_VERSION = 2020'07'26;
 
 /**
  * Each plugin must also provide a function which returns the Wayfire API/ABI
@@ -181,10 +184,10 @@ using wayfire_plugin_version_func = uint32_t (*)();
 /** A macro to declare the necessary functions, given the plugin class name */
 
 #define DECLARE_WAYFIRE_PLUGIN(PluginClass) \
-extern "C" \
-{\
-    wf::plugin_interface_t* newInstance() { return new PluginClass; } \
-    uint32_t getWayfireVersion() { return WAYFIRE_API_ABI_VERSION; } \
-}
+    extern "C" \
+    { \
+        wf::plugin_interface_t*newInstance() { return new PluginClass; } \
+        uint32_t getWayfireVersion() { return WAYFIRE_API_ABI_VERSION; } \
+    }
 
 #endif

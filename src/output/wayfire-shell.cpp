@@ -32,7 +32,8 @@ class wfs_hotspot : public noncopyable_t
 
     wf::signal_callback_t on_motion_event = [=] (wf::signal_data_t *data)
     {
-        idle_check_input.run_once([=] () {
+        idle_check_input.run_once([=] ()
+        {
             auto gcf = wf::get_core().get_cursor_position();
             wf::point_t gc{(int)gcf.x, (int)gcf.y};
             process_input_motion(gc);
@@ -41,7 +42,8 @@ class wfs_hotspot : public noncopyable_t
 
     wf::signal_callback_t on_touch_motion_event = [=] (wf::signal_data_t *data)
     {
-        idle_check_input.run_once([=] () {
+        idle_check_input.run_once([=] ()
+        {
             auto gcf = wf::get_core().get_touch_position(0);
             wf::point_t gc{(int)gcf.x, (int)gcf.y};
             process_input_motion(gc);
@@ -55,11 +57,14 @@ class wfs_hotspot : public noncopyable_t
         if (!(hotspot_geometry & gc))
         {
             if (hotspot_triggered)
+            {
                 zwf_hotspot_v2_send_leave(hotspot_resource);
+            }
 
             /* Cursor outside of the hotspot */
             hotspot_triggered = false;
             timer.disconnect();
+
             return;
         }
 
@@ -72,7 +77,8 @@ class wfs_hotspot : public noncopyable_t
 
         if (!timer.is_connected())
         {
-            timer.set_timeout(timeout_ms, [=] () {
+            timer.set_timeout(timeout_ms, [=] ()
+            {
                 hotspot_triggered = true;
                 zwf_hotspot_v2_send_enter(hotspot_resource);
             });
@@ -97,7 +103,7 @@ class wfs_hotspot : public noncopyable_t
             slot.width = distance;
         } else if (edge_mask & ZWF_OUTPUT_V2_HOTSPOT_EDGE_RIGHT)
         {
-            slot.x += slot.width - distance;
+            slot.x    += slot.width - distance;
             slot.width = distance;
         }
 
@@ -122,9 +128,9 @@ class wfs_hotspot : public noncopyable_t
             handle_hotspot_destroy);
 
         // setup output destroy listener
-        on_output_removed = [this, output] (wf::signal_data_t* data)
+        on_output_removed = [this, output] (wf::signal_data_t *data)
         {
-            auto ev = static_cast<output_removed_signal*> (data);
+            auto ev = static_cast<wf::output_removed_signal*>(data);
             if (ev->output == output)
             {
                 /* Make hotspot inactive by setting the region to empty */
@@ -169,9 +175,9 @@ static void handle_zwf_output_create_hotspot(wl_client*, wl_resource *resource,
     uint32_t hotspot, uint32_t threshold, uint32_t timeout, uint32_t id);
 
 static struct zwf_output_v2_interface zwf_output_impl = {
-	.inhibit_output = handle_zwf_output_inhibit_output,
-	.inhibit_output_done = handle_zwf_output_inhibit_output_done,
-	.create_hotspot = handle_zwf_output_create_hotspot,
+    .inhibit_output = handle_zwf_output_inhibit_output,
+    .inhibit_output_done = handle_zwf_output_inhibit_output_done,
+    .create_hotspot = handle_zwf_output_create_hotspot,
 };
 
 /**
@@ -188,12 +194,13 @@ class wfs_output : public noncopyable_t
     {
         wf::get_core().output_layout->disconnect_signal("output-removed",
             &on_output_removed);
-        output->disconnect_signal("fullscreen-layer-focused", &on_fullscreen_layer_focused);
+        output->disconnect_signal("fullscreen-layer-focused",
+            &on_fullscreen_layer_focused);
     }
 
     wf::signal_callback_t on_output_removed = [=] (wf::signal_data_t *data)
     {
-        auto ev = static_cast<output_removed_signal*> (data);
+        auto ev = static_cast<wf::output_removed_signal*>(data);
         if (ev->output == this->output)
         {
             disconnect_from_output();
@@ -203,9 +210,11 @@ class wfs_output : public noncopyable_t
 
     wf::signal_callback_t on_fullscreen_layer_focused = [=] (wf::signal_data_t *data)
     {
-        if (data != nullptr) {
+        if (data != nullptr)
+        {
             zwf_output_v2_send_enter_fullscreen(resource);
-        } else {
+        } else
+        {
             zwf_output_v2_send_leave_fullscreen(resource);
         }
     };
@@ -219,7 +228,8 @@ class wfs_output : public noncopyable_t
         wl_resource_set_implementation(resource, &zwf_output_impl,
             this, handle_output_destroy);
 
-        output->connect_signal("fullscreen-layer-focused", &on_fullscreen_layer_focused);
+        output->connect_signal("fullscreen-layer-focused",
+            &on_fullscreen_layer_focused);
         wf::get_core().output_layout->connect_signal("output-removed",
             &on_output_removed);
     }
@@ -246,7 +256,9 @@ class wfs_output : public noncopyable_t
     {
         ++this->num_inhibits;
         if (this->output)
+        {
             this->output->render->add_inhibit(true);
+        }
     }
 
     void inhibit_output_done()
@@ -254,12 +266,15 @@ class wfs_output : public noncopyable_t
         if (this->num_inhibits == 0)
         {
             wl_resource_post_no_memory(resource);
+
             return;
         }
 
         --this->num_inhibits;
         if (this->output)
+        {
             this->output->render->add_inhibit(false);
+        }
     }
 
     void create_hotspot(uint32_t hotspot, uint32_t threshold, uint32_t timeout,
@@ -331,18 +346,23 @@ class wfs_surface : public noncopyable_t
         wl_resource_set_implementation(resource, &zwf_surface_impl,
             this, handle_surface_destroy);
 
-        view->connect_signal("unmap", &on_unmap);
+        view->connect_signal("unmapped", &on_unmap);
     }
 
     ~wfs_surface()
     {
         if (this->view)
-            view->disconnect_signal("unmap", &on_unmap);
+        {
+            view->disconnect_signal("unmapped", &on_unmap);
+        }
     }
 
     void interactive_move()
     {
-        if (view) view->move_request();
+        if (view)
+        {
+            view->move_request();
+        }
     }
 };
 
@@ -362,7 +382,7 @@ static void handle_surface_destroy(wl_resource *resource)
 static void zwf_shell_manager_get_wf_output(wl_client *client,
     wl_resource *resource, wl_resource *output, uint32_t id)
 {
-    auto wlr_out = (wlr_output*) wl_resource_get_user_data(output);
+    auto wlr_out = (wlr_output*)wl_resource_get_user_data(output);
     auto wo = wf::get_core().output_layout->find_output(wlr_out);
 
     if (wo)
@@ -403,7 +423,7 @@ struct wayfire_shell
     wl_global *shell_manager;
 };
 
-wayfire_shell* wayfire_shell_create(wl_display *display)
+wayfire_shell *wayfire_shell_create(wl_display *display)
 {
     wayfire_shell *ws = new wayfire_shell;
 
@@ -414,6 +434,7 @@ wayfire_shell* wayfire_shell_create(wl_display *display)
     {
         LOGE("Failed to create wayfire_shell interface");
         delete ws;
+
         return NULL;
     }
 

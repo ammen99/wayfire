@@ -12,17 +12,23 @@
 #include "fire/fire.hpp"
 #include <wayfire/matcher.hpp>
 
-void animation_base::init(wayfire_view, int, wf_animation_type) {}
-bool animation_base::step() {return false;}
-animation_base::~animation_base() {}
+void animation_base::init(wayfire_view, int, wf_animation_type)
+{}
+bool animation_base::step()
+{
+    return false;
+}
 
-static constexpr const char* animate_custom_data_id = "animation-hook";
+animation_base::~animation_base()
+{}
+
+static constexpr const char *animate_custom_data_id = "animation-hook";
 
 /* Represents an animation running for a specific view
  * animation_t is which animation to use (i.e fire, zoom, etc). */
 struct animation_hook_base : public wf::custom_data_t
 {
-    virtual void stop_hook(bool) = 0;
+    virtual void stop_hook(bool)   = 0;
     virtual ~animation_hook_base() = default;
 };
 
@@ -30,7 +36,7 @@ template<class animation_t>
 struct animation_hook : public animation_hook_base
 {
     static_assert(std::is_base_of<animation_base, animation_t>::value,
-            "animation_type must be derived from animation_base!");
+        "animation_type must be derived from animation_base!");
 
     wf_animation_type type;
     wayfire_view view;
@@ -45,7 +51,9 @@ struct animation_hook : public animation_hook_base
         view->damage();
 
         if (!result)
+        {
             stop_hook(false);
+        }
     };
 
     /**
@@ -55,7 +63,9 @@ struct animation_hook : public animation_hook_base
     void set_output(wf::output_t *new_output)
     {
         if (current_output)
+        {
             current_output->render->rem_effect(&update_animation_hook);
+        }
 
         if (new_output)
         {
@@ -67,7 +77,8 @@ struct animation_hook : public animation_hook_base
     }
 
     wf::signal_connection_t on_set_output = {[this] (wf::signal_data_t *data)
-    { set_output(view->get_output()); }};
+        { set_output(view->get_output()); }
+    };
 
     animation_hook(wayfire_view view, int duration, wf_animation_type type)
     {
@@ -79,7 +90,7 @@ struct animation_hook : public animation_hook_base
             view->take_snapshot();
         }
 
-        animation = std::make_unique<animation_t> ();
+        animation = std::make_unique<animation_t>();
         animation->init(view, duration, type);
 
         set_output(view->get_output());
@@ -91,8 +102,10 @@ struct animation_hook : public animation_hook_base
     void stop_hook(bool detached) override
     {
         /* We don't want to change the state of the view if it was detached */
-        if (type == ANIMATION_TYPE_MINIMIZE && !detached)
+        if ((type == ANIMATION_TYPE_MINIMIZE) && !detached)
+        {
             view->set_minimized(true);
+        }
 
         /* Will also delete this */
         view->erase_data(animate_custom_data_id);
@@ -111,7 +124,9 @@ struct animation_hook : public animation_hook_base
 
         // remove from list
         if (type == ANIMATION_TYPE_UNMAP)
+        {
             view->unref();
+        }
     }
 };
 
@@ -120,8 +135,10 @@ static void cleanup_views_on_output(wf::output_t *output)
     for (auto& view : wf::get_core().get_all_views())
     {
         auto wo = view->get_output();
-        if (wo != output && output)
+        if ((wo != output) && output)
+        {
             continue;
+        }
 
         if (view->has_data(animate_custom_data_id))
         {
@@ -142,7 +159,8 @@ struct animation_global_cleanup_t : public noncopyable_t
     }
 };
 
-class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup_t, true>
+class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup_t,
+        true>
 {
     wf::option_wrapper_t<std::string> open_animation{"animate/open_animation"};
     wf::option_wrapper_t<std::string> close_animation{"animate/close_animation"};
@@ -167,8 +185,8 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
         grab_interface->name = "animate";
         grab_interface->capabilities = 0;
 
-        output->connect_signal("map-view", &on_view_mapped);
-        output->connect_signal("pre-unmap-view", &on_view_unmapped);
+        output->connect_signal("view-mapped", &on_view_mapped);
+        output->connect_signal("view-pre-unmapped", &on_view_unmapped);
         output->connect_signal("start-rendering", &on_render_start);
         output->connect_signal("view-minimize-request", &on_minimize_request);
     }
@@ -186,23 +204,34 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
          * Note that the matcher plugin might not have been loaded, so
          * we need to have a fallback algorithm */
         if (fade_enabled_for.matches(view))
+        {
             return {"fade", fade_duration};
+        }
+
         if (zoom_enabled_for.matches(view))
+        {
             return {"zoom", zoom_duration};
+        }
+
         if (fire_enabled_for.matches(view))
+        {
             return {"fire", fire_duration};
+        }
+
         if (animation_enabled_for.matches(view))
+        {
             return {anim_type, default_duration};
+        }
 
         return {"none", 0};
     }
 
     template<class animation_t>
-        void set_animation(wayfire_view view,
-            wf_animation_type type, int duration)
+    void set_animation(wayfire_view view,
+        wf_animation_type type, int duration)
     {
         view->store_data(
-            std::make_unique<animation_hook<animation_t>> (view, duration, type),
+            std::make_unique<animation_hook<animation_t>>(view, duration, type),
             animate_custom_data_id);
     }
 
@@ -214,11 +243,18 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
         auto animation = get_animation_for_view(open_animation, view);
 
         if (animation.animation_name == "fade")
-            set_animation<fade_animation> (view, ANIMATION_TYPE_MAP, animation.duration);
-        else if (animation.animation_name == "zoom")
-            set_animation<zoom_animation> (view, ANIMATION_TYPE_MAP, animation.duration);
-        else if (animation.animation_name == "fire")
-            set_animation<FireAnimation> (view, ANIMATION_TYPE_MAP, animation.duration);
+        {
+            set_animation<fade_animation>(view, ANIMATION_TYPE_MAP,
+                animation.duration);
+        } else if (animation.animation_name == "zoom")
+        {
+            set_animation<zoom_animation>(view, ANIMATION_TYPE_MAP,
+                animation.duration);
+        } else if (animation.animation_name == "fire")
+        {
+            set_animation<FireAnimation>(view, ANIMATION_TYPE_MAP,
+                animation.duration);
+        }
     };
 
     wf::signal_callback_t on_view_unmapped = [=] (wf::signal_data_t *data)
@@ -227,23 +263,29 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
         auto animation = get_animation_for_view(close_animation, view);
 
         if (animation.animation_name == "fade")
-            set_animation<fade_animation> (view, ANIMATION_TYPE_UNMAP, animation.duration);
-        else if (animation.animation_name == "zoom")
-            set_animation<zoom_animation> (view, ANIMATION_TYPE_UNMAP, animation.duration);
-        else if (animation.animation_name == "fire")
-            set_animation<FireAnimation> (view, ANIMATION_TYPE_UNMAP, animation.duration);
+        {
+            set_animation<fade_animation>(view, ANIMATION_TYPE_UNMAP,
+                animation.duration);
+        } else if (animation.animation_name == "zoom")
+        {
+            set_animation<zoom_animation>(view, ANIMATION_TYPE_UNMAP,
+                animation.duration);
+        } else if (animation.animation_name == "fire")
+        {
+            set_animation<FireAnimation>(view, ANIMATION_TYPE_UNMAP,
+                animation.duration);
+        }
     };
 
     wf::signal_callback_t on_minimize_request = [=] (wf::signal_data_t *data)
     {
-        auto ev = static_cast<view_minimize_request_signal*> (data);
+        auto ev = static_cast<wf::view_minimize_request_signal*>(data);
         if (ev->state)
         {
             ev->carried_out = true;
             set_animation<zoom_animation>(
                 ev->view, ANIMATION_TYPE_MINIMIZE, default_duration);
-        }
-        else
+        } else
         {
             set_animation<zoom_animation>(
                 ev->view, ANIMATION_TYPE_RESTORE, default_duration);
@@ -257,8 +299,8 @@ class wayfire_animation : public wf::singleton_plugin_t<animation_global_cleanup
 
     void fini() override
     {
-        output->disconnect_signal("map-view", &on_view_mapped);
-        output->disconnect_signal("pre-unmap-view", &on_view_unmapped);
+        output->disconnect_signal("view-mapped", &on_view_mapped);
+        output->disconnect_signal("view-pre-unmapped", &on_view_unmapped);
         output->disconnect_signal("start-rendering", &on_render_start);
         output->disconnect_signal("view-minimize-request", &on_minimize_request);
 

@@ -1,6 +1,7 @@
 #include "blur.hpp"
 
-static const char* kawase_vertex_shader = R"(
+static const char *kawase_vertex_shader =
+    R"(
 #version 100
 attribute mediump vec2 position;
 
@@ -11,7 +12,8 @@ void main() {
     uv = (position.xy + vec2(1.0, 1.0)) / 2.0;
 })";
 
-static const char* kawase_fragment_shader_down = R"(
+static const char *kawase_fragment_shader_down =
+    R"(
 #version 100
 precision mediump float;
 
@@ -31,7 +33,8 @@ void main()
     gl_FragColor = sum / 8.0;
 })";
 
-static const char* kawase_fragment_shader_down_up = R"(
+static const char *kawase_fragment_shader_down_up =
+    R"(
 #version 100
 precision mediump float;
 
@@ -56,16 +59,16 @@ void main()
 
 static const wf_blur_default_option_values kawase_defaults = {
     .algorithm_name = "kawase",
-    .offset = "5",
-    .degrade = "1",
+    .offset     = "5",
+    .degrade    = "1",
     .iterations = "2"
 };
 
 class wf_kawase_blur : public wf_blur_base
 {
   public:
-    wf_kawase_blur(wf::output_t *output)
-        : wf_blur_base(output, kawase_defaults)
+    wf_kawase_blur(wf::output_t *output) :
+        wf_blur_base(output, kawase_defaults)
     {
         OpenGL::render_begin();
         program[0].set_simple(OpenGL::compile_program(kawase_vertex_shader,
@@ -84,9 +87,9 @@ class wf_kawase_blur : public wf_blur_base
         /* Upload data to shader */
         static const float vertexData[] = {
             -1.0f, -1.0f,
-             1.0f, -1.0f,
-             1.0f,  1.0f,
-            -1.0f,  1.0f
+            1.0f, -1.0f,
+            1.0f, 1.0f,
+            -1.0f, 1.0f
         };
 
         OpenGL::render_begin();
@@ -101,14 +104,15 @@ class wf_kawase_blur : public wf_blur_base
 
         for (int i = 0; i < iterations; i++)
         {
-            sampleWidth = width / (1 << i);
+            sampleWidth  = width / (1 << i);
             sampleHeight = height / (1 << i);
 
             auto region = blur_region * (1.0 / (1 << i));
 
             program[0].uniform2f("halfpixel",
                 0.5f / sampleWidth, 0.5f / sampleHeight);
-            render_iteration(region, fb[i % 2], fb[1 - i % 2], sampleWidth, sampleHeight);
+            render_iteration(region, fb[i % 2], fb[1 - i % 2], sampleWidth,
+                sampleHeight);
         }
 
         program[0].deactivate();
@@ -119,14 +123,15 @@ class wf_kawase_blur : public wf_blur_base
         program[1].uniform1f("offset", offset);
         for (int i = iterations - 1; i >= 0; i--)
         {
-            sampleWidth = width / (1 << i);
+            sampleWidth  = width / (1 << i);
             sampleHeight = height / (1 << i);
 
             auto region = blur_region * (1.0 / (1 << i));
 
             program[1].uniform2f("halfpixel",
                 0.5f / sampleWidth, 0.5f / sampleHeight);
-            render_iteration(region, fb[1 - i % 2], fb[i % 2], sampleWidth, sampleHeight);
+            render_iteration(region, fb[1 - i % 2], fb[i % 2], sampleWidth,
+                sampleHeight);
         }
 
         /* Reset gl state */
@@ -148,5 +153,5 @@ class wf_kawase_blur : public wf_blur_base
 
 std::unique_ptr<wf_blur_base> create_kawase_blur(wf::output_t *output)
 {
-    return std::make_unique<wf_kawase_blur> (output);
+    return std::make_unique<wf_kawase_blur>(output);
 }

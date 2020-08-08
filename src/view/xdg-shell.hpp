@@ -42,17 +42,17 @@ class wayfire_xdg_popup : public wf::wlr_view_t
 template<class XdgPopupVersion>
 void create_xdg_popup(XdgPopupVersion *popup);
 template<>
-void create_xdg_popup<wlr_xdg_popup>(wlr_xdg_popup* popup);
+void create_xdg_popup<wlr_xdg_popup>(wlr_xdg_popup *popup);
 
 template<class XdgToplevelVersion>
 class wayfire_xdg_view : public wf::wlr_view_t
 {
   private:
     wf::wl_listener_wrapper on_map, on_unmap, on_destroy, on_new_popup,
-                            on_request_move, on_request_resize,
-                            on_request_minimize, on_request_maximize,
-                            on_request_fullscreen, on_set_parent,
-                            on_set_title, on_set_app_id;
+        on_request_move, on_request_resize,
+        on_request_minimize, on_request_maximize,
+        on_request_fullscreen, on_set_parent,
+        on_set_title, on_set_app_id;
 
     wf::point_t xdg_surface_offset = {0, 0};
     XdgToplevelVersion *xdg_toplevel;
@@ -77,7 +77,7 @@ class wayfire_xdg_view : public wf::wlr_view_t
 
     void resize(int w, int h) final;
     void _resize(int w, int h);
-    void request_native_size()override final;
+    void request_native_size() override final;
 
     void destroy() final;
     void close() final;

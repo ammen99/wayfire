@@ -10,7 +10,7 @@
 
 extern "C"
 {
-struct wlr_pointer_constraint_v1;
+    struct wlr_pointer_constraint_v1;
 #include <wlr/types/wlr_seat.h>
 }
 
@@ -66,7 +66,7 @@ class LogicalPointer
     wlr_pointer_constraint_v1 *get_active_pointer_constraint();
 
     /** Handle events coming from the input devices */
-    void handle_pointer_axis  (wlr_event_pointer_axis *ev);
+    void handle_pointer_axis(wlr_event_pointer_axis *ev);
     void handle_pointer_motion(wlr_event_pointer_motion *ev);
     void handle_pointer_motion_absolute(wlr_event_pointer_motion_absolute *ev);
     void handle_pointer_button(wlr_event_pointer_button *ev);
@@ -87,8 +87,10 @@ class LogicalPointer
     nonstd::observer_ptr<input_manager> input;
     SurfaceMapStateListener on_surface_map_state_change;
 
+    wf::signal_callback_t on_views_updated;
+
     /** The surface which currently has cursor focus */
-    wf::surface_interface_t* cursor_focus = nullptr;
+    wf::surface_interface_t *cursor_focus = nullptr;
     /** Whether focusing is enabled */
     int focus_enabled_count = 1;
     bool focus_enabled() const;
@@ -143,7 +145,6 @@ class LogicalPointer
      * focus
      */
     void send_motion(uint32_t time_msec, wf::pointf_t local);
-
 };
 }
 

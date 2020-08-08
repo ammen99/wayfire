@@ -22,7 +22,7 @@ enum cube_screensaver_state
 {
     CUBE_SCREENSAVER_DISABLED,
     CUBE_SCREENSAVER_RUNNING,
-    CUBE_SCREENSAVER_STOPPING
+    CUBE_SCREENSAVER_STOPPING,
 };
 
 using namespace wf::animation;
@@ -42,13 +42,14 @@ class wayfire_idle
     wf::option_wrapper_t<int> dpms_timeout{"idle/dpms_timeout"};
     wf::wl_listener_wrapper on_idle_dpms, on_resume_dpms;
     wlr_idle_timeout *timeout_dpms = NULL;
-    bool idle_enabled = true;
+    bool idle_enabled    = true;
     int idle_inhibit_ref = 0;
 
   public:
     wayfire_idle()
     {
-        dpms_timeout.set_callback([=] () {
+        dpms_timeout.set_callback([=] ()
+        {
             create_dpms_timeout(dpms_timeout);
         });
         create_dpms_timeout(dpms_timeout);
@@ -81,7 +82,9 @@ class wayfire_idle
     {
         destroy_dpms_timeout();
         if (timeout_sec <= 0)
+        {
             return;
+        }
 
         timeout_dpms = wlr_idle_timeout_create(wf::get_core().protocols.idle,
             wf::get_core().get_current_seat(), 1000 * timeout_sec);
@@ -92,7 +95,8 @@ class wayfire_idle
         });
         on_idle_dpms.connect(&timeout_dpms->events.idle);
 
-        on_resume_dpms.set_callback([&] (void*) {
+        on_resume_dpms.set_callback([&] (void*)
+        {
             set_state(wf::OUTPUT_IMAGE_SOURCE_DPMS, wf::OUTPUT_IMAGE_SOURCE_SELF);
         });
         on_resume_dpms.connect(&timeout_dpms->events.resume);
@@ -104,7 +108,9 @@ class wayfire_idle
 
         /* Make sure idle is enabled */
         if (!idle_enabled)
+        {
             toggle_idle();
+        }
     }
 
     /* Change all outputs with state from to state to */
@@ -115,7 +121,9 @@ class wayfire_idle
         for (auto& entry : config)
         {
             if (entry.second.source == from)
+            {
                 entry.second.source = to;
+            }
         }
 
         wf::get_core().output_layout->apply_configuration(config);
@@ -130,7 +138,7 @@ class wayfire_idle
             LOGE("idle_inhibit_ref < 0: ", idle_inhibit_ref);
         }
 
-        if (idle_inhibit_ref == 0 && !idle_enabled)
+        if ((idle_inhibit_ref == 0) && !idle_enabled)
         {
             toggle_idle();
         }
@@ -145,7 +153,7 @@ class wayfire_idle
             return;
         }
 
-        if (idle_inhibit_ref == 1 && idle_enabled)
+        if ((idle_inhibit_ref == 1) && idle_enabled)
         {
             toggle_idle();
         }
@@ -179,23 +187,26 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
     wf::activator_callback toggle = [=] (wf::activator_source_t, uint32_t)
     {
         if (!output->can_activate_plugin(grab_interface))
+        {
             return false;
+        }
 
         get_instance().toggle_idle();
+
         return true;
     };
 
     wf::signal_connection_t fullscreen_state_changed{[this] (wf::signal_data_t *data)
-    {
-        if (data)
         {
-            get_instance().idle_inhibit();
+            if (data)
+            {
+                get_instance().idle_inhibit();
+            } else
+            {
+                get_instance().idle_enable();
+            }
         }
-        else
-        {
-            get_instance().idle_enable();
-        }
-    }};
+    };
 
     void init() override
     {
@@ -206,16 +217,19 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"idle/toggle"},
             &toggle);
-        output->connect_signal("fullscreen-layer-focused", &fullscreen_state_changed);
+        output->connect_signal("fullscreen-layer-focused",
+            &fullscreen_state_changed);
 
         auto fs_views = output->workspace->get_promoted_views(
             output->workspace->get_current_workspace());
+
         if (fs_views.size())
         {
             get_instance().idle_inhibit();
         }
 
-        screensaver_timeout.set_callback([=] () {
+        screensaver_timeout.set_callback([=] ()
+        {
             create_screensaver_timeout(screensaver_timeout);
         });
         create_screensaver_timeout(screensaver_timeout);
@@ -224,7 +238,9 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
     void destroy_screensaver_timeout()
     {
         if (state == CUBE_SCREENSAVER_RUNNING)
+        {
             stop_screensaver();
+        }
 
         if (timeout_screensaver)
         {
@@ -240,16 +256,20 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
     {
         destroy_screensaver_timeout();
         if (timeout_sec <= 0)
+        {
             return;
+        }
 
         timeout_screensaver = wlr_idle_timeout_create(wf::get_core().protocols.idle,
             wf::get_core().get_current_seat(), 1000 * timeout_sec);
-        on_idle_screensaver.set_callback([&] (void*) {
+        on_idle_screensaver.set_callback([&] (void*)
+        {
             start_screensaver();
         });
         on_idle_screensaver.connect(&timeout_screensaver->events.idle);
 
-        on_resume_screensaver.set_callback([&] (void*) {
+        on_resume_screensaver.set_callback([&] (void*)
+        {
             stop_screensaver();
         });
         on_resume_screensaver.connect(&timeout_screensaver->events.resume);
@@ -267,6 +287,7 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
             output->render->rem_effect(&screensaver_frame);
             hook_set = false;
         }
+
         output->render->add_inhibit(true);
         output->render->damage_whole();
         state = CUBE_SCREENSAVER_DISABLED;
@@ -289,9 +310,9 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
     {
         cube_control_signal data;
         data.angle = 0.0;
-        data.zoom = CUBE_ZOOM_BASE;
-        data.ease = 0.0;
-        data.last_frame = true;
+        data.zoom  = CUBE_ZOOM_BASE;
+        data.ease  = 0.0;
+        data.last_frame  = true;
         data.carried_out = false;
 
         output->emit_signal("cube-control", &data);
@@ -300,14 +321,16 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
             output->render->rem_effect(&screensaver_frame);
             hook_set = false;
         }
+
         if (state == CUBE_SCREENSAVER_DISABLED)
         {
             uninhibit_output();
         }
+
         state = CUBE_SCREENSAVER_DISABLED;
     }
 
-    wf::effect_hook_t screensaver_frame = [=]()
+    wf::effect_hook_t screensaver_frame = [=] ()
     {
         cube_control_signal data;
         uint32_t current = wf::get_current_time();
@@ -315,17 +338,17 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
 
         last_time = current;
 
-        if (state == CUBE_SCREENSAVER_STOPPING && !screensaver_animation.running())
+        if ((state == CUBE_SCREENSAVER_STOPPING) && !screensaver_animation.running())
         {
             screensaver_terminate();
+
             return;
         }
 
         if (state == CUBE_SCREENSAVER_STOPPING)
         {
             rotation = screensaver_animation.rot;
-        }
-        else
+        } else
         {
             rotation += (cube_rotate_speed / 5000.0) * elapsed;
         }
@@ -336,15 +359,16 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
         }
 
         data.angle = rotation;
-        data.zoom = screensaver_animation.zoom;
-        data.ease = screensaver_animation.ease;
-        data.last_frame = false;
+        data.zoom  = screensaver_animation.zoom;
+        data.ease  = screensaver_animation.ease;
+        data.last_frame  = false;
         data.carried_out = false;
 
         output->emit_signal("cube-control", &data);
         if (!data.carried_out)
         {
             screensaver_terminate();
+
             return;
         }
 
@@ -361,9 +385,9 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
 
         cube_control_signal data;
         data.angle = 0.0;
-        data.zoom = CUBE_ZOOM_BASE;
-        data.ease = 0.0;
-        data.last_frame = false;
+        data.zoom  = CUBE_ZOOM_BASE;
+        data.ease  = 0.0;
+        data.last_frame  = false;
         data.carried_out = false;
 
         output->emit_signal("cube-control", &data);
@@ -375,10 +399,10 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
                     &screensaver_frame, wf::OUTPUT_EFFECT_PRE);
                 hook_set = true;
             }
-        }
-        else if (state == CUBE_SCREENSAVER_DISABLED)
+        } else if (state == CUBE_SCREENSAVER_DISABLED)
         {
             inhibit_output();
+
             return;
         }
 
@@ -398,6 +422,7 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
         if (state == CUBE_SCREENSAVER_DISABLED)
         {
             uninhibit_output();
+
             return;
         }
 

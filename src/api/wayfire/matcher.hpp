@@ -6,7 +6,6 @@
 
 namespace wf
 {
-
 /**
  * view_matcher_t provides a way to match certain views based on conditions.
  * The conditions are represented as string options.

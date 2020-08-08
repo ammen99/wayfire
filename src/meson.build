@@ -13,6 +13,7 @@ wayfire_sources = ['main.cpp',
 
                    'core/seat/pointing-device.cpp',
                    'core/seat/input-manager.cpp',
+                   'core/seat/input-method-relay.cpp',
                    'core/seat/keyboard.cpp',
                    'core/seat/pointer.cpp',
                    'core/seat/cursor.cpp',
@@ -55,7 +56,10 @@ else
   debug_arguments += ['-DHAS_ADDR2LINE=0']
 endif
 
-if get_option('b_sanitize').contains('address')
+
+cxx_flags_asan = run_command('/bin/sh', '-c', 'echo $CXXFLAGS $CPPFLAGS | grep fsanitize')
+if get_option('b_sanitize').contains('address') or cxx_flags_asan.returncode() == 0
+  message('Address sanitizer enabled, disabling internal backtrace')
   debug_arguments += ['-DASAN_ENABLED']
 endif
 
@@ -97,7 +101,8 @@ install_headers(['api/wayfire/compositor-surface.hpp',
                  'api/wayfire/workspace-stream.hpp',
                  'api/wayfire/input-device.hpp',
                  'api/wayfire/output-layout.hpp',
-                 'api/wayfire/matcher.hpp'],
+                 'api/wayfire/matcher.hpp',
+                 'api/wayfire/gtk-shell.hpp'],
                 subdir: 'wayfire')
 
 pkgconfig = import('pkgconfig')
@@ -109,5 +114,6 @@ pkgconfig.generate(
     variables:    ['metadatadir=${prefix}/' + metadata_dir_suffix,
                    'sysconfdir=' + sysconfdir,
                    'plugindir=${libdir}/wayfire',
-                   'icondir=${prefix}/share/wayfire/icons']
+                   'icondir=${prefix}/share/wayfire/icons',
+                   'pkgdatadir='+pkgdatadir]
     )

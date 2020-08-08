@@ -17,6 +17,7 @@ namespace wf
 {
 class view_interface_t;
 }
+
 using wayfire_view = nonstd::observer_ptr<wf::view_interface_t>;
 
 namespace wf
@@ -38,13 +39,12 @@ enum plugin_activation_flags_t
      * lockscreen is active.
      */
     PLUGIN_ACTIVATION_IGNORE_INHIBIT = (1 << 0),
-
     /*
      * Allow the same plugin to be activated multiple times.
      * The plugin will also have to be deactivated as many times as it has been
      * activated.
      */
-    PLUGIN_ACTIVATE_ALLOW_MULTIPLE = (1 << 1),
+    PLUGIN_ACTIVATE_ALLOW_MULTIPLE   = (1 << 1),
 };
 
 class output_t : public wf::object_base_t
@@ -53,7 +53,7 @@ class output_t : public wf::object_base_t
     /**
      * The wlr_output that this output represents
      */
-    wlr_output* handle;
+    wlr_output *handle;
 
     /**
      * The render manager of this output
@@ -189,17 +189,17 @@ class output_t : public wf::object_base_t
      *
      * @return The wf::binding_t which can be used to unregister the binding.
      */
-    wf::binding_t *add_key(option_sptr_t<keybinding_t> key, wf::key_callback *);
+    wf::binding_t *add_key(option_sptr_t<keybinding_t> key, wf::key_callback*);
     wf::binding_t *add_axis(option_sptr_t<keybinding_t> axis,
-        wf::axis_callback *);
+        wf::axis_callback*);
     wf::binding_t *add_touch(option_sptr_t<keybinding_t> mod,
-        wf::touch_callback *);
+        wf::touch_callback*);
     wf::binding_t *add_button(option_sptr_t<buttonbinding_t> button,
-        wf::button_callback *);
+        wf::button_callback*);
     wf::binding_t *add_gesture(option_sptr_t<touchgesture_t> gesture,
-        wf::gesture_callback *);
+        wf::gesture_callback*);
     wf::binding_t *add_activator(option_sptr_t<activatorbinding_t> activator,
-        wf::activator_callback *);
+        wf::activator_callback*);
 
     /**
      * Remove the given binding, regardless of its type.
@@ -212,9 +212,11 @@ class output_t : public wf::object_base_t
     void rem_binding(void *callback);
 
     virtual ~output_t();
+
   protected:
     /* outputs are instantiated internally by core */
     output_t();
 };
 }
+
 #endif /* end of include guard: OUTPUT_HPP */

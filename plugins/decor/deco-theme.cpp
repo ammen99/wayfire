@@ -18,7 +18,7 @@ namespace decor
 {
 /** Create a new theme with the default parameters */
 decoration_theme_t::decoration_theme_t()
-{ }
+{}
 
 /** @return The available height for displaying the title */
 int decoration_theme_t::get_title_height() const
@@ -54,7 +54,7 @@ void decoration_theme_t::render_background(const wf::framebuffer_t& fb,
  * Render the given text on a cairo_surface_t with the given size.
  * The caller is responsible for freeing the memory afterwards.
  */
-cairo_surface_t *decoration_theme_t::render_text(std::string text,
+cairo_surface_t*decoration_theme_t::render_text(std::string text,
     int width, int height) const
 {
     const auto format = CAIRO_FORMAT_ARGB32;
@@ -62,7 +62,7 @@ cairo_surface_t *decoration_theme_t::render_text(std::string text,
     auto cr = cairo_create(surface);
 
     const float font_scale = 0.8;
-    const float font_size = height * font_scale;
+    const float font_size  = height * font_scale;
 
     // render text
     cairo_select_font_face(cr, ((std::string)font).c_str(),
@@ -85,7 +85,9 @@ static struct icon_cache_t : public noncopyable_t
     ~icon_cache_t()
     {
         for (auto& icon : cached_icons)
+        {
             cairo_surface_destroy(icon.second);
+        }
     }
 
     std::map<wf::decor::button_type_t, cairo_surface_t*> cached_icons;
@@ -97,17 +99,20 @@ static struct icon_cache_t : public noncopyable_t
                 INSTALL_PREFIX "/share/wayfire/decoration/resources/";
             switch (type)
             {
-                case BUTTON_CLOSE:
-                    resource_path += "close.png";
-                    break;
-                case BUTTON_TOGGLE_MAXIMIZE:
-                    resource_path += "maximize.png";
-                    break;
-                case BUTTON_MINIMIZE:
-                    resource_path += "minimize.png";
-                    break;
-                default:
-                    assert(false);
+              case BUTTON_CLOSE:
+                resource_path += "close.png";
+                break;
+
+              case BUTTON_TOGGLE_MAXIMIZE:
+                resource_path += "maximize.png";
+                break;
+
+              case BUTTON_MINIMIZE:
+                resource_path += "minimize.png";
+                break;
+
+              default:
+                assert(false);
             }
 
             cached_icons[type] =
@@ -118,10 +123,10 @@ static struct icon_cache_t : public noncopyable_t
     }
 } cache;
 
-cairo_surface_t *decoration_theme_t::get_button_surface(button_type_t button,
+cairo_surface_t*decoration_theme_t::get_button_surface(button_type_t button,
     const button_state_t& state) const
 {
-    cairo_surface_t *button_icon = cache.load_icon(button);
+    cairo_surface_t *button_icon    = cache.load_icon(button);
     cairo_surface_t *button_surface = cairo_image_surface_create(
         CAIRO_FORMAT_ARGB32, state.width, state.height);
     auto cr = cairo_create(button_surface);
@@ -141,7 +146,8 @@ cairo_surface_t *decoration_theme_t::get_button_surface(button_type_t button,
     cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
     cairo_stroke_preserve(cr);
 
-    //log_info("theme render button with %d %.2f", state.pressed, state.hover_progress);
+    // log_info("theme render button with %d %.2f", state.pressed,
+    // state.hover_progress);
     /* Background */
     wf::color_t base_background = {0.5, 0.5, 0.5, 0.7};
     wf::color_t hover_add_background = {0.2, 0.2, 0.2, 0.2};
@@ -160,8 +166,8 @@ cairo_surface_t *decoration_theme_t::get_button_surface(button_type_t button,
     cairo_fill(cr);
 
     cairo_destroy(cr);
+
     return button_surface;
 }
-
 }
 }

@@ -1,7 +1,7 @@
 #include "blur.hpp"
 
-static const char* gaussian_vertex_shader =
-R"(
+static const char *gaussian_vertex_shader =
+    R"(
 #version 100
 
 attribute mediump vec2 position;
@@ -27,8 +27,8 @@ void main() {
 }
 )";
 
-static const char* gaussian_fragment_shader_horz =
-R"(
+static const char *gaussian_fragment_shader_horz =
+    R"(
 #version 100
 precision mediump float;
 
@@ -53,8 +53,8 @@ void main()
     gl_FragColor = bp;
 })";
 
-static const char* gaussian_fragment_shader_vert =
-R"(
+static const char *gaussian_fragment_shader_vert =
+    R"(
 #version 100
 precision mediump float;
 
@@ -81,8 +81,8 @@ void main()
 
 static const wf_blur_default_option_values gaussian_defaults = {
     .algorithm_name = "gaussian",
-    .offset = "2",
-    .degrade = "1",
+    .offset     = "2",
+    .degrade    = "1",
     .iterations = "2"
 };
 
@@ -104,9 +104,9 @@ class wf_gaussian_blur : public wf_blur_base
         float offset = offset_opt;
         static const float vertexData[] = {
             -1.0f, -1.0f,
-             1.0f, -1.0f,
-             1.0f,  1.0f,
-            -1.0f,  1.0f
+            1.0f, -1.0f,
+            1.0f, 1.0f,
+            -1.0f, 1.0f
         };
 
         program[i].use(wf::TEXTURE_TYPE_RGBA);
@@ -133,7 +133,8 @@ class wf_gaussian_blur : public wf_blur_base
         upload_data(0, width, height);
         upload_data(1, width, height);
 
-        for (i = 0; i < iterations; i++) {
+        for (i = 0; i < iterations; i++)
+        {
             /* Blur horizontally */
             blur(blur_region, 0, width, height);
 
@@ -148,6 +149,7 @@ class wf_gaussian_blur : public wf_blur_base
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
         program[1].deactivate();
         OpenGL::render_end();
+
         return 0;
     }
 
@@ -159,5 +161,5 @@ class wf_gaussian_blur : public wf_blur_base
 
 std::unique_ptr<wf_blur_base> create_gaussian_blur(wf::output_t *output)
 {
-    return std::make_unique<wf_gaussian_blur> (output);
+    return std::make_unique<wf_gaussian_blur>(output);
 }

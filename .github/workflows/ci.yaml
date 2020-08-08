@@ -17,10 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-    - run: pacman-key --recv-key EA50C866329648EE && echo "[andontie-aur]" >> /etc/pacman.conf && echo "Server = https://aur.andontie.net/\$arch" >> /etc/pacman.conf && echo "SigLevel = Never" >> /etc/pacman.conf
+    - run: pacman-key --keyserver hkp://keys.gnupg.net --recv-key EA50C866329648EE && echo "[andontie-aur]" >> /etc/pacman.conf && echo "Server = https://aur.andontie.net/\$arch" >> /etc/pacman.conf && echo "SigLevel = Never" >> /etc/pacman.conf
     - run: pacman --noconfirm --noprogressbar -Syyu
     - run: pacman --noconfirm --noprogressbar -Sy git clang lld libc++ pkgconf meson ninja wayland wayland-protocols libinput libxkbcommon pixman glm libdrm libglvnd cairo
     - uses: actions/checkout@v1
     - run: git submodule sync --recursive && git submodule update --init --force --recursive
     - run: env CC=clang CXX=clang++ CXXFLAGS="-stdlib=libc++" LDFLAGS="-fuse-ld=lld -stdlib=libc++" meson build
     - run: ninja -v -Cbuild
+  test_code_style:
+    name: "Check code style with uncrustify"
+    runs-on: ubuntu-latest
+    steps:
+        - run: sudo apt-get update
+        - run: sudo apt-get install -y git cmake gcc make
+        - uses: actions/checkout@v1
+        - run: git clone http://github.com/ammen99/uncrustify
+        - run: cd uncrustify && mkdir build && cd build && cmake ../ && make && cd ../../
+        - run: git ls-files | grep "hpp$\|cpp$" | xargs ./uncrustify/build/uncrustify -c uncrustify.ini --check

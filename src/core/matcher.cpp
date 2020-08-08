@@ -20,6 +20,7 @@ class wf::view_matcher_t::impl
         lexer.reset(value);
         try {
             condition = parser.parse(lexer);
+
             return true;
         } catch (std::runtime_error& error)
         {
@@ -46,13 +47,17 @@ class wf::view_matcher_t::impl
     void connect_updated_handler()
     {
         if (this->option)
+        {
             this->option->add_updated_handler(&update_condition);
+        }
     }
 
     void disconnect_updated_handler()
     {
         if (this->option)
+        {
             this->option->rem_updated_handler(&update_condition);
+        }
     }
 
     void set_option(std::shared_ptr<wf::config::option_t<std::string>> option)
@@ -78,14 +83,14 @@ wf::view_matcher_t::view_matcher_t()
 }
 
 wf::view_matcher_t::view_matcher_t(
-    std::shared_ptr<wf::config::option_t<std::string>> option)
-    : view_matcher_t()
+    std::shared_ptr<wf::config::option_t<std::string>> option) :
+    view_matcher_t()
 {
     this->priv->set_option(option);
 }
 
-wf::view_matcher_t::view_matcher_t(const std::string& option_name)
-    : view_matcher_t()
+wf::view_matcher_t::view_matcher_t(const std::string& option_name) :
+    view_matcher_t()
 {
     wf::option_wrapper_t<std::string> option{option_name};
     this->set_from_option(option);
@@ -101,8 +106,9 @@ bool wf::view_matcher_t::matches(wayfire_view view)
 {
     if (this->priv->condition)
     {
-        bool ignored;
+        bool ignored = false;
         wf::view_access_interface_t access_interface{view};
+
         return this->priv->condition->evaluate(access_interface, ignored);
     }
 

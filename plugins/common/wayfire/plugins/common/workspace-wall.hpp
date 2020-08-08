@@ -11,7 +11,6 @@
 
 namespace wf
 {
-
 /**
  * When the workspace wall is rendered via a render hook, the frame event
  * is emitted on each frame.
@@ -21,7 +20,8 @@ namespace wf
 struct wall_frame_event_t : public signal_data_t
 {
     const wf::framebuffer_t& target;
-    wall_frame_event_t(const wf::framebuffer_t& t) : target(t) {}
+    wall_frame_event_t(const wf::framebuffer_t& t) : target(t)
+    {}
 };
 
 /**
@@ -43,7 +43,9 @@ class workspace_wall_t : public wf::signal_provider_t
         {
             this->streams[i].resize(wsize.height);
             for (int j = 0; j < wsize.height; j++)
+            {
                 this->streams[i][j].ws = {i, j};
+            }
         }
     }
 
@@ -55,8 +57,11 @@ class workspace_wall_t : public wf::signal_provider_t
         for (auto& row : this->streams)
         {
             for (auto& stream : row)
+            {
                 stream.buffer.release();
+            }
         }
+
         OpenGL::render_end();
     }
 
@@ -105,7 +110,9 @@ class workspace_wall_t : public wf::signal_provider_t
             auto it = std::find_if(newly_visible.begin(), newly_visible.end(),
                 [&] (auto neww) { return neww == old; });
             if (it == newly_visible.end())
+            {
                 output->render->workspace_stream_stop(streams[old.x][old.y]);
+            }
         }
 
         this->viewport = viewport_geometry;
@@ -130,7 +137,7 @@ class workspace_wall_t : public wf::signal_provider_t
             calculate_viewport_transformation_matrix(this->viewport, geometry);
         /* After all transformations of the framebuffer, the workspace should
          * span the visible part of the OpenGL coordinate space. */
-        const wf::geometry_t workspace_geometry = { -1, 1, 2, -2 };
+        const wf::geometry_t workspace_geometry = {-1, 1, 2, -2};
         for (auto& ws : get_visible_workspaces(this->viewport))
         {
             auto ws_matrix = calculate_workspace_matrix(ws);
@@ -173,7 +180,9 @@ class workspace_wall_t : public wf::signal_provider_t
         }
 
         if (reset_viewport)
+        {
             set_viewport({0, 0, 0, 0});
+        }
     }
 
     /**
@@ -185,6 +194,7 @@ class workspace_wall_t : public wf::signal_provider_t
     wf::geometry_t get_workspace_rectangle(const wf::point_t& ws) const
     {
         auto size = this->output->get_screen_size();
+
         return {
             ws.x * (size.width + gap_size),
             ws.y * (size.height + gap_size),
@@ -223,9 +233,11 @@ class workspace_wall_t : public wf::signal_provider_t
         for (auto& ws : get_visible_workspaces(viewport))
         {
             auto& stream = streams[ws.x][ws.y];
-            if (stream.running) {
+            if (stream.running)
+            {
                 output->render->workspace_stream_update(stream);
-            } else {
+            } else
+            {
                 output->render->workspace_stream_start(stream);
             }
         }
@@ -240,10 +252,12 @@ class workspace_wall_t : public wf::signal_provider_t
         auto wsize = output->workspace->get_workspace_grid_size();
         for (int i = 0; i < wsize.width; i++)
         {
-            for (int j =0; j < wsize.height; j++)
+            for (int j = 0; j < wsize.height; j++)
             {
                 if (viewport & get_workspace_rectangle({i, j}))
+                {
                     visible.push_back({i, j});
+                }
             }
         }
 
@@ -266,6 +280,7 @@ class workspace_wall_t : public wf::signal_provider_t
         auto fb = output->render->get_target_framebuffer();
         auto translation = glm::translate(glm::mat4(1.0),
             glm::vec3{target_geometry.x, target_geometry.y, 0.0});
+
         return translation * glm::inverse(fb.get_orthographic_projection());
     }
 
@@ -284,9 +299,11 @@ class workspace_wall_t : public wf::signal_provider_t
         const double x_after_scale = viewport.x * scale_x;
         const double y_after_scale = viewport.y * scale_y;
 
-        auto scaling = glm::scale(glm::mat4(1.0), glm::vec3{scale_x, scale_y, 1.0});
+        auto scaling = glm::scale(glm::mat4(
+            1.0), glm::vec3{scale_x, scale_y, 1.0});
         auto translation = glm::translate(glm::mat4(1.0),
             glm::vec3{target.x - x_after_scale, target.y - y_after_scale, 0.0});
+
         return translation * scaling;
     }
 

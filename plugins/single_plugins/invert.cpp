@@ -3,8 +3,8 @@
 #include <wayfire/opengl.hpp>
 #include <wayfire/render-manager.hpp>
 
-static const char* vertex_shader =
-R"(
+static const char *vertex_shader =
+    R"(
 #version 100
 
 attribute mediump vec2 position;
@@ -19,8 +19,8 @@ void main() {
 }
 )";
 
-static const char* fragment_shader =
-R"(
+static const char *fragment_shader =
+    R"(
 #version 100
 
 varying highp vec2 uvpos;
@@ -50,14 +50,17 @@ class wayfire_invert_screen : public wf::plugin_interface_t
         grab_interface->capabilities = 0;
 
         hook = [=] (const wf::framebuffer_base_t& source,
-            const wf::framebuffer_base_t& destination) {
+                    const wf::framebuffer_base_t& destination)
+        {
             render(source, destination);
         };
 
-
-        toggle_cb = [=] (wf::activator_source_t, uint32_t) {
+        toggle_cb = [=] (wf::activator_source_t, uint32_t)
+        {
             if (!output->can_activate_plugin(grab_interface))
+            {
                 return false;
+            }
 
             if (active)
             {
@@ -86,8 +89,8 @@ class wayfire_invert_screen : public wf::plugin_interface_t
         static const float vertexData[] = {
             -1.0f, -1.0f,
             1.0f, -1.0f,
-            1.0f,  1.0f,
-            -1.0f,  1.0f
+            1.0f, 1.0f,
+            -1.0f, 1.0f
         };
 
         static const float coordData[] = {
@@ -107,7 +110,7 @@ class wayfire_invert_screen : public wf::plugin_interface_t
         program.attrib_pointer("uvPosition", 2, 0, coordData);
 
         GL_CALL(glDisable(GL_BLEND));
-        GL_CALL(glDrawArrays (GL_TRIANGLE_FAN, 0, 4));
+        GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
         GL_CALL(glEnable(GL_BLEND));
         GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
 
@@ -118,7 +121,9 @@ class wayfire_invert_screen : public wf::plugin_interface_t
     void fini() override
     {
         if (active)
+        {
             output->render->rem_post(&hook);
+        }
 
         OpenGL::render_begin();
         program.free_resources();

@@ -17,9 +17,9 @@ struct simple_texture_t;
 static void cairo_surface_upload_to_texture(
     cairo_surface_t *surface, wf::simple_texture_t& buffer)
 {
-    buffer.width = cairo_image_surface_get_width(surface);
+    buffer.width  = cairo_image_surface_get_width(surface);
     buffer.height = cairo_image_surface_get_height(surface);
-    if (buffer.tex == (GLuint)-1)
+    if (buffer.tex == (GLuint) - 1)
     {
         GL_CALL(glGenTextures(1, &buffer.tex));
     }
@@ -30,5 +30,5 @@ static void cairo_surface_upload_to_texture(
     GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-            buffer.width, buffer.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, src));
+        buffer.width, buffer.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, src));
 }

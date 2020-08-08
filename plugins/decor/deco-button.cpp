@@ -11,10 +11,9 @@ namespace wf
 {
 namespace decor
 {
-
-button_t::button_t(const decoration_theme_t& t, std::function<void()> damage)
-    : theme(t), damage_callback(damage)
-{ }
+button_t::button_t(const decoration_theme_t& t, std::function<void()> damage) :
+    theme(t), damage_callback(damage)
+{}
 
 void button_t::set_button_type(button_type_t type)
 {
@@ -34,15 +33,18 @@ void button_t::set_hover(bool is_hovered)
     this->is_hovered = is_hovered;
     if (!this->is_pressed)
     {
-        if (is_hovered) {
+        if (is_hovered)
+        {
             this->hover.animate(HOVERED);
-        } else {
+        } else
+        {
             this->hover.animate(NORMAL);
         }
     }
 
     add_idle_damage();
 }
+
 /**
  * Set whether the button is pressed or not.
  * Affects appearance.
@@ -50,9 +52,11 @@ void button_t::set_hover(bool is_hovered)
 void button_t::set_pressed(bool is_pressed)
 {
     this->is_pressed = is_pressed;
-    if (is_pressed) {
+    if (is_pressed)
+    {
         this->hover.animate(PRESSED);
-    } else {
+    } else
+    {
         this->hover.animate(is_hovered ? HOVERED : NORMAL);
     }
 
@@ -69,19 +73,21 @@ void button_t::render(const wf::framebuffer_t& fb, wf::geometry_t geometry,
     OpenGL::render_end();
 
     if (this->hover.running())
+    {
         add_idle_damage();
+    }
 }
 
 void button_t::update_texture()
 {
     /* We render a big predefined resolution here */
-    const int WIDTH = 25;
+    const int WIDTH  = 25;
     const int HEIGHT = 16;
     const int BORDER = 1;
-    const int SCALE = 4;
+    const int SCALE  = 4;
 
     decoration_theme_t::button_state_t state = {
-        .width = WIDTH * SCALE,
+        .width  = WIDTH * SCALE,
         .height = HEIGHT * SCALE,
         .border = BORDER * SCALE,
         .hover_progress = hover,
@@ -96,11 +102,11 @@ void button_t::update_texture()
 
 void button_t::add_idle_damage()
 {
-    this->idle_damage.run_once([=] () {
+    this->idle_damage.run_once([=] ()
+    {
         this->damage_callback();
         update_texture();
     });
 }
-
 }
 }

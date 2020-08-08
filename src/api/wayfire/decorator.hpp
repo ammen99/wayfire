@@ -14,12 +14,17 @@ class decorator_frame_t_t
     virtual void calculate_resize_size(
         int& target_width, int& target_height) = 0;
 
-    virtual void notify_view_activated(bool active) {}
-    virtual void notify_view_resized(wf::geometry_t view_geometry) {}
-    virtual void notify_view_tiled() {}
-    virtual void notify_view_fullscreen() {}
+    virtual void notify_view_activated(bool active)
+    {}
+    virtual void notify_view_resized(wf::geometry_t view_geometry)
+    {}
+    virtual void notify_view_tiled()
+    {}
+    virtual void notify_view_fullscreen()
+    {}
 
-    virtual ~decorator_frame_t_t() {}
+    virtual ~decorator_frame_t_t()
+    {}
 };
 }
 

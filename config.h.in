@@ -8,6 +8,7 @@
 #define SYSCONFDIR "@SYSCONFDIR@"
 #mesondefine BUILD_WITH_IMAGEIO
 #mesondefine USE_GLES32
+#mesondefine WF_HAS_XWAYLAND
 
 
 #endif /* end of include guard: CONFIG_H */

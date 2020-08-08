@@ -2,7 +2,7 @@
 #define PARTICLE_ANIMATION_SHADER
 
 static const char *particle_vert_source =
-R"(
+    R"(
 #version 100
 
 attribute mediump float radius;
@@ -26,7 +26,7 @@ void main() {
 )";
 
 static const char *particle_frag_source =
-R"(
+    R"(
 #version 100
 
 varying mediump vec2 uv;

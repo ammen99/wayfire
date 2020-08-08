@@ -9,14 +9,14 @@ namespace wf
 enum transformer_z_order_t
 {
     /* Simple 2D transforms */
-    TRANSFORMER_2D = 1,
+    TRANSFORMER_2D        = 1,
     /* 3D transforms */
-    TRANSFORMER_3D = 2,
+    TRANSFORMER_3D        = 2,
     /* Highlevels transforms and above do special effects, for ex. wobbly or fire */
     TRANSFORMER_HIGHLEVEL = 500,
     /* Do not use Z oder blur or more,
      * except if you are willing to break it */
-    TRANSFORMER_BLUR = 999,
+    TRANSFORMER_BLUR      = 999,
 };
 
 class view_transformer_t
@@ -104,9 +104,11 @@ class view_transformer_t
 
     /** Same as render_with_damage(), but for a single rectangle of damage */
     virtual void render_box(wf::texture_t src_tex, wlr_box src_box,
-        wlr_box scissor_box, const wf::framebuffer_t& target_fb) {}
+        wlr_box scissor_box, const wf::framebuffer_t& target_fb)
+    {}
 
-    virtual ~view_transformer_t() {}
+    virtual ~view_transformer_t()
+    {}
 };
 
 /* 2D transforms operate with a coordinate system centered at the
@@ -115,6 +117,7 @@ class view_2D : public view_transformer_t
 {
   protected:
     wayfire_view view;
+
   public:
     float angle = 0.0f;
     float scale_x = 1.0f, scale_y = 1.0f;
@@ -124,7 +127,11 @@ class view_2D : public view_transformer_t
   public:
     view_2D(wayfire_view view);
 
-    virtual uint32_t get_z_order() override { return TRANSFORMER_2D; }
+    virtual uint32_t get_z_order() override
+    {
+        return TRANSFORMER_2D;
+    }
+
     wf::pointf_t transform_point(
         wf::geometry_t view, wf::pointf_t point) override;
     wf::pointf_t untransform_point(
@@ -148,7 +155,11 @@ class view_3D : public view_transformer_t
   public:
     view_3D(wayfire_view view);
 
-    virtual uint32_t get_z_order() override { return TRANSFORMER_3D; }
+    virtual uint32_t get_z_order() override
+    {
+        return TRANSFORMER_3D;
+    }
+
     wf::pointf_t transform_point(
         wf::geometry_t view, wf::pointf_t point) override;
     wf::pointf_t untransform_point(

@@ -29,12 +29,17 @@ class move_snap_helper_t : public wf::custom_data_t
 
     bool view_in_slot; /* Whether the view is held at its original position */
     double px, py; /* Percentage of the view width/height from the grab point
-                      to its upper-left corner */
+                    *  to its upper-left corner */
 
     std::vector<wayfire_view> enum_views(wayfire_view view)
     {
-        if (join_views) return view->enumerate_views();
-        else return {view};
+        if (join_views)
+        {
+            return view->enumerate_views();
+        } else
+        {
+            return {view};
+        }
     }
 
   public:
@@ -46,7 +51,9 @@ class move_snap_helper_t : public wf::custom_data_t
 
         view_in_slot = should_enable_snap_off();
         for (auto v : enum_views(view))
+        {
             start_wobbly(v, grab.x, grab.y);
+        }
 
         auto wmg = view->get_wm_geometry();
         px = 1.0 * (grab.x - wmg.x) / wmg.width;
@@ -71,18 +78,24 @@ class move_snap_helper_t : public wf::custom_data_t
     virtual void handle_motion(wf::point_t to)
     {
         for (auto v : enum_views(view))
+        {
             move_wobbly(v, to.x, to.y);
+        }
 
         double distance = std::sqrt((to.x - grab.x) * (to.x - grab.x) +
             (to.y - grab.y) * (to.y - grab.y));
 
         /* Reached threshold */
-        if (view_in_slot && distance >= snap_off_threshold)
+        if (view_in_slot && (distance >= snap_off_threshold))
+        {
             snap_off();
+        }
 
         /* View is stuck, we shouldn't change its geometry */
         if (view_in_slot)
+        {
             return;
+        }
 
         this->last_grabbing_position = to;
         adjust_around_grab();
@@ -94,7 +107,9 @@ class move_snap_helper_t : public wf::custom_data_t
     virtual void handle_input_released()
     {
         for (auto v : enum_views(view))
+        {
             end_wobbly(v);
+        }
     }
 
     /** @return Whether the view is freely moving or stays at the same place */
@@ -107,7 +122,7 @@ class move_snap_helper_t : public wf::custom_data_t
     virtual bool should_enable_snap_off() const
     {
         return enable_snap_off &&
-            (view->tiled_edges || view->fullscreen);
+               (view->tiled_edges || view->fullscreen);
     }
 
     /** Move the view out of its slot */
@@ -115,10 +130,14 @@ class move_snap_helper_t : public wf::custom_data_t
     {
         view_in_slot = false;
         if (view->fullscreen)
+        {
             view->fullscreen_request(view->get_output(), false);
+        }
 
         if (view->tiled_edges)
+        {
             view->tile_request(0);
+        }
     }
 
     wf::point_t last_grabbing_position;
@@ -136,7 +155,7 @@ class move_snap_helper_t : public wf::custom_data_t
         view->connect_signal("geometry-changed", &view_geometry_changed);
     }
 
-    signal_callback_t view_geometry_changed = [=] (signal_data_t *)
+    signal_callback_t view_geometry_changed = [=] (signal_data_t*)
     {
         adjust_around_grab();
     };

@@ -14,7 +14,7 @@ namespace decor
 {
 static constexpr uint32_t DECORATION_AREA_RENDERABLE_BIT = (1 << 16);
 static constexpr uint32_t DECORATION_AREA_RESIZE_BIT     = (1 << 17);
-static constexpr uint32_t DECORATION_AREA_MOVE_BIT       = (1 << 18);
+static constexpr uint32_t DECORATION_AREA_MOVE_BIT = (1 << 18);
 
 
 /** Different types of areas around the decoration */
@@ -24,11 +24,10 @@ enum decoration_area_type_t
     DECORATION_AREA_TITLE         =
         DECORATION_AREA_MOVE_BIT | DECORATION_AREA_RENDERABLE_BIT,
     DECORATION_AREA_BUTTON        = DECORATION_AREA_RENDERABLE_BIT,
-
-    DECORATION_AREA_RESIZE_LEFT   = WLR_EDGE_LEFT  |DECORATION_AREA_RESIZE_BIT,
-    DECORATION_AREA_RESIZE_RIGHT  = WLR_EDGE_RIGHT |DECORATION_AREA_RESIZE_BIT,
-    DECORATION_AREA_RESIZE_TOP    = WLR_EDGE_TOP   |DECORATION_AREA_RESIZE_BIT,
-    DECORATION_AREA_RESIZE_BOTTOM = WLR_EDGE_BOTTOM|DECORATION_AREA_RESIZE_BIT,
+    DECORATION_AREA_RESIZE_LEFT   = WLR_EDGE_LEFT | DECORATION_AREA_RESIZE_BIT,
+    DECORATION_AREA_RESIZE_RIGHT  = WLR_EDGE_RIGHT | DECORATION_AREA_RESIZE_BIT,
+    DECORATION_AREA_RESIZE_TOP    = WLR_EDGE_TOP | DECORATION_AREA_RESIZE_BIT,
+    DECORATION_AREA_RESIZE_BOTTOM = WLR_EDGE_BOTTOM | DECORATION_AREA_RESIZE_BIT,
 };
 
 /**
@@ -76,12 +75,10 @@ struct decoration_area_t
  */
 enum decoration_layout_action_t
 {
-    DECORATION_ACTION_NONE     = 0,
-
+    DECORATION_ACTION_NONE            = 0,
     /* Drag actions */
-    DECORATION_ACTION_MOVE     = 1,
-    DECORATION_ACTION_RESIZE   = 2,
-
+    DECORATION_ACTION_MOVE            = 1,
+    DECORATION_ACTION_RESIZE          = 2,
     /* Button actions */
     DECORATION_ACTION_CLOSE           = 3,
     DECORATION_ACTION_TOGGLE_MAXIMIZE = 4,
@@ -123,7 +120,8 @@ class decoration_layout_t
     /** Handle motion event to (x, y) relative to the decoration */
     void handle_motion(int x, int y);
 
-    struct action_response_t {
+    struct action_response_t
+    {
         decoration_layout_action_t action;
         /* For resizing action, determine the edges for resize request */
         uint32_t edges;

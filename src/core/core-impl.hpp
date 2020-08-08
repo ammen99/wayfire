@@ -15,6 +15,7 @@ extern "C"
 }
 
 class input_manager;
+class input_method_relay;
 struct wayfire_shell;
 struct wf_gtk_shell;
 
@@ -34,6 +35,7 @@ class compositor_core_impl_t : public compositor_core_t
     wlr_compositor *compositor;
 
     std::unique_ptr<input_manager> input;
+    std::unique_ptr<input_method_relay> im_relay;
 
     /**
      * Initialize the compositor core. Called only by main()
@@ -63,14 +65,16 @@ class compositor_core_impl_t : public compositor_core_t
     wf::surface_interface_t *get_touch_focus() override;
     wf::surface_interface_t *get_surface_at(wf::pointf_t point) override;
 
-    std::vector<nonstd::observer_ptr<wf::input_device_t>> get_input_devices() override;
-    virtual wlr_cursor* get_wlr_cursor() override;
+    std::vector<nonstd::observer_ptr<wf::input_device_t>> get_input_devices()
+    override;
+    virtual wlr_cursor *get_wlr_cursor() override;
 
     void add_view(std::unique_ptr<wf::view_interface_t> view) override;
     std::vector<wayfire_view> get_all_views() override;
     void set_active_view(wayfire_view v) override;
     void focus_view(wayfire_view win) override;
-    void move_view_to_output(wayfire_view v, wf::output_t *new_output) override;
+    void move_view_to_output(wayfire_view v, wf::output_t *new_output,
+        bool reconfigure) override;
 
     void focus_output(wf::output_t *o) override;
     wf::output_t *get_active_output() override;

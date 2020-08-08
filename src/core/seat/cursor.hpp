@@ -40,12 +40,12 @@ struct wf_cursor
 
     wf::wl_listener_wrapper on_button, on_motion, on_motion_absolute, on_axis,
 
-                            on_swipe_begin, on_swipe_update, on_swipe_end,
-                            on_pinch_begin, on_pinch_update, on_pinch_end,
+        on_swipe_begin, on_swipe_update, on_swipe_end,
+        on_pinch_begin, on_pinch_update, on_pinch_end,
 
-                            on_tablet_tip, on_tablet_axis,
-                            on_tablet_button, on_tablet_proximity,
-                            on_frame;
+        on_tablet_tip, on_tablet_axis,
+        on_tablet_button, on_tablet_proximity,
+        on_frame;
 
     wf::signal_callback_t config_reloaded;
 

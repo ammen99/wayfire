@@ -25,6 +25,7 @@ static const uint32_t both_horiz =
 class wayfire_layer_shell_view : public wf::wlr_view_t
 {
     wf::wl_listener_wrapper on_map, on_unmap, on_destroy, on_new_popup;
+
   protected:
     void initialize() override;
 
@@ -36,7 +37,8 @@ class wayfire_layer_shell_view : public wf::wlr_view_t
     void remove_anchored(bool reflow);
 
     wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf);
-    virtual ~wayfire_layer_shell_view() {}
+    virtual ~wayfire_layer_shell_view()
+    {}
 
     void map(wlr_surface *surface) override;
     void unmap() override;
@@ -53,13 +55,24 @@ class wayfire_layer_shell_view : public wf::wlr_view_t
 wf::workspace_manager::anchored_edge anchor_to_edge(uint32_t edges)
 {
     if (edges == ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP)
+    {
         return wf::workspace_manager::ANCHORED_EDGE_TOP;
+    }
+
     if (edges == ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM)
+    {
         return wf::workspace_manager::ANCHORED_EDGE_BOTTOM;
+    }
+
     if (edges == ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT)
+    {
         return wf::workspace_manager::ANCHORED_EDGE_LEFT;
+    }
+
     if (edges == ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT)
+    {
         return wf::workspace_manager::ANCHORED_EDGE_RIGHT;
+    }
 
     assert(false);
 }
@@ -71,13 +84,15 @@ struct wf_layer_shell_manager
     {
         auto outputs = wf::get_core().output_layout->get_outputs();
         for (auto wo : outputs)
+        {
             arrange_layers(wo);
+        }
     };
 
     wf_layer_shell_manager()
     {
         wf::get_core().output_layout->connect_signal("configuration-changed",
-            &on_output_layout_changed);;
+            &on_output_layout_changed);
     }
 
   public:
@@ -86,6 +101,7 @@ struct wf_layer_shell_manager
         /* Delay instantiation until first call, at which point core should
          * have been already initialized */
         static wf_layer_shell_manager instance;
+
         return instance;
     }
 
@@ -102,15 +118,20 @@ struct wf_layer_shell_manager
     void remove_view_from_layer(wayfire_layer_shell_view *view, uint32_t layer)
     {
         auto& cont = layers[layer];
-        auto it = std::find(cont.begin(), cont.end(), view);
+        auto it    = std::find(cont.begin(), cont.end(), view);
         if (it != cont.end())
+        {
             cont.erase(it);
+        }
     }
 
     void handle_move_layer(wayfire_layer_shell_view *view)
     {
         for (int i = 0; i < COUNT_LAYERS; i++)
+        {
             remove_view_from_layer(view, i);
+        }
+
         handle_map(view);
     }
 
@@ -127,7 +148,9 @@ struct wf_layer_shell_manager
         for (auto view : layers[layer])
         {
             if (view->get_output() == output)
+            {
                 result.push_back(view);
+            }
         }
 
         return result;
@@ -153,22 +176,30 @@ struct wf_layer_shell_manager
         if (__builtin_popcount(edges) == 3)
         {
             if ((edges & both_horiz) == both_horiz)
+            {
                 edges ^= both_horiz;
+            }
 
             if ((edges & both_vert) == both_vert)
+            {
                 edges ^= both_vert;
+            }
         }
 
-        if (edges == 0 || __builtin_popcount(edges) > 1)
+        if ((edges == 0) || (__builtin_popcount(edges) > 1))
         {
-            LOGE ("Unsupported: layer-shell exclusive zone for surfaces anchored to 0, 2 or 4 edges");
+            LOGE(
+                "Unsupported: layer-shell exclusive zone for surfaces anchored to 0, 2 or 4 edges");
+
             return;
         }
 
         if (!v->anchored_area)
         {
-            v->anchored_area = std::make_unique<wf::workspace_manager::anchored_area>();
-            v->anchored_area->reflowed = [v] (wf::geometry_t geometry, wf::geometry_t _)
+            v->anchored_area =
+                std::make_unique<wf::workspace_manager::anchored_area>();
+            v->anchored_area->reflowed =
+                [v] (wf::geometry_t geometry, wf::geometry_t _)
             { v->configure(geometry); };
             /* Notice that the reflowed areas won't be changed until we call
              * reflow_reserved_areas(). However, by that time the information
@@ -178,54 +209,51 @@ struct wf_layer_shell_manager
 
         v->anchored_area->edge = anchor_to_edge(edges);
         v->anchored_area->reserved_size = v->lsurface->current.exclusive_zone;
-        v->anchored_area->real_size = v->anchored_area->edge <= wf::workspace_manager::ANCHORED_EDGE_BOTTOM ?
+        v->anchored_area->real_size     = v->anchored_area->edge <=
+            wf::workspace_manager::ANCHORED_EDGE_BOTTOM ?
             v->lsurface->current.desired_height : v->lsurface->current.desired_width;
     }
 
     void pin_view(wayfire_layer_shell_view *v, wf::geometry_t usable_workarea)
     {
-        auto state = &v->lsurface->current;
+        auto state  = &v->lsurface->current;
         auto bounds = v->lsurface->current.exclusive_zone < 0 ?
             v->get_output()->get_relative_geometry() : usable_workarea;
 
         wf::geometry_t box;
-        box.x = box.y = 0;
+        box.x     = box.y = 0;
         box.width = state->desired_width;
         box.height = state->desired_height;
 
-		if ((state->anchor & both_horiz) && box.width == 0)
+        if ((state->anchor & both_horiz) && (box.width == 0))
         {
-			box.x = bounds.x;
-			box.width = bounds.width;
-		}
-        else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT))
+            box.x     = bounds.x;
+            box.width = bounds.width;
+        } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT))
         {
-			box.x = bounds.x;
-		}
-        else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
+            box.x = bounds.x;
+        } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
         {
-			box.x = bounds.x + (bounds.width - box.width);
-		} else
+            box.x = bounds.x + (bounds.width - box.width);
+        } else
         {
-			box.x = bounds.x + ((bounds.width / 2) - (box.width / 2));
-		}
+            box.x = bounds.x + ((bounds.width / 2) - (box.width / 2));
+        }
 
-		if ((state->anchor & both_vert) && box.height == 0)
+        if ((state->anchor & both_vert) && (box.height == 0))
         {
-			box.y = bounds.y;
-			box.height = bounds.height;
-		}
-        else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP))
+            box.y = bounds.y;
+            box.height = bounds.height;
+        } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP))
         {
-			box.y = bounds.y;
-		}
-        else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM))
+            box.y = bounds.y;
+        } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM))
         {
-			box.y = bounds.y + (bounds.height - box.height);
-		} else
+            box.y = bounds.y + (bounds.height - box.height);
+        } else
         {
-			box.y = bounds.y + ((bounds.height / 2) - (box.height / 2));
-		}
+            box.y = bounds.y + ((bounds.height / 2) - (box.height / 2));
+        }
 
         v->configure(box);
     }
@@ -240,11 +268,15 @@ struct wf_layer_shell_manager
         for (auto v : views)
         {
             if (v->lsurface->client_pending.keyboard_interactive && v->is_mapped())
+            {
                 focus_mask = v->get_layer();
+            }
 
-            if (v->lsurface->client_pending.exclusive_zone > 0) {
+            if (v->lsurface->client_pending.exclusive_zone > 0)
+            {
                 set_exclusive_zone(v);
-            } else {
+            } else
+            {
                 /* Make sure the view doesn't have a reserved area anymore */
                 v->remove_anchored(false);
             }
@@ -256,16 +288,20 @@ struct wf_layer_shell_manager
             /* The protocol dictates that the values -1 and 0 for exclusive zone
              * mean that it doesn't have one */
             if (v->lsurface->client_pending.exclusive_zone < 1)
+            {
                 pin_view(v, usable_workarea);
+            }
         }
 
         return focus_mask;
     }
 
-    void arrange_unmapped_view(wayfire_layer_shell_view* view)
+    void arrange_unmapped_view(wayfire_layer_shell_view *view)
     {
         if (view->lsurface->client_pending.exclusive_zone < 1)
+        {
             return pin_view(view, view->get_output()->workspace->get_workarea());
+        }
 
         set_exclusive_zone(view);
         view->get_output()->workspace->reflow_reserved_areas();
@@ -279,7 +315,8 @@ struct wf_layer_shell_manager
         uint32_t focus1 = arrange_layer(output, ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY);
         uint32_t focus2 = arrange_layer(output, ZWLR_LAYER_SHELL_V1_LAYER_TOP);
         uint32_t focus3 = arrange_layer(output, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM);
-        uint32_t focus4 = arrange_layer(output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND);
+        uint32_t focus4 =
+            arrange_layer(output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND);
 
         auto focus_mask = std::max({focus1, focus2, focus3, focus4});
         focused_layer_request_uid = wf::get_core().focus_layer(focus_mask,
@@ -288,8 +325,8 @@ struct wf_layer_shell_manager
     }
 };
 
-wayfire_layer_shell_view::wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf)
-    : wf::wlr_view_t(), lsurface(lsurf)
+wayfire_layer_shell_view::wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf) :
+    wf::wlr_view_t(), lsurface(lsurf)
 {
     LOGD("Create a layer surface: namespace ", lsurf->namespace_t,
         " layer ", lsurf->current.layer);
@@ -310,19 +347,21 @@ void wayfire_layer_shell_view::initialize()
     wlr_view_t::initialize();
     if (!get_output())
     {
-        LOGE ("Couldn't find output for the layer surface");
+        LOGE("Couldn't find output for the layer surface");
         close();
+
         return;
     }
 
     lsurface->output = get_output()->handle;
-    lsurface->data = dynamic_cast<wf::view_interface_t*> (this);
+    lsurface->data   = dynamic_cast<wf::view_interface_t*>(this);
 
     on_map.set_callback([&] (void*) { map(lsurface->surface); });
     on_unmap.set_callback([&] (void*) { unmap(); });
     on_destroy.set_callback([&] (void*) { destroy(); });
-    on_new_popup.set_callback([&] (void *data) {
-        create_xdg_popup((wlr_xdg_popup*) data);
+    on_new_popup.set_callback([&] (void *data)
+    {
+        create_xdg_popup((wlr_xdg_popup*)data);
     });
 
     on_map.connect(&lsurface->events.map);
@@ -335,6 +374,7 @@ void wayfire_layer_shell_view::initialize()
 
 void wayfire_layer_shell_view::destroy()
 {
+    this->lsurface = nullptr;
     on_map.disconnect();
     on_unmap.disconnect();
     on_destroy.disconnect();
@@ -356,19 +396,25 @@ wf::layer_t wayfire_layer_shell_view::get_layer()
 
     switch (lsurface->current.layer)
     {
-        case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
-            if (it != desktop_widget_ids.end())
-                return wf::LAYER_DESKTOP_WIDGET;
+      case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
+        if (it != desktop_widget_ids.end())
+        {
+            return wf::LAYER_DESKTOP_WIDGET;
+        }
 
-            return wf::LAYER_LOCK;
-        case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
-            return wf::LAYER_TOP;
-        case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
-            return wf::LAYER_BOTTOM;
-        case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
-            return wf::LAYER_BACKGROUND;
-        default:
-            throw std::domain_error("Invalid layer for layer surface!");
+        return wf::LAYER_LOCK;
+
+      case ZWLR_LAYER_SHELL_V1_LAYER_TOP:
+        return wf::LAYER_TOP;
+
+      case ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM:
+        return wf::LAYER_BOTTOM;
+
+      case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
+        return wf::LAYER_BACKGROUND;
+
+      default:
+        throw std::domain_error("Invalid layer for layer surface!");
     }
 }
 
@@ -418,8 +464,11 @@ void wayfire_layer_shell_view::commit()
 
 void wayfire_layer_shell_view::close()
 {
-    wf::wlr_view_t::close();
-    wlr_layer_surface_v1_close(lsurface);
+    if (lsurface)
+    {
+        wf::wlr_view_t::close();
+        wlr_layer_surface_v1_close(lsurface);
+    }
 }
 
 void wayfire_layer_shell_view::configure(wf::geometry_t box)
@@ -427,14 +476,12 @@ void wayfire_layer_shell_view::configure(wf::geometry_t box)
     auto state = &lsurface->current;
     if ((state->anchor & both_horiz) == both_horiz)
     {
-        box.x += state->margin.left;
+        box.x     += state->margin.left;
         box.width -= state->margin.left + state->margin.right;
-    }
-    else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT))
+    } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT))
     {
         box.x += state->margin.left;
-    }
-    else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
+    } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT))
     {
         box.x -= state->margin.right;
     }
@@ -443,18 +490,17 @@ void wayfire_layer_shell_view::configure(wf::geometry_t box)
     {
         box.y += state->margin.top;
         box.height -= state->margin.top + state->margin.bottom;
-    }
-    else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP))
+    } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP))
     {
         box.y += state->margin.top;
-    }
-    else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM))
+    } else if ((state->anchor & ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM))
     {
         box.y -= state->margin.bottom;
     }
 
-    if (box.width < 0 || box.height < 0) {
-        LOGE ("layer-surface has calculated width and height < 0");
+    if ((box.width < 0) || (box.height < 0))
+    {
+        LOGE("layer-surface has calculated width and height < 0");
         close();
     }
 
@@ -470,7 +516,9 @@ void wayfire_layer_shell_view::remove_anchored(bool reflow)
         anchored_area = nullptr;
 
         if (reflow)
+        {
             get_output()->workspace->reflow_reserved_areas();
+        }
     }
 }
 
@@ -482,10 +530,11 @@ void wf::init_layer_shell()
     layer_shell_handle = wlr_layer_shell_v1_create(wf::get_core().display);
     if (layer_shell_handle)
     {
-        on_created.set_callback([] (void *data) {
-            auto lsurf = static_cast<wlr_layer_surface_v1*> (data);
+        on_created.set_callback([] (void *data)
+        {
+            auto lsurf = static_cast<wlr_layer_surface_v1*>(data);
             wf::get_core().add_view(
-                std::make_unique<wayfire_layer_shell_view> (lsurf));
+                std::make_unique<wayfire_layer_shell_view>(lsurf));
         });
 
         on_created.connect(&layer_shell_handle->events.new_surface);

@@ -14,6 +14,11 @@
 			<_long>Enables or disables vertical swiping.</_long>
 			<default>true</default>
 		</option>
+		<option name="enable_free_movement" type="bool">
+			<_short>Enable free movement</_short>
+			<_long>Enables or disables moving diagonally and more than one workspace at a time.</_long>
+			<default>false</default>
+		</option>
 		<option name="enable_smooth_transition" type="bool">
 			<_short>Enable smooth transition</_short>
 			<_long>Enables or disables smooth transition.</_long>

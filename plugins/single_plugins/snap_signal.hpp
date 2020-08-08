@@ -9,7 +9,8 @@
 #include <wayfire/view.hpp>
 
 /* The "slot" where the view should be snapped */
-enum slot_type {
+enum slot_type
+{
     SLOT_BL     = 1,
     SLOT_BOTTOM = 2,
     SLOT_BR     = 3,

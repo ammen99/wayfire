@@ -34,6 +34,8 @@ extern "C"
     struct wlr_relative_pointer_manager_v1;
     struct wlr_pointer_constraints_v1;
     struct wlr_tablet_manager_v2;
+    struct wlr_input_method_manager_v2;
+    struct wlr_text_input_manager_v3;
     struct wlr_presentation;
     struct wlr_gtk_primary_selection_device_manager;
     struct wlr_primary_selection_v1_device_manager;
@@ -46,6 +48,7 @@ namespace wf
 class surface_interface_t;
 class view_interface_t;
 }
+
 using wayfire_view = nonstd::observer_ptr<wf::view_interface_t>;
 
 namespace wf
@@ -101,12 +104,17 @@ class compositor_core_t : public wf::object_base_t
         wlr_relative_pointer_manager_v1 *relative_pointer;
         wlr_pointer_constraints_v1 *pointer_constraints;
         wlr_tablet_manager_v2 *tablet_v2;
+        wlr_input_method_manager_v2 *input_method;
+        wlr_text_input_manager_v3 *text_input;
         wlr_presentation *presentation;
         wlr_gtk_primary_selection_device_manager *gtk_primary_selection;
         wlr_primary_selection_v1_device_manager *primary_selection_v1;
     } protocols;
 
-    std::string to_string() const { return "wayfire-core"; }
+    std::string to_string() const
+    {
+        return "wayfire-core";
+    }
 
     /**
      * @return the current seat. For now, Wayfire supports only a single seat,
@@ -121,7 +129,8 @@ class compositor_core_t : public wf::object_base_t
 
     /** Set the cursor to the given name from the cursor theme, if available */
     virtual void set_cursor(std::string name) = 0;
-    /** Hides the cursor, until something sets it up again, for ex. by set_cursor() */
+    /** Hides the cursor, until something sets it up again, for ex. by set_cursor()
+     * */
     virtual void hide_cursor() = 0;
     /**
      * Move the cursor to a specific position.
@@ -172,13 +181,13 @@ class compositor_core_t : public wf::object_base_t
     /**
      * @return A list of all currently attached input devices.
      */
-    virtual std::vector<nonstd::observer_ptr<wf::input_device_t>>
-        get_input_devices() = 0;
+    virtual std::vector<nonstd::observer_ptr<wf::input_device_t>> get_input_devices()
+    = 0;
 
     /**
      * @return the wlr_cursor used for the input devices
      */
-    virtual wlr_cursor* get_wlr_cursor() = 0;
+    virtual wlr_cursor *get_wlr_cursor() = 0;
 
     /**
      * Add a view to the compositor's view list. The view will be freed when
@@ -217,12 +226,12 @@ class compositor_core_t : public wf::object_base_t
     virtual wf::output_t *get_active_output() = 0;
 
     /**
-     * Change the view's output to new_output. However, the view geometry
-     * isn't changed - the caller needs to make sure that the view doesn't
-     * become unreachable, for ex. by going out of the output bounds
+     * Change the view's output to new_output. If the reconfigure flag is
+     * set, it will adjust the view geometry for the new output and clamp
+     * it to the output geometry so it is at an expected size and position.
      */
     virtual void move_view_to_output(wayfire_view v,
-        wf::output_t *new_output) = 0;
+        wf::output_t *new_output, bool reconfigure) = 0;
 
     /**
      * Add a request to focus the given layer, or update an existing request.
