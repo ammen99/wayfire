@@ -508,7 +508,10 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
     void set_activated(bool active) override
     {
-        wlr_xwayland_surface_activate(xw, active);
+        if (xw)
+        {
+            wlr_xwayland_surface_activate(xw, active);
+        }
         wf::wlr_view_t::set_activated(active);
     }
 
@@ -564,7 +567,10 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
     void set_tiled(uint32_t edges) override
     {
         wf::wlr_view_t::set_tiled(edges);
-        wlr_xwayland_surface_set_maximized(xw, !!edges);
+        if (xw)
+        {
+            wlr_xwayland_surface_set_maximized(xw, !!edges);
+        }
     }
 
     virtual void toplevel_send_app_id() override
@@ -600,13 +606,19 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
     void set_fullscreen(bool full) override
     {
         wf::wlr_view_t::set_fullscreen(full);
-        wlr_xwayland_surface_set_fullscreen(xw, full);
+        if (xw)
+        {
+            wlr_xwayland_surface_set_fullscreen(xw, full);
+        }
     }
 
     void set_minimized(bool minimized) override
     {
         wf::wlr_view_t::set_minimized(minimized);
-        wlr_xwayland_surface_set_minimized(xw, minimized);
+        if (xw)
+        {
+            wlr_xwayland_surface_set_minimized(xw, minimized);
+        }
     }
 };
 
