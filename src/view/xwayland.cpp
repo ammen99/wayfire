@@ -512,6 +512,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         {
             wlr_xwayland_surface_activate(xw, active);
         }
+
         wf::wlr_view_t::set_activated(active);
     }
 
