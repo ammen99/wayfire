@@ -1050,6 +1050,7 @@ class output_layout_t::impl
             state.position  = {head->state.x, head->state.y};
             state.scale     = head->state.scale;
             state.transform = head->state.transform;
+            state.automatic_positioning = false;
         }
 
         return result;
