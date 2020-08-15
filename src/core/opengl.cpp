@@ -279,6 +279,28 @@ void render_end()
 }
 }
 
+static std::string framebuffer_status_to_str(
+    GLuint status)
+{
+    switch (status)
+    {
+      case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        return "incomplete attachment";
+
+      case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+        return "missing attachment";
+
+      case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
+        return "incomplete dimensions";
+
+      case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+        return "incomplete multisample";
+
+      default:
+        return "unknown";
+    }
+}
+
 bool wf::framebuffer_base_t::allocate(int width, int height)
 {
     bool first_allocate = false;
@@ -320,14 +342,12 @@ bool wf::framebuffer_base_t::allocate(int width, int height)
         GL_CALL(glBindTexture(GL_TEXTURE_2D, tex));
         GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
             GL_TEXTURE_2D, tex, 0));
-    }
 
-    if (is_resize || first_allocate)
-    {
         auto status = GL_CALL(glCheckFramebufferStatus(GL_FRAMEBUFFER));
         if (status != GL_FRAMEBUFFER_COMPLETE)
         {
-            LOGE("Failed to initialize framebuffer");
+            LOGE("Failed to initialize framebuffer: ",
+                framebuffer_status_to_str(status));
 
             return false;
         }
