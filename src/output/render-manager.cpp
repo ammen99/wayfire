@@ -383,6 +383,115 @@ struct postprocessing_manager_t
     }
 };
 
+/**
+ * Responsible for attaching depth buffers to framebuffers.
+ * It keeps at most 3 depth buffers at any given time to conserve
+ * resources.
+ */
+class depth_buffer_manager_t : public noncopyable_t
+{
+  public:
+    void ensure_depth_buffer(int fb, int width, int height)
+    {
+        /* If the backend doesn't have its own framebuffer, then the
+         * framebuffer is created with a depth buffer. */
+        if (fb == 0)
+        {
+            return;
+        }
+
+        attach_buffer(find_buffer(fb), fb, width, height);
+    }
+
+    ~depth_buffer_manager_t()
+    {
+        OpenGL::render_begin();
+        for (auto& buffer : buffers)
+        {
+            GL_CALL(glDeleteTextures(1, &buffer.tex));
+        }
+
+        OpenGL::render_end();
+    }
+
+  private:
+    static constexpr size_t MAX_BUFFERS = 3;
+
+    struct depth_buffer_t
+    {
+        GLuint tex = -1;
+        int attached_to = -1;
+        int width  = 0;
+        int height = 0;
+
+        int64_t last_used = 0;
+    };
+
+    void attach_buffer(depth_buffer_t& buffer, int fb, int width, int height)
+    {
+        if ((buffer.attached_to == fb) &&
+            (buffer.width == width) &&
+            (buffer.height == height))
+        {
+            return;
+        }
+
+        if (buffer.tex != (GLuint) - 1)
+        {
+            GL_CALL(glDeleteTextures(1, &buffer.tex));
+        }
+
+        GL_CALL(glGenTextures(1, &buffer.tex));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, buffer.tex));
+        GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F,
+            width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL));
+        buffer.width  = width;
+        buffer.height = height;
+
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, buffer.tex));
+        GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb));
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+            GL_TEXTURE_2D, buffer.tex, 0));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
+
+        buffer.attached_to = fb;
+        buffer.last_used   = get_current_time();
+    }
+
+    depth_buffer_t& find_buffer(int fb)
+    {
+        for (auto& buffer : buffers)
+        {
+            if (buffer.attached_to == fb)
+            {
+                return buffer;
+            }
+        }
+
+        /** New buffer? */
+        if (buffers.size() < MAX_BUFFERS)
+        {
+            buffers.push_back(depth_buffer_t{});
+
+            return buffers.back();
+        }
+
+        /** Evict oldest */
+        auto oldest = &buffers.front();
+        for (auto& buffer : buffers)
+        {
+            if (buffer.last_used < oldest->last_used)
+            {
+                oldest = &buffer;
+            }
+        }
+
+        return *oldest;
+    }
+
+    std::vector<depth_buffer_t> buffers;
+};
+
 class wf::render_manager::impl
 {
   public:
@@ -396,6 +505,7 @@ class wf::render_manager::impl
     std::unique_ptr<output_damage_t> output_damage;
     std::unique_ptr<effect_hook_manager_t> effects;
     std::unique_ptr<postprocessing_manager_t> postprocessing;
+    std::unique_ptr<depth_buffer_manager_t> depth_buffer_manager;
 
     wf::option_wrapper_t<wf::color_t> background_color_opt;
     wf::option_wrapper_t<int> max_render_time_opt;
@@ -406,6 +516,7 @@ class wf::render_manager::impl
         output_damage = std::make_unique<output_damage_t>(o);
         effects = std::make_unique<effect_hook_manager_t>();
         postprocessing = std::make_unique<postprocessing_manager_t>(o);
+        depth_buffer_manager = std::make_unique<depth_buffer_manager_t>();
 
         on_present.set_callback([&] (void *data)
         {
@@ -592,54 +703,17 @@ class wf::render_manager::impl
         }
     }
 
-    /** Depth buffer for output */
-    struct
-    {
-        GLuint tex = -1;
-        int attached_to = -1;
-        int width  = 0;
-        int height = 0;
-    } depth_buffer;
-
-    void update_depth_attachment(int fb)
-    {
-        if (depth_buffer.tex == (GLuint) - 1)
-        {
-            GL_CALL(glGenTextures(1, &depth_buffer.tex));
-        }
-
-        int width  = output->handle->width;
-        int height = output->handle->height;
-        if ((depth_buffer.width != width) || (depth_buffer.height != height))
-        {
-            GL_CALL(glBindTexture(GL_TEXTURE_2D, depth_buffer.tex));
-            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F,
-                width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL));
-
-            depth_buffer.width  = width;
-            depth_buffer.height = height;
-        }
-
-        if ((fb == depth_buffer.attached_to) || (fb == 0))
-        {
-            return;
-        }
-
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, depth_buffer.tex));
-        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
-            GL_TEXTURE_2D, depth_buffer.tex, 0));
-        GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-        depth_buffer.attached_to = fb;
-    }
-
     void update_bound_output()
     {
         int current_fb;
         GL_CALL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &current_fb));
-        update_depth_attachment(current_fb);
-
         bind_output(current_fb);
+
         postprocessing->set_output_framebuffer(current_fb);
+        const auto& default_fb = postprocessing->get_target_framebuffer();
+        depth_buffer_manager->ensure_depth_buffer(
+            default_fb.fb, default_fb.viewport_width, default_fb.viewport_height);
+
         for (auto& row : this->default_streams)
         {
             for (auto& ws : row)
