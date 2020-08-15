@@ -389,7 +389,7 @@ class wf::render_manager::impl
     wf::wl_listener_wrapper on_frame;
     wf::wl_listener_wrapper on_present;
     wf::wl_timer repaint_timer;
-    int64_t refresh_nsec;
+    int64_t refresh_nsec = 0;
 
     output_t *output;
     wf::region_t swap_damage;
