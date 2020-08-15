@@ -171,7 +171,7 @@ namespace OpenGL
  * and render_end() */
 void render_begin(); // use if you just want to bind GL context but won't draw
 void render_begin(const wf::framebuffer_base_t& fb);
-void render_begin(int32_t viewport_width, int32_t viewport_height, uint32_t fb = 0);
+void render_begin(int32_t viewport_width, int32_t viewport_height, uint32_t fb);
 
 /* Call this to indicate an end of the rendering.
  * Resets bound framebuffer and scissor box.

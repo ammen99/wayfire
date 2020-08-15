@@ -124,16 +124,19 @@ void fini()
 namespace
 {
 wf::output_t *current_output = NULL;
+uint32_t current_output_fb   = 0;
 }
 
-void bind_output(wf::output_t *output)
+void bind_output(wf::output_t *output, uint32_t fb)
 {
-    current_output = output;
+    current_output    = output;
+    current_output_fb = fb;
 }
 
 void unbind_output(wf::output_t *output)
 {
-    current_output = NULL;
+    current_output    = NULL;
+    current_output_fb = 0;
 }
 
 void render_transformed_texture(wf::texture_t tex,
@@ -270,7 +273,7 @@ void clear(wf::color_t col, uint32_t mask)
 
 void render_end()
 {
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, current_output_fb));
     wlr_renderer_scissor(wf::get_core().renderer, NULL);
     wlr_renderer_end(wf::get_core().renderer);
 }
@@ -299,7 +302,7 @@ bool wf::framebuffer_base_t::allocate(int width, int height)
     bool is_resize = false;
     /* Special case: fb = 0. This occurs in the default workspace streams, we don't
      * resize anything */
-    if (fb != 0)
+    if (fb != OpenGL::current_output_fb)
     {
         if (first_allocate || (width != viewport_width) ||
             (height != viewport_height))
@@ -334,7 +337,7 @@ bool wf::framebuffer_base_t::allocate(int width, int height)
     viewport_height = height;
 
     GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, OpenGL::current_output_fb));
 
     return is_resize || first_allocate;
 }

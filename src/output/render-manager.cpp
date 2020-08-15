@@ -273,6 +273,27 @@ struct postprocessing_manager_t
         this->output = output;
     }
 
+    void workaround_wlroots_backend_y_invert(wf::framebuffer_t& fb) const
+    {
+        /* Sometimes, the framebuffer by OpenGL is Y-inverted.
+         * This is the case only if the target framebuffer is not 0 */
+        if (output_fb == 0)
+        {
+            return;
+        }
+
+        fb.wl_transform = wlr_output_transform_compose(
+            (wl_output_transform)fb.wl_transform, WL_OUTPUT_TRANSFORM_FLIPPED_180);
+        fb.transform = get_output_matrix_from_transform(
+            (wl_output_transform)fb.wl_transform);
+    }
+
+    uint32_t output_fb = 0;
+    void set_output_framebuffer(uint32_t output_fb)
+    {
+        this->output_fb = output_fb;
+    }
+
     void allocate(int width, int height)
     {
         if (post_effects.size() == 0)
@@ -308,8 +329,9 @@ struct postprocessing_manager_t
      * damage. So, we need to keep the whole buffer each frame. */
     void run_post_effects()
     {
-        static wf::framebuffer_base_t default_framebuffer;
-        default_framebuffer.tex = default_framebuffer.fb = 0;
+        wf::framebuffer_base_t default_framebuffer;
+        default_framebuffer.fb  = output_fb;
+        default_framebuffer.tex = 0;
 
         int last_buffer_idx = default_out_buffer;
         int next_buffer_idx = 1;
@@ -334,20 +356,30 @@ struct postprocessing_manager_t
         });
     }
 
-    /**
-     * Get the input framebuffer and texture for the postprocessing manager
-     */
-    void get_default_target(uint32_t& fb, uint32_t& tex)
+    wf::framebuffer_t get_target_framebuffer() const
     {
+        wf::framebuffer_t fb;
+        fb.geometry     = output->get_relative_geometry();
+        fb.wl_transform = output->handle->transform;
+        fb.transform    = get_output_matrix_from_transform(
+            (wl_output_transform)fb.wl_transform);
+        fb.scale = output->handle->scale;
+
         if (post_effects.size())
         {
-            fb  = post_buffers[default_out_buffer].fb;
-            tex = post_buffers[default_out_buffer].tex;
+            fb.fb  = post_buffers[default_out_buffer].fb;
+            fb.tex = post_buffers[default_out_buffer].tex;
         } else
         {
-            fb  = 0;
-            tex = 0;
+            fb.fb  = output_fb;
+            fb.tex = 0;
         }
+
+        workaround_wlroots_backend_y_invert(fb);
+        fb.viewport_width  = output->handle->width;
+        fb.viewport_height = output->handle->height;
+
+        return fb;
     }
 };
 
@@ -483,31 +515,14 @@ class wf::render_manager::impl
         }
     }
 
-    wf::framebuffer_t get_target_framebuffer() const
-    {
-        wf::framebuffer_t fb;
-        fb.geometry     = output->get_relative_geometry();
-        fb.wl_transform = output->handle->transform;
-        fb.transform    = get_output_matrix_from_transform(
-            (wl_output_transform)fb.wl_transform);
-        fb.scale = output->handle->scale;
-
-        postprocessing->get_default_target(fb.fb, fb.tex);
-
-        fb.viewport_width  = output->handle->width;
-        fb.viewport_height = output->handle->height;
-
-        return fb;
-    }
-
     /* Actual rendering functions */
 
     /**
      * Bind the output's EGL surface, allocate buffers
      */
-    void bind_output()
+    void bind_output(uint32_t fb)
     {
-        OpenGL::bind_output(output);
+        OpenGL::bind_output(output, fb);
 
         /* Make sure the default buffer has enough size */
         postprocessing->allocate(output->handle->width, output->handle->height);
@@ -525,7 +540,8 @@ class wf::render_manager::impl
              * visible */
             swap_damage |= output_damage->get_wlr_damage_box();
 
-            OpenGL::render_begin(output->handle->width, output->handle->height, 0);
+            OpenGL::render_begin(output->handle->width, output->handle->height,
+                postprocessing->output_fb);
             OpenGL::clear({1, 1, 0, 1});
             OpenGL::render_end();
         }
@@ -564,7 +580,7 @@ class wf::render_manager::impl
     {
         if (renderer)
         {
-            renderer(get_target_framebuffer());
+            renderer(postprocessing->get_target_framebuffer());
             /* TODO: let custom renderers specify what they want to repaint... */
             swap_damage |= output_damage->get_wlr_damage_box();
         } else
@@ -573,6 +589,63 @@ class wf::render_manager::impl
                 output_damage->get_scheduled_damage() * output->handle->scale;
             swap_damage &= output_damage->get_wlr_damage_box();
             default_renderer();
+        }
+    }
+
+    /** Depth buffer for output */
+    struct
+    {
+        GLuint tex = -1;
+        int attached_to = -1;
+        int width  = 0;
+        int height = 0;
+    } depth_buffer;
+
+    void update_depth_attachment(int fb)
+    {
+        if (depth_buffer.tex == (GLuint) - 1)
+        {
+            GL_CALL(glGenTextures(1, &depth_buffer.tex));
+        }
+
+        int width  = output->handle->width;
+        int height = output->handle->height;
+        if ((depth_buffer.width != width) || (depth_buffer.height != height))
+        {
+            GL_CALL(glBindTexture(GL_TEXTURE_2D, depth_buffer.tex));
+            GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F,
+                width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL));
+
+            depth_buffer.width  = width;
+            depth_buffer.height = height;
+        }
+
+        if ((fb == depth_buffer.attached_to) || (fb == 0))
+        {
+            return;
+        }
+
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, depth_buffer.tex));
+        GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+            GL_TEXTURE_2D, depth_buffer.tex, 0));
+        GL_CALL(glBindTexture(GL_TEXTURE_2D, 0));
+        depth_buffer.attached_to = fb;
+    }
+
+    void update_bound_output()
+    {
+        int current_fb;
+        GL_CALL(glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &current_fb));
+        update_depth_attachment(current_fb);
+
+        bind_output(current_fb);
+        postprocessing->set_output_framebuffer(current_fb);
+        for (auto& row : this->default_streams)
+        {
+            for (auto& ws : row)
+            {
+                ws.buffer.fb = current_fb;
+            }
         }
     }
 
@@ -608,7 +681,7 @@ class wf::render_manager::impl
             return;
         }
 
-        bind_output();
+        update_bound_output();
 
         /* Part 2: call the renderer, which sets swap_damage and
          * draws the scenegraph */
@@ -622,7 +695,7 @@ class wf::render_manager::impl
             swap_damage |= output_damage->get_wlr_damage_box();
         }
 
-        OpenGL::render_begin(get_target_framebuffer());
+        OpenGL::render_begin(postprocessing->get_target_framebuffer());
         wlr_output_render_software_cursors(output->handle, swap_damage.to_pixman());
         OpenGL::render_end();
 
@@ -630,7 +703,8 @@ class wf::render_manager::impl
         postprocessing->run_post_effects();
         if (output_inhibit_counter)
         {
-            OpenGL::render_begin(output->handle->width, output->handle->height, 0);
+            OpenGL::render_begin(output->handle->width, output->handle->height,
+                postprocessing->output_fb);
             OpenGL::clear({0, 0, 0, 1});
             OpenGL::render_end();
         }
@@ -924,8 +998,8 @@ class wf::render_manager::impl
         stream.buffer.allocate(output->handle->width, output->handle->height);
         OpenGL::render_end();
 
-        repaint.fb = get_target_framebuffer();
-        if ((stream.buffer.fb != 0) && (stream.buffer.tex != 0))
+        repaint.fb = postprocessing->get_target_framebuffer();
+        if ((stream.buffer.tex != 0))
         {
             /* Use the workspace buffers */
             repaint.fb.fb  = stream.buffer.fb;
@@ -1114,7 +1188,7 @@ wlr_box render_manager::get_ws_box(wf::point_t ws) const
 
 wf::framebuffer_t render_manager::get_target_framebuffer() const
 {
-    return pimpl->get_target_framebuffer();
+    return pimpl->postprocessing->get_target_framebuffer();
 }
 
 void render_manager::workspace_stream_start(workspace_stream_t& stream)
