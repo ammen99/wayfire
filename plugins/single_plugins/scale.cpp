@@ -365,6 +365,19 @@ class wayfire_scale : public wf::plugin_interface_t
         }
     }
 
+    void check_focus_view(wayfire_view view)
+    {
+        if (view == last_focused_view)
+        {
+            last_focused_view = output->get_active_view();
+        }
+
+        if (view == initial_focus_view)
+        {
+            initial_focus_view = nullptr;
+        }
+    }
+
     void remove_view(wayfire_view view)
     {
         if (!view)
@@ -372,10 +385,12 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
+        check_focus_view(view);
         pop_transformer(view);
         scale_data.erase(view);
         for (auto& child : view->children)
         {
+            check_focus_view(child);
             pop_transformer(child);
             scale_data.erase(child);
         }
@@ -1061,11 +1076,6 @@ class wayfire_scale : public wf::plugin_interface_t
             auto it = scale_data.find(view->parent);
             if (it != scale_data.end())
             {
-                if (view == last_focused_view)
-                {
-                    last_focused_view = output->get_active_view();
-                }
-
                 remove_view(view);
                 auto views = get_views();
                 if (!views.size())
@@ -1080,11 +1090,6 @@ class wayfire_scale : public wf::plugin_interface_t
             if (it == scale_data.end())
             {
                 return;
-            }
-
-            if (view == last_focused_view)
-            {
-                last_focused_view = output->get_active_view();
             }
 
             remove_view(view);
@@ -1150,10 +1155,7 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             auto view = get_signaled_view(data);
 
-            if (view == last_focused_view)
-            {
-                last_focused_view = output->get_active_view();
-            }
+            check_focus_view(view);
         }
     };
 
