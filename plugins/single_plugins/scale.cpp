@@ -147,6 +147,13 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         wf_scale *tr = new wf_scale(view);
+        if (!scale_data.count(view))
+        {
+            /* note: a view is present in scale_data iff the geometry-changed signal
+             * has already been connected */
+            view->connect_signal("geometry-changed", &view_geometry_changed);
+        }
+
         scale_data[view].transformer = tr;
         view->add_transformer(std::unique_ptr<wf_scale>(tr), transformer_name);
 
@@ -307,7 +314,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void fade_in(wayfire_view view)
     {
-        if (!view || !scale_data[view].transformer)
+        if (!view || !scale_data.count(view) || !scale_data[view].transformer)
         {
             return;
         }
@@ -323,7 +330,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
     void fade_out(wayfire_view view)
     {
-        if (!view || !scale_data[view].transformer)
+        if (!view || !scale_data.count(view) || !scale_data[view].transformer)
         {
             return;
         }
@@ -463,11 +470,11 @@ class wayfire_scale : public wf::plugin_interface_t
 
     wayfire_view find_view_in_grid(int row, int col)
     {
-        for (auto& view : get_views())
+        for (auto& e : scale_data)
         {
-            if ((scale_data[view].row == row) && (scale_data[view].col == col))
+            if ((e.second.row == row) && (e.second.col == col))
             {
-                return view;
+                return e.first;
             }
         }
 
@@ -495,6 +502,11 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         if (!scale_view(view) && (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        {
+            return;
+        }
+
+        if (!scale_data.count(view))
         {
             return;
         }
@@ -979,8 +991,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
             if (!found)
             {
-                auto& view_data = scale_data[view];
-                setup_view_transform(view_data, 1, 1, 0, 0, 1);
+                setup_view_transform(e.second, 1, 1, 0, 0, 1);
                 rearrange = true;
             }
         }
@@ -1040,6 +1051,10 @@ class wayfire_scale : public wf::plugin_interface_t
             }
 
             view->connect_signal("geometry-changed", &view_geometry_changed);
+            /* note: a view is present in scale_data iff the geometry-changed signal
+             * has already been connected */
+            scale_data.emplace(std::piecewise_construct,
+                std::make_tuple(view), std::tuple());
             layout_slots(get_views());
         }
     };
@@ -1219,15 +1234,6 @@ class wayfire_scale : public wf::plugin_interface_t
                 e.second.animation.scale_animation.running())
             {
                 return true;
-            }
-
-            for (auto& child : e.first->children)
-            {
-                if (scale_data[child].fade_animation.running() ||
-                    scale_data[child].animation.scale_animation.running())
-                {
-                    return true;
-                }
             }
         }
 
