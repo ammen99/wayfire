@@ -246,6 +246,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 all_workspaces_option_changed();
             } else
             {
+                select_view(last_focused_view);
                 deactivate();
             }
         } else
