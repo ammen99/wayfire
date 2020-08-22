@@ -130,22 +130,24 @@ class wayfire_scale : public wf::plugin_interface_t
         allow_scale_zoom.set_callback(allow_scale_zoom_option_changed);
     }
 
-    void add_transformer(wayfire_view view)
+    bool add_transformer(wayfire_view view)
     {
         if (!view)
         {
-            return;
+            return false;
         }
 
         if (view->get_transformer(transformer_name))
         {
-            return;
+            return false;
         }
 
         wf_scale *tr = new wf_scale(view);
         scale_data[view].transformer = tr;
         view->add_transformer(std::unique_ptr<wf_scale>(tr), transformer_name);
         view->connect_signal("geometry-changed", &view_geometry_changed);
+
+        return true;
     }
 
     void add_transformers(std::vector<wayfire_view> views)
@@ -781,8 +783,6 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        add_transformers(views);
-
         auto workarea    = output->workspace->get_workarea();
         auto active_view = output->get_active_view();
         if (active_view && !scale_view(active_view))
@@ -836,10 +836,11 @@ class wayfire_scale : public wf::plugin_interface_t
             for (j = 0; j < n; j++)
             {
                 auto view = views[slots];
+
+                add_transformer(view);
                 auto& view_data = scale_data[view];
 
                 auto vg = view->get_wm_geometry();
-
                 double scale_x    = width / vg.width;
                 double scale_y    = height / vg.height;
                 int translation_x = x - vg.x + ((width - vg.width) / 2.0);
@@ -888,22 +889,34 @@ class wayfire_scale : public wf::plugin_interface_t
                         }
                     }
 
+                    translation_x = view_data.transformer->translation_x;
+                    translation_y = view_data.transformer->translation_y;
+
+                    auto new_child   = add_transformer(child);
+                    auto& child_data = scale_data[child];
+
+                    if (new_child)
+                    {
+                        child_data.transformer->translation_x =
+                            view_data.transformer->translation_x;
+                        child_data.transformer->translation_y =
+                            view_data.transformer->translation_y;
+                    }
+
                     translation_x = x - vg.x + ((width - vg.width) / 2.0);
                     translation_y = y - vg.y + ((height - vg.height) / 2.0);
 
-                    auto& view_data = scale_data[child];
-
                     if (active)
                     {
-                        setup_view_transform(view_data, scale_x, scale_y,
+                        setup_view_transform(child_data, scale_x, scale_y,
                             translation_x, translation_y, target_alpha);
                     } else
                     {
-                        setup_view_transform(view_data, 1, 1, 0, 0, 1);
+                        setup_view_transform(child_data, 1, 1, 0, 0, 1);
                     }
 
-                    view_data.row = i;
-                    view_data.col = j;
+                    child_data.row = i;
+                    child_data.col = j;
                 }
 
                 x += width + (int)spacing;
