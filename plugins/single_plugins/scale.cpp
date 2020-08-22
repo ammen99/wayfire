@@ -1050,11 +1050,16 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            view->connect_signal("geometry-changed", &view_geometry_changed);
-            /* note: a view is present in scale_data iff the geometry-changed signal
-             * has already been connected */
-            scale_data.emplace(std::piecewise_construct,
-                std::make_tuple(view), std::tuple());
+            if (!scale_data.count(view))
+            {
+                view->connect_signal("geometry-changed", &view_geometry_changed);
+                /* note: a view is present in scale_data iff the geometry-changed
+                 * signal
+                 * has already been connected */
+                scale_data.emplace(std::piecewise_construct,
+                    std::make_tuple(view), std::tuple());
+            }
+
             layout_slots(get_views());
         }
     };
