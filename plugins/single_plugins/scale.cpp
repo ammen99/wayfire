@@ -681,7 +681,16 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         std::vector<wayfire_view> views;
 
-        views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
+        for (auto& view :
+             output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
+        {
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
+            {
+                continue;
+            }
+
+            views.push_back(view);
+        }
 
         return views;
     }
@@ -693,7 +702,7 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& view :
              output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE))
         {
-            if (view->role != wf::VIEW_ROLE_TOPLEVEL)
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
             {
                 continue;
             }
