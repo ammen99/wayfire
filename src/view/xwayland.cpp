@@ -713,7 +713,7 @@ void wayfire_xwayland_view_base::recreate_view_with_or_type()
      * Copy xw and mapped status into the stack, because "this" may be destroyed
      * at some point of this function.
      */
-    auto xw_surf = this->xw;
+    auto xw_surf    = this->xw;
     bool was_mapped = is_mapped();
 
     // destroy the view (unmap + destroy)
@@ -735,7 +735,7 @@ void wayfire_xwayland_view_base::recreate_view_with_or_type()
     }
 
     // create copy for mapping later
-    auto raw_ptr  = new_view.get();
+    auto raw_ptr = new_view.get();
     wf::get_core().add_view(std::move(new_view));
 
     if (was_mapped)
