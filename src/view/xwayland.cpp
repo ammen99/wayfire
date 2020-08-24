@@ -62,7 +62,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
 
   protected:
     wf::wl_listener_wrapper on_destroy, on_unmap, on_map, on_configure,
-        on_set_title, on_set_app_id;
+        on_set_title, on_set_app_id, on_or_changed;
 
     wlr_xwayland_surface *xw;
     /** The geometry requested by the client */
@@ -154,6 +154,10 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         {
             handle_app_id_changed(nonull(xw->class_t));
         });
+        on_or_changed.set_callback([&] (void*)
+        {
+            recreate_view_with_or_type();
+        });
 
         handle_title_changed(nonull(xw->title));
         handle_app_id_changed(nonull(xw->class_t));
@@ -164,7 +168,14 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_configure.connect(&xw->events.request_configure);
         on_set_title.connect(&xw->events.set_title);
         on_set_app_id.connect(&xw->events.set_class);
+        on_or_changed.connect(&xw->events.set_override_redirect);
     }
+
+    /**
+     * Destroy the view, and create a new one with the correct override-redirect
+     * type.
+     */
+    virtual void recreate_view_with_or_type();
 
     virtual void destroy() override
     {
@@ -177,6 +188,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_configure.disconnect();
         on_set_title.disconnect();
         on_set_app_id.disconnect();
+        on_or_changed.disconnect();
 
         wf::wlr_view_t::destroy();
     }
@@ -427,24 +439,6 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
     void map(wlr_surface *surface) override
     {
-        /* override-redirect status changed between creation and MapNotify */
-        if (xw->override_redirect)
-        {
-            /* Copy the xsurface in stack, since the destroy() will likely
-             * delete this */
-            auto xsurface = xw;
-            destroy();
-
-            auto view = std::make_unique<wayfire_unmanaged_xwayland_view>(
-                xsurface);
-            auto view_ptr = view.get();
-
-            wf::get_core().add_view(std::move(view));
-            view_ptr->map(xsurface->surface);
-
-            return;
-        }
-
         if (xw->maximized_horz && xw->maximized_vert)
         {
             if ((xw->width > 0) && (xw->height > 0))
@@ -710,6 +704,43 @@ void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
     if (wlr_xwayland_or_surface_wants_focus(xw))
     {
         get_output()->focus_view(self());
+    }
+}
+
+void wayfire_xwayland_view_base::recreate_view_with_or_type()
+{
+    /*
+     * Copy xw and mapped status into the stack, because "this" may be destroyed
+     * at some point of this function.
+     */
+    auto xw_surf = this->xw;
+    bool was_mapped = is_mapped();
+
+    // destroy the view (unmap + destroy)
+    if (was_mapped)
+    {
+        unmap();
+    }
+
+    destroy();
+
+    // create the new view
+    std::unique_ptr<wayfire_xwayland_view_base> new_view;
+    if (xw_surf->override_redirect)
+    {
+        new_view = std::make_unique<wayfire_unmanaged_xwayland_view>(xw_surf);
+    } else
+    {
+        new_view = std::make_unique<wayfire_xwayland_view>(xw_surf);
+    }
+
+    // create copy for mapping later
+    auto raw_ptr  = new_view.get();
+    wf::get_core().add_view(std::move(new_view));
+
+    if (was_mapped)
+    {
+        raw_ptr->map(xw_surf->surface);
     }
 }
 
