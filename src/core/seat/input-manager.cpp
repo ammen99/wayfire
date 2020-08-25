@@ -360,7 +360,7 @@ wf::surface_interface_t*input_manager::input_surface_at(wf::pointf_t global,
     {
         for (auto& view : v->enumerate_views())
         {
-            if (can_focus_surface(view.get()))
+            if (!view->minimized && can_focus_surface(view.get()))
             {
                 auto surface = view->map_input_coordinates(global, local);
                 if (surface)
