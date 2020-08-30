@@ -164,6 +164,20 @@ class wayfire_blur : public wf::plugin_interface_t
         }
     }
 
+    /** Transform region into framebuffer coordinates */
+    wf::region_t get_fb_region(const wf::region_t& region,
+        const wf::framebuffer_t& fb) const
+    {
+        wf::region_t result;
+        for (const auto& rect : region)
+        {
+            result |= fb.framebuffer_box_from_geometry_box(
+                wlr_box_from_pixman_box(rect));
+        }
+
+        return result;
+    }
+
   public:
     void init() override
     {
@@ -337,11 +351,8 @@ class wayfire_blur : public wf::plugin_interface_t
             /* Compute padded region and store result in padded_region.
              * We need to be careful, because core needs to scale the damage
              * back and forth for wlroots. */
-            expanded_damage *= target_fb.scale;
-            expanded_damage *= (1.0 / target_fb.scale);
-            damage *= target_fb.scale;
-            damage *= (1.0 / target_fb.scale);
-            padded_region = expanded_damage ^ damage;
+            padded_region = get_fb_region(expanded_damage, target_fb) ^
+                get_fb_region(damage, target_fb);
 
             OpenGL::render_begin(target_fb);
             /* Initialize a place to store padded region pixels. */
@@ -355,12 +366,8 @@ class wayfire_blur : public wf::plugin_interface_t
             GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, target_fb.fb));
 
             /* Copy pixels in padded_region from target_fb to saved_pixels. */
-            for (const auto& rect : padded_region)
+            for (const auto& box : padded_region)
             {
-                pixman_box32_t box = pixman_box_from_wlr_box(
-                    target_fb.framebuffer_box_from_geometry_box(
-                        wlr_box_from_pixman_box(rect)));
-
                 GL_CALL(glBlitFramebuffer(
                     box.x1, target_fb.viewport_height - box.y2,
                     box.x2, target_fb.viewport_height - box.y1,
@@ -392,12 +399,8 @@ class wayfire_blur : public wf::plugin_interface_t
             GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, saved_pixels.fb));
 
             /* Copy pixels back from saved_pixels to target_fb. */
-            for (const auto& rect : padded_region)
+            for (const auto& box : padded_region)
             {
-                pixman_box32_t box = pixman_box_from_wlr_box(
-                    target_fb.framebuffer_box_from_geometry_box(
-                        wlr_box_from_pixman_box(rect)));
-
                 GL_CALL(glBlitFramebuffer(box.x1, box.y1, box.x2, box.y2,
                     box.x1, target_fb.viewport_height - box.y2,
                     box.x2, target_fb.viewport_height - box.y1,
