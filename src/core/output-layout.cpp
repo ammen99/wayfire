@@ -972,6 +972,12 @@ class output_layout_t::impl
              * after the wayland display is. */
             this->timer_remove_noop.disconnect();
             shutdown_received = true;
+            if (noop_output)
+            {
+                noop_output->destroy_wayfire_output(true);
+            }
+
+            wlr_backend_destroy(noop_backend);
         };
         get_core().connect_signal("shutdown", &on_shutdown);
 
@@ -1011,13 +1017,6 @@ class output_layout_t::impl
 
     ~impl()
     {
-        if (noop_output)
-        {
-            noop_output->destroy_wayfire_output(true);
-        }
-
-        wlr_backend_destroy(noop_backend);
-
         get_core().disconnect_signal("reload-config", &on_config_reload);
     }
 
