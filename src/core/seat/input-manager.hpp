@@ -28,6 +28,12 @@ struct wlr_seat;
 struct wf_touch;
 struct wf_keyboard;
 
+enum wf_locked_mods
+{
+    WF_KB_NUM  = 1 << 0,
+    WF_KB_CAPS = 1 << 1,
+};
+
 enum wf_binding_type
 {
     WF_BINDING_KEY,
@@ -142,6 +148,7 @@ class input_manager
         wf::pointf_t& local);
 
     uint32_t get_modifiers();
+    uint32_t locked_mods = 0;
 
     void free_output_bindings(wf::output_t *output);
 

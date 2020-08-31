@@ -21,6 +21,16 @@
 			<_long>Sets the frequency of key repeats once the `input.kb_repeat_delay` has passed.</_long>
 			<default>40</default>
 		</option>
+		<option name="kb_numlock_default_state" type="bool">
+			<_short>Numlock default state</_short>
+			<_long>Default numlock state when wayfire starts.</_long>
+			<default>false</default>
+		</option>
+		<option name="kb_capslock_default_state" type="bool">
+			<_short>Capslock default state</_short>
+			<_long>Default capslock state when wayfire starts.</_long>
+			<default>false</default>
+		</option>
 		<!-- XKB configuration -->
 		<option name="xkb_layout" type="string">
 			<_short>XKB layout</_short>

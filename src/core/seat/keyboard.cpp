@@ -5,6 +5,7 @@ extern "C"
 {
 #include <xkbcommon/xkbcommon.h>
 #include <wlr/backend/session.h>
+#include <wlr/interfaces/wlr_keyboard.h>
 }
 
 #include <wayfire/util/log.hpp>
@@ -67,6 +68,15 @@ wf_keyboard::wf_keyboard(wlr_input_device *dev) :
     wlr_seat_set_keyboard(wf::get_core().get_current_seat(), dev);
 }
 
+static void set_locked_mod(xkb_mod_mask_t *mods, xkb_keymap *keymap, char *mod)
+{
+    xkb_mod_index_t mod_index = xkb_map_mod_get_index(keymap, mod);
+    if (mod_index != XKB_MOD_INVALID)
+    {
+        *mods |= (uint32_t)1 << mod_index;
+    }
+}
+
 void wf_keyboard::reload_input_options()
 {
     auto ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
@@ -98,11 +108,25 @@ void wf_keyboard::reload_input_options()
         keymap = xkb_map_new_from_names(ctx, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
     }
 
+    xkb_mod_mask_t locked_mods = 0;
+
+    if (wf::get_core_impl().input->locked_mods & WF_KB_NUM)
+    {
+        set_locked_mod(&locked_mods, keymap, XKB_MOD_NAME_NUM);
+    }
+
+    if (wf::get_core_impl().input->locked_mods & WF_KB_CAPS)
+    {
+        set_locked_mod(&locked_mods, keymap, XKB_MOD_NAME_CAPS);
+    }
+
     wlr_keyboard_set_keymap(handle, keymap);
     xkb_keymap_unref(keymap);
     xkb_context_unref(ctx);
 
     wlr_keyboard_set_repeat_info(handle, repeat_rate, repeat_delay);
+
+    wlr_keyboard_notify_modifiers(handle, 0, 0, locked_mods, 0);
 }
 
 wf_keyboard::~wf_keyboard()
@@ -276,6 +300,36 @@ std::vector<std::function<bool()>> input_manager::match_keys(uint32_t mod_state,
     return callbacks;
 }
 
+void update_keyboard_locked_mods(wlr_keyboard *kbd, xkb_mod_mask_t& locked_mods)
+{
+    uint32_t leds = 0;
+    for (uint32_t i = 0; i < WLR_LED_COUNT; i++)
+    {
+        if (xkb_state_led_index_is_active(
+            kbd->xkb_state,
+            kbd->led_indexes[i]))
+        {
+            leds |= (1 << i);
+        }
+    }
+
+    if (leds & WLR_LED_NUM_LOCK)
+    {
+        locked_mods |= WF_KB_NUM;
+    } else
+    {
+        locked_mods &= ~WF_KB_NUM;
+    }
+
+    if (leds & WLR_LED_CAPS_LOCK)
+    {
+        locked_mods |= WF_KB_CAPS;
+    } else
+    {
+        locked_mods &= ~WF_KB_CAPS;
+    }
+}
+
 bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 {
     using namespace std::chrono;
@@ -293,6 +347,7 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
 
     std::vector<std::function<bool()>> callbacks;
     auto kbd = wlr_seat_get_keyboard(seat);
+    update_keyboard_locked_mods(kbd, locked_mods);
 
     if (state == WLR_KEY_PRESSED)
     {

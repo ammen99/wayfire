@@ -167,9 +167,28 @@ void input_manager::handle_input_destroyed(wlr_input_device *dev)
     update_capabilities();
 }
 
+void load_locked_mods_from_config(xkb_mod_mask_t& locked_mods)
+{
+    wf::option_wrapper_t<bool> numlock_state, capslock_state;
+    numlock_state.load_option("input/kb_numlock_default_state");
+    capslock_state.load_option("input/kb_capslock_default_state");
+
+    if (numlock_state)
+    {
+        locked_mods |= WF_KB_NUM;
+    }
+
+    if (capslock_state)
+    {
+        locked_mods |= WF_KB_CAPS;
+    }
+}
+
 input_manager::input_manager()
 {
     wf::pointing_device_t::config.load();
+
+    load_locked_mods_from_config(locked_mods);
 
     input_device_created.set_callback([&] (void *data)
     {
