@@ -276,6 +276,13 @@ class compositor_core_t : public wf::object_base_t
     virtual pid_t run(std::string command) = 0;
 
     /**
+     * Shut down the whole compositor.
+     *
+     * Stops event loops, destroys outputs, views, etc.
+     */
+    virtual void shutdown() = 0;
+
+    /**
      * Returns a reference to the only core instance.
      */
     static compositor_core_t& get();

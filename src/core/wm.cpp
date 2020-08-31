@@ -22,8 +22,7 @@ extern "C"
 
 static void idle_shutdown(void *data)
 {
-    wf::get_core().emit_signal("shutdown", nullptr);
-    wl_display_terminate(wf::get_core().display);
+    wf::get_core().shutdown();
 }
 
 void wayfire_exit::init()

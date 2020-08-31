@@ -721,6 +721,12 @@ pid_t wf::compositor_core_impl_t::run(std::string command)
     }
 }
 
+void wf::compositor_core_impl_t::shutdown()
+{
+    wf::get_core().emit_signal("shutdown", nullptr);
+    wl_display_terminate(wf::get_core().display);
+}
+
 std::string wf::compositor_core_impl_t::get_xwayland_display()
 {
     return xwayland_get_display();
