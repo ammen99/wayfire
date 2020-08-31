@@ -332,6 +332,7 @@ wayfire_layer_shell_view::wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf) 
         " layer ", lsurf->current.layer);
 
     role = wf::VIEW_ROLE_DESKTOP_ENVIRONMENT;
+    std::memset(&this->prev_state, 0, sizeof(prev_state));
 
     /* If we already have an output set, then assign it before core assigns us
      * an output */
