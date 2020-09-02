@@ -571,7 +571,6 @@ extern "C"
 {
 #include <wlr/config.h>
 
-#include <wlr/types/wlr_xdg_shell_v6.h>
 #define namespace namespace_t
 #include <wlr/types/wlr_layer_shell_v1.h>
 #undef namespace
@@ -613,12 +612,6 @@ wayfire_view wf::wl_surface_to_wayfire_view(wl_resource *resource)
     auto surface = (wlr_surface*)wl_resource_get_user_data(resource);
 
     void *handle = NULL;
-
-    if (wlr_surface_is_xdg_surface_v6(surface))
-    {
-        handle = wlr_xdg_surface_v6_from_wlr_surface(surface)->data;
-    }
-
     if (wlr_surface_is_xdg_surface(surface))
     {
         handle = wlr_xdg_surface_from_wlr_surface(surface)->data;

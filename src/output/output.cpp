@@ -192,30 +192,28 @@ bool wf::output_t::ensure_visible(wayfire_view v)
 template<class popup_type>
 void try_close_popup(wayfire_view to_check, wayfire_view active_view)
 {
-    auto popup = dynamic_cast<wayfire_xdg_popup<popup_type>*>(to_check.get());
-    if (!popup || (popup->popup_parent == active_view.get()))
-    {
-        return;
-    }
-
-    /* Ignore popups which have a popup as their parent. In those cases, we'll
-     * close the topmost popup and this will recursively destroy the others.
-     *
-     * Otherwise we get a race condition with wlroots. */
-    if (dynamic_cast<wayfire_xdg_popup<popup_type>*>(popup->popup_parent))
-    {
-        return;
-    }
-
-    popup->close();
 }
 
 void wf::output_impl_t::close_popups()
 {
     for (auto& v : workspace->get_views_in_layer(wf::ALL_LAYERS))
     {
-        try_close_popup<wlr_xdg_popup>(v, active_view);
-        try_close_popup<wlr_xdg_popup_v6>(v, active_view);
+        auto popup = dynamic_cast<wayfire_xdg_popup*>(v.get());
+        if (!popup || (popup->popup_parent == active_view.get()))
+        {
+            continue;
+        }
+
+        /* Ignore popups which have a popup as their parent. In those cases, we'll
+         * close the topmost popup and this will recursively destroy the others.
+         *
+         * Otherwise we get a race condition with wlroots. */
+        if (dynamic_cast<wayfire_xdg_popup*>(popup->popup_parent))
+        {
+            continue;
+        }
+
+        popup->close();
     }
 }
 

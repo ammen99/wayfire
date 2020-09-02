@@ -5,14 +5,11 @@
 extern "C"
 {
 #include <wlr/types/wlr_xdg_shell.h>
-#include <wlr/types/wlr_xdg_shell_v6.h>
 }
 
 /**
- * A class for xdg-shell(and -v6) popups. XdgPopupVersion can be either a
- * `wlr_xdg_popup` or `wlr_xdg_popup_v6`.
+ * A class for xdg-shell popups
  */
-template<class XdgPopupVersion>
 class wayfire_xdg_popup : public wf::wlr_view_t
 {
   protected:
@@ -21,13 +18,12 @@ class wayfire_xdg_popup : public wf::wlr_view_t
         parent_title_changed, parent_app_id_changed;
 
     wf::wl_idle_call pending_close;
-    XdgPopupVersion *popup;
+    wlr_xdg_popup *popup;
     void unconstrain();
-    void _do_unconstrain(wlr_box box);
     void update_position();
 
   public:
-    wayfire_xdg_popup(XdgPopupVersion *popup);
+    wayfire_xdg_popup(wlr_xdg_popup *popup);
     void initialize() override;
 
     wlr_view_t *popup_parent;
@@ -39,12 +35,8 @@ class wayfire_xdg_popup : public wf::wlr_view_t
     virtual void close() override;
 };
 
-template<class XdgPopupVersion>
-void create_xdg_popup(XdgPopupVersion *popup);
-template<>
-void create_xdg_popup<wlr_xdg_popup>(wlr_xdg_popup *popup);
+void create_xdg_popup(wlr_xdg_popup *popup);
 
-template<class XdgToplevelVersion>
 class wayfire_xdg_view : public wf::wlr_view_t
 {
   private:
@@ -55,13 +47,13 @@ class wayfire_xdg_view : public wf::wlr_view_t
         on_set_title, on_set_app_id;
 
     wf::point_t xdg_surface_offset = {0, 0};
-    XdgToplevelVersion *xdg_toplevel;
+    wlr_xdg_toplevel *xdg_toplevel;
 
   protected:
     void initialize() override final;
 
   public:
-    wayfire_xdg_view(XdgToplevelVersion *toplevel);
+    wayfire_xdg_view(wlr_xdg_toplevel *toplevel);
     virtual ~wayfire_xdg_view();
 
     void map(wlr_surface *surface) final;
@@ -72,11 +64,9 @@ class wayfire_xdg_view : public wf::wlr_view_t
 
     void set_tiled(uint32_t edges) final;
     void set_activated(bool act) final;
-    void _set_activated(bool act);
     void set_fullscreen(bool full) final;
 
     void resize(int w, int h) final;
-    void _resize(int w, int h);
     void request_native_size() override final;
 
     void destroy() final;

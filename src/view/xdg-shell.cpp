@@ -8,8 +8,7 @@
 #include "wayfire/output-layout.hpp"
 #include <wayfire/workspace-manager.hpp>
 
-template<class XdgPopupVersion>
-wayfire_xdg_popup<XdgPopupVersion>::wayfire_xdg_popup(XdgPopupVersion *popup) :
+wayfire_xdg_popup::wayfire_xdg_popup(wlr_xdg_popup *popup) :
     wf::wlr_view_t()
 {
     this->popup_parent =
@@ -20,8 +19,7 @@ wayfire_xdg_popup<XdgPopupVersion>::wayfire_xdg_popup(XdgPopupVersion *popup) :
     this->set_output(popup_parent->get_output());
 }
 
-template<class XdgPopupVersion>
-void wayfire_xdg_popup<XdgPopupVersion>::initialize()
+void wayfire_xdg_popup::initialize()
 {
     LOGI("New xdg popup");
     on_map.set_callback([&] (void*) { map(this->popup->base->surface); });
@@ -33,7 +31,7 @@ void wayfire_xdg_popup<XdgPopupVersion>::initialize()
     on_destroy.set_callback([&] (void*) { destroy(); });
     on_new_popup.set_callback([&] (void *data)
     {
-        create_xdg_popup((XdgPopupVersion*)data);
+        create_xdg_popup((wlr_xdg_popup*)data);
     });
 
     on_map.connect(&popup->base->events.map);
@@ -63,8 +61,7 @@ void wayfire_xdg_popup<XdgPopupVersion>::initialize()
         &this->parent_title_changed);
 }
 
-template<class XdgPopupVersion>
-void wayfire_xdg_popup<XdgPopupVersion>::map(wlr_surface *surface)
+void wayfire_xdg_popup::map(wlr_surface *surface)
 {
     uint32_t parent_layer =
         get_output()->workspace->get_view_layer(popup_parent->self());
@@ -82,15 +79,13 @@ void wayfire_xdg_popup<XdgPopupVersion>::map(wlr_surface *surface)
     unconstrain();
 }
 
-template<class XdgPopupVersion>
-void wayfire_xdg_popup<XdgPopupVersion>::commit()
+void wayfire_xdg_popup::commit()
 {
     wlr_view_t::commit();
     update_position();
 }
 
-template<class XdgPopupVersion>
-void wayfire_xdg_popup<XdgPopupVersion>::update_position()
+void wayfire_xdg_popup::update_position()
 {
     if (!popup_parent->is_mapped() || !is_mapped())
     {
@@ -110,14 +105,12 @@ void wayfire_xdg_popup<XdgPopupVersion>::update_position()
     this->move(popup_offset.x, popup_offset.y);
 }
 
-template<class XdgPopupVersion>
-void wayfire_xdg_popup<XdgPopupVersion>::unconstrain()
+void wayfire_xdg_popup::unconstrain()
 {
     wf::view_interface_t *toplevel_parent = this;
-    using popup_type = wayfire_xdg_popup<XdgPopupVersion>*;
     while (true)
     {
-        popup_type as_popup = dynamic_cast<popup_type>(toplevel_parent);
+        auto as_popup = dynamic_cast<wayfire_xdg_popup*>(toplevel_parent);
         if (as_popup)
         {
             toplevel_parent = as_popup->popup_parent;
@@ -137,23 +130,10 @@ void wayfire_xdg_popup<XdgPopupVersion>::unconstrain()
     box.x -= wm.x;
     box.y -= wm.y;
 
-    _do_unconstrain(box);
-}
-
-template<>
-void wayfire_xdg_popup<wlr_xdg_popup>::_do_unconstrain(wlr_box box)
-{
     wlr_xdg_popup_unconstrain_from_box(popup, &box);
 }
 
-template<>
-void wayfire_xdg_popup<wlr_xdg_popup_v6>::_do_unconstrain(wlr_box box)
-{
-    wlr_xdg_popup_v6_unconstrain_from_box(popup, &box);
-}
-
-template<class XdgPopupVersion>
-void wayfire_xdg_popup<XdgPopupVersion>::destroy()
+void wayfire_xdg_popup::destroy()
 {
     on_map.disconnect();
     on_unmap.disconnect();
@@ -163,8 +143,7 @@ void wayfire_xdg_popup<XdgPopupVersion>::destroy()
     wlr_view_t::destroy();
 }
 
-template<class XdgPopupVersion>
-wf::point_t wayfire_xdg_popup<XdgPopupVersion>::get_window_offset()
+wf::point_t wayfire_xdg_popup::get_window_offset()
 {
     return {
         popup->base->geometry.x,
@@ -172,20 +151,7 @@ wf::point_t wayfire_xdg_popup<XdgPopupVersion>::get_window_offset()
     };
 }
 
-template<>
-void wayfire_xdg_popup<wlr_xdg_popup_v6>::close()
-{
-    pending_close.run_once([=] ()
-    {
-        if (is_mapped())
-        {
-            wlr_xdg_surface_v6_send_close(popup->base);
-        }
-    });
-}
-
-template<>
-void wayfire_xdg_popup<wlr_xdg_popup>::close()
+void wayfire_xdg_popup::close()
 {
     pending_close.run_once([=] ()
     {
@@ -196,8 +162,7 @@ void wayfire_xdg_popup<wlr_xdg_popup>::close()
     });
 }
 
-template<class XdgPopupVersion>
-void create_xdg_popup_templ(XdgPopupVersion *popup)
+void create_xdg_popup(wlr_xdg_popup *popup)
 {
     auto parent = wf::wf_surface_from_void(popup->parent->data);
     if (!parent)
@@ -207,30 +172,14 @@ void create_xdg_popup_templ(XdgPopupVersion *popup)
         return;
     }
 
-    wf::get_core().add_view(
-        std::make_unique<wayfire_xdg_popup<XdgPopupVersion>>(popup));
+    wf::get_core().add_view(std::make_unique<wayfire_xdg_popup>(popup));
 }
 
-template<class XdgPopupVersion>
-void create_xdg_popup(XdgPopupVersion *popup)
-{
-    create_xdg_popup_templ(popup);
-}
-
-// specialized in header
-template<>
-void create_xdg_popup<wlr_xdg_popup>(wlr_xdg_popup *popup)
-{
-    create_xdg_popup_templ(popup);
-}
-
-template<class XdgToplevelVersion>
-wayfire_xdg_view<XdgToplevelVersion>::wayfire_xdg_view(XdgToplevelVersion *top) :
+wayfire_xdg_view::wayfire_xdg_view(wlr_xdg_toplevel *top) :
     wf::wlr_view_t(), xdg_toplevel(top)
 {}
 
-template<class XdgToplevelVersion>
-void wayfire_xdg_view<XdgToplevelVersion>::initialize()
+void wayfire_xdg_view::initialize()
 {
     wlr_view_t::initialize();
     LOGI("new xdg_shell_stable surface: ", xdg_toplevel->title,
@@ -306,15 +255,10 @@ void wayfire_xdg_view<XdgToplevelVersion>::initialize()
     }
 }
 
-template<class XdgToplevelVersion>
-wayfire_xdg_view<XdgToplevelVersion>::~wayfire_xdg_view()
+wayfire_xdg_view::~wayfire_xdg_view()
 {}
 
-template<class XdgToplevelVersion>
-wf::geometry_t get_xdg_geometry(XdgToplevelVersion *toplevel);
-
-template<>
-wf::geometry_t get_xdg_geometry<wlr_xdg_toplevel>(wlr_xdg_toplevel *toplevel)
+wf::geometry_t get_xdg_geometry(wlr_xdg_toplevel *toplevel)
 {
     wlr_box xdg_geometry;
     wlr_xdg_surface_get_geometry(toplevel->base, &xdg_geometry);
@@ -322,24 +266,13 @@ wf::geometry_t get_xdg_geometry<wlr_xdg_toplevel>(wlr_xdg_toplevel *toplevel)
     return xdg_geometry;
 }
 
-template<>
-wf::geometry_t get_xdg_geometry<wlr_xdg_toplevel_v6>(wlr_xdg_toplevel_v6 *toplevel)
-{
-    wlr_box xdg_geometry;
-    wlr_xdg_surface_v6_get_geometry(toplevel->base, &xdg_geometry);
-
-    return xdg_geometry;
-}
-
-template<class XdgToplevelVersion>
-void wayfire_xdg_view<XdgToplevelVersion>::map(wlr_surface *surface)
+void wayfire_xdg_view::map(wlr_surface *surface)
 {
     wlr_view_t::map(surface);
     create_toplevel();
 }
 
-template<class XdgToplevelVersion>
-void wayfire_xdg_view<XdgToplevelVersion>::commit()
+void wayfire_xdg_view::commit()
 {
     wlr_view_t::commit();
 
@@ -359,14 +292,12 @@ void wayfire_xdg_view<XdgToplevelVersion>::commit()
     }
 }
 
-template<class XdgToplevelVersion>
-wf::point_t wayfire_xdg_view<XdgToplevelVersion>::get_window_offset()
+wf::point_t wayfire_xdg_view::get_window_offset()
 {
     return xdg_surface_offset;
 }
 
-template<class XdgToplevelVersion>
-wf::geometry_t wayfire_xdg_view<XdgToplevelVersion>::get_wm_geometry()
+wf::geometry_t wayfire_xdg_view::get_wm_geometry()
 {
     if (!is_mapped())
     {
@@ -391,8 +322,7 @@ wf::geometry_t wayfire_xdg_view<XdgToplevelVersion>::get_wm_geometry()
     return wm;
 }
 
-template<class XdgToplevelVersion>
-void wayfire_xdg_view<XdgToplevelVersion>::set_activated(bool act)
+void wayfire_xdg_view::set_activated(bool act)
 {
     /* we don't send activated or deactivated for shell views,
      * they should always be active */
@@ -401,24 +331,11 @@ void wayfire_xdg_view<XdgToplevelVersion>::set_activated(bool act)
         act = true;
     }
 
-    _set_activated(act);
+    wlr_xdg_toplevel_set_activated(xdg_toplevel->base, act);
     wf::wlr_view_t::set_activated(act);
 }
 
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel>::_set_activated(bool act)
-{
-    wlr_xdg_toplevel_set_activated(xdg_toplevel->base, act);
-}
-
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel_v6>::_set_activated(bool act)
-{
-    wlr_xdg_toplevel_v6_set_activated(xdg_toplevel->base, act);
-}
-
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel>::set_tiled(uint32_t edges)
+void wayfire_xdg_view::set_tiled(uint32_t edges)
 {
     wlr_xdg_toplevel_set_tiled(xdg_toplevel->base, edges);
     wlr_xdg_toplevel_set_maximized(xdg_toplevel->base,
@@ -426,29 +343,13 @@ void wayfire_xdg_view<wlr_xdg_toplevel>::set_tiled(uint32_t edges)
     wlr_view_t::set_tiled(edges);
 }
 
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel_v6>::set_tiled(uint32_t edges)
-{
-    wlr_xdg_toplevel_v6_set_maximized(xdg_toplevel->base, !!edges);
-    wlr_view_t::set_tiled(edges);
-}
-
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel>::set_fullscreen(bool full)
+void wayfire_xdg_view::set_fullscreen(bool full)
 {
     wf::wlr_view_t::set_fullscreen(full);
     wlr_xdg_toplevel_set_fullscreen(xdg_toplevel->base, full);
 }
 
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel_v6>::set_fullscreen(bool full)
-{
-    wf::wlr_view_t::set_fullscreen(full);
-    wlr_xdg_toplevel_v6_set_fullscreen(xdg_toplevel->base, full);
-}
-
-template<class XdgToplevelVersion>
-void wayfire_xdg_view<XdgToplevelVersion>::resize(int w, int h)
+void wayfire_xdg_view::resize(int w, int h)
 {
     if (view_impl->frame)
     {
@@ -460,36 +361,16 @@ void wayfire_xdg_view<XdgToplevelVersion>::resize(int w, int h)
     if (should_resize_client({w, h}, current_size))
     {
         this->last_size_request = {w, h};
-        _resize(w, h);
+        wlr_xdg_toplevel_set_size(xdg_toplevel->base, w, h);
     }
 }
 
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel>::_resize(int w, int h)
-{
-    wlr_xdg_toplevel_set_size(xdg_toplevel->base, w, h);
-}
-
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel_v6>::_resize(int w, int h)
-{
-    wlr_xdg_toplevel_v6_set_size(xdg_toplevel->base, w, h);
-}
-
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel>::request_native_size()
+void wayfire_xdg_view::request_native_size()
 {
     wlr_xdg_toplevel_set_size(xdg_toplevel->base, 0, 0);
 }
 
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel_v6>::request_native_size()
-{
-    wlr_xdg_toplevel_v6_set_size(xdg_toplevel->base, 0, 0);
-}
-
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel>::close()
+void wayfire_xdg_view::close()
 {
     if (xdg_toplevel)
     {
@@ -498,18 +379,7 @@ void wayfire_xdg_view<wlr_xdg_toplevel>::close()
     }
 }
 
-template<>
-void wayfire_xdg_view<wlr_xdg_toplevel_v6>::close()
-{
-    if (xdg_toplevel)
-    {
-        wlr_xdg_surface_v6_send_close(xdg_toplevel->base);
-        wf::wlr_view_t::close();
-    }
-}
-
-template<class XdgToplevelVersion>
-void wayfire_xdg_view<XdgToplevelVersion>::destroy()
+void wayfire_xdg_view::destroy()
 {
     on_map.disconnect();
     on_unmap.disconnect();
@@ -528,13 +398,11 @@ void wayfire_xdg_view<XdgToplevelVersion>::destroy()
     wf::wlr_view_t::destroy();
 }
 
-static wlr_xdg_shell *xdg_handle;
-static wlr_xdg_shell_v6 *xdg_handle_v6;
-
+static wlr_xdg_shell *xdg_handle = nullptr;
 
 void wf::init_xdg_shell()
 {
-    static wf::wl_listener_wrapper on_xdg_created, on_xdg6_created;
+    static wf::wl_listener_wrapper on_xdg_created;
     xdg_handle = wlr_xdg_shell_create(wf::get_core().display);
 
     if (xdg_handle)
@@ -545,34 +413,9 @@ void wf::init_xdg_shell()
             if (surf->role == WLR_XDG_SURFACE_ROLE_TOPLEVEL)
             {
                 wf::get_core().add_view(
-                    std::make_unique<wayfire_xdg_view<wlr_xdg_toplevel>>(
-                        surf->toplevel));
+                    std::make_unique<wayfire_xdg_view>(surf->toplevel));
             }
         });
         on_xdg_created.connect(&xdg_handle->events.new_surface);
     }
-
-    xdg_handle_v6 = wlr_xdg_shell_v6_create(wf::get_core().display);
-    if (xdg_handle_v6)
-    {
-        on_xdg6_created.set_callback([&] (void *data)
-        {
-            auto surf = static_cast<wlr_xdg_surface_v6*>(data);
-            if (surf->role == WLR_XDG_SURFACE_V6_ROLE_TOPLEVEL)
-            {
-                wf::get_core().add_view(
-                    std::make_unique<wayfire_xdg_view<wlr_xdg_toplevel_v6>>(
-                        surf->toplevel));
-            }
-        });
-        on_xdg6_created.connect(&xdg_handle_v6->events.new_surface);
-    }
 }
-
-template class wayfire_xdg_popup<wlr_xdg_popup_v6>;
-
-template class wayfire_xdg_popup<wlr_xdg_popup>;
-
-template class wayfire_xdg_view<wlr_xdg_toplevel_v6>;
-
-template class wayfire_xdg_view<wlr_xdg_toplevel>;
