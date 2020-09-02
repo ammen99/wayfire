@@ -189,11 +189,6 @@ bool wf::output_t::ensure_visible(wayfire_view v)
     return true;
 }
 
-template<class popup_type>
-void try_close_popup(wayfire_view to_check, wayfire_view active_view)
-{
-}
-
 void wf::output_impl_t::close_popups()
 {
     for (auto& v : workspace->get_views_in_layer(wf::ALL_LAYERS))
