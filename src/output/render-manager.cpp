@@ -551,6 +551,8 @@ class wf::render_manager::impl
                     paint();
                 });
             }
+
+            send_frame_done();
         });
         on_frame.connect(&output_damage->damage_manager->events.frame);
 
@@ -729,11 +731,6 @@ class wf::render_manager::impl
     void paint()
     {
         /* Part 1: frame setup: query damage, etc. */
-        timespec repaint_started;
-        clockid_t presentation_clock =
-            wlr_backend_get_presentation_clock(wf::get_core_impl().backend);
-        clock_gettime(presentation_clock, &repaint_started);
-
         effects->run_effects(OUTPUT_EFFECT_PRE);
 
         bool needs_swap;
@@ -801,8 +798,6 @@ class wf::render_manager::impl
         {
             output_damage->schedule_repaint();
         }
-
-        send_frame_done();
     }
 
     /**
@@ -1097,7 +1092,7 @@ class wf::render_manager::impl
         for (const auto& rect : repaint.ws_damage)
         {
             repaint.fb.logic_scissor(wlr_box_from_pixman_box(rect));
-            OpenGL::clear(color, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            OpenGL::clear(color, GL_COLOR_BUFFER_BIT);
         }
 
         OpenGL::render_end();
