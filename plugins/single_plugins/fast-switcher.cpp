@@ -22,13 +22,9 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
     {
         grab_interface->name = "fast-switcher";
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
-        output->add_key(activate_key, &fast_switch_start);
+        output->add_key(activate_key, &fast_switch);
 
         using namespace std::placeholders;
-        grab_interface->callbacks.keyboard.key =
-            std::bind(std::mem_fn(&wayfire_fast_switcher::handle_key),
-                this, _1, _2);
-
         grab_interface->callbacks.keyboard.mod =
             std::bind(std::mem_fn(&wayfire_fast_switcher::handle_mod),
                 this, _1, _2);
@@ -49,16 +45,6 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         {
             switch_terminate();
         }
-    }
-
-    void handle_key(uint32_t key, uint32_t kstate)
-    {
-        if (kstate != WLR_KEY_PRESSED)
-        {
-            return;
-        }
-
-        switch_next();
     }
 
     void update_views()
@@ -137,11 +123,13 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         view->damage();
     }
 
-    wf::key_callback fast_switch_start = [=] (uint32_t)
+    wf::key_callback fast_switch = [=] (uint32_t)
     {
         if (active)
         {
-            return false;
+            switch_next();
+
+            return true;
         }
 
         if (!output->activate_plugin(grab_interface))
@@ -207,7 +195,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
             switch_terminate();
         }
 
-        output->rem_binding(&fast_switch_start);
+        output->rem_binding(&fast_switch);
     }
 };
 
