@@ -51,7 +51,7 @@
 		<option name="max_render_time" type="int">
 			<_short>Maximum render time</_short>
 			<_long>Sets the compositor render delay in milliseconds, which allows applications to render with low latency.</_long>
-			<default>7</default>
+			<default>-1</default>
 		</option>
 	</plugin>
 </wayfire>
