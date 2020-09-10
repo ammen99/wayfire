@@ -146,8 +146,11 @@ void input_manager::create_seat()
     start_drag.set_callback([&] (void *data)
     {
         auto d = static_cast<wlr_drag*>(data);
-        wf::get_core_impl().input->drag_icon =
-            std::make_unique<wf_drag_icon>(d->icon);
+        if (d->icon)
+        {
+            wf::get_core_impl().input->drag_icon =
+                std::make_unique<wf_drag_icon>(d->icon);
+        }
 
         wf::dnd_signal evdata;
         evdata.icon = wf::get_core_impl().input->drag_icon.get();
