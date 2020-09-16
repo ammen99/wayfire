@@ -63,6 +63,16 @@ wf_keyboard::wf_keyboard(wlr_input_device *dev) :
     repeat_rate.load_option("input/kb_repeat_rate");
     repeat_delay.load_option("input/kb_repeat_delay");
 
+    // When the configuration options change, mark them as dirty.
+    // They are applied at the config-reloaded signal.
+    model.set_callback([=] () { this->dirty_options = true; });
+    variant.set_callback([=] () { this->dirty_options = true; });
+    layout.set_callback([=] () { this->dirty_options = true; });
+    options.set_callback([=] () { this->dirty_options = true; });
+    rules.set_callback([=] () { this->dirty_options = true; });
+    repeat_rate.set_callback([=] () { this->dirty_options = true; });
+    repeat_delay.set_callback([=] () { this->dirty_options = true; });
+
     setup_listeners();
     reload_input_options();
     wlr_seat_set_keyboard(wf::get_core().get_current_seat(), dev);
@@ -79,6 +89,13 @@ static void set_locked_mod(xkb_mod_mask_t *mods, xkb_keymap *keymap, char *mod)
 
 void wf_keyboard::reload_input_options()
 {
+    if (!this->dirty_options)
+    {
+        return;
+    }
+
+    this->dirty_options = false;
+
     auto ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 
     /* Copy memory to stack, so that .c_str() is valid */
