@@ -248,6 +248,20 @@ static void signal_handler(int signal)
 
 #endif
 
+static std::optional<std::string> choose_socket(wl_display *display)
+{
+    for (int i = 1; i <= 32; i++)
+    {
+        auto name = "wayland-" + std::to_string(i);
+        if (wl_display_add_socket(display, name.c_str()) >= 0)
+        {
+            return name;
+        }
+    }
+
+    return {};
+}
+
 int main(int argc, char *argv[])
 {
     config_dir = nonull(getenv("XDG_CONFIG_HOME"));
@@ -367,28 +381,27 @@ int main(int argc, char *argv[])
         handle_config_updated, NULL);
     core.init();
 
-    auto server_name = wl_display_add_socket_auto(core.display);
-    if (!server_name)
+    auto socket = choose_socket(core.display);
+    if (!socket)
     {
-        LOGE("failed to create wayland, socket, exiting");
+        LOGE("Failed to create wayland socket, exiting.");
 
         return -1;
     }
 
-    setenv("_WAYLAND_DISPLAY", server_name, 1);
-
-    core.wayland_display = server_name;
+    core.wayland_display = socket.value();
+    LOGI("Using socket name ", core.wayland_display);
     if (!wlr_backend_start(core.backend))
     {
-        LOGE("failed to initialize backend, exiting");
+        LOGE("Failed to initialize backend, exiting");
         wlr_backend_destroy(core.backend);
         wl_display_destroy(core.display);
 
         return -1;
     }
 
-    LOGI("running at server ", server_name);
-    setenv("WAYLAND_DISPLAY", server_name, 1);
+    setenv("WAYLAND_DISPLAY", core.wayland_display.c_str(), 1);
+
     wf::xwayland_set_seat(core.get_current_seat());
     wl_display_run(core.display);
 
