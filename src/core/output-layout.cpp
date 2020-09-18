@@ -196,12 +196,26 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
         to ? to->handle->name : "null");
     /* first move each desktop view(e.g windows) to another output */
     std::vector<wayfire_view> views;
+    std::vector<wayfire_view> unmapped_views;
     if (to)
     {
         /* If we aren't moving to another output, then there is no need to
          * enumerate views either */
-        views = from->workspace->get_views_in_layer(
-            wf::WM_LAYERS & (~wf::LAYER_UNMANAGED));
+        views = from->workspace->get_views_in_layer(wf::WM_LAYERS);
+
+        // Also get a list of views which are on that output, but do not have
+        // a layer. These are usually unmapped Xwayland views, which are not to
+        // be killed, as they are needed for the "real" views.
+        for (auto& view : wf::get_core().get_all_views())
+        {
+            if ((view->get_output() == from) &&
+                (from->workspace->get_view_layer(view) == 0) &&
+                (view->role != VIEW_ROLE_DESKTOP_ENVIRONMENT))
+            {
+                unmapped_views.push_back(view);
+            }
+        }
+
         std::reverse(views.begin(), views.end());
     }
 
@@ -213,27 +227,37 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
     /* views would be empty if !to, but clang-analyzer detects null deref */
     if (to)
     {
+        for (auto& view : unmapped_views)
+        {
+            // Most operations for transferring an unmapped view to another
+            // output don't make any sense, so we handle them separately.
+            view->surface_interface_t::set_output(to);
+        }
+
         for (auto& view : views)
         {
             wf::get_core().move_view_to_output(view, to, false);
             to->workspace->move_to_workspace(view,
                 to->workspace->get_current_workspace());
 
-            if (view->tiled_edges)
+            if (view->is_mapped())
             {
-                view->tile_request(view->tiled_edges);
-            }
+                if (view->tiled_edges)
+                {
+                    view->tile_request(view->tiled_edges);
+                }
 
-            if (view->fullscreen)
-            {
-                view->fullscreen_request(to, true);
-            }
+                if (view->fullscreen)
+                {
+                    view->fullscreen_request(to, true);
+                }
 
-            if (!view->fullscreen && !view->tiled_edges && view->is_mapped())
-            {
-                auto geometry = wf::clamp(view->get_wm_geometry(),
-                    to->workspace->get_workarea());
-                view->set_geometry(geometry);
+                if (!view->fullscreen && !view->tiled_edges)
+                {
+                    auto geometry = wf::clamp(view->get_wm_geometry(),
+                        to->workspace->get_workarea());
+                    view->set_geometry(geometry);
+                }
             }
         }
     }
