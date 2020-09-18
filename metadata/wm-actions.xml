@@ -7,12 +7,12 @@
 		<option name="toggle_always_on_top" type="activator">
 			<_short>Toggle Always on Top</_short>
 			<_long>Toggle the always-on-top state of a view.</_long>
-			<default>&lt;super&gt; KEY_T</default>
+			<default>disabled</default>
 		</option>
 		<option name="toggle_fullscreen" type="activator">
 			<_short>Toggle Fulsreen</_short>
 			<_long>Toggle the fullsreen state of a view.</_long>
-			<default>&lt;super&gt; KEY_M</default>
+			<default>disabled</default>
 		</option>
 	</plugin>
 </wayfire>
