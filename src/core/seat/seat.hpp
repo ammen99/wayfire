@@ -25,6 +25,12 @@ struct wf_drag_icon : public wf::wlr_child_surface_base_t
     void damage();
     void damage_surface_box(const wlr_box& rect) override;
 
+    /* Force map without receiving a wlroots event */
+    void force_map()
+    {
+        this->map(icon->surface);
+    }
+
   private:
     /** Last icon box. */
     wf::geometry_t last_box = {0, 0, 0, 0};

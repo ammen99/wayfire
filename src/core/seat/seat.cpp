@@ -150,6 +150,13 @@ void input_manager::create_seat()
         {
             wf::get_core_impl().input->drag_icon =
                 std::make_unique<wf_drag_icon>(d->icon);
+
+            // Sometimes, the drag surface is reused between two or more drags.
+            // In this case, when the drag starts, the icon is already mapped.
+            if (d->icon->surface && wlr_surface_has_buffer(d->icon->surface))
+            {
+                wf::get_core_impl().input->drag_icon->force_map();
+            }
         }
 
         wf::dnd_signal evdata;
