@@ -155,7 +155,7 @@ std::vector<wayfire_view> wf::view_interface_t::enumerate_views(
     std::vector<wayfire_view> result;
     for (auto& v : this->children)
     {
-        auto cdr = v->enumerate_views();
+        auto cdr = v->enumerate_views(mapped_only);
         result.insert(result.end(), cdr.begin(), cdr.end());
     }
 

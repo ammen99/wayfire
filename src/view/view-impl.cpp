@@ -340,18 +340,6 @@ void wf::wlr_view_t::unmap()
 
     destroy_toplevel();
 
-    /* Tear down toplevel view relationships */
-    if (parent)
-    {
-        set_toplevel_parent(nullptr);
-    }
-
-    auto copy = this->children;
-    for (auto c : copy)
-    {
-        c->set_toplevel_parent(nullptr);
-    }
-
     wlr_surface_base_t::unmap();
     emit_view_unmap();
 }
