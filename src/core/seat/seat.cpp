@@ -22,9 +22,6 @@ wf_drag_icon::wf_drag_icon(wlr_drag_icon *ic) :
     {
         /* we don't dec_keep_count() because the surface memory is
          * managed by the unique_ptr */
-        wf::dnd_signal data;
-        data.icon = wf::get_core_impl().input->drag_icon.get();
-        wf::get_core().emit_signal("drag-stopped", &data);
         wf::get_core_impl().input->drag_icon = nullptr;
     });
 
@@ -159,9 +156,20 @@ void input_manager::create_seat()
             }
         }
 
+        wf::get_core_impl().input->drag_active = true;
+
         wf::dnd_signal evdata;
         evdata.icon = wf::get_core_impl().input->drag_icon.get();
         wf::get_core().emit_signal("drag-started", &evdata);
+
+        on_drag_end.set_callback([&] (void*)
+        {
+            wf::dnd_signal data;
+            wf::get_core().emit_signal("drag-stopped", &data);
+            wf::get_core_impl().input->drag_active = false;
+            on_drag_end.disconnect();
+        });
+        on_drag_end.connect(&d->events.destroy);
     });
     start_drag.connect(&seat->events.start_drag);
 

@@ -131,6 +131,8 @@ class input_manager
     void handle_gesture(wf::touchgesture_t g);
 
     std::unique_ptr<wf_drag_icon> drag_icon;
+    bool drag_active = false;
+    wf::wl_listener_wrapper on_drag_end;
 
     int pointer_count = 0, touch_count = 0;
     void update_capabilities();

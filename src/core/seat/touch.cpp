@@ -251,7 +251,7 @@ void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
     if (finger_state.fingers.empty()) // finger state is not updated yet
     {
         start_touch_down_grab(focus);
-    } else if (grabbed_surface && !input->drag_icon)
+    } else if (grabbed_surface && !input->drag_active)
     {
         focus = grabbed_surface;
         local = get_surface_relative_coords(focus, point);

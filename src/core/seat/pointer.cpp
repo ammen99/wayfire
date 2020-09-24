@@ -84,7 +84,7 @@ void wf::LogicalPointer::update_cursor_position(uint32_t time_msec,
      *
      * Notice in case of active wayland DnD we need to send events to the
      * surfaces which are actually under the mouse */
-    if (grabbed_surface && !input->drag_icon)
+    if (grabbed_surface && !input->drag_active)
     {
         new_focus = grabbed_surface;
         local     = get_surface_relative_coords(new_focus, gc);
