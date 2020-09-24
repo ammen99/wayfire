@@ -1142,6 +1142,12 @@ void wf::view_interface_t::initialize()
 
 void wf::view_interface_t::deinitialize()
 {
+    auto children = this->children;
+    for (auto ch : children)
+    {
+        ch->set_toplevel_parent(nullptr);
+    }
+
     set_decoration(nullptr);
     this->priv->surface_children_below.clear();
     this->priv->surface_children_above.clear();
