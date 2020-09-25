@@ -765,23 +765,9 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Returns true if the view is in the view list */
     bool scale_view(wayfire_view view)
     {
-        if (!view)
-        {
-            return false;
-        }
-
-        bool found = false;
         auto views = get_views();
-        for (auto& v : views)
-        {
-            if (v == view)
-            {
-                found = true;
-                break;
-            }
-        }
-
-        return found;
+        return std::find(
+            views.begin(), views.end(), view) != views.end();
     }
 
     /* Convenience assignment function */
