@@ -156,11 +156,6 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Add a transformer that will be used to scale the view */
     bool add_transformer(wayfire_view view)
     {
-        if (!view)
-        {
-            return false;
-        }
-
         if (view->get_transformer(transformer_name))
         {
             return false;
@@ -179,11 +174,6 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Remove the scale transformer from the view */
     void pop_transformer(wayfire_view view)
     {
-        if (!view)
-        {
-            return;
-        }
-
         view->pop_transformer(transformer_name);
     }
 
@@ -288,17 +278,25 @@ class wayfire_scale : public wf::plugin_interface_t
         process_button(ev->event->button, ev->event->state);
     };
 
+    /** Return the topmost parent */
+    wayfire_view get_top_parent(wayfire_view view)
+    {
+        while (view && view->parent)
+        {
+            view = view->parent;
+        }
+
+        return view;
+    }
+
     /* Fade all views' alpha to inactive alpha except the
      * view argument */
     void fade_out_all_except(wayfire_view view)
     {
         for (auto& e : scale_data)
         {
-            auto v  = e.first;
-            auto tr = e.second.transformer;
-            if (!v || !tr || (v == view) ||
-                (view && (v == view->parent)) ||
-                (v->parent == view))
+            auto v = e.first;
+            if (get_top_parent(v) == get_top_parent(view))
             {
                 continue;
             }
@@ -431,12 +429,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         auto view = wf::get_core().get_view_at(wf::get_core().get_cursor_position());
-        if (!view)
-        {
-            return;
-        }
-
-        if (!scale_view(view) && (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        if (!view || !scale_view(view))
         {
             return;
         }
@@ -519,7 +512,7 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        if (!scale_view(view) && (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        if (!scale_view(view))
         {
             return;
         }
@@ -1005,7 +998,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            if (!scale_view(view) && (view->role != wf::VIEW_ROLE_TOPLEVEL))
+            if (!scale_view(view))
             {
                 return;
             }
@@ -1139,13 +1132,8 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 if (view && current_focus_view && (view != current_focus_view))
                 {
-                    auto v = current_focus_view;
-                    while (v->parent)
-                    {
-                        v = v->parent;
-                    }
-
-                    if (!v || (v == view) || v->minimized || !v->is_mapped())
+                    auto v = get_top_parent(current_focus_view);
+                    if ((v == view) || v->minimized || !v->is_mapped())
                     {
                         return;
                     }
