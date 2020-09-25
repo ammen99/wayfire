@@ -475,7 +475,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto ws     = output->workspace->get_current_workspace();
         auto og     = output->get_layout_geometry();
-        auto vg     = view->get_output_geometry();
+        auto vg     = view->get_bounding_box(scale_data[view].transformer);
         auto center = wf::point_t{vg.x + vg.width / 2, vg.y + vg.height / 2};
 
         return wf::point_t{
