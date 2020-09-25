@@ -444,7 +444,7 @@ class wayfire_scale : public wf::plugin_interface_t
         current_focus_view = view;
         output->focus_view(view, true);
         fade_out_all_except(view);
-        fade_in(view);
+        fade_in(get_top_parent(view));
 
         if (interact)
         {
@@ -727,7 +727,7 @@ class wayfire_scale : public wf::plugin_interface_t
         auto views = get_views();
 
         return std::find(
-            views.begin(), views.end(), view) != views.end();
+            views.begin(), views.end(), get_top_parent(view)) != views.end();
     }
 
     /* Convenience assignment function */
