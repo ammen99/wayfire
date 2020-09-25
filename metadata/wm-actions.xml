@@ -14,5 +14,10 @@
 			<_long>Toggle the fullsreen state of a view.</_long>
 			<default>disabled</default>
 		</option>
+		<option name="toggle_sticky" type="activator">
+			<_short>Toggle Sticky</_short>
+			<_long>Toggle the sticky state of a view.</_long>
+			<default>disabled</default>
+		</option>
 	</plugin>
 </wayfire>

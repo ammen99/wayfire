@@ -13,15 +13,12 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
         "wm-actions/toggle_always_on_top"};
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_fullscreen{
         "wm-actions/toggle_fullscreen"};
+    wf::option_wrapper_t<wf::activatorbinding_t> toggle_sticky{
+        "wm-actions/toggle_sticky"};
 
     bool toggle_keep_above(wayfire_view view)
     {
-        if (!output->can_activate_plugin(this->grab_interface))
-        {
-            return false;
-        }
-
-        if (!view || (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        if (!view || !output->can_activate_plugin(this->grab_interface))
         {
             return false;
         }
@@ -45,14 +42,26 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
         return true;
     }
 
+    /**
+     * Find the selected toplevel view, or nullptr if the selected
+     * view is not toplevel.
+     */
     wayfire_view choose_view(wf::activator_source_t source)
     {
+        wayfire_view view;
         if (source == wf::ACTIVATOR_SOURCE_BUTTONBINDING)
         {
-            return wf::get_core().get_cursor_focus_view();
+            view = wf::get_core().get_cursor_focus_view();
         }
 
-        return output->get_active_view();
+        view = output->get_active_view();
+        if (!view || (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        {
+            return nullptr;
+        } else
+        {
+            return view;
+        }
     }
 
     /**
@@ -126,6 +135,21 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
     };
 
     /**
+     * Execute for_view on the selected view, if available.
+     */
+    bool execute_for_selected_view(wf::activator_source_t source,
+        std::function<bool(wayfire_view)> for_view)
+    {
+        auto view = choose_view(source);
+        if (!view || !output->can_activate_plugin(this->grab_interface))
+        {
+            return false;
+        }
+
+        return for_view(view);
+    }
+
+    /**
      * The default activator bindings.
      */
     wf::activator_callback on_toggle_above =
@@ -139,20 +163,21 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
     wf::activator_callback on_toggle_fullscreen =
         [=] (wf::activator_source_t source, uint32_t) -> bool
     {
-        if (!output->can_activate_plugin(this->grab_interface))
+        return execute_for_selected_view(source, [] (wayfire_view view)
         {
-            return false;
-        }
+            view->fullscreen_request(view->get_output(), !view->fullscreen);
+            return true;
+        });
+    };
 
-        auto view = choose_view(source);
-        if (!view || (view->role != wf::VIEW_ROLE_TOPLEVEL))
+    wf::activator_callback on_toggle_sticky =
+        [=] (wf::activator_source_t source, uint32_t) -> bool
+    {
+        return execute_for_selected_view(source, [] (wayfire_view view)
         {
-            return false;
-        }
-
-        view->fullscreen_request(view->get_output(), !view->fullscreen);
-
-        return true;
+            view->set_sticky(view->sticky ^ 1);
+            return true;
+        });
     };
 
   public:
@@ -162,6 +187,7 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
             wf::LAYER_WORKSPACE, wf::SUBLAYER_DOCKED_ABOVE);
         output->add_activator(toggle_above, &on_toggle_above);
         output->add_activator(toggle_fullscreen, &on_toggle_fullscreen);
+        output->add_activator(toggle_sticky, &on_toggle_sticky);
         output->connect_signal("wm-actions-toggle-above", &on_toggle_above_signal);
         output->connect_signal("view-minimized", &on_view_minimized);
         wf::get_core().connect_signal("view-moved-to-output",
