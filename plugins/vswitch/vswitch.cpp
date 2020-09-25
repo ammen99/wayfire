@@ -56,6 +56,13 @@ class vswitch : public wf::plugin_interface_t
         bindings = std::make_unique<wf::vswitch::control_bindings_t>(output);
         bindings->setup([this] (wf::point_t delta, wayfire_view view)
         {
+            // Do not switch workspace with sticky view, they are on all
+            // workspaces anyway
+            if (view && view->sticky)
+            {
+                view = nullptr;
+            }
+
             if (this->set_capabilities(wf::CAPABILITY_MANAGE_DESKTOP))
             {
                 return add_direction(delta, view);
