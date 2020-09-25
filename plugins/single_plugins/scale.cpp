@@ -69,7 +69,7 @@ class wf_scale : public wf::view_2D
 struct view_scale_data
 {
     int row, col;
-    wf_scale *transformer = nullptr; /* avoid potential UB from uninitialized member */
+    wf_scale *transformer = nullptr; /* avoid UB from uninitialized member */
     wf::animation::simple_animation_t fade_animation;
     wf_scale_animation_attribs animation;
 };
@@ -333,11 +333,10 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         set_hook();
-        auto alpha = scale_data[view].transformer->alpha;
-        scale_data[view].fade_animation.animate(alpha, (double)inactive_alpha);
-        for (auto& child : view->children)
+        for (auto v : view->enumerate_views(false))
         {
-            fade_out(child);
+            auto alpha = scale_data[v].transformer->alpha;
+            scale_data[v].fade_animation.animate(alpha, (double)inactive_alpha);
         }
     }
 
@@ -766,6 +765,7 @@ class wayfire_scale : public wf::plugin_interface_t
     bool scale_view(wayfire_view view)
     {
         auto views = get_views();
+
         return std::find(
             views.begin(), views.end(), view) != views.end();
     }
