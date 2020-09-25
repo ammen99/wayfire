@@ -321,6 +321,11 @@ class workspace_manager
     wf::dimensions_t get_workspace_grid_size();
 
     /**
+     * @return Whether the given workspace is valid
+     */
+    bool is_workspace_valid(wf::point_t ws);
+
+    /**
      * Special clients like panels can reserve place from an edge of the output.
      * It is used when calculating the dimensions of maximized/tiled windows and
      * others. The remaining space (which isn't reserved for panels) is called

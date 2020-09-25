@@ -604,10 +604,21 @@ class output_viewport_manager_t
         return {vwidth, vheight};
     }
 
+    bool is_workspace_valid(wf::point_t ws)
+    {
+        if ((ws.x >= vwidth) || (ws.y >= vheight) || (ws.x < 0) || (ws.y < 0))
+        {
+            return false;
+        } else
+        {
+            return true;
+        }
+    }
+
     void set_workspace(wf::point_t nws,
         const std::vector<wayfire_view>& fixed_views)
     {
-        if ((nws.x >= vwidth) || (nws.y >= vheight) || (nws.x < 0) || (nws.y < 0))
+        if (!is_workspace_valid(nws))
         {
             LOGE("Attempt to set invalid workspace: ", nws,
                 " workspace grid size is ", vwidth, "x", vheight);
@@ -1210,6 +1221,11 @@ wf::point_t workspace_manager::get_current_workspace()
 wf::dimensions_t workspace_manager::get_workspace_grid_size()
 {
     return pimpl->viewport_manager.get_workspace_grid_size();
+}
+
+bool workspace_manager::is_workspace_valid(wf::point_t ws)
+{
+    return pimpl->viewport_manager.is_workspace_valid(ws);
 }
 
 void workspace_manager::add_reserved_area(anchored_area *area)
