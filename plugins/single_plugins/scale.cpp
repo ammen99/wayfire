@@ -30,6 +30,7 @@
 #include <wayfire/render-manager.hpp>
 #include <wayfire/workspace-manager.hpp>
 #include <wayfire/signal-definitions.hpp>
+#include <wayfire/plugins/vswitch.hpp>
 
 #include <linux/input-event-codes.h>
 
@@ -123,6 +124,7 @@ class wayfire_scale : public wf::plugin_interface_t
     /* true if the currently running scale should include views from
      * all workspaces */
     bool all_workspaces;
+    std::unique_ptr<wf::vswitch::control_bindings_t> workspace_bindings;
 
   public:
     void init() override
@@ -151,6 +153,38 @@ class wayfire_scale : public wf::plugin_interface_t
         };
         interact.set_callback(interact_option_changed);
         allow_scale_zoom.set_callback(allow_scale_zoom_option_changed);
+
+        setup_workspace_switching();
+    }
+
+    void setup_workspace_switching()
+    {
+        workspace_bindings =
+            std::make_unique<wf::vswitch::control_bindings_t>(output);
+        workspace_bindings->setup([&] (wf::point_t delta, wayfire_view view)
+        {
+            if (!output->is_plugin_active(grab_interface->name))
+            {
+                return false;
+            }
+
+            auto ws = output->workspace->get_current_workspace() + delta;
+            if (!output->workspace->is_workspace_valid(ws))
+            {
+                return false;
+            }
+
+            // vswitch picks the top view, we want the focused one
+            std::vector<wayfire_view> fixed_views;
+            if (view && !all_workspaces)
+            {
+                fixed_views.push_back(current_focus_view);
+            }
+
+            output->workspace->request_workspace(ws, fixed_views);
+
+            return true;
+        });
     }
 
     /* Add a transformer that will be used to scale the view */
