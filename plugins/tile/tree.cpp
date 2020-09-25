@@ -347,11 +347,11 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     local_geometry.width -= gaps.left + gaps.right;
     local_geometry.height -= gaps.top + gaps.bottom;
 
+    auto size = output->get_screen_size();
     /* If view is maximized, we want to use the full available geometry */
     if (view->fullscreen)
     {
-        auto vp   = output->workspace->get_current_workspace();
-        auto size = output->get_screen_size();
+        auto vp = output->workspace->get_current_workspace();
 
         int view_vp_x = std::floor(1.0 * geometry.x / size.width);
         int view_vp_y = std::floor(1.0 * geometry.y / size.height);
@@ -362,6 +362,14 @@ wf::geometry_t view_node_t::calculate_target_geometry()
             size.width,
             size.height,
         };
+    }
+
+    if (view->sticky)
+    {
+        local_geometry.x =
+            (local_geometry.x % size.width + size.width) % size.width;
+        local_geometry.y =
+            (local_geometry.y % size.height + size.height) % size.height;
     }
 
     return local_geometry;
