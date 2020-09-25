@@ -1215,15 +1215,6 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 return true;
             }
-
-            for (auto& child : e.first->children)
-            {
-                if (scale_data[child].fade_animation.running() ||
-                    scale_data[child].animation.scale_animation.running())
-                {
-                    return true;
-                }
-            }
         }
 
         return false;
