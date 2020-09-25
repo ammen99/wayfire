@@ -853,8 +853,14 @@ class wayfire_scale : public wf::plugin_interface_t
                 view_data.row = i;
                 view_data.col = j;
 
-                for (auto& child : view->children)
+                for (auto& child : view->enumerate_views(false))
                 {
+                    // skip the view itself
+                    if (child == view)
+                    {
+                        continue;
+                    }
+
                     vg = child->get_wm_geometry();
 
                     double child_scale_x = width / vg.width;
@@ -1285,7 +1291,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         output->connect_signal("view-layer-attached", &view_attached);
-        output->connect_signal("view-attached", &view_attached);
+        output->connect_signal("view-mapped", &view_attached);
         view_detached.disconnect();
         output->connect_signal("workspace-changed", &workspace_changed);
         output->connect_signal("view-layer-detached", &view_detached);
