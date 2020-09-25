@@ -964,16 +964,8 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& e : scale_data)
         {
             auto view  = e.first;
-            bool found = false;
-            for (auto& v : views)
-            {
-                if (v == view)
-                {
-                    found = true;
-                    break;
-                }
-            }
-
+            bool found =
+                std::find(views.begin(), views.end(), view) != views.end();
             if (!found)
             {
                 auto& view_data = scale_data[view];
