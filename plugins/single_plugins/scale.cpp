@@ -69,7 +69,7 @@ class wf_scale : public wf::view_2D
 struct view_scale_data
 {
     int row, col;
-    wf_scale *transformer = 0; /* avoid potential UB from uninitialized member */
+    wf_scale *transformer = nullptr; /* avoid potential UB from uninitialized member */
     wf::animation::simple_animation_t fade_animation;
     wf_scale_animation_attribs animation;
 };
