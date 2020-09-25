@@ -386,14 +386,11 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        check_focus_view(view);
-        pop_transformer(view);
-        scale_data.erase(view);
-        for (auto& child : view->children)
+        for (auto v : view->enumerate_views(false))
         {
-            check_focus_view(child);
-            pop_transformer(child);
-            scale_data.erase(child);
+            check_focus_view(v);
+            pop_transformer(v);
+            scale_data.erase(v);
         }
     }
 
