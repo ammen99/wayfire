@@ -998,9 +998,7 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::signal_connection_t view_attached{[this] (wf::signal_data_t *data)
         {
             auto view = get_signaled_view(data);
-
-            auto it = scale_data.find(view->parent);
-            if (it != scale_data.end())
+            if (scale_data.count(view->parent) != 0)
             {
                 layout_slots(get_views());
 
@@ -1021,8 +1019,7 @@ class wayfire_scale : public wf::plugin_interface_t
             current_focus_view = v;
             output->focus_view(v, true);
 
-            it = scale_data.find(view);
-            if (it != scale_data.end())
+            if (scale_data.count(view) != 0)
             {
                 if (!view->get_transformer(transformer_name))
                 {
@@ -1041,9 +1038,7 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::signal_connection_t view_detached{[this] (wf::signal_data_t *data)
         {
             auto view = get_signaled_view(data);
-
-            auto it = scale_data.find(view->parent);
-            if (it != scale_data.end())
+            if (scale_data.count(view->parent) != 0)
             {
                 remove_view(view);
                 auto views = get_views();
@@ -1055,8 +1050,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            it = scale_data.find(view);
-            if (it == scale_data.end())
+            if (scale_data.count(view) == 0)
             {
                 return;
             }
