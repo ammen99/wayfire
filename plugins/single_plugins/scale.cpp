@@ -1263,7 +1263,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         auto views = get_views();
-        if (!views.size())
+        if (views.empty())
         {
             output->deactivate_plugin(grab_interface);
 
