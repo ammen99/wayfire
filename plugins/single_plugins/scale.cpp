@@ -645,13 +645,12 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             auto view = e.first;
             auto& view_data = e.second;
-            if (!view || !view_data.transformer ||
-                ((output->workspace->get_view_layer(view) != wf::LAYER_WORKSPACE) &&
-                 (view->role != wf::VIEW_ROLE_TOPLEVEL)))
+            if (!view || !view_data.transformer)
             {
                 continue;
             }
 
+            view->damage();
             view_data.transformer->scale_x =
                 view_data.animation.scale_animation.scale_x;
             view_data.transformer->scale_y =
@@ -661,39 +660,7 @@ class wayfire_scale : public wf::plugin_interface_t
             view_data.transformer->translation_y =
                 view_data.animation.scale_animation.translation_y;
             view_data.transformer->alpha = view_data.fade_animation;
-
             view->damage();
-
-            for (auto& child : view->children)
-            {
-                if (!child)
-                {
-                    continue;
-                }
-
-                auto it = scale_data.find(child);
-                if ((it == scale_data.end()) || !it->second.transformer)
-                {
-                    /* note: child views can show up here before they
-                     * should be visible (between they are attached and
-                     * mapped), these should be skipped */
-                    continue;
-                }
-
-                auto& view_data = it->second;
-
-                view_data.transformer->scale_x =
-                    view_data.animation.scale_animation.scale_x;
-                view_data.transformer->scale_y =
-                    view_data.animation.scale_animation.scale_y;
-                view_data.transformer->translation_x =
-                    view_data.animation.scale_animation.translation_x;
-                view_data.transformer->translation_y =
-                    view_data.animation.scale_animation.translation_y;
-                view_data.transformer->alpha = view_data.fade_animation;
-
-                child->damage();
-            }
         }
 
         output->render->damage_whole();
