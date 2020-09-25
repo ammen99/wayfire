@@ -415,8 +415,9 @@ class wayfire_expo : public wf::plugin_interface_t
                 return;
             }
 
-            MOVE_HELPER->handle_motion(
-                input_coordinates_to_output_local_coordinates(to));
+            auto coordinates = input_coordinates_to_output_local_coordinates(to);
+            coordinates = view_local_coordinates(moving_view, coordinates);
+            MOVE_HELPER->handle_motion(coordinates);
 
             update_target_workspace(to.x, to.y);
         }
@@ -511,17 +512,45 @@ class wayfire_expo : public wf::plugin_interface_t
         };
     }
 
+    /**
+     * If the view is sticky, return the pos relative to the current workspace.
+     * Otherwise, it stays the same.
+     */
+    wf::point_t view_local_coordinates(wayfire_view view, wf::point_t pos)
+    {
+        auto ssize = output->get_screen_size();
+        if (view->sticky)
+        {
+            return {
+                (pos.x % ssize.width + ssize.width) % ssize.width,
+                (pos.y % ssize.height + ssize.height) % ssize.height
+            };
+        } else
+        {
+            return pos;
+        }
+    }
+
     wayfire_view find_view_at_coordinates(int gx, int gy)
     {
         auto local = input_coordinates_to_output_local_coordinates({gx, gy});
         /* TODO: adjust to delimiter offset */
-        wlr_box box = {local.x, local.y, 1, 1};
 
         for (auto& view : output->workspace->get_views_in_layer(wf::WM_LAYERS))
         {
-            if (view->intersects_region(box))
+            if (!view->is_mapped() || !view->is_visible())
             {
-                return view;
+                continue;
+            }
+
+            auto view_local = view_local_coordinates(view, local);
+            wlr_box box     = {view_local.x, view_local.y, 1, 1};
+            for (auto& v : view->enumerate_views())
+            {
+                if (v->intersects_region(box))
+                {
+                    return v;
+                }
             }
         }
 
