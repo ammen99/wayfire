@@ -1059,11 +1059,6 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Our own refocus that uses untransformed coordinates */
     void refocus()
     {
-        if (!initial_focus_view)
-        {
-            return;
-        }
-
         if (current_focus_view)
         {
             output->focus_view(current_focus_view, true);
