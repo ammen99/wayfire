@@ -472,9 +472,9 @@ class wayfire_scale : public wf::plugin_interface_t
             view = view->parent;
         }
 
-        auto ws     = output->workspace->get_current_workspace();
-        auto og     = output->get_layout_geometry();
-        auto vg     = scale_data.count(view) > 0 ?
+        auto ws = output->workspace->get_current_workspace();
+        auto og = output->get_layout_geometry();
+        auto vg = scale_data.count(view) > 0 ?
             view->get_bounding_box(scale_data[view].transformer) :
             view->get_bounding_box();
         auto center = wf::point_t{vg.x + vg.width / 2, vg.y + vg.height / 2};
@@ -491,7 +491,7 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& view : scale_data)
         {
             if ((view.first->parent == nullptr) &&
-                (view.second.row == row &&
+                ((view.second.row == row) &&
                  (view.second.col == col)))
             {
                 return view.first;
@@ -973,7 +973,7 @@ class wayfire_scale : public wf::plugin_interface_t
         bool rearrange = false;
         for (auto& e : scale_data)
         {
-            auto view  = e.first;
+            auto view = e.first;
             if (!should_scale_view(view))
             {
                 auto& view_data = scale_data[view];
