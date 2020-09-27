@@ -991,43 +991,14 @@ class wayfire_scale : public wf::plugin_interface_t
     };
 
     /* New view or view moved to output with scale active */
-    wf::signal_connection_t view_attached{[this] (wf::signal_data_t *data)
+    wf::signal_connection_t view_attached = [this] (wf::signal_data_t *data)
+    {
+        if (!should_scale_view(get_signaled_view(data)))
         {
-            auto view = get_signaled_view(data);
-            if (scale_data.count(view->parent) != 0)
-            {
-                layout_slots(get_views());
-
-                return;
-            }
-
-            if (!should_scale_view(view))
-            {
-                return;
-            }
-
-            auto v = view;
-            while (v->parent)
-            {
-                v = v->parent;
-            }
-
-            current_focus_view = v;
-            output->focus_view(v, true);
-
-            if (scale_data.count(view) != 0)
-            {
-                if (!view->get_transformer(transformer_name))
-                {
-                    layout_slots(get_views());
-                }
-
-                return;
-            }
-
-            add_transformer(view);
-            layout_slots(get_views());
+            return;
         }
+
+        layout_slots(get_views());
     };
 
     void handle_view_disappeared(wayfire_view view)
