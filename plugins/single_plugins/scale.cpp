@@ -973,11 +973,9 @@ class wayfire_scale : public wf::plugin_interface_t
         bool rearrange = false;
         for (auto& e : scale_data)
         {
-            auto view = e.first;
-            if (!should_scale_view(view))
+            if (!should_scale_view(e.first))
             {
-                auto& view_data = scale_data[view];
-                setup_view_transform(view_data, 1, 1, 0, 0, 1);
+                setup_view_transform(e.second, 1, 1, 0, 0, 1);
                 rearrange = true;
             }
         }
