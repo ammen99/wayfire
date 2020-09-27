@@ -1040,39 +1040,22 @@ class wayfire_scale : public wf::plugin_interface_t
         }
     };
 
-    /* Destroyed view or view moved to another output */
-    wf::signal_connection_t view_detached{[this] (wf::signal_data_t *data)
+    void handle_view_disappeared(wayfire_view view)
+    {
+        if (scale_data.count(get_top_parent(view)) != 0)
         {
-            auto view = get_signaled_view(data);
-            if (scale_data.count(view->parent) != 0)
-            {
-                remove_view(view);
-                auto views = get_views();
-                if (!views.size())
-                {
-                    finalize();
-                }
-
-                return;
-            }
-
-            if (scale_data.count(view) == 0)
-            {
-                return;
-            }
-
             remove_view(view);
-
-            auto views = get_views();
-            if (!views.size())
+            if (scale_data.empty())
             {
                 finalize();
-
-                return;
             }
-
-            layout_slots(std::move(views));
         }
+    }
+
+    /* Destroyed view or view moved to another output */
+    wf::signal_connection_t view_detached = [this] (wf::signal_data_t *data)
+    {
+        handle_view_disappeared(get_signaled_view(data));
     };
 
     /* Workspace changed */
@@ -1101,24 +1084,15 @@ class wayfire_scale : public wf::plugin_interface_t
     };
 
     /* View minimized */
-    wf::signal_connection_t view_minimized{[this] (wf::signal_data_t *data)
+    wf::signal_connection_t view_minimized = [this] (wf::signal_data_t *data)
+    {
+        auto ev = static_cast<wf::view_minimized_signal*>(data);
+
+        if (ev->state)
         {
-            auto ev = static_cast<wf::view_minimized_signal*>(data);
-
-            if (ev->state)
-            {
-                remove_view(ev->view);
-                if (scale_data.empty())
-                {
-                    deactivate();
-
-                    return;
-                }
-            } else if (!should_scale_view(ev->view))
-            {
-                return;
-            }
-
+            handle_view_disappeared(ev->view);
+        } else if (should_scale_view(ev->view))
+        {
             layout_slots(get_views());
         }
     };
