@@ -1049,6 +1049,11 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 finalize();
             }
+
+            if (!view->parent)
+            {
+                layout_slots(get_views());
+            }
         }
     }
 
@@ -1107,45 +1112,12 @@ class wayfire_scale : public wf::plugin_interface_t
     };
 
     /* View focused. This handler makes sure our view remains focused */
-    wf::signal_connection_t view_focused{[this] (wf::signal_data_t *data)
-        {
-            auto view = get_signaled_view(data);
-
-            fade_out_all_except(view);
-            fade_in(view);
-
-            if ((view == current_focus_view) ||
-                (view && (view == output->get_active_view())))
-            {
-                if (view && current_focus_view && (view != current_focus_view))
-                {
-                    auto v = get_top_parent(current_focus_view);
-                    if ((v == view) || v->minimized || !v->is_mapped())
-                    {
-                        return;
-                    }
-
-                    current_focus_view = v;
-                    output->focus_view(v, true);
-                }
-
-                return;
-            }
-
-            view = current_focus_view;
-
-            if (!view || view->minimized || !view->is_mapped())
-            {
-                return;
-            }
-
-            if (all_workspaces)
-            {
-                output->focus_view(view, true);
-            }
-
-            layout_slots(get_views());
-        }
+    wf::signal_connection_t view_focused = [this] (wf::signal_data_t *data)
+    {
+        auto view = get_signaled_view(data);
+        fade_out_all_except(view);
+        fade_in(view);
+        current_focus_view = view;
     };
 
     /* Our own refocus that uses untransformed coordinates */
