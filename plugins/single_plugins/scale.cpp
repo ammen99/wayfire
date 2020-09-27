@@ -325,7 +325,7 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Fade out view alpha */
     void fade_out(wayfire_view view)
     {
-        if (!view || !scale_data[view].transformer)
+        if (!view)
         {
             return;
         }
@@ -333,6 +333,12 @@ class wayfire_scale : public wf::plugin_interface_t
         set_hook();
         for (auto v : view->enumerate_views(false))
         {
+            // Could happen if we have a never-mapped child view
+            if (!scale_data.count(v))
+            {
+                continue;
+            }
+
             auto alpha = scale_data[v].transformer->alpha;
             scale_data[v].fade_animation.animate(alpha, (double)inactive_alpha);
         }
