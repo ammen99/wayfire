@@ -542,8 +542,6 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        auto v = initial_focus_view;
-
         switch (key)
         {
           case KEY_UP:
@@ -571,9 +569,9 @@ class wayfire_scale : public wf::plugin_interface_t
 
           case KEY_ESC:
             input_release_impending = true;
-            initial_focus_view = nullptr;
             deactivate();
-            output->focus_view(v, true);
+            output->focus_view(initial_focus_view, true);
+            initial_focus_view = nullptr;
             output->workspace->request_workspace(initial_workspace);
 
             return;
@@ -1251,16 +1249,7 @@ class wayfire_scale : public wf::plugin_interface_t
         output->connect_signal("view-unmapped", &view_unmapped);
         output->connect_signal("view-focused", &view_focused);
 
-        for (auto& e : scale_data)
-        {
-            auto view = e.first;
-            if ((view == initial_focus_view) || (view->parent == initial_focus_view))
-            {
-                continue;
-            }
-
-            fade_out(view);
-        }
+        fade_out_all_except(initial_focus_view);
 
         return true;
     }
