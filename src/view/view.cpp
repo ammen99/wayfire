@@ -33,9 +33,19 @@ static void reposition_relative_to_parent(wayfire_view view)
         return;
     }
 
-    auto workarea    = view->get_output()->workspace->get_workarea();
     auto wm_geometry = view->get_wm_geometry();
+    auto scr_size    = view->get_output()->get_screen_size();
+    // Guess which workspace the parent is on
+    wf::point_t center = {
+        wm_geometry.x + wm_geometry.width / 2,
+        wm_geometry.y + wm_geometry.height / 2,
+    };
+    wf::point_t view_ws = {
+        (int)std::floor(1.0 * center.x / scr_size.width),
+        (int)std::floor(1.0 * center.y / scr_size.height),
+    };
 
+    auto workarea = view->get_output()->render->get_ws_box(view_ws);
     if (view->parent->is_mapped())
     {
         auto parent_g = view->parent->get_wm_geometry();
