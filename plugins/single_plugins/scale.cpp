@@ -626,17 +626,9 @@ class wayfire_scale : public wf::plugin_interface_t
         view = find_view_in_grid(row, col);
         if (view && (current_focus_view != view))
         {
-            fade_out_all_except(view);
+            // view_focused handler will update the view state
+            output->focus_view(view, true);
         }
-
-        if (!view)
-        {
-            return;
-        }
-
-        current_focus_view = view;
-        output->focus_view(view, true);
-        fade_in(view);
     }
 
     /* Assign the transformer values to the view transformers */
