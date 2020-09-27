@@ -1273,18 +1273,15 @@ class wayfire_scale : public wf::plugin_interface_t
 
         output->connect_signal("view-layer-attached", &view_attached);
         output->connect_signal("view-mapped", &view_attached);
-        view_detached.disconnect();
         output->connect_signal("workspace-changed", &workspace_changed);
         output->connect_signal("view-layer-detached", &view_detached);
         output->connect_signal("view-minimized", &view_minimized);
         output->connect_signal("view-unmapped", &view_unmapped);
         output->connect_signal("view-focused", &view_focused);
 
-        view_geometry_changed.disconnect();
         for (auto& e : scale_data)
         {
             auto view = e.first;
-            view->connect_signal("geometry-changed", &view_geometry_changed);
             if ((view == initial_focus_view) || (view->parent == initial_focus_view))
             {
                 continue;
