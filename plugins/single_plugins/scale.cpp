@@ -308,7 +308,7 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Fade in view alpha */
     void fade_in(wayfire_view view)
     {
-        if (!view || !scale_data[view].transformer)
+        if (!view || !scale_data.count(view))
         {
             return;
         }
@@ -435,7 +435,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         auto view = wf::get_core().get_view_at(wf::get_core().get_cursor_position());
-        if (!view || !scale_view(view))
+        if (!view || !should_scale_view(view))
         {
             return;
         }
@@ -474,7 +474,9 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto ws     = output->workspace->get_current_workspace();
         auto og     = output->get_layout_geometry();
-        auto vg     = view->get_bounding_box(scale_data[view].transformer);
+        auto vg     = scale_data.count(view) > 0 ?
+            view->get_bounding_box(scale_data[view].transformer) :
+            view->get_bounding_box();
         auto center = wf::point_t{vg.x + vg.width / 2, vg.y + vg.height / 2};
 
         return wf::point_t{
@@ -486,11 +488,13 @@ class wayfire_scale : public wf::plugin_interface_t
      * or the first scaled view if none is found */
     wayfire_view find_view_in_grid(int row, int col)
     {
-        for (auto& view : get_views())
+        for (auto& view : scale_data)
         {
-            if ((scale_data[view].row == row) && (scale_data[view].col == col))
+            if ((view.first->parent == nullptr) &&
+                (view.second.row == row &&
+                 (view.second.col == col)))
             {
-                return view;
+                return view.first;
             }
         }
 
@@ -518,7 +522,7 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        if (!scale_view(view))
+        if (!scale_data.count(view))
         {
             return;
         }
@@ -727,8 +731,10 @@ class wayfire_scale : public wf::plugin_interface_t
         return views;
     }
 
-    /* Returns true if the view is in the view list */
-    bool scale_view(wayfire_view view)
+    /**
+     * @return true if the view is to be scaled.
+     */
+    bool should_scale_view(wayfire_view view)
     {
         auto views = get_views();
 
@@ -776,7 +782,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto workarea    = output->workspace->get_workarea();
         auto active_view = output->get_active_view();
-        if (active_view && !scale_view(active_view))
+        if (active_view && !should_scale_view(active_view))
         {
             active_view = nullptr;
         }
@@ -965,13 +971,10 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         bool rearrange = false;
-        auto views     = get_views();
         for (auto& e : scale_data)
         {
             auto view  = e.first;
-            bool found =
-                std::find(views.begin(), views.end(), view) != views.end();
-            if (!found)
+            if (!should_scale_view(view))
             {
                 auto& view_data = scale_data[view];
                 setup_view_transform(view_data, 1, 1, 0, 0, 1);
@@ -1010,7 +1013,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 return;
             }
 
-            if (!scale_view(view))
+            if (!should_scale_view(view))
             {
                 return;
             }
@@ -1113,7 +1116,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
                     return;
                 }
-            } else if (!scale_view(ev->view))
+            } else if (!should_scale_view(ev->view))
             {
                 return;
             }
