@@ -770,33 +770,8 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        auto workarea    = output->workspace->get_workarea();
-        auto active_view = output->get_active_view();
-        if (active_view && !should_scale_view(active_view))
-        {
-            active_view = nullptr;
-        }
+        auto workarea = output->workspace->get_workarea();
 
-        if (active_view)
-        {
-            current_focus_view = active_view;
-        } else
-        {
-            active_view = current_focus_view = views.front();
-        }
-
-        if (!initial_focus_view)
-        {
-            initial_focus_view = active_view;
-        }
-
-        if (all_workspaces)
-        {
-            output->focus_view(active_view, true);
-        }
-
-        fade_in(active_view);
-        fade_out_all_except(active_view);
         int lines = sqrt(views.size() + 1);
         grid_rows = lines;
         grid_cols = (int)std::ceil((double)views.size() / lines);
@@ -842,7 +817,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 double target_alpha;
                 if (active)
                 {
-                    target_alpha = (view == active_view) ? 1 :
+                    target_alpha = (view == current_focus_view) ? 1 :
                         (double)inactive_alpha;
                     setup_view_transform(view_data, scale_x, scale_y,
                         translation_x, translation_y, target_alpha);
