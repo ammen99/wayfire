@@ -142,6 +142,12 @@ class output_t : public wf::object_base_t
     virtual bool deactivate_plugin(const plugin_grab_interface_uptr& owner) = 0;
 
     /**
+     * Send cancel to all active plugins,
+     * see plugin_grab_interface_t::callbacks.cancel
+     */
+    virtual void cancel_active_plugins() = 0;
+
+    /**
      * @return true if a grab interface with the given name is activated, false
      *              otherwise.
      */

@@ -60,6 +60,7 @@ class output_impl_t : public output_t
     bool activate_plugin(const plugin_grab_interface_uptr& owner,
         uint32_t flags = 0) override;
     bool deactivate_plugin(const plugin_grab_interface_uptr& owner) override;
+    void cancel_active_plugins() override;
     bool is_plugin_active(std::string owner_name) const override;
     wayfire_view get_active_view() const override;
     void focus_view(wayfire_view v, bool raise) override;

@@ -596,6 +596,7 @@ struct output_layout_output_t
 
         wo->emit_signal("pre-remove", &data);
         get_core().output_layout->emit_signal("output-pre-remove", &data);
+        wo->cancel_active_plugins();
 
         if ((get_core().get_active_output() == wo) && !shutdown)
         {

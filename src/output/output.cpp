@@ -395,6 +395,23 @@ bool wf::output_impl_t::deactivate_plugin(
     return false;
 }
 
+void wf::output_impl_t::cancel_active_plugins()
+{
+    std::vector<wf::plugin_grab_interface_t*> ifaces;
+    for (auto p : active_plugins)
+    {
+        if (p->callbacks.cancel)
+        {
+            ifaces.push_back(p);
+        }
+    }
+
+    for (auto p : ifaces)
+    {
+        p->callbacks.cancel();
+    }
+}
+
 bool wf::output_impl_t::is_plugin_active(std::string name) const
 {
     for (auto act : active_plugins)
@@ -424,20 +441,7 @@ wf::plugin_grab_interface_t*wf::output_impl_t::get_input_grab_interface()
 void wf::output_impl_t::inhibit_plugins()
 {
     this->inhibited = true;
-
-    std::vector<wf::plugin_grab_interface_t*> ifaces;
-    for (auto p : active_plugins)
-    {
-        if (p->callbacks.cancel)
-        {
-            ifaces.push_back(p);
-        }
-    }
-
-    for (auto p : ifaces)
-    {
-        p->callbacks.cancel();
-    }
+    cancel_active_plugins();
 }
 
 void wf::output_impl_t::uninhibit_plugins()
