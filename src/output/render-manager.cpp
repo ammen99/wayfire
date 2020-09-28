@@ -732,6 +732,7 @@ class wf::render_manager::impl
     {
         /* Part 1: frame setup: query damage, etc. */
         effects->run_effects(OUTPUT_EFFECT_PRE);
+        effects->run_effects(OUTPUT_EFFECT_DAMAGE);
 
         bool needs_swap;
         if (!output_damage->make_current(needs_swap))
