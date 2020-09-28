@@ -1150,6 +1150,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         initial_workspace  = output->workspace->get_current_workspace();
         initial_focus_view = output->get_active_view();
+        current_focus_view = initial_focus_view;
         if (!interact)
         {
             if (!grab_interface->grab())
