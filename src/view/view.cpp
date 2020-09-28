@@ -410,6 +410,7 @@ void wf::view_interface_t::set_tiled(uint32_t edges)
     }
 
     wf::view_tiled_signal data;
+    data.view = self();
     data.old_edges = this->tiled_edges;
     data.new_edges = edges;
 
