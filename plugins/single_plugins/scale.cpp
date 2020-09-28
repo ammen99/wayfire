@@ -1183,6 +1183,7 @@ class wayfire_scale : public wf::plugin_interface_t
         output->connect_signal("view-focused", &view_focused);
 
         fade_out_all_except(initial_focus_view);
+        fade_in(initial_focus_view);
 
         return true;
     }
