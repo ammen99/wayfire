@@ -584,12 +584,12 @@ class wayfire_move : public wf::plugin_interface_t
         }
     }
 
-    wf::signal_callback_t handle_mirror_view_unmapped =
+    wf::signal_connection_t handle_mirror_view_unmapped =
         [=] (wf::signal_data_t *data)
     {
         auto view = get_signaled_view(data);
         delete_mirror_view_from_output(view->get_output(), true, true);
-        view->disconnect_signal("unmapped", &handle_mirror_view_unmapped);
+        view->disconnect_signal(&handle_mirror_view_unmapped);
     };
 
     /* Creates a new mirror view on output wo if it doesn't exist already */
@@ -705,6 +705,7 @@ class wayfire_move : public wf::plugin_interface_t
         if (grab_interface->is_grabbed())
         {
             input_pressed(WLR_BUTTON_RELEASED, false);
+            delete_mirror_views(false);
         }
 
         output->rem_binding(&activate_binding);
