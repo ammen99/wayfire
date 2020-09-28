@@ -314,7 +314,7 @@ class wayfire_blur : public wf::plugin_interface_t
 
             output->render->damage(padded);
         };
-        output->render->add_effect(&frame_pre_paint, wf::OUTPUT_EFFECT_PRE);
+        output->render->add_effect(&frame_pre_paint, wf::OUTPUT_EFFECT_DAMAGE);
 
         /* workspace_stream_pre is called before rendering each frame
          * when rendering a workspace. It gives us a chance to pad
