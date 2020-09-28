@@ -510,6 +510,9 @@ class wf_wobbly : public wf::view_transformer_t
 
         if (!view->get_output())
         {
+            // Destructor won't be able to disconnect bc view output is invalid
+            sig->output->render->rem_effect(&pre_hook);
+
             return destroy_self();
         }
 
@@ -777,7 +780,11 @@ class wf_wobbly : public wf::view_transformer_t
     {
         state = nullptr;
         wobbly_fini(model.get());
-        view->get_output()->render->rem_effect(&pre_hook);
+
+        if (view->get_output())
+        {
+            view->get_output()->render->rem_effect(&pre_hook);
+        }
 
         view->disconnect_signal("unmapped", &view_removed);
         view->disconnect_signal("tiled", &view_state_changed);
