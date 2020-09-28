@@ -105,6 +105,14 @@ void wf_cursor::init_xcursor()
     int size = wf::option_wrapper_t<int>("input/cursor_size");
     auto theme_ptr = (theme == "default") ? NULL : theme.c_str();
 
+    // Set environment variables needed for Xwayland and maybe other apps
+    // which use them to determine the correct cursor size
+    setenv("XCURSOR_SIZE", std::to_string(size).c_str(), 1);
+    if (theme_ptr)
+    {
+        setenv("XCURSOR_THEME", theme_ptr, 1);
+    }
+
     if (xcursor)
     {
         wlr_xcursor_manager_destroy(xcursor);
