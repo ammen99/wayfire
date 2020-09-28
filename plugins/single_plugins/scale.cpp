@@ -1150,7 +1150,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         initial_workspace  = output->workspace->get_current_workspace();
         initial_focus_view = output->get_active_view();
-        current_focus_view = initial_focus_view;
+        current_focus_view = initial_focus_view ?: views.front();
         if (!interact)
         {
             if (!grab_interface->grab())
@@ -1159,11 +1159,11 @@ class wayfire_scale : public wf::plugin_interface_t
 
                 return false;
             }
+        }
 
-            if (initial_focus_view)
-            {
-                output->focus_view(initial_focus_view, true);
-            }
+        if (current_focus_view != output->get_active_view())
+        {
+            output->focus_view(current_focus_view, true);
         }
 
         active = true;
@@ -1183,8 +1183,8 @@ class wayfire_scale : public wf::plugin_interface_t
         output->connect_signal("view-unmapped", &view_unmapped);
         output->connect_signal("view-focused", &view_focused);
 
-        fade_out_all_except(initial_focus_view);
-        fade_in(initial_focus_view);
+        fade_out_all_except(current_focus_view);
+        fade_in(current_focus_view);
 
         return true;
     }
