@@ -33,11 +33,16 @@ void wayfire_xdg_popup::initialize()
     {
         create_xdg_popup((wlr_xdg_popup*)data);
     });
+    on_ping_timeout.set_callback([&] (void*)
+    {
+        wf::emit_ping_timeout_signal(self());
+    });
 
     on_map.connect(&popup->base->events.map);
     on_unmap.connect(&popup->base->events.unmap);
     on_destroy.connect(&popup->base->events.destroy);
     on_new_popup.connect(&popup->base->events.new_popup);
+    on_ping_timeout.connect(&popup->base->events.ping_timeout);
 
     popup->base->data = this;
     parent_geometry_changed.set_callback([=] (wf::signal_data_t*)
@@ -139,6 +144,7 @@ void wayfire_xdg_popup::destroy()
     on_unmap.disconnect();
     on_destroy.disconnect();
     on_new_popup.disconnect();
+    on_ping_timeout.disconnect();
 
     wlr_view_t::destroy();
 }
@@ -160,6 +166,14 @@ void wayfire_xdg_popup::close()
             wlr_xdg_popup_destroy(popup->base);
         }
     });
+}
+
+void wayfire_xdg_popup::ping()
+{
+    if (popup)
+    {
+        wlr_xdg_surface_ping(popup->base);
+    }
 }
 
 void create_xdg_popup(wlr_xdg_popup *popup)
@@ -210,6 +224,10 @@ void wayfire_xdg_view::initialize()
             wf::wf_view_from_void(xdg_toplevel->parent->data)->self() : nullptr;
         set_toplevel_parent(parent);
     });
+    on_ping_timeout.set_callback([&] (void*)
+    {
+        wf::emit_ping_timeout_signal(self());
+    });
 
     on_request_move.set_callback([&] (void*) { move_request(); });
     on_request_resize.set_callback([&] (void*) { resize_request(); });
@@ -230,6 +248,7 @@ void wayfire_xdg_view::initialize()
     on_unmap.connect(&xdg_toplevel->base->events.unmap);
     on_destroy.connect(&xdg_toplevel->base->events.destroy);
     on_new_popup.connect(&xdg_toplevel->base->events.new_popup);
+    on_ping_timeout.connect(&xdg_toplevel->base->events.ping_timeout);
 
     on_set_title.connect(&xdg_toplevel->events.set_title);
     on_set_app_id.connect(&xdg_toplevel->events.set_app_id);
@@ -379,6 +398,14 @@ void wayfire_xdg_view::close()
     }
 }
 
+void wayfire_xdg_view::ping()
+{
+    if (xdg_toplevel)
+    {
+        wlr_xdg_surface_ping(xdg_toplevel->base);
+    }
+}
+
 void wayfire_xdg_view::destroy()
 {
     on_map.disconnect();
@@ -388,6 +415,7 @@ void wayfire_xdg_view::destroy()
     on_set_title.disconnect();
     on_set_app_id.disconnect();
     on_set_parent.disconnect();
+    on_ping_timeout.disconnect();
     on_request_move.disconnect();
     on_request_resize.disconnect();
     on_request_maximize.disconnect();

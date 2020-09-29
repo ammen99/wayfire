@@ -510,6 +510,14 @@ using view_decoration_state_updated_signal = _view_signal;
  * argument: unused.
  */
 
+/**
+ * name: ping-timeout
+ * on: view
+ * when: Whenever the client fails to respond to a ping request within
+ *   the expected time(10 seconds).
+ */
+using view_ping_timeout_signal = _view_signal;
+
 /* ----------------------------------------------------------------------------/
  * View <-> output signals
  * -------------------------------------------------------------------------- */

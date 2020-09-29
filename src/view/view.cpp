@@ -259,6 +259,11 @@ void wf::view_interface_t::request_native_size()
     /* no-op */
 }
 
+void wf::view_interface_t::ping()
+{
+    // Do nothing, specialized in the various shells
+}
+
 void wf::view_interface_t::close()
 {
     /* no-op */

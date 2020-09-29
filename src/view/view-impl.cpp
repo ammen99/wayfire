@@ -348,6 +348,13 @@ void wf::emit_view_map_signal(wayfire_view view, bool has_position)
     view->emit_signal("mapped", &data);
 }
 
+void wf::emit_ping_timeout_signal(wayfire_view view)
+{
+    wf::view_ping_timeout_signal data;
+    data.view = view;
+    view->emit_signal("ping-timeout", &data);
+}
+
 void wf::view_interface_t::emit_view_map()
 {
     emit_view_map_signal(self(), false);

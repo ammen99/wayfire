@@ -142,6 +142,12 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     virtual void close();
 
     /**
+     * Ping the view's client.
+     * If the ping request times out, `ping-timeout` event will be emitted.
+     */
+    virtual void ping();
+
+    /**
      * The wm geometry of the view is the portion of the view surface that
      * contains the actual contents, for example, without the view shadows, etc.
      *

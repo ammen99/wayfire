@@ -60,7 +60,8 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
 
   protected:
     wf::wl_listener_wrapper on_destroy, on_unmap, on_map, on_configure,
-        on_set_title, on_set_app_id, on_or_changed, on_set_decorations;
+        on_set_title, on_set_app_id, on_or_changed, on_set_decorations,
+        on_ping_timeout;
 
     wlr_xwayland_surface *xw;
     /** The geometry requested by the client */
@@ -198,6 +199,10 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         {
             update_decorated();
         });
+        on_ping_timeout.set_callback([&] (void*)
+        {
+            wf::emit_ping_timeout_signal(self());
+        });
 
         handle_title_changed(nonull(xw->title));
         handle_app_id_changed(nonull(xw->class_t));
@@ -210,6 +215,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_set_title.connect(&xw->events.set_title);
         on_set_app_id.connect(&xw->events.set_class);
         on_or_changed.connect(&xw->events.set_override_redirect);
+        on_ping_timeout.connect(&xw->events.ping_timeout);
         on_set_decorations.connect(&xw->events.set_decorations);
     }
 
@@ -231,6 +237,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_set_title.disconnect();
         on_set_app_id.disconnect();
         on_or_changed.disconnect();
+        on_ping_timeout.disconnect();
         on_set_decorations.disconnect();
 
         wf::wlr_view_t::destroy();
