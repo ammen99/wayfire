@@ -7,6 +7,8 @@
 #include "wayfire/output-layout.hpp"
 #include "wayfire/signal-definitions.hpp"
 #include "../core/core-impl.hpp"
+#include "../core/seat/cursor.hpp"
+#include "../core/seat/input-manager.hpp"
 #include "view-impl.hpp"
 
 extern "C"
@@ -782,6 +784,10 @@ void wf::init_xwayland()
         {
             LOGD("Successfully loaded Xwayland atoms.");
         }
+
+        wlr_xwayland_set_seat(xwayland_handle,
+            wf::get_core().get_current_seat());
+        xwayland_update_default_cursor();
     });
 
     xwayland_handle = wlr_xwayland_create(wf::get_core().display,
@@ -797,19 +803,7 @@ void wf::init_xwayland()
 #endif
 }
 
-void wf::xwayland_set_seat(wlr_seat *seat)
-{
-#if WF_HAS_XWAYLAND
-    if (xwayland_handle)
-    {
-        wlr_xwayland_set_seat(xwayland_handle,
-            wf::get_core().get_current_seat());
-    }
-
-#endif
-}
-
-void wf::xwayland_set_cursor(wlr_xcursor_image *image)
+void wf::xwayland_update_default_cursor()
 {
 #if WF_HAS_XWAYLAND
     if (!xwayland_handle)
@@ -817,9 +811,16 @@ void wf::xwayland_set_cursor(wlr_xcursor_image *image)
         return;
     }
 
-    wlr_xwayland_set_cursor(xwayland_handle, image->buffer,
-        image->width * 4, image->width, image->height,
-        image->hotspot_x, image->hotspot_y);
+    auto xc     = wf::get_core_impl().input->cursor->xcursor;
+    auto cursor = wlr_xcursor_manager_get_xcursor(xc, "left_ptr", 1);
+    if (cursor && (cursor->image_count > 0))
+    {
+        auto image = cursor->images[0];
+        wlr_xwayland_set_cursor(xwayland_handle, image->buffer,
+            image->width * 4, image->width, image->height,
+            image->hotspot_x, image->hotspot_y);
+    }
+
 #endif
 }
 

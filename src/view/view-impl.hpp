@@ -220,9 +220,8 @@ void init_xdg_shell();
 void init_xwayland();
 void init_layer_shell();
 
-void xwayland_set_seat(wlr_seat *seat);
 std::string xwayland_get_display();
-void xwayland_set_cursor(wlr_xcursor_image *image);
+void xwayland_update_default_cursor();
 
 void init_desktop_apis();
 }
