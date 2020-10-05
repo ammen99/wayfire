@@ -111,6 +111,7 @@ void wf::view_interface_t::set_toplevel_parent(wayfire_view new_parent)
         }
 
         parent = new_parent;
+        desktop_state_updated();
     }
 
     if (parent)

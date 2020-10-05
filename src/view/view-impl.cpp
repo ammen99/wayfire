@@ -520,6 +520,11 @@ void wf::wlr_view_t::toplevel_send_state()
         tiled_edges == TILED_EDGES_ALL);
     wlr_foreign_toplevel_handle_v1_set_activated(toplevel_handle, activated);
     wlr_foreign_toplevel_handle_v1_set_minimized(toplevel_handle, minimized);
+
+    /* update parent as well */
+    wf::wlr_view_t *parent_ptr = dynamic_cast<wf::wlr_view_t*>(parent.get());
+    wlr_foreign_toplevel_handle_v1_set_parent(toplevel_handle,
+        parent_ptr ? parent_ptr->toplevel_handle : nullptr);
 }
 
 void wf::wlr_view_t::toplevel_update_output(wf::output_t *wo, bool enter)
