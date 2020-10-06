@@ -15,17 +15,6 @@
 #include <glm/glm.hpp>
 #include "wayfire/signal-definitions.hpp"
 
-extern "C"
-{
-#define static
-#include <wlr/config.h>
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_matrix.h>
-#include <wlr/util/region.h>
-#include <wlr/util/edges.h>
-#undef static
-}
-
 static void reposition_relative_to_parent(wayfire_view view)
 {
     if (!view->parent)

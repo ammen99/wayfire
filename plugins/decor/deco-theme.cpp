@@ -4,14 +4,6 @@
 #include <config.h>
 #include <map>
 
-extern "C"
-{
-#define static
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_matrix.h>
-#undef static
-}
-
 namespace wf
 {
 namespace decor

@@ -7,12 +7,7 @@
 #include "wayfire/object.hpp"
 #include "wayfire/surface.hpp"
 #include "wayfire/geometry.hpp"
-
-extern "C"
-{
-    struct wlr_surface;
-#include <wlr/util/edges.h>
-}
+#include <wayfire/nonstd/wlroots.hpp>
 
 namespace wf
 {

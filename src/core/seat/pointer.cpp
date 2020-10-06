@@ -8,13 +8,6 @@
 #include <wayfire/output-layout.hpp>
 #include <wayfire/compositor-surface.hpp>
 
-extern "C"
-{
-#include <wlr/types/wlr_seat.h>
-#include <wlr/types/wlr_pointer_constraints_v1.h>
-#include <wlr/types/wlr_relative_pointer_v1.h>
-}
-
 wf::LogicalPointer::LogicalPointer(nonstd::observer_ptr<input_manager> input)
 {
     this->input = input;

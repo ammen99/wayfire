@@ -2,10 +2,6 @@
 #define XDG_SHELL_HPP
 
 #include "view-impl.hpp"
-extern "C"
-{
-#include <wlr/types/wlr_xdg_shell.h>
-}
 
 /**
  * A class for xdg-shell popups

@@ -1,8 +1,3 @@
-extern "C"
-{
-#include <wlr/types/wlr_idle.h>
-}
-
 #include "wayfire/singleton-plugin.hpp"
 #include "wayfire/render-manager.hpp"
 #include "wayfire/output.hpp"
@@ -15,6 +10,7 @@ extern "C"
 #include <cmath>
 #include <wayfire/util/duration.hpp>
 #include <wayfire/util/log.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #define CUBE_ZOOM_BASE 1.0
 
@@ -182,7 +178,6 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
     uint32_t last_time;
     wlr_idle_timeout *timeout_screensaver = NULL;
     wf::wl_listener_wrapper on_idle_screensaver, on_resume_screensaver;
-    wf::pointf_t saved_cursor_position;
 
     wf::activator_callback toggle = [=] (wf::activator_source_t, uint32_t)
     {

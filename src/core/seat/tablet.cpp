@@ -5,11 +5,6 @@
 #include <wayfire/signal-definitions.hpp>
 #include <linux/input-event-codes.h>
 
-extern "C"
-{
-#include <wlr/types/wlr_tablet_v2.h>
-}
-
 /* --------------------- Tablet tool implementation ------------------------- */
 wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
     wlr_tablet_v2_tablet *tablet)

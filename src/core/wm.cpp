@@ -6,19 +6,10 @@
 #include "wayfire/output-layout.hpp"
 
 #include <wayfire/util/log.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include "../output/output-impl.hpp"
 #include "wayfire/signal-definitions.hpp"
-
-extern "C"
-{
-#include <wlr/config.h>
-#if WLR_HAS_X11_BACKEND
- #include <wlr/backend/x11.h>
-#endif
-#include <wlr/backend/wayland.h>
-#include <wlr/backend/noop.h>
-}
 
 static void idle_shutdown(void *data)
 {

@@ -6,21 +6,6 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
-#include <wlr/util/edges.h>
-#include "config.h"
-
-#if WF_HAS_XWAYLAND
-extern "C"
-{
- #define static
- #define class class_t
- #define namespace namespace_t
- #include <wlr/xwayland.h>
- #undef static
- #undef class
- #undef namespace
-}
-#endif
 
 namespace wf
 {

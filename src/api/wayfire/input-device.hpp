@@ -1,10 +1,7 @@
 #ifndef WF_INPUT_DEVICE_HPP
 #define WF_INPUT_DEVICE_HPP
 
-extern "C"
-{
-#include <wlr/types/wlr_input_device.h>
-}
+#include <wayfire/nonstd/wlroots.hpp>
 
 namespace wf
 {

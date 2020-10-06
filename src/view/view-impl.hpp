@@ -6,12 +6,7 @@
 #include <wayfire/opengl.hpp>
 
 #include "surface-impl.hpp"
-
-extern "C"
-{
-#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
-    struct wlr_xcursor_image;
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 // for emit_map_*()
 #include <wayfire/compositor-view.hpp>

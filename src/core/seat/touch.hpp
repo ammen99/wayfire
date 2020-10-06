@@ -8,12 +8,6 @@
 
 #include "surface-map-state.hpp"
 
-extern "C"
-{
-#include <wlr/types/wlr_cursor.h>
-#include <wlr/types/wlr_seat.h>
-}
-
 // TODO: tests
 namespace wf
 {

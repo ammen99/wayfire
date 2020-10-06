@@ -10,12 +10,7 @@
 #include "../core/seat/input-manager.hpp"
 #include "../view/xdg-shell.hpp"
 #include <wayfire/util/log.hpp>
-
-#include <linux/input.h>
-extern "C"
-{
-#include <wlr/types/wlr_output.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include <algorithm>
 #include <assert.h>

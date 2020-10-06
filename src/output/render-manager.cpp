@@ -11,17 +11,7 @@
 #include <wayfire/nonstd/reverse.hpp>
 #include <wayfire/nonstd/safe-list.hpp>
 #include <wayfire/util/log.hpp>
-
-extern "C"
-{
-    /* wlr uses some c99 extensions, we "disable" the static keyword to workaround */
-#define static
-#include <wlr/render/wlr_renderer.h>
-#undef static
-#include <wlr/types/wlr_output_damage.h>
-#include <wlr/types/wlr_presentation_time.h>
-#include <wlr/util/region.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 namespace wf
 {

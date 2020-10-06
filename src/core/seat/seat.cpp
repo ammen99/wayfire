@@ -8,11 +8,6 @@
 #include <wayfire/util/log.hpp>
 #include "wayfire/signal-definitions.hpp"
 
-extern "C"
-{
-#include <wlr/backend/libinput.h>
-}
-
 wf_drag_icon::wf_drag_icon(wlr_drag_icon *ic) :
     wf::wlr_child_surface_base_t(this), icon(ic)
 {

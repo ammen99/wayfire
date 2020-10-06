@@ -9,11 +9,6 @@
 
 #include "xdg-shell.hpp"
 
-extern "C"
-{
-#include <wlr/util/edges.h>
-}
-
 wf::wlr_view_t::wlr_view_t() :
     wf::wlr_surface_base_t(this), wf::view_interface_t()
 {}
@@ -553,24 +548,6 @@ void wf::init_desktop_apis()
     {
         init_xwayland();
     }
-}
-
-extern "C"
-{
-#include <wlr/config.h>
-
-#define namespace namespace_t
-#include <wlr/types/wlr_layer_shell_v1.h>
-#undef namespace
-#include <wlr/types/wlr_xdg_shell.h>
-
-#if WF_HAS_XWAYLAND
- #define class class_t
- #define static
- #include <wlr/xwayland.h>
- #undef static
- #undef class
-#endif
 }
 
 wf::surface_interface_t*wf::wf_surface_from_void(void *handle)

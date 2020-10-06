@@ -13,11 +13,6 @@
 #include "snap_signal.hpp"
 #include <wayfire/plugins/wobbly/wobbly-signal.hpp>
 
-extern "C"
-{
-#include <wlr/util/edges.h>
-}
-
 const std::string grid_view_id = "grid-view";
 
 class wayfire_grid_view_cdata : public wf::custom_data_t

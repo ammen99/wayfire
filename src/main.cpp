@@ -13,16 +13,6 @@
 #include "wayfire/nonstd/safe-list.hpp"
 #include <wayfire/config/file.hpp>
 
-extern "C"
-{
-#define static
-#include <wlr/render/gles2.h>
-#undef static
-#include <wlr/backend/multi.h>
-#include <wlr/backend/wayland.h>
-#include <wlr/util/log.h>
-}
-
 #include <wayland-server.h>
 
 #include "core/core-impl.hpp"

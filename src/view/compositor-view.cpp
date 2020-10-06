@@ -7,14 +7,6 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-extern "C"
-{
-#define static
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_matrix.h>
-#undef static
-}
-
 /* Implementation of mirror_view_t */
 wf::mirror_view_t::mirror_view_t(wayfire_view base_view) :
     wf::view_interface_t()

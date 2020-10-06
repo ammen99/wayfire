@@ -3,10 +3,6 @@
 #include <vector>
 #include <wayfire/util.hpp>
 #include "deco-button.hpp"
-extern "C"
-{
-#include <wlr/util/edges.h>
-}
 
 namespace wf
 {

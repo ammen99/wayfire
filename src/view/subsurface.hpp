@@ -2,6 +2,7 @@
 #define WF_SUBSURFACE_HPP
 
 #include "surface-impl.hpp"
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 namespace wf
 {

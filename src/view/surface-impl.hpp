@@ -5,11 +5,6 @@
 #include <wayfire/surface.hpp>
 #include <wayfire/util.hpp>
 
-extern "C"
-{
-#include <wlr/types/wlr_surface.h>
-}
-
 namespace wf
 {
 class surface_interface_t::impl

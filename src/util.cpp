@@ -5,11 +5,7 @@
 #include <iomanip>
 #include <ctime>
 #include <cmath>
-
-extern "C"
-{
-#include <wlr/util/region.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 /* Geometry helpers */
 std::ostream& operator <<(std::ostream& stream, const wf::geometry_t& geometry)

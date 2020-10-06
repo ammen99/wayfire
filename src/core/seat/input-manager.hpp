@@ -14,14 +14,6 @@
 #include "wayfire/signal-definitions.hpp"
 #include <wayfire/option-wrapper.hpp>
 
-extern "C"
-{
-#include <wlr/types/wlr_idle.h>
-#include <wlr/types/wlr_seat.h>
-    struct wlr_drag_icon;
-    struct wlr_pointer_constraint_v1;
-}
-
 namespace wf
 {
 class touch_interface_t;
@@ -30,8 +22,6 @@ namespace touch
 class gesture_action_t;
 }
 }
-
-struct wlr_seat;
 
 struct wf_keyboard;
 

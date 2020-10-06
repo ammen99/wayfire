@@ -3,6 +3,7 @@
 
 #include <linux/input-event-codes.h>
 
+#include <wayfire/nonstd/wlroots.hpp>
 #include <wayfire/compositor-surface.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/opengl.hpp>
@@ -17,15 +18,6 @@
 #include <wayfire/plugins/common/cairo-util.hpp>
 
 #include <cairo.h>
-
-extern "C"
-{
-#define static
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_matrix.h>
-#include <wlr/types/wlr_xcursor_manager.h>
-#undef static
-}
 
 class simple_decoration_surface : public wf::surface_interface_t,
     public wf::compositor_surface_t, public wf::decorator_frame_t_t

@@ -24,7 +24,7 @@
 #define ZOOM_MIN 0.1f
 
 #ifdef USE_GLES32
- #include <GLES3/gl32.h>
+    #include <GLES3/gl32.h>
 #endif
 
 #include "shaders.tpp"

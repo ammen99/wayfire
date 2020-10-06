@@ -6,12 +6,9 @@
 #include <vector>
 #include <memory>
 
+#include <wayfire/nonstd/wlroots.hpp>
 #include <wayfire/nonstd/observer_ptr.h>
 #include <wayfire/geometry.hpp>
-
-extern "C" {
-    struct wlr_surface;
-}
 
 namespace wf
 {

@@ -1,19 +1,6 @@
 #include <algorithm>
 #include <map>
 #include <wayfire/util/log.hpp>
-extern "C"
-{
-#include <wlr/types/wlr_surface.h>
-#define static
-#include <wlr/types/wlr_compositor.h>
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/render/gles2.h>
-#include <wlr/types/wlr_matrix.h>
-#include <wlr/types/wlr_buffer.h>
-#include <wlr/util/region.h>
-#undef static
-}
-
 #include "surface-impl.hpp"
 #include "subsurface.hpp"
 #include "wayfire/opengl.hpp"

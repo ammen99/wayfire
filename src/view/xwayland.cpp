@@ -1,5 +1,6 @@
 #include "wayfire/debug.hpp"
 #include <wayfire/util/log.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 #include "wayfire/core.hpp"
 #include "wayfire/output.hpp"
 #include "wayfire/workspace-manager.hpp"
@@ -8,20 +9,6 @@
 #include "wayfire/signal-definitions.hpp"
 #include "../core/core-impl.hpp"
 #include "view-impl.hpp"
-
-extern "C"
-{
-#include <wlr/config.h>
-
-#if WF_HAS_XWAYLAND
- #define class class_t
- #define static
- #include <wlr/xwayland.h>
- #include <wlr/xcursor.h>
- #undef static
- #undef class
-#endif
-}
 
 #if WF_HAS_XWAYLAND
 

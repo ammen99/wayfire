@@ -4,13 +4,6 @@
 #include "seat.hpp"
 #include "wayfire/plugin.hpp"
 
-extern "C"
-{
-#include <wlr/types/wlr_xcursor_manager.h>
-#include <wlr/types/wlr_pointer_gestures_v1.h>
-}
-
-
 struct wf_cursor
 {
     wf_cursor();

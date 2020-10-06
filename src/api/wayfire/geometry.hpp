@@ -2,10 +2,7 @@
 #define WF_GEOMETRY_HPP
 
 #include <sstream>
-extern "C"
-{
-#include <wlr/types/wlr_box.h>
-}
+#include <wayfire/nonstd/wlroots.hpp>
 
 namespace wf
 {

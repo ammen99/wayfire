@@ -1,12 +1,6 @@
 #include <cstring>
 #include <linux/input-event-codes.h>
-
-extern "C"
-{
 #include <xkbcommon/xkbcommon.h>
-#include <wlr/backend/session.h>
-#include <wlr/interfaces/wlr_keyboard.h>
-}
 
 #include <wayfire/util/log.hpp>
 #include "keyboard.hpp"

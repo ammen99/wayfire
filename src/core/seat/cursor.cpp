@@ -8,14 +8,7 @@
 #include "wayfire/output-layout.hpp"
 #include "tablet.hpp"
 #include "wayfire/signal-definitions.hpp"
-
 #include "wayfire/util/log.hpp"
-
-extern "C" {
-#include <wlr/util/region.h>
-#include <wlr/types/wlr_relative_pointer_v1.h>
-#include <wlr/types/wlr_pointer_constraints_v1.h>
-}
 
 wf_cursor::wf_cursor()
 {

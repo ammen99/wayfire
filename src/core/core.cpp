@@ -1,42 +1,6 @@
-extern "C"
-{
-#include <wlr/config.h>
-#include <wlr/types/wlr_data_control_v1.h>
-#include <wlr/types/wlr_data_device.h>
-#include <wlr/types/wlr_virtual_keyboard_v1.h>
-#include <wlr/types/wlr_virtual_pointer_v1.h>
-#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
-#include <wlr/types/wlr_idle.h>
-#include <wlr/types/wlr_idle_inhibit_v1.h>
-#include <wlr/types/wlr_input_inhibitor.h>
-#include <wlr/types/wlr_export_dmabuf_v1.h>
-#include <wlr/types/wlr_server_decoration.h>
-#include <wlr/types/wlr_xdg_decoration_v1.h>
-#include <wlr/types/wlr_gamma_control_v1.h>
-#include <wlr/types/wlr_xdg_output_v1.h>
-#include <wlr/types/wlr_screencopy_v1.h>
-#include <wlr/types/wlr_pointer_gestures_v1.h>
-#include <wlr/types/wlr_relative_pointer_v1.h>
-#include <wlr/types/wlr_pointer_constraints_v1.h>
-#include <wlr/types/wlr_tablet_v2.h>
-#include <wlr/types/wlr_text_input_v3.h>
-#include <wlr/types/wlr_presentation_time.h>
-#include <wlr/types/wlr_gtk_primary_selection.h>
-#include <wlr/types/wlr_primary_selection_v1.h>
-
-#define delete delete_
-#include <wlr/types/wlr_input_method_v2.h>
-#undef delete
-
-#define static
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/types/wlr_compositor.h>
-#undef static
-}
-
 /* Needed for pipe2 */
 #ifndef _GNU_SOURCE
- #define _GNU_SOURCE
+    #define _GNU_SOURCE
 #endif
 
 #include <sys/wait.h>
@@ -49,6 +13,7 @@ extern "C"
 #include <wayfire/output-layout.hpp>
 #include <wayfire/workspace-manager.hpp>
 #include <wayfire/signal-definitions.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include "opengl-priv.hpp"
 #include "seat/input-manager.hpp"

@@ -1,12 +1,6 @@
 #include <cassert>
 #include <algorithm>
 #include "surface-map-state.hpp"
-
-extern "C"
-{
-#include <wlr/types/wlr_seat.h>
-}
-
 #include "wayfire/signal-definitions.hpp"
 #include "../core-impl.hpp"
 #include "../../output/output-impl.hpp"

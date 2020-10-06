@@ -16,26 +16,7 @@
 #include <unordered_set>
 
 #include <wayfire/util/log.hpp>
-
-extern "C"
-{
-#include <wlr/config.h>
-#define static
-#include <wlr/backend.h>
-#include <wlr/backend/drm.h>
-#if WLR_HAS_X11_BACKEND
- #include <wlr/backend/x11.h>
-#endif
-#include <wlr/backend/noop.h>
-#include <wlr/backend/wayland.h>
-#include <wlr/types/wlr_output.h>
-#include <wlr/types/wlr_matrix.h>
-#include <wlr/types/wlr_output_layout.h>
-#include <wlr/types/wlr_output_management_v1.h>
-#include <wlr/types/wlr_output_power_management_v1.h>
-#include <wlr/render/wlr_renderer.h>
-#undef static
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 static wl_output_transform get_transform_from_string(std::string transform)
 {

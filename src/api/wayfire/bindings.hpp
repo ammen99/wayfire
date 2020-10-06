@@ -2,10 +2,8 @@
 #define WF_BINDINGS_HPP
 
 #include <functional>
-extern "C"
-{
-    struct wlr_event_pointer_axis;
-}
+#include <cstdint>
+#include <wayfire/nonstd/wlroots.hpp>
 
 namespace wf
 {

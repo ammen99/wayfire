@@ -2,11 +2,7 @@
 #include "deco-theme.hpp"
 #include <wayfire/core.hpp>
 #include <wayfire/nonstd/reverse.hpp>
-
-extern "C"
-{
-#include <wlr/types/wlr_xcursor_manager.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #define BUTTON_ASPECT_RATIO (25.0 / 16.0)
 #define BUTTON_HEIGHT_PC 0.8

@@ -2,15 +2,7 @@
 #include "seat.hpp"
 #include "wayfire/util.hpp"
 #include "wayfire/signal-definitions.hpp"
-
-extern "C" {
-#include <wlr/types/wlr_text_input_v3.h>
-#include <wlr/types/wlr_surface.h>
-
-#define delete delete_
-#include <wlr/types/wlr_input_method_v2.h>
-#undef delete
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include <vector>
 #include <memory>

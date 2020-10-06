@@ -5,17 +5,11 @@
 #include "wayfire/core.hpp"
 #include "wayfire/debug.hpp"
 #include <wayfire/util/log.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 #include "wayfire/output.hpp"
 #include "wayfire/workspace-manager.hpp"
 #include "wayfire/output-layout.hpp"
 #include "view-impl.hpp"
-
-extern "C"
-{
-#define namespace namespace_t
-#include <wlr/types/wlr_layer_shell_v1.h>
-#undef namespace
-}
 
 static const uint32_t both_vert =
     ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP | ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM;

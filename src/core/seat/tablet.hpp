@@ -1,10 +1,6 @@
 #ifndef WF_SEAT_TABLET_HPP
 #define WF_SEAT_TABLET_HPP
 
-extern "C" {
-    struct wlr_cursor;
-#include <wlr/types/wlr_tablet_v2.h>
-}
 #include <wayfire/util.hpp>
 #include "seat.hpp"
 

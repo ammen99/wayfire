@@ -1,18 +1,12 @@
 #ifndef OUTPUT_LAYOUT_HPP
 #define OUTPUT_LAYOUT_HPP
 
-extern "C"
-{
-    struct wlr_backend;
-    struct wlr_output_layout;
-#include <wlr/types/wlr_output.h>
-}
-
 #include <map>
 #include <vector>
 #include <memory>
 #include <functional>
 
+#include <wayfire/nonstd/wlroots.hpp>
 #include "wayfire/object.hpp"
 #include "wayfire/util.hpp"
 

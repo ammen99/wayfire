@@ -2,7 +2,7 @@
 #define DEBUG_HPP
 
 #ifndef WAYFIRE_PLUGIN
- #include "config.h"
+    #include "config.h"
 #endif
 
 #define nonull(x) ((x) ? (x) : ("nil"))

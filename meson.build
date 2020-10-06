@@ -140,6 +140,7 @@ else
   conf_data.set('WF_HAS_XWAYLAND', 0)
 endif
 
+add_project_arguments(['-DWF_USE_CONFIG_H'], language: ['cpp', 'c'])
 configure_file(input: 'config.h.in',
                output: 'config.h',
                install: true,

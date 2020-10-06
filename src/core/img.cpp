@@ -5,9 +5,9 @@
 #include <config.h>
 
 #ifdef BUILD_WITH_IMAGEIO
- #include <png.h>
- #include <jpeglib.h>
- #include <jerror.h>
+    #include <png.h>
+    #include <jpeglib.h>
+    #include <jerror.h>
 #endif
 
 #include <stdint.h>

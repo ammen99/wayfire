@@ -6,10 +6,7 @@
 #include "wayfire/util.hpp"
 #include "wayfire/bindings.hpp"
 
-extern "C"
-{
-#include <wlr/types/wlr_input_device.h>
-}
+#include <wayfire/nonstd/wlroots.hpp>
 
 class wayfire_config;
 namespace wf

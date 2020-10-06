@@ -7,12 +7,7 @@
 #include <wayfire/util.hpp>
 #include <wayfire/option-wrapper.hpp>
 #include "surface-map-state.hpp"
-
-extern "C"
-{
-    struct wlr_pointer_constraint_v1;
-#include <wlr/types/wlr_seat.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 class input_manager;
 namespace wf

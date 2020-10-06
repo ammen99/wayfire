@@ -3,16 +3,10 @@
 
 #include "wayfire/core.hpp"
 #include "wayfire/util.hpp"
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include <set>
 #include <unordered_map>
-
-extern "C"
-{
-    struct wlr_egl;
-    struct wlr_compositor;
-    struct wlr_surface;
-}
 
 class input_manager;
 class input_method_relay;

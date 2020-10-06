@@ -5,13 +5,9 @@
 #include "wayfire/object.hpp"
 #include "wayfire/bindings.hpp"
 
+#include <wayfire/nonstd/wlroots.hpp>
 #include <wayfire/option-wrapper.hpp>
 #include <wayfire/config/types.hpp>
-
-extern "C"
-{
-    struct wlr_output;
-}
 
 namespace wf
 {

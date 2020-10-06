@@ -1,13 +1,7 @@
 #ifndef SEAT_HPP
 #define SEAT_HPP
 
-extern "C"
-{
-#include <wlr/types/wlr_data_device.h>
-#include <wlr/types/wlr_primary_selection.h>
-#include <wlr/backend/libinput.h>
-#include <wlr/types/wlr_switch.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include "../../view/surface-impl.hpp"
 #include "wayfire/output.hpp"

@@ -7,13 +7,8 @@
 #include <linux/input.h>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/plugins/common/view-change-viewport-signal.hpp>
-
-extern "C"
-{
-#include <wlr/types/wlr_xcursor_manager.h>
-}
-
 #include <wayfire/plugins/wobbly/wobbly-signal.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 class wayfire_resize : public wf::plugin_interface_t
 {

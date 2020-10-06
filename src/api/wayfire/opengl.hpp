@@ -6,6 +6,7 @@
 #include <wayfire/config/types.hpp>
 #include <wayfire/util.hpp>
 #include <wayfire/nonstd/noncopyable.hpp>
+#include <wayfire/nonstd/wlroots.hpp>
 
 #include <wayfire/geometry.hpp>
 
@@ -16,7 +17,7 @@
 void gl_call(const char*, uint32_t, const char*);
 
 #ifndef __STRING
- #  define __STRING(x) #x
+    #  define __STRING(x) #x
 #endif
 
 /*
@@ -29,10 +30,6 @@ struct gl_geometry
 {
     float x1, y1, x2, y2;
 };
-
-extern "C" {
-    struct wlr_texture;
-}
 
 namespace wf
 {

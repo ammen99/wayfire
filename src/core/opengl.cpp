@@ -4,16 +4,7 @@
 #include "wayfire/output.hpp"
 #include "core-impl.hpp"
 #include "config.h"
-
-extern "C"
-{
-#define static
-#include <wlr/render/egl.h>
-#include <wlr/render/wlr_renderer.h>
-#include <wlr/render/gles2.h>
-#undef static
-#include <wlr/types/wlr_output.h>
-}
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include <glm/gtc/matrix_transform.hpp>
 
