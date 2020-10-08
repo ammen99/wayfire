@@ -151,6 +151,12 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             process_key(key, state);
         };
+
+        grab_interface->callbacks.cancel = [=] ()
+        {
+            finalize();
+        };
+
         interact.set_callback(interact_option_changed);
         allow_scale_zoom.set_callback(allow_scale_zoom_option_changed);
 
