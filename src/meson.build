@@ -70,40 +70,8 @@ executable('wayfire', wayfire_sources,
         link_args: '-ldl',
         install: true)
 
-install_headers(['api/wayfire/nonstd/safe-list.hpp',
-                 'api/wayfire/nonstd/noncopyable.hpp',
-                 'api/wayfire/nonstd/observer_ptr.h',
-                 'api/wayfire/nonstd/reverse.hpp'],
-                subdir: 'wayfire/nonstd')
-
-install_headers(['api/wayfire/compositor-surface.hpp',
-                 'api/wayfire/compositor-view.hpp',
-                 'api/wayfire/bindings.hpp',
-                 'api/wayfire/core.hpp',
-                 'api/wayfire/debug.hpp',
-                 'api/wayfire/decorator.hpp',
-                 'api/wayfire/img.hpp',
-                 'api/wayfire/geometry.hpp',
-                 'api/wayfire/object.hpp',
-                 'api/wayfire/opengl.hpp',
-                 'api/wayfire/option-wrapper.hpp',
-                 'api/wayfire/output.hpp',
-                 'api/wayfire/plugin.hpp',
-                 'api/wayfire/singleton-plugin.hpp',
-                 'api/wayfire/render-manager.hpp',
-                 'api/wayfire/signal-definitions.hpp',
-                 'api/wayfire/util.hpp',
-                 'api/wayfire/surface.hpp',
-                 'api/wayfire/view-transform.hpp',
-                 'api/wayfire/view.hpp',
-                 'api/wayfire/view-access-interface.hpp',
-                 'api/wayfire/workspace-manager.hpp',
-                 'api/wayfire/workspace-stream.hpp',
-                 'api/wayfire/input-device.hpp',
-                 'api/wayfire/output-layout.hpp',
-                 'api/wayfire/matcher.hpp',
-                 'api/wayfire/gtk-shell.hpp'],
-                subdir: 'wayfire')
+install_subdir('api/wayfire',
+    install_dir: get_option('includedir'))
 
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(
