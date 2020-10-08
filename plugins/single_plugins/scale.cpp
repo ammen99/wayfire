@@ -31,6 +31,7 @@
 #include <wayfire/workspace-manager.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/plugins/vswitch.hpp>
+#include <wayfire/touch/touch.hpp>
 
 #include <linux/input-event-codes.h>
 
@@ -82,7 +83,7 @@ class wayfire_scale : public wf::plugin_interface_t
     int grid_last_row_cols;
     wf::point_t initial_workspace;
     bool input_release_impending = false;
-    bool active, hook_set, button_connected;
+    bool active, hook_set;
     const std::string transformer_name = "scale";
     /* View that was active before scale began. */
     wayfire_view initial_focus_view;
@@ -132,7 +133,7 @@ class wayfire_scale : public wf::plugin_interface_t
         grab_interface->name = "scale";
         grab_interface->capabilities = 0;
 
-        active = hook_set = button_connected = false;
+        active = hook_set = false;
 
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle"},
@@ -140,12 +141,6 @@ class wayfire_scale : public wf::plugin_interface_t
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle_all"},
             &toggle_all_cb);
-
-        grab_interface->callbacks.pointer.button =
-            [=] (uint32_t button, uint32_t state)
-        {
-            process_button(button, state);
-        };
 
         grab_interface->callbacks.keyboard.key = [=] (uint32_t key, uint32_t state)
         {
@@ -288,34 +283,50 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Connect button signal */
     void connect_button_signal()
     {
-        if (button_connected)
-        {
-            return;
-        }
-
+        disconnect_button_signal();
         wf::get_core().connect_signal("pointer_button", &on_button_event);
-        button_connected = true;
+        wf::get_core().connect_signal("touch_down", &on_touch_down_event);
+        wf::get_core().connect_signal("touch_up", &on_touch_up_event);
     }
 
     /* Disconnect button signal */
     void disconnect_button_signal()
     {
-        if (!button_connected)
-        {
-            return;
-        }
-
-        wf::get_core().disconnect_signal("pointer_button", &on_button_event);
-        button_connected = false;
+        on_button_event.disconnect();
+        on_touch_down_event.disconnect();
+        on_touch_up_event.disconnect();
     }
 
     /* For button processing without grabbing */
-    wf::signal_callback_t on_button_event = [=] (wf::signal_data_t *data)
+    wf::signal_connection_t on_button_event = [=] (wf::signal_data_t *data)
     {
         auto ev = static_cast<
             wf::input_event_signal<wlr_event_pointer_button>*>(data);
 
-        process_button(ev->event->button, ev->event->state);
+        process_input(ev->event->button, ev->event->state,
+            wf::get_core().get_cursor_position());
+    };
+
+    wf::signal_connection_t on_touch_down_event = [=] (wf::signal_data_t *data)
+    {
+        auto ev = static_cast<
+            wf::input_event_signal<wlr_event_touch_down>*>(data);
+        if (ev->event->touch_id == 0)
+        {
+            process_input(BTN_LEFT, WLR_BUTTON_PRESSED,
+                wf::get_core().get_touch_position(0));
+        }
+    };
+
+    wf::signal_connection_t on_touch_up_event = [=] (wf::signal_data_t *data)
+    {
+        auto ev = static_cast<
+            wf::input_event_signal<wlr_event_touch_down>*>(data);
+        if (ev->event->touch_id == 0)
+        {
+            process_input(BTN_LEFT, WLR_BUTTON_RELEASED,
+                wf::get_core().get_touch_position(0));
+        }
     };
 
     /** Return the topmost parent */
@@ -438,7 +449,8 @@ class wayfire_scale : public wf::plugin_interface_t
     }
 
     /* Process button event */
-    void process_button(uint32_t button, uint32_t state)
+    void process_input(uint32_t button, uint32_t state,
+        wf::pointf_t input_position)
     {
         if (!active)
         {
@@ -474,7 +486,7 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        auto view = wf::get_core().get_view_at(wf::get_core().get_cursor_position());
+        auto view = wf::get_core().get_view_at(input_position);
         if (!view || !should_scale_view(view))
         {
             return;
@@ -949,13 +961,11 @@ class wayfire_scale : public wf::plugin_interface_t
 
         if (interact)
         {
-            connect_button_signal();
-
-            return;
+            grab_interface->ungrab();
+        } else
+        {
+            grab_interface->grab();
         }
-
-        grab_interface->grab();
-        disconnect_button_signal();
     };
 
     /* Called when adding or removing a group of views to be scaled,
@@ -1210,11 +1220,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         layout_slots(get_views());
 
-        if (interact)
-        {
-            connect_button_signal();
-        }
-
+        connect_button_signal();
         output->connect_signal("view-layer-attached", &view_attached);
         output->connect_signal("view-mapped", &view_attached);
         output->connect_signal("workspace-changed", &workspace_changed);
