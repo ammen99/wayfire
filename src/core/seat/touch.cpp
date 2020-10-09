@@ -21,7 +21,7 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
     on_down.set_callback([=] (void *data)
     {
         auto ev = static_cast<wlr_event_touch_down*>(data);
-        emit_device_event_signal("touch_down", &ev);
+        emit_device_event_signal("touch_down", ev);
 
         double lx, ly;
         wlr_cursor_absolute_to_layout_coords(cursor, ev->device,
@@ -46,7 +46,7 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
     on_motion.set_callback([=] (void *data)
     {
         auto ev = static_cast<wlr_event_touch_motion*>(data);
-        emit_device_event_signal("touch_motion", &ev);
+        emit_device_event_signal("touch_motion", ev);
 
         double lx, ly;
         wlr_cursor_absolute_to_layout_coords(
