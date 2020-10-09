@@ -321,7 +321,7 @@ class wayfire_scale : public wf::plugin_interface_t
     wf::signal_connection_t on_touch_up_event = [=] (wf::signal_data_t *data)
     {
         auto ev = static_cast<
-            wf::input_event_signal<wlr_event_touch_down>*>(data);
+            wf::input_event_signal<wlr_event_touch_up>*>(data);
         if (ev->event->touch_id == 0)
         {
             process_input(BTN_LEFT, WLR_BUTTON_RELEASED,
@@ -407,7 +407,7 @@ class wayfire_scale : public wf::plugin_interface_t
         output->workspace->request_workspace(ws);
     }
 
-    /* To avoid sending button up events to clients on click select */
+    /* To avoid sending key up events to clients on enter to select */
     void finish_input()
     {
         input_release_impending = false;
@@ -452,37 +452,8 @@ class wayfire_scale : public wf::plugin_interface_t
     void process_input(uint32_t button, uint32_t state,
         wf::pointf_t input_position)
     {
-        if (!active)
+        if (!active || (state != WLR_BUTTON_RELEASED))
         {
-            finish_input();
-
-            return;
-        }
-
-        if ((button == BTN_LEFT) || (state == WLR_BUTTON_RELEASED))
-        {
-            input_release_impending = false;
-        }
-
-        if (state != WLR_BUTTON_PRESSED)
-        {
-            return;
-        }
-
-        switch (button)
-        {
-          case BTN_LEFT:
-            break;
-
-          case BTN_MIDDLE:
-            if (!middle_click_close)
-            {
-                return;
-            }
-
-            break;
-
-          default:
             return;
         }
 
@@ -492,28 +463,36 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        if (button == BTN_MIDDLE)
+        switch (button)
         {
-            view->close();
+          case BTN_LEFT:
+            // Focus the view under the mouse
+            current_focus_view = view;
+            output->focus_view(view, true);
+            fade_out_all_except(view);
+            fade_in(get_top_parent(view));
+            if (!interact)
+            {
+                // End scale
+                initial_focus_view = nullptr;
+                deactivate();
+                select_view(view);
+            }
 
-            return;
+            break;
+
+          case BTN_MIDDLE:
+            // Check kill the view
+            if (middle_click_close)
+            {
+                view->close();
+            }
+
+            break;
+
+          default:
+            break;
         }
-
-        current_focus_view = view;
-        output->focus_view(view, true);
-        fade_out_all_except(view);
-        fade_in(get_top_parent(view));
-
-        if (interact)
-        {
-            return;
-        }
-
-        /* end scale */
-        input_release_impending = true;
-        initial_focus_view = nullptr;
-        deactivate();
-        select_view(view);
     }
 
     /* Get the workspace for the center point of the untransformed view geometry */
