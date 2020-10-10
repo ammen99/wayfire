@@ -71,7 +71,8 @@ void wf::output_impl_t::refocus(wayfire_view skip_view, uint32_t layers)
 void wf::output_t::refocus(wayfire_view skip_view)
 {
     uint32_t focused_layer = wf::get_core().get_focused_layer();
-    uint32_t layers = focused_layer <= LAYER_WORKSPACE ? WM_LAYERS : focused_layer;
+    uint32_t layers = focused_layer <=
+        LAYER_WORKSPACE ? MIDDLE_LAYERS : focused_layer;
 
     auto views = workspace->get_views_on_workspace(
         workspace->get_current_workspace(), layers);

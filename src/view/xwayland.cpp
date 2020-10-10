@@ -29,6 +29,26 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
 {
   protected:
     static xcb_atom_t _NET_WM_WINDOW_TYPE_NORMAL;
+    static xcb_atom_t _NET_WM_WINDOW_TYPE_DIALOG;
+
+    static void load_atom(xcb_connection_t *connection,
+        xcb_atom_t& atom, const std::string& name)
+    {
+        auto cookie = xcb_intern_atom(connection, 0, name.length(), name.c_str());
+
+        xcb_generic_error_t *error = NULL;
+        xcb_intern_atom_reply_t *reply;
+        reply = xcb_intern_atom_reply(connection, cookie, &error);
+
+        bool success = !error && reply;
+        if (success)
+        {
+            atom = reply->atom;
+        }
+
+        free(reply);
+        free(error);
+    }
 
   public:
     static bool load_atoms()
@@ -39,21 +59,10 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             return false;
         }
 
-        const std::string name = "_NET_WM_WINDOW_TYPE_NORMAL";
-        auto cookie = xcb_intern_atom(connection, 0, name.length(), name.c_str());
-
-        xcb_generic_error_t *error = NULL;
-        xcb_intern_atom_reply_t *reply;
-        reply = xcb_intern_atom_reply(connection, cookie, &error);
-
-        bool success = !error && reply;
-        if (success)
-        {
-            _NET_WM_WINDOW_TYPE_NORMAL = reply->atom;
-        }
-
-        free(reply);
-        free(error);
+        load_atom(connection, _NET_WM_WINDOW_TYPE_NORMAL,
+            "_NET_WM_WINDOW_TYPE_NORMAL");
+        load_atom(connection, _NET_WM_WINDOW_TYPE_DIALOG,
+            "_NET_WM_WINDOW_TYPE_DIALOG");
 
         xcb_disconnect(connection);
 
@@ -77,6 +86,44 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             }
         }
     };
+
+    bool is_dialog()
+    {
+        for (size_t i = 0; i < xw->window_type_len; i++)
+        {
+            if (xw->window_type[i] == _NET_WM_WINDOW_TYPE_DIALOG)
+            {
+                return true;
+            }
+        }
+
+        if (xw->parent && (xw->window_type_len == 0))
+        {
+            return true;
+        } else
+        {
+            return false;
+        }
+    }
+
+    /**
+     * Determine whether the view should be treated as override-redirect or not.
+     */
+    bool is_unmanaged()
+    {
+        if (xw->override_redirect)
+        {
+            return true;
+        }
+
+        /** Example: Android Studio dialogs */
+        if (xw->parent && !this->is_dialog())
+        {
+            return true;
+        }
+
+        return false;
+    }
 
   public:
     wayfire_xwayland_view_base(wlr_xwayland_surface *xww) :
@@ -239,6 +286,16 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         wf::wlr_view_t::close();
     }
 
+    void set_activated(bool active) override
+    {
+        if (xw)
+        {
+            wlr_xwayland_surface_activate(xw, active);
+        }
+
+        wf::wlr_view_t::set_activated(active);
+    }
+
     void send_configure(int width, int height)
     {
         if (!xw)
@@ -305,6 +362,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
 };
 
 xcb_atom_t wayfire_xwayland_view_base::_NET_WM_WINDOW_TYPE_NORMAL;
+xcb_atom_t wayfire_xwayland_view_base::_NET_WM_WINDOW_TYPE_DIALOG;
 
 class wayfire_unmanaged_xwayland_view : public wayfire_xwayland_view_base
 {
@@ -367,6 +425,14 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
         on_set_parent.set_callback([&] (void*)
         {
+            /* Menus, etc. with TRANSIENT_FOR but not dialogs */
+            if (is_unmanaged())
+            {
+                recreate_view_with_or_type();
+
+                return;
+            }
+
             auto parent = xw->parent ?
                 wf::wf_view_from_void(xw->parent->data)->self() : nullptr;
             /* XXX: Do not set parent if parent is unmapped. This happens on
@@ -498,16 +564,6 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         uint32_t csd_flags = WLR_XWAYLAND_SURFACE_DECORATIONS_NO_TITLE |
             WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER;
         this->set_decoration_mode(xw->decorations & csd_flags);
-    }
-
-    void set_activated(bool active) override
-    {
-        if (xw)
-        {
-            wlr_xwayland_surface_activate(xw, active);
-        }
-
-        wf::wlr_view_t::set_activated(active);
     }
 
     void set_moving(bool moving) override
@@ -695,15 +751,18 @@ void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
     damage();
 
     /* We update the keyboard focus before emitting the map event, so that
-     * plugins can detect that this view can have keyboard focus */
-    view_impl->keyboard_focus_enabled = wlr_xwayland_or_surface_wants_focus(xw);
+     * plugins can detect that this view can have keyboard focus.
+     *
+     * Note: only actual override-redirect views should get their focus disabled */
+    view_impl->keyboard_focus_enabled = (!xw->override_redirect ||
+        wlr_xwayland_or_surface_wants_focus(xw));
 
     get_output()->workspace->add_view(self(), wf::LAYER_UNMANAGED);
     wf::wlr_view_t::map(surface);
 
-    if (wlr_xwayland_or_surface_wants_focus(xw))
+    if (view_impl->keyboard_focus_enabled)
     {
-        get_output()->focus_view(self());
+        get_output()->focus_view(self(), true);
     }
 }
 
@@ -715,6 +774,7 @@ void wayfire_xwayland_view_base::recreate_view_with_or_type()
      */
     auto xw_surf    = this->xw;
     bool was_mapped = is_mapped();
+    bool is_unmanaged = this->is_unmanaged();
 
     // destroy the view (unmap + destroy)
     if (was_mapped)
@@ -726,7 +786,7 @@ void wayfire_xwayland_view_base::recreate_view_with_or_type()
 
     // create the new view
     std::unique_ptr<wayfire_xwayland_view_base> new_view;
-    if (xw_surf->override_redirect)
+    if (is_unmanaged)
     {
         new_view = std::make_unique<wayfire_unmanaged_xwayland_view>(xw_surf);
     } else
