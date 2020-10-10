@@ -193,28 +193,91 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         wf::wlr_view_t::destroy();
     }
 
+    /* Translates geometry from X client configure requests to wayfire
+     * coordinate system. The X coordinate system treats all outputs
+     * as one big desktop, whereas wayfire treats the current workspace
+     * of an output as 0,0 and everything else relative to that. This
+     * means that we must take care when placing xwayland clients that
+     * request a configure after initial mapping, while not on the
+     * current workspace.
+     *
+     * @param output    The view's output
+     * @param ws_offset The view's workspace minus the current workspace
+     * @param geometry  The configure geometry as requested by the client
+     *
+     * @return Geometry with a position that is within the view's workarea.
+     * The workarea is the workspace where the view was initially mapped.
+     * Newly mapped views are placed on the current workspace.
+     */
+    wf::geometry_t translate_geometry_to_output(wf::output_t *output,
+        wf::point_t ws_offset,
+        wf::geometry_t g)
+    {
+        auto outputs = wf::get_core().output_layout->get_outputs();
+        auto og   = output->get_layout_geometry();
+        auto from = wf::get_core().output_layout->get_output_at(
+            g.x + g.width / 2 + og.x, g.y + g.height / 2 + og.y);
+        if (!from)
+        {
+            return g;
+        }
+
+        auto lg = from->get_layout_geometry();
+        g.x += (og.x - lg.x) + ws_offset.x * og.width;
+        g.y += (og.y - lg.y) + ws_offset.y * og.height;
+        if (!this->is_mapped())
+        {
+            g.x *= (float)og.width / lg.width;
+            g.y *= (float)og.height / lg.height;
+        }
+
+        return g;
+    }
+
     virtual void configure_request(wf::geometry_t configure_geometry)
     {
         /* Wayfire positions views relative to their output, but Xwayland
          * windows have a global positioning. So, we need to make sure that we
          * always transform between output-local coordinates and global
-         * coordinates */
-        if (get_output())
+         * coordinates. Additionally, when clients send a configure request
+         * after they have already been mapped, we keep the view on the
+         * workspace where its center point was from last configure, in
+         * case the current workspace is not where the view lives */
+        auto o = get_output();
+        if (o)
         {
-            auto current_workspace =
-                get_output()->workspace->get_current_workspace();
-            auto wsize = get_output()->workspace->get_workspace_grid_size();
-            auto og    = get_output()->get_layout_geometry();
+            auto wsg = o->workspace->get_workarea();
+            auto og  = o->get_layout_geometry();
+
             configure_geometry.x -= og.x;
             configure_geometry.y -= og.y;
 
-            /* Make sure views don't position themselves outside the desktop
-             * area, which is made up of all workspaces for an output */
-            wlr_box wsg{
-                -current_workspace.x * og.width,
-                -current_workspace.y * og.height,
-                wsize.width * og.width,
-                wsize.height * og.height};
+            auto view = this->self();
+            while (view->parent)
+            {
+                view = view->parent;
+            }
+
+            auto vg = view->get_wm_geometry();
+            auto current_workspace = o->workspace->get_current_workspace();
+            auto ws_offset = wf::point_t{0, 0};
+            if (vg.width && vg.height)
+            {
+                vg.x += current_workspace.x * og.width;
+                vg.y += current_workspace.y * og.height;
+                auto center =
+                    wf::point_t{vg.x + vg.width / 2, vg.y + vg.height / 2};
+                auto view_ws =
+                    wf::point_t{int(center.x / og.width), int(center.y / og.height)};
+                ws_offset.x = view_ws.x - current_workspace.x;
+                ws_offset.y = view_ws.y - current_workspace.y;
+                wsg.x += ws_offset.x * og.width;
+                wsg.y += ws_offset.y * og.height;
+            }
+
+            configure_geometry = translate_geometry_to_output(o, ws_offset,
+                configure_geometry);
+
             configure_geometry = wf::clamp(configure_geometry, wsg);
         }
 
@@ -464,12 +527,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
         if (!this->tiled_edges && !xw->fullscreen)
         {
-            /* Make sure the view is visible on the current workspace
-             * on the current output. */
-            auto output_geometry     = get_output()->get_layout_geometry();
-            wlr_box current_geometry = {xw->x, xw->y, xw->width, xw->height};
-            current_geometry = wf::clamp(current_geometry, output_geometry);
-            configure_request(current_geometry);
+            configure_request({xw->x, xw->y, xw->width, xw->height});
         }
 
         wf::wlr_view_t::map(surface);
