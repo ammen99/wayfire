@@ -19,6 +19,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
   protected:
     static xcb_atom_t _NET_WM_WINDOW_TYPE_NORMAL;
     static xcb_atom_t _NET_WM_WINDOW_TYPE_DIALOG;
+    static xcb_atom_t _NET_WM_WINDOW_TYPE_SPLASH;
 
     static void load_atom(xcb_connection_t *connection,
         xcb_atom_t& atom, const std::string& name)
@@ -52,6 +53,8 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             "_NET_WM_WINDOW_TYPE_NORMAL");
         load_atom(connection, _NET_WM_WINDOW_TYPE_DIALOG,
             "_NET_WM_WINDOW_TYPE_DIALOG");
+        load_atom(connection, _NET_WM_WINDOW_TYPE_SPLASH,
+            "_NET_WM_WINDOW_TYPE_SPLASH");
 
         xcb_disconnect(connection);
 
@@ -390,8 +393,16 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             configure_y += real_output.y;
         }
 
-        wlr_xwayland_surface_configure(xw,
-            configure_x, configure_y, width, height);
+        auto geometry = wf::geometry_t{configure_x, configure_y, width, height};
+        if (view_impl->frame && (xw->window_type_len > 0) &&
+            (xw->window_type[0] == _NET_WM_WINDOW_TYPE_SPLASH))
+        {
+            /* Some applications use a splash type with decorations so
+             * we need to offset the position by the decoration amount */
+            geometry = view_impl->frame->expand_wm_geometry(geometry);
+        }
+
+        wlr_xwayland_surface_configure(xw, geometry.x, geometry.y, width, height);
     }
 
     void send_configure()
@@ -429,6 +440,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
 
 xcb_atom_t wayfire_xwayland_view_base::_NET_WM_WINDOW_TYPE_NORMAL;
 xcb_atom_t wayfire_xwayland_view_base::_NET_WM_WINDOW_TYPE_DIALOG;
+xcb_atom_t wayfire_xwayland_view_base::_NET_WM_WINDOW_TYPE_SPLASH;
 
 class wayfire_unmanaged_xwayland_view : public wayfire_xwayland_view_base
 {
