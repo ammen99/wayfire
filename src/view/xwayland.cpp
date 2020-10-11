@@ -71,7 +71,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
 
   protected:
     wf::wl_listener_wrapper on_destroy, on_unmap, on_map, on_configure,
-        on_set_title, on_set_app_id, on_or_changed;
+        on_set_title, on_set_app_id, on_or_changed, on_set_decorations;
 
     wlr_xwayland_surface *xw;
     /** The geometry requested by the client */
@@ -205,9 +205,14 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         {
             recreate_view_with_or_type();
         });
+        on_set_decorations.set_callback([&] (void*)
+        {
+            update_decorated();
+        });
 
         handle_title_changed(nonull(xw->title));
         handle_app_id_changed(nonull(xw->class_t));
+        update_decorated();
 
         on_map.connect(&xw->events.map);
         on_unmap.connect(&xw->events.unmap);
@@ -216,6 +221,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_set_title.connect(&xw->events.set_title);
         on_set_app_id.connect(&xw->events.set_class);
         on_or_changed.connect(&xw->events.set_override_redirect);
+        on_set_decorations.connect(&xw->events.set_decorations);
     }
 
     /**
@@ -236,6 +242,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_set_title.disconnect();
         on_set_app_id.disconnect();
         on_or_changed.disconnect();
+        on_set_decorations.disconnect();
 
         wf::wlr_view_t::destroy();
     }
@@ -274,6 +281,13 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         }
 
         set_geometry(configure_geometry);
+    }
+
+    void update_decorated()
+    {
+        uint32_t csd_flags = WLR_XWAYLAND_SURFACE_DECORATIONS_NO_TITLE |
+            WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER;
+        this->set_decoration_mode(xw->decorations & csd_flags);
     }
 
     virtual void close() override
@@ -374,6 +388,8 @@ class wayfire_unmanaged_xwayland_view : public wayfire_xwayland_view_base
     void commit() override;
     void map(wlr_surface *surface) override;
 
+    bool should_be_decorated() override;
+
     ~wayfire_unmanaged_xwayland_view()
     {}
 };
@@ -382,7 +398,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 {
     wf::wl_listener_wrapper on_request_move, on_request_resize,
         on_request_maximize, on_request_minimize, on_request_activate,
-        on_request_fullscreen, on_set_parent, on_set_decorations, on_set_hints;
+        on_request_fullscreen, on_set_parent, on_set_hints;
 
   public:
     wayfire_xwayland_view(wlr_xwayland_surface *xww) :
@@ -444,11 +460,6 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             }
         });
 
-        on_set_decorations.set_callback([&] (void*)
-        {
-            update_decorated();
-        });
-
         on_set_hints.set_callback([&] (void*)
         {
             wf::view_hints_changed_signal data;
@@ -462,7 +473,6 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
             this->emit_signal("hints-changed", &data);
         });
         on_set_parent.connect(&xw->events.set_parent);
-        on_set_decorations.connect(&xw->events.set_decorations);
         on_set_hints.connect(&xw->events.set_hints);
 
         on_request_move.connect(&xw->events.request_move);
@@ -475,13 +485,11 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         xw->data = dynamic_cast<wf::view_interface_t*>(this);
         // set initial parent
         on_set_parent.emit(nullptr);
-        on_set_decorations.emit(nullptr);
     }
 
     virtual void destroy() override
     {
         on_set_parent.disconnect();
-        on_set_decorations.disconnect();
         on_set_hints.disconnect();
         on_request_move.disconnect();
         on_request_resize.disconnect();
@@ -557,13 +565,6 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
          * compositor keeps trying to resize it */
         last_size_request.width  = geometry.width;
         last_size_request.height = geometry.height;
-    }
-
-    void update_decorated()
-    {
-        uint32_t csd_flags = WLR_XWAYLAND_SURFACE_DECORATIONS_NO_TITLE |
-            WLR_XWAYLAND_SURFACE_DECORATIONS_NO_BORDER;
-        this->set_decoration_mode(xw->decorations & csd_flags);
     }
 
     void set_moving(bool moving) override
@@ -764,6 +765,11 @@ void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
     {
         get_output()->focus_view(self(), true);
     }
+}
+
+bool wayfire_unmanaged_xwayland_view::should_be_decorated()
+{
+    return (!xw->override_redirect && !this->has_client_decoration);
 }
 
 void wayfire_xwayland_view_base::recreate_view_with_or_type()
