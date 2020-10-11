@@ -40,9 +40,9 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
     }
 
   public:
-    static bool load_atoms()
+    static bool load_atoms(const char *server_name)
     {
-        auto connection = xcb_connect(NULL, NULL);
+        auto connection = xcb_connect(server_name, NULL);
         if (!connection || xcb_connection_has_error(connection))
         {
             return false;
@@ -886,9 +886,9 @@ void wf::init_xwayland()
         }
     });
 
-    on_ready.set_callback([] (void *data)
+    on_ready.set_callback([&] (void *data)
     {
-        if (!wayfire_xwayland_view_base::load_atoms())
+        if (!wayfire_xwayland_view_base::load_atoms(xwayland_handle->display_name))
         {
             LOGE("Failed to load Xwayland atoms.");
         } else
