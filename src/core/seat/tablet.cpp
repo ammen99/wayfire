@@ -157,6 +157,11 @@ void wf::tablet_tool_t::set_focus(wf::surface_interface_t *surface)
         wlr_tablet_v2_tablet_tool_notify_proximity_in(
             tool_v2, tablet_v2, next_focus);
     }
+
+    if (!next_focus)
+    {
+        wf::get_core().set_cursor("default");
+    }
 }
 
 void wf::tablet_tool_t::passthrough_axis(wlr_event_tablet_tool_axis *ev)

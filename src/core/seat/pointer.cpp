@@ -156,6 +156,11 @@ void wf::LogicalPointer::update_cursor_focus(wf::surface_interface_t *focus,
 
         set_pointer_constraint(constraint);
     }
+
+    if (!cursor_focus)
+    {
+        wf::get_core().set_cursor("default");
+    }
 }
 
 wf::surface_interface_t*wf::LogicalPointer::get_focus() const
