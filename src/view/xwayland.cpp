@@ -324,8 +324,6 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             configure_geometry = wf::clamp(configure_geometry, wsg);
         }
 
-        send_configure(configure_geometry.width, configure_geometry.height);
-
         if (view_impl->frame)
         {
             configure_geometry =
@@ -360,6 +358,12 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         }
 
         wf::wlr_view_t::set_activated(active);
+    }
+
+    void set_geometry(wf::geometry_t geometry) override
+    {
+        wlr_view_t::move(geometry.x, geometry.y);
+        resize(geometry.width, geometry.height);
     }
 
     void send_configure(int width, int height)
