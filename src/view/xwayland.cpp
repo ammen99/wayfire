@@ -432,13 +432,16 @@ xcb_atom_t wayfire_xwayland_view_base::_NET_WM_WINDOW_TYPE_DIALOG;
 
 class wayfire_unmanaged_xwayland_view : public wayfire_xwayland_view_base
 {
+  protected:
+    wf::wl_listener_wrapper on_set_geometry;
+
   public:
     wayfire_unmanaged_xwayland_view(wlr_xwayland_surface *xww);
 
     int global_x, global_y;
 
-    void commit() override;
     void map(wlr_surface *surface) override;
+    void destroy() override;
 
     bool should_be_decorated() override;
 
@@ -730,28 +733,28 @@ wayfire_unmanaged_xwayland_view::wayfire_unmanaged_xwayland_view(
 
     xw->data = this;
     role     = wf::VIEW_ROLE_UNMANAGED;
-}
 
-void wayfire_unmanaged_xwayland_view::commit()
-{
-    /* Xwayland O-R views manage their position on their own. So we need to
-     * update their position on each commit, if the position changed. */
-    if ((global_x != xw->x) || (global_y != xw->y))
+    on_set_geometry.set_callback([&] (void*)
     {
-        geometry.x = global_x = xw->x;
-        geometry.y = global_y = xw->y;
-
-        if (get_output())
+        /* Xwayland O-R views manage their position on their own. So we need to
+         * update their position on each commit, if the position changed. */
+        if ((global_x != xw->x) || (global_y != xw->y))
         {
-            auto real_output = get_output()->get_layout_geometry();
-            geometry.x -= real_output.x;
-            geometry.y -= real_output.y;
+            geometry.x = global_x = xw->x;
+            geometry.y = global_y = xw->y;
+
+            if (get_output())
+            {
+                auto real_output = get_output()->get_layout_geometry();
+                geometry.x -= real_output.x;
+                geometry.y -= real_output.y;
+            }
+
+            wf::wlr_view_t::move(geometry.x, geometry.y);
         }
+    });
 
-        wf::wlr_view_t::move(geometry.x, geometry.y);
-    }
-
-    wlr_view_t::commit();
+    on_set_geometry.connect(&xw->events.set_geometry);
 }
 
 void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
@@ -817,6 +820,12 @@ void wayfire_unmanaged_xwayland_view::map(wlr_surface *surface)
 bool wayfire_unmanaged_xwayland_view::should_be_decorated()
 {
     return (!xw->override_redirect && !this->has_client_decoration);
+}
+
+void wayfire_unmanaged_xwayland_view::destroy()
+{
+    on_set_geometry.disconnect();
+    wayfire_xwayland_view_base::destroy();
 }
 
 void wayfire_xwayland_view_base::recreate_view_with_or_type()
