@@ -232,7 +232,7 @@ static void signal_handler(int signal)
 
     LOGE("Fatal error: ", error);
     wf::print_trace(false);
-    std::exit(0);
+    std::_Exit(-1);
 }
 
 #endif
