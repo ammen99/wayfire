@@ -72,7 +72,7 @@ wf_keyboard::wf_keyboard(wlr_input_device *dev) :
     wlr_seat_set_keyboard(wf::get_core().get_current_seat(), dev);
 }
 
-static void set_locked_mod(xkb_mod_mask_t *mods, xkb_keymap *keymap, char *mod)
+static void set_locked_mod(xkb_mod_mask_t *mods, xkb_keymap *keymap, const char *mod)
 {
     xkb_mod_index_t mod_index = xkb_map_mod_get_index(keymap, mod);
     if (mod_index != XKB_MOD_INVALID)
