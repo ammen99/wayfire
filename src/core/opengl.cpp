@@ -246,7 +246,7 @@ void render_begin(const wf::framebuffer_base_t& fb)
 
 void render_begin(int32_t viewport_width, int32_t viewport_height, uint32_t fb)
 {
-    if (!current_output && !wlr_egl_is_current(wf::get_core_impl().egl))
+    if (!wlr_egl_is_current(wf::get_core_impl().egl))
     {
         wlr_egl_make_current(wf::get_core_impl().egl, EGL_NO_SURFACE, NULL);
     }
