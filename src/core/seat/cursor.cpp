@@ -51,6 +51,7 @@ void wf_cursor::setup_listeners()
         emit_device_event_signal("pointer_" #evname, ev); \
         core.input->lpointer->handle_pointer_ ## evname(ev); \
         wlr_idle_notify_activity(core.protocols.idle, core.get_current_seat()); \
+        emit_device_event_signal("pointer_" #evname "_post", ev); \
     }); \
     on_ ## evname.connect(&cursor->events.evname);
 
@@ -82,6 +83,7 @@ void wf_cursor::setup_listeners()
         } \
         wlr_idle_notify_activity(wf::get_core().protocols.idle, \
         wf::get_core().get_current_seat()); \
+        emit_device_event_signal("tablet_" #evname "_post", ev); \
     }); \
     on_tablet_ ## evname.connect(&cursor->events.tablet_tool_ ## evname);
 

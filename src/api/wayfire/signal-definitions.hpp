@@ -73,6 +73,9 @@ struct switch_signal : public wf::signal_data_t
  *   will be used instead. However plugins which modify the event must ensure
  *   that subsequent events are adjusted accordingly as well.
  *
+ *   The same signals are emitted with a _post suffix after the event handling
+ *   by core has finished.
+ *
  * example: The pointer_motion event is emitted with data of type
  *   input_event_signal<wlr_event_pointer_motion>
  */
