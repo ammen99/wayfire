@@ -467,7 +467,7 @@ class wayfire_scale : public wf::plugin_interface_t
           case BTN_LEFT:
             // Focus the view under the mouse
             current_focus_view = view;
-            output->focus_view(view, true);
+            output->focus_view(view, false);
             fade_out_all_except(view);
             fade_in(get_top_parent(view));
             if (!interact)
@@ -657,7 +657,7 @@ class wayfire_scale : public wf::plugin_interface_t
         if (view && (current_focus_view != view))
         {
             // view_focused handler will update the view state
-            output->focus_view(view, true);
+            output->focus_view(view, false);
         }
     }
 
@@ -1162,8 +1162,7 @@ class wayfire_scale : public wf::plugin_interface_t
 
         grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
 
-        if (!output->is_plugin_active(grab_interface->name) &&
-            !output->activate_plugin(grab_interface))
+        if (!output->activate_plugin(grab_interface))
         {
             return false;
         }
