@@ -29,6 +29,7 @@ void wf_keyboard::setup_listeners()
         }
 
         wlr_idle_notify_activity(wf::get_core().protocols.idle, seat);
+        emit_device_event_signal("keyboard_key_post", ev);
     });
 
     on_modifier.set_callback([&] (void *data)
