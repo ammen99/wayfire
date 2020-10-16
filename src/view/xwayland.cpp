@@ -243,6 +243,14 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         wf::wlr_view_t::destroy();
     }
 
+    virtual void ping() override
+    {
+        if (xw)
+        {
+            wlr_xwayland_surface_ping(xw);
+        }
+    }
+
     /* Translates geometry from X client configure requests to wayfire
      * coordinate system. The X coordinate system treats all outputs
      * as one big desktop, whereas wayfire treats the current workspace
