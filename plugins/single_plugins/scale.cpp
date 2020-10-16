@@ -456,7 +456,7 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         auto view = wf::get_core().get_view_at(input_position);
-        if (!view || last_selected_view != view)
+        if (!view || (last_selected_view != view))
         {
             // Operation was cancelled, for ex. dragged outside of the view
             return;
