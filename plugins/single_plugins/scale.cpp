@@ -1,3 +1,6 @@
+/**
+ * Original code by: Scott Moreau, Daniel Kondor
+ */
 #include <map>
 #include <wayfire/plugin.hpp>
 #include <wayfire/output.hpp>
@@ -65,6 +68,8 @@ class wayfire_scale : public wf::plugin_interface_t
     wayfire_view initial_focus_view;
     /* View that has active focus. */
     wayfire_view current_focus_view;
+    // View over which the last input press happened, might become dangling
+    wayfire_view last_selected_view;
     std::map<wayfire_view, view_scale_data> scale_data;
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
     /* If interact is true, no grab is acquired and input events are sent
@@ -260,8 +265,10 @@ class wayfire_scale : public wf::plugin_interface_t
     void connect_button_signal()
     {
         disconnect_button_signal();
-        wf::get_core().connect_signal("pointer_button", &on_button_event);
-        wf::get_core().connect_signal("touch_down", &on_touch_down_event);
+        wf::get_core().connect_signal("pointer_button_post", &on_button_event);
+        wf::get_core().connect_signal("touch_down_post", &on_touch_down_event);
+        // connect to the signal before touching up, so that the touch point
+        // is still active.
         wf::get_core().connect_signal("touch_up", &on_touch_up_event);
     }
 
@@ -428,14 +435,30 @@ class wayfire_scale : public wf::plugin_interface_t
     void process_input(uint32_t button, uint32_t state,
         wf::pointf_t input_position)
     {
-        if (!active || (state != WLR_BUTTON_RELEASED))
+        if (!active)
         {
             return;
         }
 
-        auto view = wf::get_core().get_view_at(input_position);
-        if (!view || !should_scale_view(view))
+        if (state == WLR_BUTTON_PRESSED)
         {
+            auto view = wf::get_core().get_view_at(input_position);
+            if (view && should_scale_view(view))
+            {
+                // Mark the view as the target of the next input release operation
+                last_selected_view = view;
+            } else
+            {
+                last_selected_view = nullptr;
+            }
+
+            return;
+        }
+
+        auto view = wf::get_core().get_view_at(input_position);
+        if (!view || last_selected_view != view)
+        {
+            // Operation was cancelled, for ex. dragged outside of the view
             return;
         }
 
