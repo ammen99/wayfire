@@ -510,8 +510,8 @@ class wayfire_scale : public wf::plugin_interface_t
         auto center = wf::point_t{vg.x + vg.width / 2, vg.y + vg.height / 2};
 
         return wf::point_t{
-            ws.x + ((center.x - ws.x * og.width) / og.width),
-            ws.y + ((center.y - ws.y * og.height) / og.height)};
+            ws.x + (int)std::floor((double)center.x / og.width),
+            ws.y + (int)std::floor((double)center.y / og.height)};
     }
 
     /* Given row and column, return a view at this position in the scale grid,
