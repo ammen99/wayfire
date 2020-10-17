@@ -132,11 +132,14 @@ class wayfire_alpha : public wf::plugin_interface_t
 
     void fini() override
     {
-        for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
+        for (auto& view : wf::get_core().get_all_views())
         {
-            if (view->get_transformer("alpha"))
+            if (!view->get_output() || (view->get_output() == output))
             {
-                view->pop_transformer("alpha");
+                if (view->get_transformer("alpha"))
+                {
+                    view->pop_transformer("alpha");
+                }
             }
         }
 
