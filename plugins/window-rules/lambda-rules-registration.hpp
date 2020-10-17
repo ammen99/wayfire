@@ -123,9 +123,8 @@ class lambda_rules_registrations_t : public custom_data_t
         auto instance = get_core().get_data<lambda_rules_registrations_t>();
         if (instance == nullptr)
         {
-            get_core().store_data(std::unique_ptr<lambda_rules_registrations_t>(new
-                lambda_rules_registrations_t()));
-
+            get_core().store_data(std::unique_ptr<lambda_rules_registrations_t>(
+                new lambda_rules_registrations_t()));
             instance = get_core().get_data<lambda_rules_registrations_t>();
 
             if (instance == nullptr)
@@ -211,6 +210,10 @@ class lambda_rules_registrations_t : public custom_data_t
      * @brief _registrations The map holding all the current registrations.
      */
     map_type _registrations;
+
+    // Necessary for window-rules to manage the lifetime of the object
+    uint32_t window_rule_instances = 0;
+    friend class ::wayfire_window_rules_t;
 };
 } // End namespace wf.
 

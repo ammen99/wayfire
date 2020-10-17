@@ -46,6 +46,7 @@ void wayfire_window_rules_t::init()
 {
     // Get the lambda rules registrations.
     _lambda_registrations = wf::lambda_rules_registrations_t::get_instance();
+    _lambda_registrations->window_rule_instances++;
 
     // Build rule list.
     auto section = wf::get_core().config.get_section("window-rules");
@@ -102,6 +103,12 @@ void wayfire_window_rules_t::fini()
     output->disconnect_signal("view-tiled", &_unmaximized);
     output->disconnect_signal("view-minimized", &_minimized);
     output->disconnect_signal("view-fullscreen", &_fullscreened);
+
+    _lambda_registrations->window_rule_instances--;
+    if (_lambda_registrations->window_rule_instances == 0)
+    {
+        wf::get_core().erase_data<wf::lambda_rules_registrations_t>();
+    }
 }
 
 void wayfire_window_rules_t::apply(const std::string & signal,
