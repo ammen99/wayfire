@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <float.h>
 
 #include <wayfire/img.hpp>
 #include <wayfire/output.hpp>
@@ -303,6 +304,14 @@ void wf::compositor_core_impl_t::post_init()
 {
     this->emit_signal("_backend_started", nullptr);
     this->state = compositor_state_t::RUNNING;
+
+    // Move pointer to the middle of the leftmost, topmost output
+    wf::pointf_t p;
+    wf::output_t *wo =
+        wf::get_core().output_layout->get_output_coords_at({FLT_MIN, FLT_MIN}, p);
+    // Output might be noop but guaranteed to not be null
+    wo->ensure_pointer(true);
+    focus_output(wo);
 
     // Refresh device mappings when we have all outputs and devices
     input->refresh_device_mappings();
