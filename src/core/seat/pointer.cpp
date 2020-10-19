@@ -8,7 +8,7 @@
 #include <wayfire/output-layout.hpp>
 #include <wayfire/compositor-surface.hpp>
 
-wf::LogicalPointer::LogicalPointer(nonstd::observer_ptr<input_manager> input)
+wf::pointer_t::pointer_t(nonstd::observer_ptr<input_manager> input)
 {
     this->input = input;
     on_surface_map_state_change.set_callback([=] (auto surface)
@@ -30,16 +30,16 @@ wf::LogicalPointer::LogicalPointer(nonstd::observer_ptr<input_manager> input)
     wf::get_core().connect_signal("view-geometry-changed", &on_views_updated);
 }
 
-wf::LogicalPointer::~LogicalPointer()
+wf::pointer_t::~pointer_t()
 {}
 
-bool wf::LogicalPointer::has_pressed_buttons() const
+bool wf::pointer_t::has_pressed_buttons() const
 {
     return this->count_pressed_buttons > 0;
 }
 
 /* ------------------------- Cursor focus functions ------------------------- */
-void wf::LogicalPointer::set_enable_focus(bool enabled)
+void wf::pointer_t::set_enable_focus(bool enabled)
 {
     this->focus_enabled_count += enabled ? 1 : -1;
     if (focus_enabled_count > 1)
@@ -58,13 +58,12 @@ void wf::LogicalPointer::set_enable_focus(bool enabled)
     }
 }
 
-bool wf::LogicalPointer::focus_enabled() const
+bool wf::pointer_t::focus_enabled() const
 {
     return this->focus_enabled_count > 0;
 }
 
-void wf::LogicalPointer::update_cursor_position(uint32_t time_msec,
-    bool real_update)
+void wf::pointer_t::update_cursor_position(uint32_t time_msec, bool real_update)
 {
     wf::pointf_t gc = input->cursor->get_cursor_position();
 
@@ -99,8 +98,8 @@ void wf::LogicalPointer::update_cursor_position(uint32_t time_msec,
     input->update_drag_icon();
 }
 
-void wf::LogicalPointer::update_cursor_focus(wf::surface_interface_t *focus,
-    wf::pointf_t local)
+void wf::pointer_t::update_cursor_focus(
+    wf::surface_interface_t *focus, wf::pointf_t local)
 {
     if (focus && !input->can_focus_surface(focus))
     {
@@ -163,18 +162,18 @@ void wf::LogicalPointer::update_cursor_focus(wf::surface_interface_t *focus,
     }
 }
 
-wf::surface_interface_t*wf::LogicalPointer::get_focus() const
+wf::surface_interface_t*wf::pointer_t::get_focus() const
 {
     return this->cursor_focus;
 }
 
 /* --------------------- Pointer constraints implementation ----------------- */
-wlr_pointer_constraint_v1*wf::LogicalPointer::get_active_pointer_constraint()
+wlr_pointer_constraint_v1*wf::pointer_t::get_active_pointer_constraint()
 {
     return this->active_pointer_constraint;
 }
 
-wf::pointf_t wf::LogicalPointer::get_absolute_position_from_relative(
+wf::pointf_t wf::pointer_t::get_absolute_position_from_relative(
     wf::pointf_t relative)
 {
     auto view =
@@ -233,7 +232,7 @@ static wf::pointf_t region_closest_point(const wf::region_t& region,
     return result;
 }
 
-wf::pointf_t wf::LogicalPointer::constrain_point(wf::pointf_t point)
+wf::pointf_t wf::pointer_t::constrain_point(wf::pointf_t point)
 {
     point = get_surface_relative_coords(this->cursor_focus, point);
     auto closest = region_closest_point(this->constraint_region, point);
@@ -242,7 +241,7 @@ wf::pointf_t wf::LogicalPointer::constrain_point(wf::pointf_t point)
     return closest;
 }
 
-void wf::LogicalPointer::set_pointer_constraint(
+void wf::pointer_t::set_pointer_constraint(
     wlr_pointer_constraint_v1 *constraint, bool last_destroyed)
 {
     if (constraint == this->active_pointer_constraint)
@@ -290,7 +289,7 @@ void wf::LogicalPointer::set_pointer_constraint(
 }
 
 /* -------------------------- Implicit grab --------------------------------- */
-void wf::LogicalPointer::grab_surface(wf::surface_interface_t *surface)
+void wf::pointer_t::grab_surface(wf::surface_interface_t *surface)
 {
     if (surface == grabbed_surface)
     {
@@ -311,7 +310,7 @@ void wf::LogicalPointer::grab_surface(wf::surface_interface_t *surface)
 }
 
 /* ----------------------- Input event processing --------------------------- */
-void wf::LogicalPointer::handle_pointer_button(wlr_event_pointer_button *ev)
+void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev)
 {
     input->mod_binding_key = 0;
     bool handled_in_binding = false;
@@ -347,7 +346,7 @@ void wf::LogicalPointer::handle_pointer_button(wlr_event_pointer_button *ev)
     }
 }
 
-void wf::LogicalPointer::check_implicit_grab()
+void wf::pointer_t::check_implicit_grab()
 {
     /* start a button held grab, so that the window will receive all the
      * subsequent events, no matter what happens */
@@ -364,8 +363,7 @@ void wf::LogicalPointer::check_implicit_grab()
     }
 }
 
-void wf::LogicalPointer::send_button(wlr_event_pointer_button *ev,
-    bool has_binding)
+void wf::pointer_t::send_button(wlr_event_pointer_button *ev, bool has_binding)
 {
     if (input->active_grab)
     {
@@ -393,7 +391,7 @@ void wf::LogicalPointer::send_button(wlr_event_pointer_button *ev,
         ev->button, ev->state);
 }
 
-void wf::LogicalPointer::send_motion(uint32_t time_msec, wf::pointf_t local)
+void wf::pointer_t::send_motion(uint32_t time_msec, wf::pointf_t local)
 {
     if (input->input_grabbed())
     {
@@ -416,7 +414,7 @@ void wf::LogicalPointer::send_motion(uint32_t time_msec, wf::pointf_t local)
     }
 }
 
-void wf::LogicalPointer::handle_pointer_motion(wlr_event_pointer_motion *ev)
+void wf::pointer_t::handle_pointer_motion(wlr_event_pointer_motion *ev)
 {
     if (input->input_grabbed() &&
         input->active_grab->callbacks.pointer.relative_motion)
@@ -456,7 +454,7 @@ void wf::LogicalPointer::handle_pointer_motion(wlr_event_pointer_motion *ev)
     update_cursor_position(ev->time_msec);
 }
 
-void wf::LogicalPointer::handle_pointer_motion_absolute(
+void wf::pointer_t::handle_pointer_motion_absolute(
     wlr_event_pointer_motion_absolute *ev)
 {
     // next coordinates
@@ -486,7 +484,7 @@ void wf::LogicalPointer::handle_pointer_motion_absolute(
     update_cursor_position(ev->time_msec);
 }
 
-void wf::LogicalPointer::handle_pointer_axis(wlr_event_pointer_axis *ev)
+void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev)
 {
     bool handled_by_binding = input->check_axis_bindings(ev);
     /* reset modifier bindings */
@@ -518,15 +516,14 @@ void wf::LogicalPointer::handle_pointer_axis(wlr_event_pointer_axis *ev)
         mult * ev->delta, mult * ev->delta_discrete, ev->source);
 }
 
-void wf::LogicalPointer::handle_pointer_swipe_begin(
-    wlr_event_pointer_swipe_begin *ev)
+void wf::pointer_t::handle_pointer_swipe_begin(wlr_event_pointer_swipe_begin *ev)
 {
     wlr_pointer_gestures_v1_send_swipe_begin(
         wf::get_core().protocols.pointer_gestures, input->seat,
         ev->time_msec, ev->fingers);
 }
 
-void wf::LogicalPointer::handle_pointer_swipe_update(
+void wf::pointer_t::handle_pointer_swipe_update(
     wlr_event_pointer_swipe_update *ev)
 {
     wlr_pointer_gestures_v1_send_swipe_update(
@@ -534,23 +531,21 @@ void wf::LogicalPointer::handle_pointer_swipe_update(
         ev->time_msec, ev->dx, ev->dy);
 }
 
-void wf::LogicalPointer::handle_pointer_swipe_end(
-    wlr_event_pointer_swipe_end *ev)
+void wf::pointer_t::handle_pointer_swipe_end(wlr_event_pointer_swipe_end *ev)
 {
     wlr_pointer_gestures_v1_send_swipe_end(
         wf::get_core().protocols.pointer_gestures, input->seat,
         ev->time_msec, ev->cancelled);
 }
 
-void wf::LogicalPointer::handle_pointer_pinch_begin(
-    wlr_event_pointer_pinch_begin *ev)
+void wf::pointer_t::handle_pointer_pinch_begin(wlr_event_pointer_pinch_begin *ev)
 {
     wlr_pointer_gestures_v1_send_pinch_begin(
         wf::get_core().protocols.pointer_gestures, input->seat,
         ev->time_msec, ev->fingers);
 }
 
-void wf::LogicalPointer::handle_pointer_pinch_update(
+void wf::pointer_t::handle_pointer_pinch_update(
     wlr_event_pointer_pinch_update *ev)
 {
     wlr_pointer_gestures_v1_send_pinch_update(
@@ -558,15 +553,14 @@ void wf::LogicalPointer::handle_pointer_pinch_update(
         ev->time_msec, ev->dx, ev->dy, ev->scale, ev->rotation);
 }
 
-void wf::LogicalPointer::handle_pointer_pinch_end(
-    wlr_event_pointer_pinch_end *ev)
+void wf::pointer_t::handle_pointer_pinch_end(wlr_event_pointer_pinch_end *ev)
 {
     wlr_pointer_gestures_v1_send_pinch_end(
         wf::get_core().protocols.pointer_gestures, input->seat,
         ev->time_msec, ev->cancelled);
 }
 
-void wf::LogicalPointer::handle_pointer_frame()
+void wf::pointer_t::handle_pointer_frame()
 {
     wlr_seat_pointer_notify_frame(input->seat);
 }

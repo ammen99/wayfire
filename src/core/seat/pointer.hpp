@@ -19,11 +19,11 @@ namespace wf
  * It is responsible for managing the focused surface and processing input
  * events from the aforementioned devices.
  */
-class LogicalPointer
+class pointer_t
 {
   public:
-    LogicalPointer(nonstd::observer_ptr<input_manager> input);
-    ~LogicalPointer();
+    pointer_t(nonstd::observer_ptr<input_manager> input);
+    ~pointer_t();
 
     /**
      * Enable/disable the logical pointer's focusing abilities.

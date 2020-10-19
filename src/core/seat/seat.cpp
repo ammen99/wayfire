@@ -112,7 +112,7 @@ void input_manager::create_seat()
 {
     seat     = wlr_seat_create(wf::get_core().display, "default");
     cursor   = std::make_unique<wf_cursor>();
-    lpointer = std::make_unique<wf::LogicalPointer>(
+    lpointer = std::make_unique<wf::pointer_t>(
         nonstd::make_observer(this));
 
     touch = std::make_unique<wf::touch_interface_t>(cursor->cursor, seat,

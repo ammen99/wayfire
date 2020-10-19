@@ -113,7 +113,7 @@ class input_manager
 
     wlr_seat *seat = nullptr;
     std::unique_ptr<wf_cursor> cursor;
-    std::unique_ptr<wf::LogicalPointer> lpointer;
+    std::unique_ptr<wf::pointer_t> lpointer;
     std::unique_ptr<wf::touch_interface_t> touch;
 
     wayfire_view keyboard_focus;
