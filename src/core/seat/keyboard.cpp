@@ -3,6 +3,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include <wayfire/util/log.hpp>
+#include "pointer.hpp"
 #include "keyboard.hpp"
 #include "../core-impl.hpp"
 #include "../../output/output-impl.hpp"
@@ -25,18 +26,16 @@ void wf::keyboard_t::setup_listeners()
         auto ev = static_cast<wlr_event_keyboard_key*>(data);
         emit_device_event_signal("keyboard_key", ev);
 
-        auto& input = wf::get_core_impl().input;
-        input->set_keyboard(this);
-        auto seat = wf::get_core().get_current_seat();
-        wlr_seat_set_keyboard(seat, this->device);
+        auto& seat = wf::get_core_impl().seat;
+        seat->set_keyboard(this);
 
         if (!handle_keyboard_key(ev->keycode, ev->state))
         {
-            wlr_seat_keyboard_notify_key(wf::get_core_impl().input->seat,
+            wlr_seat_keyboard_notify_key(seat->seat,
                 ev->time_msec, ev->keycode, ev->state);
         }
 
-        wlr_idle_notify_activity(wf::get_core().protocols.idle, seat);
+        wlr_idle_notify_activity(wf::get_core().protocols.idle, seat->seat);
         emit_device_event_signal("keyboard_key_post", ev);
     });
 
@@ -157,52 +156,6 @@ void wf::keyboard_t::reload_input_options()
 wf::keyboard_t::~keyboard_t()
 {}
 
-/* input manager things */
-
-void input_manager::set_keyboard_focus(wayfire_view view, wlr_seat *seat)
-{
-    auto surface = view ? view->get_keyboard_focus_surface() : NULL;
-    auto iv  = interactive_view_from_view(view.get());
-    auto oiv = interactive_view_from_view(keyboard_focus.get());
-
-    if (oiv)
-    {
-        oiv->handle_keyboard_leave();
-    }
-
-    if (iv)
-    {
-        iv->handle_keyboard_enter();
-    }
-
-    /* Don't focus if we have an active grab */
-    if (!active_grab)
-    {
-        if (surface)
-        {
-            auto kbd = wlr_seat_get_keyboard(seat);
-            wlr_seat_keyboard_notify_enter(seat, surface,
-                kbd ? kbd->keycodes : NULL,
-                kbd ? kbd->num_keycodes : 0,
-                kbd ? &kbd->modifiers : NULL);
-        } else
-        {
-            wlr_seat_keyboard_notify_clear_focus(seat);
-        }
-
-        keyboard_focus = view;
-    } else
-    {
-        wlr_seat_keyboard_notify_clear_focus(seat);
-        keyboard_focus = nullptr;
-    }
-
-    wf::keyboard_focus_changed_signal data;
-    data.view    = view;
-    data.surface = surface;
-    wf::get_core().emit_signal("keyboard-focus-changed", &data);
-}
-
 static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
 {
     if (!session)
@@ -313,6 +266,7 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
     using namespace std::chrono;
 
     auto& input = wf::get_core_impl().input;
+    auto& seat  = wf::get_core_impl().seat;
     auto active_grab = input->active_grab;
     if (active_grab && active_grab->callbacks.keyboard.key)
     {
@@ -336,8 +290,8 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
             return true;
         }
 
-        bool modifiers_only = !input->lpointer->has_pressed_buttons() &&
-            (input->touch->get_state().fingers.empty()) &&
+        bool modifiers_only = !seat->lpointer->has_pressed_buttons() &&
+            (seat->touch->get_state().fingers.empty()) &&
             this->has_only_modifiers();
 
         /* as long as we have pressed only modifiers, we should check for modifier
@@ -372,7 +326,7 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
         mod_binding_key = 0;
     }
 
-    auto iv = interactive_view_from_view(input->keyboard_focus.get());
+    auto iv = interactive_view_from_view(seat->keyboard_focus.get());
     if (iv)
     {
         iv->handle_key(key, state);

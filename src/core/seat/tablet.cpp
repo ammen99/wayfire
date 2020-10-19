@@ -1,6 +1,8 @@
 #include "tablet.hpp"
 #include "../core-impl.hpp"
 #include "../wm.hpp"
+#include "pointer.hpp"
+#include "cursor.hpp"
 #include "input-manager.hpp"
 #include <wayfire/signal-definitions.hpp>
 #include <linux/input-event-codes.h>
@@ -63,14 +65,13 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
             return;
         }
 
-        auto& input = wf::get_core_impl().input;
-        auto ev     = static_cast<wlr_tablet_v2_event_cursor*>(data);
-
+        auto ev = static_cast<wlr_tablet_v2_event_cursor*>(data);
         // validate request
         wlr_seat_client *tablet_client = nullptr;
         if (tool_v2->focused_surface)
         {
-            tablet_client = wlr_seat_client_for_wl_client(input->seat,
+            tablet_client = wlr_seat_client_for_wl_client(
+                wf::get_core().get_current_seat(),
                 wl_resource_get_client(tool_v2->focused_surface->resource));
         }
 
@@ -85,7 +86,7 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
         pev.hotspot_y = ev->hotspot_y;
         pev.serial    = ev->serial;
         pev.seat_client = ev->seat_client;
-        input->cursor->set_cursor(&pev, false);
+        wf::get_core_impl().seat->cursor->set_cursor(&pev, false);
     });
     on_set_cursor.connect(&tool_v2->events.set_cursor);
 }
@@ -261,7 +262,7 @@ void wf::tablet_tool_t::handle_proximity(wlr_event_tablet_tool_proximity *ev)
 
 /* ----------------------- Tablet implementation ---------------------------- */
 wf::tablet_t::tablet_t(wlr_cursor *cursor, wlr_input_device *dev) :
-    wf_input_device_internal(dev)
+    input_device_impl_t(dev)
 {
     this->handle = dev->tablet;
     this->handle->data = this;
@@ -270,8 +271,6 @@ wf::tablet_t::tablet_t(wlr_cursor *cursor, wlr_input_device *dev) :
     auto& core = wf::get_core_impl();
     tablet_v2 = wlr_tablet_create(core.protocols.tablet_v2,
         core.get_current_seat(), dev);
-
-    wlr_cursor_attach_input_device(cursor, dev);
 }
 
 wf::tablet_t::~tablet_t()
@@ -360,10 +359,10 @@ void wf::tablet_t::handle_proximity(wlr_event_tablet_tool_proximity *ev)
     if (ev->state == WLR_TABLET_TOOL_PROXIMITY_OUT)
     {
         impl.set_cursor("default");
-        impl.input->lpointer->set_enable_focus(true);
+        impl.seat->lpointer->set_enable_focus(true);
     } else
     {
         wf::get_core().set_cursor("crosshair");
-        impl.input->lpointer->set_enable_focus(false);
+        impl.seat->lpointer->set_enable_focus(false);
     }
 }

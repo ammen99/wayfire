@@ -31,9 +31,6 @@ class touch_interface_t : public noncopyable_t
     /** Get the focused surface */
     wf::surface_interface_t *get_focus() const;
 
-    /** Setup a new touch device */
-    void handle_new_device(wlr_input_device *device);
-
     /**
      * Set the active grab interface.
      *

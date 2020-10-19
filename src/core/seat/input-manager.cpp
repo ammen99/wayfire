@@ -1,5 +1,6 @@
 #include <cassert>
 #include <algorithm>
+#include "pointer.hpp"
 #include "surface-map-state.hpp"
 #include "wayfire/signal-definitions.hpp"
 #include "../core-impl.hpp"
@@ -17,28 +18,7 @@
 #include "tablet.hpp"
 #include "pointing-device.hpp"
 
-void input_manager::update_capabilities()
-{
-    uint32_t cap = 0;
-    if (pointer_count)
-    {
-        cap |= WL_SEAT_CAPABILITY_POINTER;
-    }
-
-    if (keyboards.size())
-    {
-        cap |= WL_SEAT_CAPABILITY_KEYBOARD;
-    }
-
-    if (touch_count)
-    {
-        cap |= WL_SEAT_CAPABILITY_TOUCH;
-    }
-
-    wlr_seat_set_capabilities(seat, cap);
-}
-
-static std::unique_ptr<wf_input_device_internal> create_wf_device_for_device(
+static std::unique_ptr<wf::input_device_impl_t> create_wf_device_for_device(
     wlr_input_device *device)
 {
     switch (device->type)
@@ -51,10 +31,10 @@ static std::unique_ptr<wf_input_device_internal> create_wf_device_for_device(
 
       case WLR_INPUT_DEVICE_TABLET_TOOL:
         return std::make_unique<wf::tablet_t>(
-            wf::get_core_impl().input->cursor->cursor, device);
+            wf::get_core_impl().seat->cursor->cursor, device);
 
       default:
-        return std::make_unique<wf_input_device_internal>(device);
+        return std::make_unique<wf::input_device_impl_t>(device);
     }
 }
 
@@ -63,26 +43,6 @@ void input_manager::handle_new_input(wlr_input_device *dev)
     LOGI("handle new input: ", dev->name,
         ", default mapping: ", dev->output_name);
     input_devices.push_back(create_wf_device_for_device(dev));
-
-    if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
-    {
-        keyboards.push_back(std::make_unique<wf::keyboard_t>(dev));
-    }
-
-    if (dev->type == WLR_INPUT_DEVICE_POINTER)
-    {
-        cursor->attach_device(dev);
-        pointer_count++;
-    }
-
-    if (dev->type == WLR_INPUT_DEVICE_TOUCH)
-    {
-        touch_count++;
-        // XXX: this should go to cursor as well
-        touch->handle_new_device(dev);
-    }
-
-    update_capabilities();
 
     wf::input_device_signal data;
     data.device = nonstd::make_observer(input_devices.back().get());
@@ -100,6 +60,7 @@ void input_manager::refresh_device_mappings()
         return;
     }
 
+    auto cursor = wf::get_core().get_wlr_cursor();
     for (auto& device : this->input_devices)
     {
         wlr_input_device *dev = device->get_wlr_handle();
@@ -112,7 +73,7 @@ void input_manager::refresh_device_mappings()
         auto wo = wf::get_core().output_layout->find_output(mapped_output);
         if (wo)
         {
-            wlr_cursor_map_input_to_output(cursor->cursor, dev, wo->handle);
+            wlr_cursor_map_input_to_output(cursor, dev, wo->handle);
         }
     }
 }
@@ -122,7 +83,7 @@ void input_manager::handle_input_destroyed(wlr_input_device *dev)
     LOGI("remove input: ", dev->name);
 
     auto it = std::remove_if(input_devices.begin(), input_devices.end(),
-        [=] (const std::unique_ptr<wf_input_device_internal>& idev)
+        [=] (const std::unique_ptr<wf::input_device_impl_t>& idev)
     {
         return idev->get_wlr_handle() == dev;
     });
@@ -133,44 +94,6 @@ void input_manager::handle_input_destroyed(wlr_input_device *dev)
     wf::get_core().emit_signal("input-device-removed", &data);
 
     input_devices.erase(it, input_devices.end());
-
-    if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
-    {
-        bool current_kbd_destroyed = false;
-        if (current_keyboard && (current_keyboard->device == dev))
-        {
-            current_kbd_destroyed = true;
-        }
-
-        auto it = std::remove_if(keyboards.begin(), keyboards.end(),
-            [=] (const std::unique_ptr<wf::keyboard_t>& kbd)
-        {
-            return kbd->device == dev;
-        });
-
-        keyboards.erase(it, keyboards.end());
-
-        if (current_kbd_destroyed && keyboards.size())
-        {
-            set_keyboard(keyboards.front().get());
-        } else
-        {
-            set_keyboard(nullptr);
-        }
-    }
-
-    if (dev->type == WLR_INPUT_DEVICE_POINTER)
-    {
-        cursor->detach_device(dev);
-        pointer_count--;
-    }
-
-    if (dev->type == WLR_INPUT_DEVICE_TOUCH)
-    {
-        touch_count--;
-    }
-
-    update_capabilities();
 }
 
 void load_locked_mods_from_config(xkb_mod_mask_t& locked_mods)
@@ -203,8 +126,6 @@ input_manager::input_manager()
         wf::get_core_impl().input->handle_new_input(dev);
     });
     input_device_created.connect(&wf::get_core().backend->events.new_input);
-
-    create_seat();
 
     config_updated = [=] (wf::signal_data_t*)
     {
@@ -244,17 +165,20 @@ bool input_manager::grab_input(wf::plugin_grab_interface_t *iface)
     }
 
     assert(!active_grab); // cannot have two active input grabs!
-    touch->set_grab(iface);
 
+    auto& seat = wf::get_core_impl().seat;
+
+    seat->touch->set_grab(iface);
     active_grab = iface;
 
-    auto kbd  = wlr_seat_get_keyboard(seat);
+    // TODO: move this to the seat via a signal?
+    auto kbd  = wlr_seat_get_keyboard(seat->seat);
     auto mods = kbd ? kbd->modifiers : wlr_keyboard_modifiers{0, 0, 0, 0};
     mods.depressed = 0;
-    wlr_seat_keyboard_send_modifiers(seat, &mods);
+    wlr_seat_keyboard_send_modifiers(seat->seat, &mods);
 
-    set_keyboard_focus(nullptr, seat);
-    lpointer->set_enable_focus(false);
+    seat->set_keyboard_focus(nullptr);
+    seat->lpointer->set_enable_focus(false);
     wf::get_core().set_cursor("default");
 
     return true;
@@ -275,8 +199,9 @@ void input_manager::ungrab_input()
      * still an active input grab) */
     idle_update_cursor.run_once([&] ()
     {
-        touch->set_grab(nullptr);
-        lpointer->set_enable_focus(true);
+        auto& seat = wf::get_core_impl().seat;
+        seat->touch->set_grab(nullptr);
+        seat->lpointer->set_enable_focus(true);
     });
 }
 
@@ -373,25 +298,6 @@ wf::bindings_repository_t& input_manager::get_active_bindings()
     }
 
     return impl->get_bindings();
-}
-
-void input_manager::set_keyboard(wf::keyboard_t *keyboard)
-{
-    this->current_keyboard = keyboard;
-    wlr_seat_set_keyboard(seat, keyboard->device);
-}
-
-void input_manager::break_mod_bindings()
-{
-    for (auto& kbd : this->keyboards)
-    {
-        kbd->mod_binding_key = 0;
-    }
-}
-
-uint32_t input_manager::get_modifiers()
-{
-    return current_keyboard ? current_keyboard->get_modifiers() : 0;
 }
 
 wf::SurfaceMapStateListener::SurfaceMapStateListener()

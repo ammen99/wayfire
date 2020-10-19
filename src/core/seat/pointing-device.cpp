@@ -1,7 +1,7 @@
 #include "pointing-device.hpp"
 
 wf::pointing_device_t::pointing_device_t(wlr_input_device *dev) :
-    wf_input_device_internal(dev)
+    input_device_impl_t(dev)
 {
     update_options();
 }

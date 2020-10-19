@@ -12,6 +12,7 @@
 class input_manager;
 namespace wf
 {
+class seat_t;
 /**
  * Represents the "mouse cursor" part of a wf_cursor, i.e functionality provided
  * by touchpads, regular mice, trackpoints and similar.
@@ -22,7 +23,8 @@ namespace wf
 class pointer_t
 {
   public:
-    pointer_t(nonstd::observer_ptr<input_manager> input);
+    pointer_t(nonstd::observer_ptr<input_manager> input,
+        nonstd::observer_ptr<seat_t> seat);
     ~pointer_t();
 
     /**
@@ -80,6 +82,8 @@ class pointer_t
 
   private:
     nonstd::observer_ptr<input_manager> input;
+    nonstd::observer_ptr<seat_t> seat;
+
     SurfaceMapStateListener on_surface_map_state_change;
 
     wf::signal_callback_t on_views_updated;

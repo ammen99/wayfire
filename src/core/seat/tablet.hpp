@@ -65,7 +65,7 @@ struct tablet_tool_t
     bool is_active = false;
 };
 
-struct tablet_t : public wf_input_device_internal
+struct tablet_t : public input_device_impl_t
 {
     /**
      * Create a new tablet tool for the given cursor.

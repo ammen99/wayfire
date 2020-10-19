@@ -1,10 +1,11 @@
 #include "wayfire/render-manager.hpp"
+#include "wayfire/signal-definitions.hpp"
 #include "wayfire/workspace-stream.hpp"
 #include "wayfire/output.hpp"
 #include "../core/core-impl.hpp"
 #include "wayfire/util.hpp"
 #include "wayfire/workspace-manager.hpp"
-#include "../core/seat/input-manager.hpp"
+#include "../core/seat/seat.hpp"
 #include "../core/opengl-priv.hpp"
 #include "../main.hpp"
 #include <algorithm>
@@ -947,7 +948,7 @@ class wf::render_manager::impl
      */
     void schedule_drag_icon(workspace_stream_repaint_t& repaint)
     {
-        auto& drag_icon = wf::get_core_impl().input->drag_icon;
+        auto& drag_icon = wf::get_core_impl().seat->drag_icon;
         if (renderer || !drag_icon || !drag_icon->is_mapped())
         {
             return;
@@ -971,7 +972,7 @@ class wf::render_manager::impl
      */
     void unschedule_drag_icon()
     {
-        auto& drag_icon = wf::get_core_impl().input->drag_icon;
+        auto& drag_icon = wf::get_core_impl().seat->drag_icon;
         if (drag_icon && drag_icon->is_mapped())
         {
             drag_icon->set_output(nullptr);

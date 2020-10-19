@@ -950,7 +950,7 @@ void wf::xwayland_update_default_cursor()
         return;
     }
 
-    auto xc     = wf::get_core_impl().input->cursor->xcursor;
+    auto xc     = wf::get_core_impl().seat->cursor->xcursor;
     auto cursor = wlr_xcursor_manager_get_xcursor(xc, "left_ptr", 1);
     if (cursor && (cursor->image_count > 0))
     {

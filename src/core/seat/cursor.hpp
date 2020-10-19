@@ -6,11 +6,13 @@
 
 struct wf_cursor
 {
-    wf_cursor();
+    wf_cursor(wf::seat_t *seat);
     ~wf_cursor();
 
-    void attach_device(wlr_input_device *device);
-    void detach_device(wlr_input_device *device);
+    /**
+     * Register a new input device.
+     */
+    void add_new_device(wlr_input_device *device);
 
     /**
      * Set the cursor image from a wlroots event.
@@ -36,6 +38,7 @@ struct wf_cursor
     void setup_listeners();
     void load_xcursor_scale(float scale);
 
+    // Device event listeners
     wf::wl_listener_wrapper on_button, on_motion, on_motion_absolute, on_axis,
 
         on_swipe_begin, on_swipe_update, on_swipe_end,
@@ -45,7 +48,11 @@ struct wf_cursor
         on_tablet_button, on_tablet_proximity,
         on_frame;
 
+    // Seat events
+    wf::wl_listener_wrapper request_set_cursor;
+
     wf::signal_callback_t config_reloaded;
+    wf::seat_t *seat;
 
     wlr_cursor *cursor = NULL;
     wlr_xcursor_manager *xcursor = NULL;

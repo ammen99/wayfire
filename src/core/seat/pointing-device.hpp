@@ -5,7 +5,7 @@
 
 namespace wf
 {
-struct pointing_device_t : public wf_input_device_internal
+struct pointing_device_t : public input_device_impl_t
 {
     pointing_device_t(wlr_input_device *dev);
     virtual ~pointing_device_t() = default;

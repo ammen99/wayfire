@@ -1,4 +1,5 @@
 #include "cursor.hpp"
+#include "pointer.hpp"
 #include "touch.hpp"
 #include "../core-impl.hpp"
 #include "../../view/view-impl.hpp"
@@ -10,9 +11,10 @@
 #include "wayfire/signal-definitions.hpp"
 #include "wayfire/util/log.hpp"
 
-wf_cursor::wf_cursor()
+wf_cursor::wf_cursor(wf::seat_t *seat)
 {
-    cursor = wlr_cursor_create();
+    cursor     = wlr_cursor_create();
+    this->seat = seat;
 
     wlr_cursor_attach_output_layout(cursor,
         wf::get_core().output_layout->get_handle());
@@ -27,16 +29,28 @@ wf_cursor::wf_cursor()
     };
 
     wf::get_core().connect_signal("reload-config", &config_reloaded);
+
+    request_set_cursor.set_callback([&] (void *data)
+    {
+        auto ev = static_cast<wlr_seat_pointer_request_set_cursor_event*>(data);
+        set_cursor(ev, true);
+    });
+    request_set_cursor.connect(&seat->seat->events.request_set_cursor);
+}
+
+void wf_cursor::add_new_device(wlr_input_device *dev)
+{
+    wlr_cursor_attach_input_device(cursor, dev);
 }
 
 void wf_cursor::setup_listeners()
 {
     auto& core = wf::get_core_impl();
 
-    /* Dispatch pointer events to the LogicalPointer */
+    /* Dispatch pointer events to the pointer_t */
     on_frame.set_callback([&] (void*)
     {
-        core.input->lpointer->handle_pointer_frame();
+        seat->lpointer->handle_pointer_frame();
         wlr_idle_notify_activity(core.protocols.idle,
             core.get_current_seat());
     });
@@ -47,7 +61,7 @@ void wf_cursor::setup_listeners()
         set_touchscreen_mode(false); \
         auto ev = static_cast<wlr_event_pointer_ ## evname*>(data); \
         emit_device_event_signal("pointer_" #evname, ev); \
-        core.input->lpointer->handle_pointer_ ## evname(ev); \
+        seat->lpointer->handle_pointer_ ## evname(ev); \
         wlr_idle_notify_activity(core.protocols.idle, core.get_current_seat()); \
         emit_device_event_signal("pointer_" #evname "_post", ev); \
     }); \
@@ -79,8 +93,7 @@ void wf_cursor::setup_listeners()
                 static_cast<wf::tablet_t*>(ev->device->tablet->data); \
             tablet->handle_ ## evname(ev); \
         } \
-        wlr_idle_notify_activity(wf::get_core().protocols.idle, \
-        wf::get_core().get_current_seat()); \
+        wlr_idle_notify_activity(wf::get_core().protocols.idle, seat->seat); \
         emit_device_event_signal("tablet_" #evname "_post", ev); \
     }); \
     on_tablet_ ## evname.connect(&cursor->events.tablet_tool_ ## evname);
@@ -130,16 +143,6 @@ void wf_cursor::load_xcursor_scale(float scale)
     wlr_xcursor_manager_load(xcursor, scale);
 }
 
-void wf_cursor::attach_device(wlr_input_device *device)
-{
-    wlr_cursor_attach_input_device(cursor, device);
-}
-
-void wf_cursor::detach_device(wlr_input_device *device)
-{
-    wlr_cursor_detach_input_device(cursor, device);
-}
-
 void wf_cursor::set_cursor(std::string name)
 {
     if (this->touchscreen_mode_active)
@@ -178,10 +181,9 @@ void wf_cursor::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev,
         return;
     }
 
-    auto& input = wf::get_core_impl().input;
     if (validate_request)
     {
-        auto pointer_client = input->seat->pointer_state.focused_client;
+        auto pointer_client = seat->seat->pointer_state.focused_client;
         if (pointer_client != ev->seat_client)
         {
             return;

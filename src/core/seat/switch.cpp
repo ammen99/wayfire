@@ -3,7 +3,7 @@
 #include <wayfire/core.hpp>
 
 wf::switch_device_t::switch_device_t(wlr_input_device *dev) :
-    wf_input_device_internal(dev)
+    input_device_impl_t(dev)
 {
     on_switch.set_callback([&] (void *data)
     {

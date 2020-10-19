@@ -3,6 +3,7 @@
 #include <wayfire/util/log.hpp>
 
 #include "touch.hpp"
+#include "cursor.hpp"
 #include "input-manager.hpp"
 #include "../core-impl.hpp"
 #include "wayfire/output.hpp"
@@ -52,7 +53,7 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
 
         double lx, ly;
         wlr_cursor_absolute_to_layout_coords(
-            wf::get_core_impl().input->cursor->cursor, ev->device,
+            wf::get_core_impl().seat->cursor->cursor, ev->device,
             ev->x, ev->y, &lx, &ly);
 
         wf::pointf_t point;
@@ -104,11 +105,6 @@ const wf::touch::gesture_state_t& wf::touch_interface_t::get_state() const
 wf::surface_interface_t*wf::touch_interface_t::get_focus() const
 {
     return this->focus;
-}
-
-void wf::touch_interface_t::handle_new_device(wlr_input_device *device)
-{
-    wlr_cursor_attach_input_device(cursor, device);
 }
 
 void wf::touch_interface_t::set_grab(wf::plugin_grab_interface_t *grab)
@@ -212,9 +208,8 @@ void wf::touch_interface_t::update_gestures(const wf::touch::gesture_event_t& ev
 void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
     wf::pointf_t point)
 {
-    // TODO: bad design
-    auto& input = wf::get_core_impl().input;
-    input->break_mod_bindings();
+    auto& seat = wf::get_core_impl().seat;
+    seat->break_mod_bindings();
 
     if (id == 0)
     {
@@ -254,14 +249,14 @@ void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
     if (finger_state.fingers.empty()) // finger state is not updated yet
     {
         start_touch_down_grab(focus);
-    } else if (grabbed_surface && !input->drag_active)
+    } else if (grabbed_surface && !seat->drag_active)
     {
         focus = grabbed_surface;
         local = get_surface_relative_coords(focus, point);
     }
 
     set_touch_focus(focus, id, time, local);
-    input->update_drag_icon();
+    seat->update_drag_icon();
     update_gestures(gesture_event);
     update_cursor_state();
 }
@@ -301,9 +296,10 @@ void wf::touch_interface_t::handle_touch_motion(int32_t id, uint32_t time,
 
     wf::pointf_t local;
     wf::surface_interface_t *surface = nullptr;
+    auto& seat = wf::get_core_impl().seat;
     /* Same as cursor motion handling: make sure we send to the grabbed surface,
      * except if we need this for DnD */
-    if (grabbed_surface && !wf::get_core_impl().input->drag_icon)
+    if (grabbed_surface && !seat->drag_icon)
     {
         surface = grabbed_surface;
         local   = get_surface_relative_coords(surface, point);
@@ -313,8 +309,8 @@ void wf::touch_interface_t::handle_touch_motion(int32_t id, uint32_t time,
         set_touch_focus(surface, id, time, local);
     }
 
-    wlr_seat_touch_notify_motion(seat, time, id, local.x, local.y);
-    wf::get_core_impl().input->update_drag_icon();
+    wlr_seat_touch_notify_motion(seat->seat, time, id, local.x, local.y);
+    seat->update_drag_icon();
 
     auto compositor_surface = wf::compositor_surface_from_surface(surface);
     if ((id == 0) && compositor_surface && is_real_event)
@@ -374,9 +370,9 @@ void wf::touch_interface_t::end_touch_down_grab()
 
 void wf::touch_interface_t::update_cursor_state()
 {
-    auto& cursor = wf::get_core_impl().input->cursor;
+    auto& seat = wf::get_core_impl().seat;
     /* just set the cursor mode, independent of how many fingers we have */
-    cursor->set_touchscreen_mode(true);
+    seat->cursor->set_touchscreen_mode(true);
 }
 
 // Swipe params

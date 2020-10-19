@@ -5,7 +5,7 @@
 
 namespace wf
 {
-struct switch_device_t : public wf_input_device_internal
+struct switch_device_t : public input_device_impl_t
 {
     wf::wl_listener_wrapper on_switch;
     void handle_switched(wlr_event_switch_toggle *ev);
