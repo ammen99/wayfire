@@ -15,17 +15,6 @@
 			<_long>Switches to the previous view with the specified key.</_long>
 			<default>&lt;alt&gt; &lt;shift&gt; KEY_TAB</default>
 		</option>
-		<!-- Gestures -->
-		<option name="gesture_toggle" type="gesture">
-			<_short>Gesture toggle</_short>
-			<_long>Toggles the switcher with the specified gesture.</_long>
-			<default>edge-swipe down 3</default>
-		</option>
-		<option name="touch_sensitivity" type="double">
-			<_short>Touch sensitivity</_short>
-			<_long>Sets the touch sensitivity.</_long>
-			<default>1.0</default>
-		</option>
 		<!-- Effects -->
 		<option name="speed" type="int">
 			<_short>Duration</_short>

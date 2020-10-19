@@ -89,7 +89,6 @@ class WayfireSwitcher : public wf::plugin_interface_t
 {
     wf::option_wrapper_t<double> view_thumbnail_scale{
         "switcher/view_thumbnail_scale"};
-    wf::option_wrapper_t<double> touch_sensitivity{"switcher/touch_sensitivity"};
     wf::option_wrapper_t<int> speed{"switcher/speed"};
 
     duration_t duration{speed};
@@ -116,9 +115,6 @@ class WayfireSwitcher : public wf::plugin_interface_t
         output->add_key(
             wf::option_wrapper_t<wf::keybinding_t>{"switcher/prev_view"},
             &prev_view_binding);
-        output->add_gesture(
-            wf::option_wrapper_t<wf::touchgesture_t>{"switcher/gesture_toggle"},
-            &touch_activate);
         output->connect_signal("view-detached", &view_removed);
 
         grab_interface->callbacks.keyboard.mod = [=] (uint32_t mod, uint32_t state)
@@ -126,30 +122,6 @@ class WayfireSwitcher : public wf::plugin_interface_t
             if ((state == WLR_KEY_RELEASED) && (mod & activating_modifiers))
             {
                 handle_done();
-            }
-        };
-
-        grab_interface->callbacks.touch.down = [=] (int id, int x, int y)
-        {
-            if (id == 0)
-            {
-                handle_touch_down(x, y);
-            }
-        };
-
-        grab_interface->callbacks.touch.up = [=] (int id)
-        {
-            if (id == 0)
-            {
-                handle_touch_up();
-            }
-        };
-
-        grab_interface->callbacks.touch.motion = [=] (int id, int x, int y)
-        {
-            if (id == 0)
-            {
-                handle_touch_motion(x, y);
             }
         };
 
@@ -164,22 +136,6 @@ class WayfireSwitcher : public wf::plugin_interface_t
     wf::key_callback prev_view_binding = [=] (uint32_t)
     {
         return handle_switch_request(1);
-    };
-
-    wf::gesture_callback touch_activate = [=] (wf::touchgesture_t*)
-    {
-        if (!active)
-        {
-            /* We set it to -1 to indicate that the user hasn't done anything yet */
-            touch_total_dx = -1;
-
-            return handle_switch_request(0);
-        } else
-        {
-            handle_done();
-        }
-
-        return true;
     };
 
     wf::effect_hook_t damage = [=] ()
@@ -264,36 +220,6 @@ class WayfireSwitcher : public wf::plugin_interface_t
         cleanup_expired();
         dearrange();
         grab_interface->ungrab();
-    }
-
-    int touch_sx, touch_total_dx = -1;
-    void handle_touch_down(int x, int)
-    {
-        touch_sx = x;
-        touch_total_dx = 0;
-    }
-
-    void handle_touch_motion(int x, int)
-    {
-        const float TOUCH_SENSITIVITY = 0.05 * touch_sensitivity;
-        auto og = output->get_relative_geometry();
-
-        float dx = touch_sx - x;
-        if (std::abs(dx) > TOUCH_SENSITIVITY * og.width)
-        {
-            touch_total_dx += touch_sx - x;
-            handle_switch_request(dx > 0 ? -1 : 1);
-            touch_sx = x;
-        }
-    }
-
-    void handle_touch_up()
-    {
-        /* This means we haven't switched views, so the user wants to stop */
-        if (touch_total_dx == 0)
-        {
-            handle_done();
-        }
     }
 
     /* Sets up basic hooks needed while switcher works and/or displays animations.
@@ -870,7 +796,6 @@ class WayfireSwitcher : public wf::plugin_interface_t
 
         output->rem_binding(&next_view_binding);
         output->rem_binding(&prev_view_binding);
-        output->rem_binding(&touch_activate);
         output->disconnect_signal("view-detached", &view_removed);
     }
 };
