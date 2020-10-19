@@ -295,6 +295,25 @@ void wf::compositor_core_impl_t::init()
 
     image_io::init();
     OpenGL::init();
+
+    this->state = compositor_state_t::START_BACKEND;
+}
+
+void wf::compositor_core_impl_t::post_init()
+{
+    this->state = compositor_state_t::RUNNING;
+}
+
+void wf::compositor_core_impl_t::shutdown()
+{
+    this->state = compositor_state_t::SHUTDOWN;
+    wf::get_core().emit_signal("shutdown", nullptr);
+    wl_display_terminate(wf::get_core().display);
+}
+
+wf::compositor_state_t wf::compositor_core_impl_t::get_current_state()
+{
+    return this->state;
 }
 
 wlr_seat*wf::compositor_core_impl_t::get_current_seat()
@@ -720,12 +739,6 @@ pid_t wf::compositor_core_impl_t::run(std::string command)
 
         return child_pid;
     }
-}
-
-void wf::compositor_core_impl_t::shutdown()
-{
-    wf::get_core().emit_signal("shutdown", nullptr);
-    wl_display_terminate(wf::get_core().display);
 }
 
 std::string wf::compositor_core_impl_t::get_xwayland_display()

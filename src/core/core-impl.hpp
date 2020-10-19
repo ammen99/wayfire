@@ -32,9 +32,17 @@ class compositor_core_impl_t : public compositor_core_t
     std::unique_ptr<input_method_relay> im_relay;
 
     /**
-     * Initialize the compositor core. Called only by main()
+     * Initialize the compositor core.
+     * Called only by main().
      */
     void init();
+
+    /**
+     * Finish initialization of core after the backend has started.
+     * Called only by main().
+     */
+    void post_init();
+
     wayfire_shell *wf_shell;
     wf_gtk_shell *gtk_shell;
 
@@ -84,6 +92,7 @@ class compositor_core_impl_t : public compositor_core_t
     std::string get_xwayland_display() override;
     pid_t run(std::string command) override;
     void shutdown() override;
+    compositor_state_t get_current_state() override;
 
   private:
     wf::wl_listener_wrapper decoration_created;
@@ -108,6 +117,8 @@ class compositor_core_impl_t : public compositor_core_t
      * The view might not actually have focus, because of plugin grabs.
      */
     wayfire_view last_active_view;
+
+    compositor_state_t state = compositor_state_t::UNKNOWN;
 
     compositor_core_impl_t();
     virtual ~compositor_core_impl_t();

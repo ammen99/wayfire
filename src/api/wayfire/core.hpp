@@ -34,6 +34,29 @@ class output_t;
 class output_layout_t;
 class input_device_t;
 
+/** Describes the state of the compositor */
+enum class compositor_state_t
+{
+    /** Not started */
+    UNKNOWN,
+    /**
+     * The compositor core has finished initializing.
+     * Now the wlroots backends are being started, which results in
+     * adding of new input and output devices, as well as starting the
+     * plugins on each output.
+     */
+    START_BACKEND,
+    /**
+     * The compositor has loaded the initial devices and plugins and is
+     * running the main loop.
+     */
+    RUNNING,
+    /**
+     * The compositor has stopped the main loop and is shutting down.
+     */
+    SHUTDOWN,
+};
+
 class compositor_core_t : public wf::object_base_t
 {
   public:
@@ -270,6 +293,11 @@ class compositor_core_t : public wf::object_base_t
      * @return The PID of the started client, or -1 on failure.
      */
     virtual pid_t run(std::string command) = 0;
+
+    /**
+     * @return The current state of the compositor.
+     */
+    virtual compositor_state_t get_current_state() = 0;
 
     /**
      * Shut down the whole compositor.

@@ -389,6 +389,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+    core.post_init();
     setenv("WAYLAND_DISPLAY", core.wayland_display.c_str(), 1);
     wl_display_run(core.display);
 
