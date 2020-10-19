@@ -81,18 +81,21 @@ void wf::input_manager_t::refresh_device_mappings()
 void wf::input_manager_t::handle_input_destroyed(wlr_input_device *dev)
 {
     LOGI("remove input: ", dev->name);
+    for (auto& device : input_devices)
+    {
+        if (device->get_wlr_handle() == dev)
+        {
+            wf::input_device_signal data;
+            data.device = {device};
+            wf::get_core().emit_signal("input-device-removed", &data);
+        }
+    }
 
     auto it = std::remove_if(input_devices.begin(), input_devices.end(),
         [=] (const std::unique_ptr<wf::input_device_impl_t>& idev)
     {
         return idev->get_wlr_handle() == dev;
     });
-
-    // devices should be unique
-    wf::input_device_signal data;
-    data.device = nonstd::make_observer(it->get());
-    wf::get_core().emit_signal("input-device-removed", &data);
-
     input_devices.erase(it, input_devices.end());
 }
 
@@ -123,7 +126,7 @@ wf::input_manager_t::input_manager_t()
     {
         auto dev = static_cast<wlr_input_device*>(data);
         assert(dev);
-        wf::get_core_impl().input->handle_new_input(dev);
+        handle_new_input(dev);
     });
     input_device_created.connect(&wf::get_core().backend->events.new_input);
 
