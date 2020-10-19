@@ -82,7 +82,7 @@ class touch_interface_t : public noncopyable_t
     SurfaceMapStateListener on_surface_map_state_change;
     wf::signal_connection_t on_stack_order_changed;
 
-    std::unique_ptr<touch::gesture_t> multiswipe, multipinch;
+    std::unique_ptr<touch::gesture_t> multiswipe, edgeswipe, multipinch;
     void add_default_gestures();
 
     /** Enable/disable cursor depending on how many touch points are there */

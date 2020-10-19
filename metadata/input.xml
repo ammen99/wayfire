@@ -186,6 +186,13 @@
 			<default>1.0</default>
 			<min>0.0</min>
 		</option>
+		<option name="gesture_sensitivity" type="double">
+			<_short>Touchscreen gesture sensitivity</_short>
+			<_long>Change the sensitivity of the built-in gesture detection. Higher values mean that less finger movement is required to trigger the gesture.</_long>
+			<default>1.0</default>
+			<min>0.1</min>
+			<max>5.0</max>
+		</option>
 		<option name="touchpad_scroll_speed" type="double">
 			<_short>Touchpad scroll speed</_short>
 			<_long>Changes the touchpad scroll factor.  Scroll speed will be scaled by the given value, which must be non-negative.</_long>

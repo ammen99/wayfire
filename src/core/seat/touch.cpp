@@ -379,14 +379,19 @@ void wf::touch_interface_t::update_cursor_state()
     cursor->set_touchscreen_mode(true);
 }
 
-constexpr static int MIN_FINGERS = 3;
+// Swipe params
+constexpr static int EDGE_SWIPE_THRESHOLD  = 10;
 constexpr static double MIN_SWIPE_DISTANCE = 30;
-constexpr static double MAX_SWIPE_DISTANCE = 100;
+constexpr static double MAX_SWIPE_DISTANCE = 450;
+constexpr static double SWIPE_INCORRECT_DRAG_TOLERANCE = 150;
+
+// Pinch params
+constexpr static double PINCH_INCORRECT_DRAG_TOLERANCE = 200;
+constexpr static double PINCH_THRESHOLD = 1.5;
+
+// General
 constexpr static double GESTURE_INITIAL_TOLERANCE = 40;
-constexpr static double SWIPE_INCORRECT_DRAG_TOLERANCE = 20;
-constexpr static double PINCH_INCORRECT_DRAG_TOLERANCE = 100;
-constexpr static int EDGE_SWIPE_THRESHOLD = 50;
-constexpr static double PINCH_THRESHOLD   = 1.5;
+constexpr static uint32_t GESTURE_BASE_DURATION   = 400;
 
 using namespace wf::touch;
 /**
@@ -395,12 +400,14 @@ using namespace wf::touch;
 class multi_action_t : public gesture_action_t
 {
   public:
-    multi_action_t(bool pinch)
+    multi_action_t(bool pinch, double threshold)
     {
-        this->pinch = pinch;
+        this->pinch     = pinch;
+        this->threshold = threshold;
     }
 
     bool pinch;
+    double threshold;
     bool last_pinch_was_pinch_in = false;
 
     uint32_t target_direction = 0;
@@ -409,6 +416,11 @@ class multi_action_t : public gesture_action_t
     action_status_t update_state(const gesture_state_t& state,
         const gesture_event_t& event) override
     {
+        if (event.time - this->start_time > this->get_duration())
+        {
+            return wf::touch::ACTION_STATUS_CANCELLED;
+        }
+
         if (event.type == EVENT_TYPE_TOUCH_UP)
         {
             return ACTION_STATUS_CANCELLED;
@@ -430,15 +442,14 @@ class multi_action_t : public gesture_action_t
 
         if (this->pinch)
         {
-            if (glm::length(state.get_center().delta()) >=
-                PINCH_INCORRECT_DRAG_TOLERANCE)
+            if (glm::length(state.get_center().delta()) >= get_move_tolerance())
             {
                 return ACTION_STATUS_CANCELLED;
             }
 
             double pinch = state.get_pinch_scale();
             last_pinch_was_pinch_in = pinch <= 1.0;
-            if ((pinch <= 1.0 / PINCH_THRESHOLD) || (pinch >= PINCH_THRESHOLD))
+            if ((pinch <= 1.0 / threshold) || (pinch >= threshold))
             {
                 return ACTION_STATUS_COMPLETED;
             }
@@ -468,7 +479,7 @@ class multi_action_t : public gesture_action_t
         }
 
         if (state.get_center().get_drag_distance(this->target_direction) >=
-            MAX_SWIPE_DISTANCE)
+            threshold)
         {
             return ACTION_STATUS_COMPLETED;
         }
@@ -540,30 +551,75 @@ static uint32_t wf_touch_to_wf_dir(uint32_t touch_dir)
 
 void wf::touch_interface_t::add_default_gestures()
 {
-    std::unique_ptr<multi_action_t> swipe = std::make_unique<multi_action_t>(false);
-    std::unique_ptr<multi_action_t> pinch = std::make_unique<multi_action_t>(true);
+    wf::option_wrapper_t<double> sensitivity{"input/gesture_sensitivity"};
+
+    // Swipe gesture needs slightly less distance because it is usually
+    // with many fingers and it is harder to move all of them
+    auto swipe = std::make_unique<multi_action_t>(false,
+        0.75 * MAX_SWIPE_DISTANCE / sensitivity);
+    swipe->set_duration(GESTURE_BASE_DURATION * sensitivity);
+    swipe->set_move_tolerance(SWIPE_INCORRECT_DRAG_TOLERANCE * sensitivity);
+
+    const double pinch_thresh = 1.0 + (PINCH_THRESHOLD - 1.0) / sensitivity;
+    auto pinch = std::make_unique<multi_action_t>(true, pinch_thresh);
+    pinch->set_duration(GESTURE_BASE_DURATION * 1.5 * sensitivity);
+    pinch->set_move_tolerance(PINCH_INCORRECT_DRAG_TOLERANCE * sensitivity);
+
+    // Edge swipe needs a quick release to be considered edge swipe
+    auto edge_swipe = std::make_unique<multi_action_t>(false,
+        MAX_SWIPE_DISTANCE / sensitivity);
+    auto edge_release = std::make_unique<wf::touch::touch_action_t>(1, false);
+    edge_swipe->set_duration(GESTURE_BASE_DURATION * sensitivity);
+    edge_swipe->set_move_tolerance(SWIPE_INCORRECT_DRAG_TOLERANCE * sensitivity);
+    // The release action needs longer duration to handle the case where the
+    // gesture is actually longer than the max distance.
+    edge_release->set_duration(GESTURE_BASE_DURATION * 1.5 * sensitivity);
+
     nonstd::observer_ptr<multi_action_t> swp_ptr = swipe;
     nonstd::observer_ptr<multi_action_t> pnc_ptr = pinch;
+    nonstd::observer_ptr<multi_action_t> esw_ptr = edge_swipe;
 
-    std::vector<std::unique_ptr<gesture_action_t>> swipe_actions, pinch_actions;
+    std::vector<std::unique_ptr<gesture_action_t>> swipe_actions,
+        edge_swipe_actions, pinch_actions;
     swipe_actions.emplace_back(std::move(swipe));
     pinch_actions.emplace_back(std::move(pinch));
+    edge_swipe_actions.emplace_back(std::move(edge_swipe));
+    edge_swipe_actions.emplace_back(std::move(edge_release));
 
     auto ack_swipe = [swp_ptr, this] ()
     {
         uint32_t possible_edges =
             find_swipe_edges(finger_state.get_center().origin);
-        uint32_t direction = wf_touch_to_wf_dir(swp_ptr->target_direction);
-
-        touch_gesture_type_t type = GESTURE_TYPE_SWIPE;
-        if (possible_edges & direction)
+        if (possible_edges)
         {
-            direction = possible_edges & direction;
-            type = GESTURE_TYPE_EDGE_SWIPE;
+            return;
         }
 
-        wf::touchgesture_t gesture{type, direction, swp_ptr->cnt_fingers};
+        uint32_t direction = wf_touch_to_wf_dir(swp_ptr->target_direction);
+        wf::touchgesture_t gesture{
+            GESTURE_TYPE_SWIPE,
+            direction,
+            swp_ptr->cnt_fingers
+        };
         wf::get_core_impl().input->handle_gesture(gesture);
+    };
+
+    auto ack_edge_swipe = [esw_ptr, this] ()
+    {
+        uint32_t possible_edges =
+            find_swipe_edges(finger_state.get_center().origin);
+        uint32_t direction = wf_touch_to_wf_dir(esw_ptr->target_direction);
+
+        possible_edges &= direction;
+        if (possible_edges)
+        {
+            wf::touchgesture_t gesture{
+                GESTURE_TYPE_EDGE_SWIPE,
+                direction,
+                esw_ptr->cnt_fingers
+            };
+            wf::get_core_impl().input->handle_gesture(gesture);
+        }
     };
 
     auto ack_pinch = [pnc_ptr] ()
@@ -578,10 +634,13 @@ void wf::touch_interface_t::add_default_gestures()
 
     this->multiswipe = std::make_unique<gesture_t>(std::move(
         swipe_actions), ack_swipe);
+    this->edgeswipe = std::make_unique<gesture_t>(std::move(
+        edge_swipe_actions), ack_edge_swipe);
     this->multipinch = std::make_unique<gesture_t>(std::move(
         pinch_actions), ack_pinch);
-    this->add_touch_gesture(multiswipe);
-    this->add_touch_gesture(multipinch);
+    this->add_touch_gesture(this->multiswipe);
+    this->add_touch_gesture(this->edgeswipe);
+    this->add_touch_gesture(this->multipinch);
 }
 
 void input_manager::handle_gesture(wf::touchgesture_t g)
