@@ -13,19 +13,15 @@
 #include "wayfire/signal-definitions.hpp"
 #include <wayfire/option-wrapper.hpp>
 
-enum wf_locked_mods
+namespace wf
 {
-    WF_KB_NUM  = 1 << 0,
-    WF_KB_CAPS = 1 << 1,
-};
-
 /**
  * input_manager is a class which manages high-level input state:
  * 1. Active grabs
  * 2. Exclusive clients
  * 3. Available input devices
  */
-class input_manager
+class input_manager_t
 {
   private:
     wf::wl_listener_wrapper input_device_created;
@@ -47,8 +43,8 @@ class input_manager
      */
     void refresh_device_mappings();
 
-    input_manager();
-    ~input_manager();
+    input_manager_t();
+    ~input_manager_t();
 
     /** Initialize a new input device */
     void handle_new_input(wlr_input_device *dev);
@@ -88,6 +84,7 @@ class input_manager
     /** @return the bindings for the active output */
     wf::bindings_repository_t& get_active_bindings();
 };
+}
 
 /**
  * Emit a signal for device events.

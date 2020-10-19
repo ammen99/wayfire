@@ -194,7 +194,7 @@ void wf::compositor_core_impl_t::init()
 
     /* Somehow GTK requires the tablet_v2 to be advertised pretty early */
     protocols.tablet_v2 = wlr_tablet_v2_create(display);
-    input = std::make_unique<input_manager>();
+    input = std::make_unique<wf::input_manager_t>();
     seat  = std::make_unique<wf::seat_t>();
 
     protocols.screencopy = wlr_screencopy_manager_v1_create(display);

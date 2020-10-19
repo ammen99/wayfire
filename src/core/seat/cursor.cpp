@@ -11,7 +11,7 @@
 #include "wayfire/signal-definitions.hpp"
 #include "wayfire/util/log.hpp"
 
-wf_cursor::wf_cursor(wf::seat_t *seat)
+wf::cursor_t::cursor_t(wf::seat_t *seat)
 {
     cursor     = wlr_cursor_create();
     this->seat = seat;
@@ -38,12 +38,12 @@ wf_cursor::wf_cursor(wf::seat_t *seat)
     request_set_cursor.connect(&seat->seat->events.request_set_cursor);
 }
 
-void wf_cursor::add_new_device(wlr_input_device *dev)
+void wf::cursor_t::add_new_device(wlr_input_device *dev)
 {
     wlr_cursor_attach_input_device(cursor, dev);
 }
 
-void wf_cursor::setup_listeners()
+void wf::cursor_t::setup_listeners()
 {
     auto& core = wf::get_core_impl();
 
@@ -105,7 +105,7 @@ void wf_cursor::setup_listeners()
 #undef setup_tablet_callback
 }
 
-void wf_cursor::init_xcursor()
+void wf::cursor_t::init_xcursor()
 {
     std::string theme = wf::option_wrapper_t<std::string>("input/cursor_theme");
     int size = wf::option_wrapper_t<int>("input/cursor_size");
@@ -138,12 +138,12 @@ void wf_cursor::init_xcursor()
     set_cursor("default");
 }
 
-void wf_cursor::load_xcursor_scale(float scale)
+void wf::cursor_t::load_xcursor_scale(float scale)
 {
     wlr_xcursor_manager_load(xcursor, scale);
 }
 
-void wf_cursor::set_cursor(std::string name)
+void wf::cursor_t::set_cursor(std::string name)
 {
     if (this->touchscreen_mode_active)
     {
@@ -158,23 +158,23 @@ void wf_cursor::set_cursor(std::string name)
     wlr_xcursor_manager_set_cursor_image(xcursor, name.c_str(), cursor);
 }
 
-void wf_cursor::hide_cursor()
+void wf::cursor_t::hide_cursor()
 {
     wlr_cursor_set_surface(cursor, NULL, 0, 0);
 }
 
-void wf_cursor::warp_cursor(wf::pointf_t point)
+void wf::cursor_t::warp_cursor(wf::pointf_t point)
 {
     wlr_cursor_warp_closest(cursor, NULL, point.x, point.y);
 }
 
-wf::pointf_t wf_cursor::get_cursor_position()
+wf::pointf_t wf::cursor_t::get_cursor_position()
 {
     return {cursor->x, cursor->y};
 }
 
-void wf_cursor::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev,
-    bool validate_request)
+void wf::cursor_t::set_cursor(
+    wlr_seat_pointer_request_set_cursor_event *ev, bool validate_request)
 {
     if (this->touchscreen_mode_active)
     {
@@ -197,7 +197,7 @@ void wf_cursor::set_cursor(wlr_seat_pointer_request_set_cursor_event *ev,
     }
 }
 
-void wf_cursor::set_touchscreen_mode(bool enabled)
+void wf::cursor_t::set_touchscreen_mode(bool enabled)
 {
     if (this->touchscreen_mode_active == enabled)
     {
@@ -214,7 +214,7 @@ void wf_cursor::set_touchscreen_mode(bool enabled)
     }
 }
 
-wf_cursor::~wf_cursor()
+wf::cursor_t::~cursor_t()
 {
     wf::get_core().disconnect_signal("reload-config", &config_reloaded);
 }

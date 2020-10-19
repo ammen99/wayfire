@@ -7,6 +7,12 @@
 
 namespace wf
 {
+enum locked_mods_t
+{
+    KB_MOD_NUM_LOCK  = 1 << 0,
+    KB_MOD_CAPS_LOCK = 1 << 1,
+};
+
 /**
  * Represents a logical keyboard.
  */

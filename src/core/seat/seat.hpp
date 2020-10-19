@@ -7,9 +7,9 @@
 #include "wayfire/output.hpp"
 #include "wayfire/input-device.hpp"
 
-struct wf_cursor;
 namespace wf
 {
+struct cursor_t;
 class keyboard_t;
 
 struct drag_icon_t : public wlr_child_surface_base_t
@@ -85,7 +85,7 @@ class seat_t
     void set_keyboard(wf::keyboard_t *kbd);
 
     wlr_seat *seat = nullptr;
-    std::unique_ptr<wf_cursor> cursor;
+    std::unique_ptr<cursor_t> cursor;
     std::unique_ptr<pointer_t> lpointer;
     std::unique_ptr<touch_interface_t> touch;
 

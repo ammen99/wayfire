@@ -4,10 +4,12 @@
 #include "seat.hpp"
 #include "wayfire/plugin.hpp"
 
-struct wf_cursor
+namespace wf
 {
-    wf_cursor(wf::seat_t *seat);
-    ~wf_cursor();
+struct cursor_t
+{
+    cursor_t(wf::seat_t *seat);
+    ~cursor_t();
 
     /**
      * Register a new input device.
@@ -59,5 +61,6 @@ struct wf_cursor
 
     bool touchscreen_mode_active = false;
 };
+}
 
 #endif /* end of include guard: CURSOR_HPP */

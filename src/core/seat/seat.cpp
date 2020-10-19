@@ -85,7 +85,7 @@ void wf::drag_icon_t::damage_surface_box_global(const wlr_box& rect)
 wf::seat_t::seat_t()
 {
     seat     = wlr_seat_create(wf::get_core().display, "default");
-    cursor   = std::make_unique<wf_cursor>(this);
+    cursor   = std::make_unique<wf::cursor_t>(this);
     lpointer = std::make_unique<wf::pointer_t>(
         wf::get_core_impl().input, nonstd::make_observer(this));
     touch = std::make_unique<wf::touch_interface_t>(cursor->cursor, seat,

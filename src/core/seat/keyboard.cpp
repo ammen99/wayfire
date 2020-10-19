@@ -134,12 +134,12 @@ void wf::keyboard_t::reload_input_options()
 
     xkb_mod_mask_t locked_mods = 0;
 
-    if (wf::get_core_impl().input->locked_mods & WF_KB_NUM)
+    if (wf::get_core_impl().input->locked_mods & KB_MOD_NUM_LOCK)
     {
         set_locked_mod(&locked_mods, keymap, XKB_MOD_NAME_NUM);
     }
 
-    if (wf::get_core_impl().input->locked_mods & WF_KB_CAPS)
+    if (wf::get_core_impl().input->locked_mods & KB_MOD_CAPS_LOCK)
     {
         set_locked_mod(&locked_mods, keymap, XKB_MOD_NAME_CAPS);
     }
@@ -237,12 +237,12 @@ uint32_t wf::keyboard_t::get_locked_mods()
     uint32_t mods = 0;
     if (leds & WLR_LED_NUM_LOCK)
     {
-        mods |= WF_KB_NUM;
+        mods |= KB_MOD_NUM_LOCK;
     }
 
     if (leds & WLR_LED_CAPS_LOCK)
     {
-        mods |= WF_KB_CAPS;
+        mods |= KB_MOD_CAPS_LOCK;
     }
 
     return mods;

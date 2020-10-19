@@ -9,7 +9,7 @@
 #include <wayfire/output-layout.hpp>
 #include <wayfire/compositor-surface.hpp>
 
-wf::pointer_t::pointer_t(nonstd::observer_ptr<input_manager> input,
+wf::pointer_t::pointer_t(nonstd::observer_ptr<wf::input_manager_t> input,
     nonstd::observer_ptr<seat_t> seat)
 {
     this->input = input;

@@ -9,9 +9,9 @@
 #include "surface-map-state.hpp"
 #include <wayfire/nonstd/wlroots-full.hpp>
 
-class input_manager;
 namespace wf
 {
+class input_manager_t;
 class seat_t;
 /**
  * Represents the "mouse cursor" part of a wf_cursor, i.e functionality provided
@@ -23,7 +23,7 @@ class seat_t;
 class pointer_t
 {
   public:
-    pointer_t(nonstd::observer_ptr<input_manager> input,
+    pointer_t(nonstd::observer_ptr<wf::input_manager_t> input,
         nonstd::observer_ptr<seat_t> seat);
     ~pointer_t();
 
@@ -81,7 +81,7 @@ class pointer_t
     bool has_pressed_buttons() const;
 
   private:
-    nonstd::observer_ptr<input_manager> input;
+    nonstd::observer_ptr<wf::input_manager_t> input;
     nonstd::observer_ptr<seat_t> seat;
 
     SurfaceMapStateListener on_surface_map_state_change;

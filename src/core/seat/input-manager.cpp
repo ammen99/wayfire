@@ -38,7 +38,7 @@ static std::unique_ptr<wf::input_device_impl_t> create_wf_device_for_device(
     }
 }
 
-void input_manager::handle_new_input(wlr_input_device *dev)
+void wf::input_manager_t::handle_new_input(wlr_input_device *dev)
 {
     LOGI("handle new input: ", dev->name,
         ", default mapping: ", dev->output_name);
@@ -51,7 +51,7 @@ void input_manager::handle_new_input(wlr_input_device *dev)
     refresh_device_mappings();
 }
 
-void input_manager::refresh_device_mappings()
+void wf::input_manager_t::refresh_device_mappings()
 {
     // Might trigger motion events which we want to avoid at other stages
     auto state = wf::get_core().get_current_state();
@@ -78,7 +78,7 @@ void input_manager::refresh_device_mappings()
     }
 }
 
-void input_manager::handle_input_destroyed(wlr_input_device *dev)
+void wf::input_manager_t::handle_input_destroyed(wlr_input_device *dev)
 {
     LOGI("remove input: ", dev->name);
 
@@ -104,16 +104,16 @@ void load_locked_mods_from_config(xkb_mod_mask_t& locked_mods)
 
     if (numlock_state)
     {
-        locked_mods |= WF_KB_NUM;
+        locked_mods |= wf::KB_MOD_NUM_LOCK;
     }
 
     if (capslock_state)
     {
-        locked_mods |= WF_KB_CAPS;
+        locked_mods |= wf::KB_MOD_CAPS_LOCK;
     }
 }
 
-input_manager::input_manager()
+wf::input_manager_t::input_manager_t()
 {
     wf::pointing_device_t::config.load();
 
@@ -150,14 +150,14 @@ input_manager::input_manager()
     wf::get_core().output_layout->connect_signal("output-added", &output_added);
 }
 
-input_manager::~input_manager()
+wf::input_manager_t::~input_manager_t()
 {
     wf::get_core().disconnect_signal("reload-config", &config_updated);
     wf::get_core().output_layout->disconnect_signal(
         "output-added", &output_added);
 }
 
-bool input_manager::grab_input(wf::plugin_grab_interface_t *iface)
+bool wf::input_manager_t::grab_input(wf::plugin_grab_interface_t *iface)
 {
     if (!iface || !iface->is_grabbed())
     {
@@ -184,7 +184,7 @@ bool input_manager::grab_input(wf::plugin_grab_interface_t *iface)
     return true;
 }
 
-void input_manager::ungrab_input()
+void wf::input_manager_t::ungrab_input()
 {
     active_grab = nullptr;
     if (wf::get_core().get_active_output())
@@ -205,12 +205,12 @@ void input_manager::ungrab_input()
     });
 }
 
-bool input_manager::input_grabbed()
+bool wf::input_manager_t::input_grabbed()
 {
     return active_grab;
 }
 
-bool input_manager::can_focus_surface(wf::surface_interface_t *surface)
+bool wf::input_manager_t::can_focus_surface(wf::surface_interface_t *surface)
 {
     if (exclusive_client && (surface->get_client() != exclusive_client))
     {
@@ -231,8 +231,8 @@ bool input_manager::can_focus_surface(wf::surface_interface_t *surface)
     return true;
 }
 
-wf::surface_interface_t*input_manager::input_surface_at(wf::pointf_t global,
-    wf::pointf_t& local)
+wf::surface_interface_t*wf::input_manager_t::input_surface_at(
+    wf::pointf_t global, wf::pointf_t& local)
 {
     auto output = wf::get_core().output_layout->get_output_coords_at(global, global);
     /* If the output at these coordinates was just destroyed or some other edge case
@@ -264,7 +264,7 @@ wf::surface_interface_t*input_manager::input_surface_at(wf::pointf_t global,
     return nullptr;
 }
 
-void input_manager::set_exclusive_focus(wl_client *client)
+void wf::input_manager_t::set_exclusive_focus(wl_client *client)
 {
     exclusive_client = client;
     for (auto& wo : wf::get_core().output_layout->get_outputs())
@@ -287,7 +287,7 @@ void input_manager::set_exclusive_focus(wl_client *client)
     }
 }
 
-wf::bindings_repository_t& input_manager::get_active_bindings()
+wf::bindings_repository_t& wf::input_manager_t::get_active_bindings()
 {
     auto wo   = wf::get_core().get_active_output();
     auto impl = dynamic_cast<wf::output_impl_t*>(wo);
