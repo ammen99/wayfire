@@ -945,7 +945,6 @@ class output_layout_t::impl
     wl_listener_wrapper on_output_manager_apply;
     wl_listener_wrapper on_output_power_mode_set;
 
-    wl_idle_call idle_init_noop;
     wl_idle_call idle_update_configuration;
     wl_timer timer_remove_noop;
 
@@ -958,6 +957,18 @@ class output_layout_t::impl
 
     bool shutdown_received = false;
     signal_callback_t on_config_reload, on_shutdown;
+    signal_connection_t on_backend_started = [=] (wf::signal_data_t*)
+    {
+        // We need to ensure that at any given time we have at least one
+        // output while core is running.
+        //
+        // Thus we need to make sure the noop output is available if nothing
+        // else is at startup.
+        if (get_outputs().empty())
+        {
+            ensure_noop_output();
+        }
+    };
 
   public:
     impl(wlr_backend *backend)
@@ -989,16 +1000,7 @@ class output_layout_t::impl
 
         noop_backend = wlr_noop_backend_create(get_core().display);
         wlr_backend_start(noop_backend);
-        /* The noop output will be typically destroyed on the first
-         * plugged monitor, however we need to create it here so that we
-         * support booting with 0 monitors */
-        idle_init_noop.run_once([&] ()
-        {
-            if (get_outputs().empty())
-            {
-                ensure_noop_output();
-            }
-        });
+        get_core().connect_signal("_backend_started", &on_backend_started);
 
         output_manager = wlr_output_manager_v1_create(get_core().display);
         on_output_manager_test.set_callback([=] (void *data)

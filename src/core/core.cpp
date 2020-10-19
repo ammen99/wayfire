@@ -301,7 +301,11 @@ void wf::compositor_core_impl_t::init()
 
 void wf::compositor_core_impl_t::post_init()
 {
+    this->emit_signal("_backend_started", nullptr);
     this->state = compositor_state_t::RUNNING;
+
+    // Refresh device mappings when we have all outputs and devices
+    input->refresh_device_mappings();
 }
 
 void wf::compositor_core_impl_t::shutdown()

@@ -89,9 +89,9 @@ class input_manager
 
     wf::signal_callback_t output_added;
 
+  public:
     void refresh_device_mappings();
 
-  public:
     /* TODO: move this in a wf_keyboard struct,
      * This might not work with multiple keyboards */
     uint32_t mod_binding_key = 0; /* The keycode which triggered the modifier binding

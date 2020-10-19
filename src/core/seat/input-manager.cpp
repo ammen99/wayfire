@@ -93,6 +93,13 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
 void input_manager::refresh_device_mappings()
 {
+    // Might trigger motion events which we want to avoid at other stages
+    auto state = wf::get_core().get_current_state();
+    if (state != wf::compositor_state_t::RUNNING)
+    {
+        return;
+    }
+
     for (auto& device : this->input_devices)
     {
         wlr_input_device *dev = device->get_wlr_handle();
