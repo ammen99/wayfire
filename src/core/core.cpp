@@ -306,6 +306,9 @@ void wf::compositor_core_impl_t::post_init()
 
     // Refresh device mappings when we have all outputs and devices
     input->refresh_device_mappings();
+
+    // Start processing cursor events
+    input->cursor->setup_listeners();
 }
 
 void wf::compositor_core_impl_t::shutdown()

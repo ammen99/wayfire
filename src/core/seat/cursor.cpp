@@ -19,8 +19,6 @@ wf_cursor::wf_cursor()
 
     wlr_cursor_map_to_output(cursor, NULL);
     wlr_cursor_warp(cursor, NULL, cursor->x, cursor->y);
-
-    setup_listeners();
     init_xcursor();
 
     config_reloaded = [=] (wf::signal_data_t*)
