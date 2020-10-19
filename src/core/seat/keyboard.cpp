@@ -12,17 +12,25 @@
 #include "wayfire/compositor-view.hpp"
 #include "wayfire/signal-definitions.hpp"
 
-void wf_keyboard::setup_listeners()
+void wf::keyboard_t::setup_listeners()
 {
+    on_config_reload.set_callback([&] (signal_data_t*)
+    {
+        reload_input_options();
+    });
+    wf::get_core().connect_signal("reload-config", &on_config_reload);
+
     on_key.set_callback([&] (void *data)
     {
         auto ev = static_cast<wlr_event_keyboard_key*>(data);
         emit_device_event_signal("keyboard_key", ev);
 
+        auto& input = wf::get_core_impl().input;
+        input->set_keyboard(this);
         auto seat = wf::get_core().get_current_seat();
         wlr_seat_set_keyboard(seat, this->device);
 
-        if (!wf::get_core_impl().input->handle_keyboard_key(ev->keycode, ev->state))
+        if (!handle_keyboard_key(ev->keycode, ev->state))
         {
             wlr_seat_keyboard_notify_key(wf::get_core_impl().input->seat,
                 ev->time_msec, ev->keycode, ev->state);
@@ -46,7 +54,7 @@ void wf_keyboard::setup_listeners()
     on_modifier.connect(&handle->events.modifiers);
 }
 
-wf_keyboard::wf_keyboard(wlr_input_device *dev) :
+wf::keyboard_t::keyboard_t(wlr_input_device *dev) :
     handle(dev->keyboard), device(dev)
 {
     model.load_option("input/xkb_model");
@@ -73,6 +81,11 @@ wf_keyboard::wf_keyboard(wlr_input_device *dev) :
     wlr_seat_set_keyboard(wf::get_core().get_current_seat(), dev);
 }
 
+uint32_t wf::keyboard_t::get_modifiers()
+{
+    return wlr_keyboard_get_modifiers(handle);
+}
+
 static void set_locked_mod(xkb_mod_mask_t *mods, xkb_keymap *keymap, const char *mod)
 {
     xkb_mod_index_t mod_index = xkb_map_mod_get_index(keymap, mod);
@@ -82,7 +95,7 @@ static void set_locked_mod(xkb_mod_mask_t *mods, xkb_keymap *keymap, const char 
     }
 }
 
-void wf_keyboard::reload_input_options()
+void wf::keyboard_t::reload_input_options()
 {
     if (!this->dirty_options)
     {
@@ -141,7 +154,7 @@ void wf_keyboard::reload_input_options()
     wlr_keyboard_notify_modifiers(handle, 0, 0, locked_mods, 0);
 }
 
-wf_keyboard::~wf_keyboard()
+wf::keyboard_t::~keyboard_t()
 {}
 
 /* input manager things */
@@ -221,18 +234,12 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
     return true;
 }
 
-static uint32_t mod_from_key(wlr_seat *seat, uint32_t key)
+uint32_t wf::keyboard_t::mod_from_key(uint32_t key)
 {
     xkb_keycode_t keycode = key + 8;
-    auto keyboard = wlr_seat_get_keyboard(seat);
-    if (!keyboard)
-    {
-        return 0; // potentially a bug?
-    }
 
     const xkb_keysym_t *keysyms;
-    auto keysyms_len =
-        xkb_state_key_get_syms(keyboard->xkb_state, keycode, &keysyms);
+    auto keysyms_len = xkb_state_key_get_syms(handle->xkb_state, keycode, &keysyms);
 
     for (int i = 0; i < keysyms_len; i++)
     {
@@ -261,53 +268,64 @@ static uint32_t mod_from_key(wlr_seat *seat, uint32_t key)
     return 0;
 }
 
-void update_keyboard_locked_mods(wlr_keyboard *kbd, xkb_mod_mask_t& locked_mods)
+uint32_t wf::keyboard_t::get_locked_mods()
 {
     uint32_t leds = 0;
     for (uint32_t i = 0; i < WLR_LED_COUNT; i++)
     {
-        if (xkb_state_led_index_is_active(
-            kbd->xkb_state,
-            kbd->led_indexes[i]))
+        bool led_active = xkb_state_led_index_is_active(
+            handle->xkb_state, handle->led_indexes[i]);
+        if (led_active)
         {
             leds |= (1 << i);
         }
     }
 
+    uint32_t mods = 0;
     if (leds & WLR_LED_NUM_LOCK)
     {
-        locked_mods |= WF_KB_NUM;
-    } else
-    {
-        locked_mods &= ~WF_KB_NUM;
+        mods |= WF_KB_NUM;
     }
 
     if (leds & WLR_LED_CAPS_LOCK)
     {
-        locked_mods |= WF_KB_CAPS;
-    } else
-    {
-        locked_mods &= ~WF_KB_CAPS;
+        mods |= WF_KB_CAPS;
     }
+
+    return mods;
 }
 
-bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
+bool wf::keyboard_t::has_only_modifiers()
+{
+    for (size_t i = 0; i < handle->num_keycodes; i++)
+    {
+        if (!this->mod_from_key(handle->keycodes[i]))
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
 {
     using namespace std::chrono;
 
+    auto& input = wf::get_core_impl().input;
+    auto active_grab = input->active_grab;
     if (active_grab && active_grab->callbacks.keyboard.key)
     {
         active_grab->callbacks.keyboard.key(key, state);
     }
 
-    auto mod = mod_from_key(seat, key);
+    auto mod = mod_from_key(key);
     if (mod)
     {
         handle_keyboard_mod(mod, state);
     }
 
-    auto kbd = wlr_seat_get_keyboard(seat);
-    update_keyboard_locked_mods(kbd, locked_mods);
+    input->locked_mods = this->get_locked_mods();
 
     bool handled_in_binding = false;
     if (state == WLR_KEY_PRESSED)
@@ -318,45 +336,35 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
             return true;
         }
 
+        bool modifiers_only = !input->lpointer->has_pressed_buttons() &&
+            (input->touch->get_state().fingers.empty()) &&
+            this->has_only_modifiers();
+
         /* as long as we have pressed only modifiers, we should check for modifier
          * bindings on release */
-        if (mod)
+        if (mod && modifiers_only)
         {
-            bool modifiers_only = !lpointer->has_pressed_buttons() &&
-                (touch->get_state().fingers.empty());
-
-            for (size_t i = 0; kbd && i < kbd->num_keycodes; i++)
-            {
-                if (!mod_from_key(seat, kbd->keycodes[i]))
-                {
-                    modifiers_only = false;
-                }
-            }
-
-            if (modifiers_only)
-            {
-                mod_binding_start = steady_clock::now();
-                mod_binding_key   = key;
-            }
+            mod_binding_start = steady_clock::now();
+            mod_binding_key   = key;
         } else
         {
             mod_binding_key = 0;
         }
 
-        handled_in_binding =
-            get_active_bindings().handle_key(wf::keybinding_t{get_modifiers(), key});
+        handled_in_binding = input->get_active_bindings().handle_key(
+            wf::keybinding_t{get_modifiers(), key});
     } else
     {
         if (mod_binding_key != 0)
         {
             int timeout = wf::option_wrapper_t<int>(
                 "input/modifier_binding_timeout");
-            if ((timeout <= 0) ||
-                (duration_cast<milliseconds>(steady_clock::now() -
-                    mod_binding_start) <=
-                 milliseconds(timeout)))
+            auto time_elapsed = duration_cast<milliseconds>(
+                steady_clock::now() - mod_binding_start);
+
+            if ((timeout <= 0) || (time_elapsed < milliseconds(timeout)))
             {
-                handled_in_binding = get_active_bindings().handle_key(
+                handled_in_binding = input->get_active_bindings().handle_key(
                     wf::keybinding_t{get_modifiers() | mod, 0});
             }
         }
@@ -364,7 +372,7 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
         mod_binding_key = 0;
     }
 
-    auto iv = interactive_view_from_view(keyboard_focus.get());
+    auto iv = interactive_view_from_view(input->keyboard_focus.get());
     if (iv)
     {
         iv->handle_key(key, state);
@@ -373,8 +381,9 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
     return active_grab || handled_in_binding;
 }
 
-void input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)
+void wf::keyboard_t::handle_keyboard_mod(uint32_t modifier, uint32_t state)
 {
+    auto active_grab = wf::get_core_impl().input->active_grab;
     if (active_grab && active_grab->callbacks.keyboard.mod)
     {
         active_grab->callbacks.keyboard.mod(modifier, state);

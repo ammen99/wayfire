@@ -312,7 +312,7 @@ void wf::pointer_t::grab_surface(wf::surface_interface_t *surface)
 /* ----------------------- Input event processing --------------------------- */
 void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev)
 {
-    input->mod_binding_key = 0;
+    input->break_mod_bindings();
     bool handled_in_binding = false;
 
     if (ev->state == WLR_BUTTON_PRESSED)
@@ -486,8 +486,7 @@ void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev)
 {
     bool handled_in_binding = input->get_active_bindings().handle_axis(
         input->get_modifiers(), ev);
-    /* reset modifier bindings */
-    input->mod_binding_key = 0;
+    input->break_mod_bindings();
 
     if (input->active_grab)
     {

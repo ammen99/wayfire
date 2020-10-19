@@ -214,7 +214,7 @@ void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
 {
     // TODO: bad design
     auto& input = wf::get_core_impl().input;
-    input->mod_binding_key = 0;
+    input->break_mod_bindings();
 
     if (id == 0)
     {

@@ -66,7 +66,7 @@ void input_manager::handle_new_input(wlr_input_device *dev)
 
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
     {
-        keyboards.push_back(std::make_unique<wf_keyboard>(dev));
+        keyboards.push_back(std::make_unique<wf::keyboard_t>(dev));
     }
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
@@ -136,13 +136,27 @@ void input_manager::handle_input_destroyed(wlr_input_device *dev)
 
     if (dev->type == WLR_INPUT_DEVICE_KEYBOARD)
     {
+        bool current_kbd_destroyed = false;
+        if (current_keyboard && (current_keyboard->device == dev))
+        {
+            current_kbd_destroyed = true;
+        }
+
         auto it = std::remove_if(keyboards.begin(), keyboards.end(),
-            [=] (const std::unique_ptr<wf_keyboard>& kbd)
+            [=] (const std::unique_ptr<wf::keyboard_t>& kbd)
         {
             return kbd->device == dev;
         });
 
         keyboards.erase(it, keyboards.end());
+
+        if (current_kbd_destroyed && keyboards.size())
+        {
+            set_keyboard(keyboards.front().get());
+        } else
+        {
+            set_keyboard(nullptr);
+        }
     }
 
     if (dev->type == WLR_INPUT_DEVICE_POINTER)
@@ -198,11 +212,6 @@ input_manager::input_manager()
         {
             dev->update_options();
         }
-
-        for (auto& kbd : keyboards)
-        {
-            kbd->reload_input_options();
-        }
     };
 
     wf::get_core().connect_signal("reload-config", &config_updated);
@@ -225,18 +234,6 @@ input_manager::~input_manager()
     wf::get_core().disconnect_signal("reload-config", &config_updated);
     wf::get_core().output_layout->disconnect_signal(
         "output-added", &output_added);
-}
-
-uint32_t input_manager::get_modifiers()
-{
-    uint32_t mods = 0;
-    auto keyboard = wlr_seat_get_keyboard(seat);
-    if (keyboard)
-    {
-        mods = wlr_keyboard_get_modifiers(keyboard);
-    }
-
-    return mods;
 }
 
 bool input_manager::grab_input(wf::plugin_grab_interface_t *iface)
@@ -376,6 +373,25 @@ wf::bindings_repository_t& input_manager::get_active_bindings()
     }
 
     return impl->get_bindings();
+}
+
+void input_manager::set_keyboard(wf::keyboard_t *keyboard)
+{
+    this->current_keyboard = keyboard;
+    wlr_seat_set_keyboard(seat, keyboard->device);
+}
+
+void input_manager::break_mod_bindings()
+{
+    for (auto& kbd : this->keyboards)
+    {
+        kbd->mod_binding_key = 0;
+    }
+}
+
+uint32_t input_manager::get_modifiers()
+{
+    return current_keyboard ? current_keyboard->get_modifiers() : 0;
 }
 
 wf::SurfaceMapStateListener::SurfaceMapStateListener()

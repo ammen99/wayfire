@@ -15,6 +15,7 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/nonstd/wlroots-full.hpp>
 
+#include "seat/keyboard.hpp"
 #include "opengl-priv.hpp"
 #include "seat/input-manager.hpp"
 #include "seat/input-method-relay.hpp"

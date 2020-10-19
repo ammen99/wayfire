@@ -17,14 +17,13 @@
 
 namespace wf
 {
+struct keyboard_t;
 class touch_interface_t;
 namespace touch
 {
 class gesture_action_t;
 }
 }
-
-struct wf_keyboard;
 
 enum wf_locked_mods
 {
@@ -48,17 +47,19 @@ class input_manager
     void create_seat();
 
     void validate_drag_request(wlr_seat_request_start_drag_event *ev);
-    std::chrono::steady_clock::time_point mod_binding_start;
 
     wf::signal_callback_t output_added;
 
   public:
-    void refresh_device_mappings();
+    wf::keyboard_t *current_keyboard = nullptr;
+    void set_keyboard(wf::keyboard_t *kbd);
 
-    /* TODO: move this in a wf_keyboard struct,
-     * This might not work with multiple keyboards */
-    uint32_t mod_binding_key = 0; /* The keycode which triggered the modifier binding
-                                   * */
+    /**
+     * Locked mods are stored globally because the keyboard devices might be
+     * destroyed and created again by wlroots.
+     */
+    uint32_t locked_mods = 0;
+    void refresh_device_mappings();
 
     input_manager();
     ~input_manager();
@@ -88,7 +89,10 @@ class input_manager
     int pointer_count = 0, touch_count = 0;
     void update_capabilities();
 
-    std::vector<std::unique_ptr<wf_keyboard>> keyboards;
+    std::vector<std::unique_ptr<wf::keyboard_t>> keyboards;
+    void break_mod_bindings();
+    uint32_t get_modifiers();
+
     std::vector<std::unique_ptr<wf_input_device_internal>> input_devices;
 
     void set_keyboard_focus(wayfire_view view, wlr_seat *seat);
@@ -103,12 +107,6 @@ class input_manager
     // if no such surface (return NULL), lx and ly are undefined
     wf::surface_interface_t *input_surface_at(wf::pointf_t global,
         wf::pointf_t& local);
-
-    uint32_t get_modifiers();
-    uint32_t locked_mods = 0;
-
-    bool handle_keyboard_key(uint32_t key, uint32_t state);
-    void handle_keyboard_mod(uint32_t key, uint32_t state);
 
     /** @return the bindings for the active output */
     wf::bindings_repository_t& get_active_bindings();
