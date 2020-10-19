@@ -365,143 +365,17 @@ void input_manager::set_exclusive_focus(wl_client *client)
     }
 }
 
-/* add/remove bindings */
-
-wf::binding_t*input_manager::new_binding(wf_binding_type type,
-    std::shared_ptr<wf::config::option_base_t> value,
-    wf::output_t *output, void *callback)
+wf::bindings_repository_t& input_manager::get_active_bindings()
 {
-    auto binding = std::make_unique<wf::binding_t>();
-
-    assert(value && output && callback);
-
-    binding->type     = type;
-    binding->value    = value;
-    binding->output   = output;
-    binding->call.raw = callback;
-
-    auto raw = binding.get();
-    bindings[type].push_back(std::move(binding));
-
-    return raw;
-}
-
-void input_manager::rem_binding(binding_criteria criteria)
-{
-    for (auto& category : bindings)
+    auto wo   = wf::get_core().get_active_output();
+    auto impl = dynamic_cast<wf::output_impl_t*>(wo);
+    if (!impl)
     {
-        auto& container = category.second;
-        auto it = container.begin();
-        while (it != container.end())
-        {
-            if (criteria((*it).get()))
-            {
-                it = container.erase(it);
-            } else
-            {
-                ++it;
-            }
-        }
-    }
-}
-
-void input_manager::rem_binding(wf::binding_t *binding)
-{
-    rem_binding([=] (wf::binding_t *ptr) { return binding == ptr; });
-}
-
-void input_manager::rem_binding(void *callback)
-{
-    rem_binding([=] (wf::binding_t *ptr) {return ptr->call.raw == callback; });
-}
-
-void input_manager::free_output_bindings(wf::output_t *output)
-{
-    rem_binding([=] (wf::binding_t *binding)
-    {
-        return binding->output == output;
-    });
-}
-
-bool input_manager::check_button_bindings(uint32_t button)
-{
-    std::vector<std::function<bool()>> callbacks;
-
-    auto oc = wf::get_core().get_active_output()->get_cursor_position();
-    auto mod_state = get_modifiers();
-
-    for (auto& binding : bindings[WF_BINDING_BUTTON])
-    {
-        auto as_button = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::buttonbinding_t>>(binding->value);
-        assert(as_button);
-
-        if ((binding->output == wf::get_core().get_active_output()) &&
-            (wf::buttonbinding_t{mod_state, button} == as_button->get_value()))
-        {
-            /* We must be careful because the callback might be erased,
-             * so force copy the callback into the lambda */
-            auto callback = binding->call.button;
-            callbacks.push_back([=] ()
-            {
-                return (*callback)(button, oc.x, oc.y);
-            });
-        }
+        static wf::bindings_repository_t dummy_repo;
+        return dummy_repo;
     }
 
-    for (auto& binding : bindings[WF_BINDING_ACTIVATOR])
-    {
-        auto as_activator = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::activatorbinding_t>>(binding->value);
-        assert(as_activator);
-
-        if ((binding->output == wf::get_core().get_active_output()) &&
-            as_activator->get_value().has_match(
-                wf::buttonbinding_t{mod_state, button}))
-        {
-            /* We must be careful because the callback might be erased,
-             * so force copy the callback into the lambda */
-            auto callback = binding->call.activator;
-            callbacks.push_back([=] ()
-            {
-                return (*callback)(wf::ACTIVATOR_SOURCE_BUTTONBINDING, button);
-            });
-        }
-    }
-
-    bool binding_handled = false;
-    for (auto call : callbacks)
-    {
-        binding_handled |= call();
-    }
-
-    return !callbacks.empty() && binding_handled;
-}
-
-bool input_manager::check_axis_bindings(wlr_event_pointer_axis *ev)
-{
-    std::vector<wf::axis_callback*> callbacks;
-    auto mod_state = get_modifiers();
-
-    for (auto& binding : bindings[WF_BINDING_AXIS])
-    {
-        auto as_key = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::keybinding_t>>(binding->value);
-        assert(as_key);
-
-        if ((binding->output == wf::get_core().get_active_output()) &&
-            (as_key->get_value() == wf::keybinding_t{mod_state, 0}))
-        {
-            callbacks.push_back(binding->call.axis);
-        }
-    }
-
-    for (auto call : callbacks)
-    {
-        (*call)(ev);
-    }
-
-    return !callbacks.empty();
+    return impl->get_bindings();
 }
 
 wf::SurfaceMapStateListener::SurfaceMapStateListener()

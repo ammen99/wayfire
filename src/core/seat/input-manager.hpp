@@ -5,6 +5,7 @@
 #include <vector>
 #include <chrono>
 
+#include "bindings-repository.hpp"
 #include "seat.hpp"
 #include "cursor.hpp"
 #include "pointer.hpp"
@@ -31,36 +32,6 @@ enum wf_locked_mods
     WF_KB_CAPS = 1 << 1,
 };
 
-enum wf_binding_type
-{
-    WF_BINDING_KEY,
-    WF_BINDING_BUTTON,
-    WF_BINDING_AXIS,
-    WF_BINDING_TOUCH,
-    WF_BINDING_GESTURE,
-    WF_BINDING_ACTIVATOR,
-};
-
-struct wf::binding_t
-{
-    std::shared_ptr<wf::config::option_base_t> value;
-    wf_binding_type type;
-    wf::output_t *output;
-
-    union
-    {
-        void *raw;
-        wf::key_callback *key;
-        wf::axis_callback *axis;
-        wf::touch_callback *touch;
-        wf::button_callback *button;
-        wf::gesture_callback *gesture;
-        wf::activator_callback *activator;
-    } call;
-};
-
-using wf_binding_ptr = std::unique_ptr<wf::binding_t>;
-
 /* TODO: most probably we want to split even more of input_manager's functionality
  * into
  * wf_keyboard, wf_cursor and wf_touch */
@@ -74,18 +45,10 @@ class input_manager
 
     wf::signal_callback_t config_updated;
 
-    int gesture_id;
-
-    std::map<wf_binding_type, std::vector<std::unique_ptr<wf::binding_t>>> bindings;
-    using binding_criteria = std::function<bool (wf::binding_t*)>;
-    void rem_binding(binding_criteria criteria);
-
     void create_seat();
 
     void validate_drag_request(wlr_seat_request_start_drag_event *ev);
     std::chrono::steady_clock::time_point mod_binding_start;
-    std::vector<std::function<bool()>> match_keys(uint32_t mods, uint32_t key,
-        uint32_t mod_binding_key = 0);
 
     wf::signal_callback_t output_added;
 
@@ -118,8 +81,6 @@ class input_manager
 
     wayfire_view keyboard_focus;
 
-    void handle_gesture(wf::touchgesture_t g);
-
     std::unique_ptr<wf_drag_icon> drag_icon;
     bool drag_active = false;
     wf::wl_listener_wrapper on_drag_end;
@@ -146,23 +107,11 @@ class input_manager
     uint32_t get_modifiers();
     uint32_t locked_mods = 0;
 
-    void free_output_bindings(wf::output_t *output);
-
     bool handle_keyboard_key(uint32_t key, uint32_t state);
     void handle_keyboard_mod(uint32_t key, uint32_t state);
 
-    bool check_button_bindings(uint32_t button);
-    bool check_axis_bindings(wlr_event_pointer_axis *ev);
-
-    /**
-     * TODO: figure out a way to not erase the type of the option.
-     */
-    wf::binding_t *new_binding(wf_binding_type type,
-        std::shared_ptr<wf::config::option_base_t> value,
-        wf::output_t *output, void *callback);
-
-    void rem_binding(void *callback);
-    void rem_binding(wf::binding_t *binding);
+    /** @return the bindings for the active output */
+    wf::bindings_repository_t& get_active_bindings();
 };
 
 template<class EventType>

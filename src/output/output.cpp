@@ -20,6 +20,7 @@ wf::output_t::output_t() = default;
 wf::output_impl_t::output_impl_t(wlr_output *handle,
     const wf::dimensions_t& effective_size)
 {
+    this->bindings = std::make_unique<bindings_repository_t>();
     this->set_effective_size(effective_size);
     this->handle = handle;
     workspace    = std::make_unique<workspace_manager>(this);
@@ -91,12 +92,14 @@ void wf::output_t::refocus(wayfire_view skip_view)
 }
 
 wf::output_t::~output_t()
-{
-    wf::get_core_impl().input->free_output_bindings(this);
-}
+{}
 
 wf::output_impl_t::~output_impl_t()
-{}
+{
+    // Release plugins before bindings
+    this->plugin.reset();
+    this->bindings.reset();
+}
 
 void wf::output_impl_t::set_effective_size(const wf::dimensions_t& size)
 {
@@ -451,54 +454,61 @@ bool wf::output_impl_t::is_inhibited() const
     return this->inhibited;
 }
 
-/* simple wrappers for wf::get_core_impl().input, as it isn't exposed to plugins */
-wf::binding_t*wf::output_t::add_key(option_sptr_t<keybinding_t> key,
-    wf::key_callback *callback)
-{
-    return wf::get_core_impl().input->new_binding(WF_BINDING_KEY, key, this,
-        callback);
-}
-
-wf::binding_t*wf::output_t::add_axis(option_sptr_t<keybinding_t> axis,
-    wf::axis_callback *callback)
-{
-    return wf::get_core_impl().input->new_binding(WF_BINDING_AXIS, axis, this,
-        callback);
-}
-
-wf::binding_t*wf::output_t::add_button(option_sptr_t<buttonbinding_t> button,
-    wf::button_callback *callback)
-{
-    return wf::get_core_impl().input->new_binding(WF_BINDING_BUTTON, button,
-        this, callback);
-}
-
-wf::binding_t*wf::output_t::add_gesture(option_sptr_t<touchgesture_t> gesture,
-    wf::gesture_callback *callback)
-{
-    return wf::get_core_impl().input->new_binding(WF_BINDING_GESTURE, gesture,
-        this, callback);
-}
-
-wf::binding_t*wf::output_t::add_activator(
-    option_sptr_t<activatorbinding_t> activator, wf::activator_callback *callback)
-{
-    return wf::get_core_impl().input->new_binding(WF_BINDING_ACTIVATOR, activator,
-        this, callback);
-}
-
-void wf::output_t::rem_binding(wf::binding_t *binding)
-{
-    wf::get_core_impl().input->rem_binding(binding);
-}
-
-void wf::output_t::rem_binding(void *callback)
-{
-    wf::get_core_impl().input->rem_binding(callback);
-}
-
 namespace wf
 {
+template<class Option, class Callback>
+static wf::binding_t *push_binding(
+    bindings_repository_t::binding_container_t<Option, Callback>& bindings,
+    option_sptr_t<Option> opt,
+    Callback *callback)
+{
+    auto bnd = std::make_unique<output_binding_t<Option, Callback>>();
+    bnd->activated_by = opt;
+    bnd->callback     = callback;
+    bindings.emplace_back(std::move(bnd));
+
+    return bindings.back().get();
+}
+
+binding_t*output_impl_t::add_key(option_sptr_t<keybinding_t> key,
+    wf::key_callback *callback)
+{
+    return push_binding(this->bindings->keys, key, callback);
+}
+
+binding_t*output_impl_t::add_axis(option_sptr_t<keybinding_t> axis,
+    wf::axis_callback *callback)
+{
+    return push_binding(this->bindings->axes, axis, callback);
+}
+
+binding_t*output_impl_t::add_button(option_sptr_t<buttonbinding_t> button,
+    wf::button_callback *callback)
+{
+    return push_binding(this->bindings->buttons, button, callback);
+}
+
+binding_t*output_impl_t::add_activator(
+    option_sptr_t<activatorbinding_t> activator, wf::activator_callback *callback)
+{
+    return push_binding(this->bindings->activators, activator, callback);
+}
+
+void wf::output_impl_t::rem_binding(wf::binding_t *binding)
+{
+    return this->bindings->rem_binding(binding);
+}
+
+void wf::output_impl_t::rem_binding(void *callback)
+{
+    return this->bindings->rem_binding(callback);
+}
+
+bindings_repository_t& output_impl_t::get_bindings()
+{
+    return *bindings;
+}
+
 uint32_t all_layers_not_below(uint32_t layer)
 {
     uint32_t mask = 0;

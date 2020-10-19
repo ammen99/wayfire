@@ -601,7 +601,7 @@ void wf::touch_interface_t::add_default_gestures()
             direction,
             swp_ptr->cnt_fingers
         };
-        wf::get_core_impl().input->handle_gesture(gesture);
+        wf::get_core_impl().input->get_active_bindings().handle_gesture(gesture);
     };
 
     auto ack_edge_swipe = [esw_ptr, this] ()
@@ -618,7 +618,8 @@ void wf::touch_interface_t::add_default_gestures()
                 direction,
                 esw_ptr->cnt_fingers
             };
-            wf::get_core_impl().input->handle_gesture(gesture);
+
+            wf::get_core_impl().input->get_active_bindings().handle_gesture(gesture);
         }
     };
 
@@ -629,7 +630,8 @@ void wf::touch_interface_t::add_default_gestures()
             GESTURE_DIRECTION_OUT,
             pnc_ptr->cnt_fingers
         };
-        wf::get_core_impl().input->handle_gesture(gesture);
+
+        wf::get_core_impl().input->get_active_bindings().handle_gesture(gesture);
     };
 
     this->multiswipe = std::make_unique<gesture_t>(std::move(
@@ -641,52 +643,4 @@ void wf::touch_interface_t::add_default_gestures()
     this->add_touch_gesture(this->multiswipe);
     this->add_touch_gesture(this->edgeswipe);
     this->add_touch_gesture(this->multipinch);
-}
-
-void input_manager::handle_gesture(wf::touchgesture_t g)
-{
-    std::vector<std::function<void()>> callbacks;
-
-    for (auto& binding : bindings[WF_BINDING_GESTURE])
-    {
-        auto as_gesture = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::touchgesture_t>>(binding->value);
-        assert(as_gesture);
-
-        if ((binding->output == wf::get_core().get_active_output()) &&
-            (as_gesture->get_value() == g))
-        {
-            /* We must be careful because the callback might be erased,
-             * so force copy the callback into the lambda */
-            auto call = binding->call.gesture;
-            callbacks.push_back([=, &g] ()
-            {
-                (*call)(&g);
-            });
-        }
-    }
-
-    for (auto& binding : bindings[WF_BINDING_ACTIVATOR])
-    {
-        auto as_activator = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::activatorbinding_t>>(binding->value);
-        assert(as_activator);
-
-        if ((binding->output == wf::get_core().get_active_output()) &&
-            as_activator->get_value().has_match(g))
-        {
-            /* We must be careful because the callback might be erased,
-             * so force copy the callback into the lambda */
-            auto call = binding->call.activator;
-            callbacks.push_back([=] ()
-            {
-                (*call)(wf::ACTIVATOR_SOURCE_GESTURE, 0);
-            });
-        }
-    }
-
-    for (auto call : callbacks)
-    {
-        call();
-    }
 }

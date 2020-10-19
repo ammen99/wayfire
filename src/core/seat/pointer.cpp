@@ -328,16 +328,14 @@ void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev)
             wf::get_core().focus_output(output);
         }
 
-        handled_in_binding = input->check_button_bindings(ev->button);
+        handled_in_binding = input->get_active_bindings().handle_button(
+            wf::buttonbinding_t{input->get_modifiers(), ev->button},
+            input->cursor->get_cursor_position());
     } else
     {
         count_pressed_buttons--;
     }
 
-    /* Do not send event to clients if any button binding used it. However, if
-     * the binding was just a single button (no modifiers), forward it to the
-     * client. This allows some use-cases like click-to-focus plugin. */
-    handled_in_binding = (handled_in_binding && input->get_modifiers());
     send_button(ev, handled_in_binding);
 
     if (!handled_in_binding)
@@ -486,7 +484,8 @@ void wf::pointer_t::handle_pointer_motion_absolute(
 
 void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev)
 {
-    bool handled_by_binding = input->check_axis_bindings(ev);
+    bool handled_in_binding = input->get_active_bindings().handle_axis(
+        input->get_modifiers(), ev);
     /* reset modifier bindings */
     input->mod_binding_key = 0;
 
@@ -502,7 +501,7 @@ void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev)
 
     /* Do not send scroll events to clients if an axis binding has used up the
      * event */
-    if (handled_by_binding)
+    if (handled_in_binding)
     {
         return;
     }

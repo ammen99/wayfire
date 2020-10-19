@@ -261,57 +261,6 @@ static uint32_t mod_from_key(wlr_seat *seat, uint32_t key)
     return 0;
 }
 
-std::vector<std::function<bool()>> input_manager::match_keys(uint32_t mod_state,
-    uint32_t key, uint32_t mod_binding_key)
-{
-    std::vector<std::function<bool()>> callbacks;
-
-    uint32_t actual_key = key == 0 ? mod_binding_key : key;
-
-    for (auto& binding : bindings[WF_BINDING_KEY])
-    {
-        auto as_key = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::keybinding_t>>(binding->value);
-        assert(as_key);
-
-        if ((as_key->get_value() == wf::keybinding_t{mod_state, key}) &&
-            (binding->output == wf::get_core().get_active_output()))
-        {
-            /* We must be careful because the callback might be erased,
-             * so force copy the callback into the lambda */
-            auto callback = binding->call.key;
-            callbacks.push_back([actual_key, callback] ()
-            {
-                return (*callback)(actual_key);
-            });
-        }
-    }
-
-    for (auto& binding : bindings[WF_BINDING_ACTIVATOR])
-    {
-        auto as_activator = std::dynamic_pointer_cast<
-            wf::config::option_t<wf::activatorbinding_t>>(binding->value);
-        assert(as_activator);
-
-        if (as_activator->get_value().has_match(wf::keybinding_t{mod_state, key}) &&
-            (binding->output == wf::get_core().get_active_output()))
-        {
-            /* We must be careful because the callback might be erased,
-             * so force copy the callback into the lambda
-             *
-             * Also, do not send keys for modifier bindings */
-            auto callback = binding->call.activator;
-            callbacks.push_back([=] ()
-            {
-                return (*callback)(wf::ACTIVATOR_SOURCE_KEYBINDING,
-                    mod_from_key(seat, actual_key) ? 0 : actual_key);
-            });
-        }
-    }
-
-    return callbacks;
-}
-
 void update_keyboard_locked_mods(wlr_keyboard *kbd, xkb_mod_mask_t& locked_mods)
 {
     uint32_t leds = 0;
@@ -357,10 +306,10 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
         handle_keyboard_mod(mod, state);
     }
 
-    std::vector<std::function<bool()>> callbacks;
     auto kbd = wlr_seat_get_keyboard(seat);
     update_keyboard_locked_mods(kbd, locked_mods);
 
+    bool handled_in_binding = false;
     if (state == WLR_KEY_PRESSED)
     {
         auto session = wlr_backend_get_session(wf::get_core().backend);
@@ -394,7 +343,8 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
             mod_binding_key = 0;
         }
 
-        callbacks = match_keys(get_modifiers(), key);
+        handled_in_binding =
+            get_active_bindings().handle_key(wf::keybinding_t{get_modifiers(), key});
     } else
     {
         if (mod_binding_key != 0)
@@ -406,17 +356,12 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
                     mod_binding_start) <=
                  milliseconds(timeout)))
             {
-                callbacks = match_keys(get_modifiers() | mod, 0, mod_binding_key);
+                handled_in_binding = get_active_bindings().handle_key(
+                    wf::keybinding_t{get_modifiers() | mod, 0});
             }
         }
 
         mod_binding_key = 0;
-    }
-
-    bool keybinding_handled = false;
-    for (auto call : callbacks)
-    {
-        keybinding_handled |= call();
     }
 
     auto iv = interactive_view_from_view(keyboard_focus.get());
@@ -425,7 +370,7 @@ bool input_manager::handle_keyboard_key(uint32_t key, uint32_t state)
         iv->handle_key(key, state);
     }
 
-    return active_grab || keybinding_handled;
+    return active_grab || handled_in_binding;
 }
 
 void input_manager::handle_keyboard_mod(uint32_t modifier, uint32_t state)

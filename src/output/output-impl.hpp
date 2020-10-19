@@ -1,5 +1,6 @@
 #include "wayfire/output.hpp"
 #include "plugin-loader.hpp"
+#include "../core/seat/bindings-repository.hpp"
 
 #include <unordered_set>
 #include <wayfire/nonstd/safe-list.hpp>
@@ -11,6 +12,7 @@ class output_impl_t : public output_t
   private:
     std::unordered_multiset<wf::plugin_grab_interface_t*> active_plugins;
     std::unique_ptr<plugin_manager> plugin;
+    std::unique_ptr<wf::bindings_repository_t> bindings;
 
     signal_callback_t view_disappeared_cb;
     bool inhibited = false;
@@ -67,6 +69,17 @@ class output_impl_t : public output_t
     void refocus(wayfire_view skip_view, uint32_t layers) override;
     wf::dimensions_t get_screen_size() const override;
 
+    wf::binding_t *add_key(option_sptr_t<keybinding_t> key,
+        wf::key_callback*) override;
+    wf::binding_t *add_axis(option_sptr_t<keybinding_t> axis,
+        wf::axis_callback*) override;
+    wf::binding_t *add_button(option_sptr_t<buttonbinding_t> button,
+        wf::button_callback*) override;
+    wf::binding_t *add_activator(option_sptr_t<activatorbinding_t> activator,
+        wf::activator_callback*) override;
+    void rem_binding(wf::binding_t *binding) override;
+    void rem_binding(void *callback) override;
+
     /**
      * Set the output as inhibited, so that no plugins can be activated
      * except those that ignore inhibitions.
@@ -85,6 +98,9 @@ class output_impl_t : public output_t
      * @return The currently active input grab interface, or nullptr if none
      */
     plugin_grab_interface_t *get_input_grab_interface();
+
+    /** @return The bindings repository of the output */
+    bindings_repository_t& get_bindings();
 
     /** Set the effective resolution of the output */
     void set_effective_size(const wf::dimensions_t& size);

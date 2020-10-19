@@ -113,7 +113,7 @@ void wayfire_focus::init()
     {
         this->check_focus_surface(wf::get_core().get_cursor_focus());
 
-        return true;
+        return false;
     };
     output->add_button(
         wf::create_option_string<wf::buttonbinding_t>("BTN_LEFT"), &on_button);

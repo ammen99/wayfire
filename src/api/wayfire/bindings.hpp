@@ -13,9 +13,8 @@ struct binding_t;
 using key_callback    = std::function<bool (uint32_t)>;
 using button_callback = std::function<bool (uint32_t, int32_t, int32_t)>; // button,
                                                                           // x, y
-using axis_callback    = std::function<bool (wlr_event_pointer_axis*)>;
-using touch_callback   = std::function<bool (int32_t, int32_t)>; // x, y
-using gesture_callback = std::function<bool (wf::touchgesture_t*)>;
+using axis_callback  = std::function<bool (wlr_event_pointer_axis*)>;
+using touch_callback = std::function<bool (int32_t, int32_t)>; // x, y
 
 enum activator_source_t
 {
