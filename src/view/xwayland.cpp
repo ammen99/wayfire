@@ -599,7 +599,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
                 /* Make sure geometry is properly visible on the view output */
                 save_geometry = wf::clamp(save_geometry,
                     get_output()->workspace->get_workarea());
-                this->view_impl->last_windowed_geometry = save_geometry;
+                view_impl->update_windowed_geometry(self(), save_geometry);
             }
 
             tile_request(wf::TILED_EDGES_ALL);
@@ -632,8 +632,7 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
         /* Avoid loops where the client wants to have a certain size but the
          * compositor keeps trying to resize it */
-        last_size_request.width  = geometry.width;
-        last_size_request.height = geometry.height;
+        last_size_request = wf::dimensions(geometry);
     }
 
     void set_moving(bool moving) override

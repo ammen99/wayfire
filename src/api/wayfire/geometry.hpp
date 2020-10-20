@@ -24,6 +24,9 @@ struct dimensions_t
 
 using geometry_t = wlr_box;
 
+point_t origin(const geometry_t& geometry);
+dimensions_t dimensions(const geometry_t& geometry);
+
 /* Returns the intersection of the two boxes, if the boxes don't intersect,
  * the resulting geometry has undefined (x,y) and width == height == 0 */
 geometry_t geometry_intersection(const geometry_t& r1,

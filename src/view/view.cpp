@@ -424,7 +424,7 @@ void wf::view_interface_t::set_tiled(uint32_t edges)
     // store last unmaximized geometry for restoring
     if (edges && !this->tiled_edges && is_mapped())
     {
-        this->view_impl->last_windowed_geometry = get_wm_geometry();
+        view_impl->update_windowed_geometry(self(), get_wm_geometry());
     }
 
     wf::view_tiled_signal data;
@@ -453,12 +453,9 @@ void wf::view_interface_t::set_fullscreen(bool full)
      * before getting fullscreen so that we can restore to it */
     if (full && !fullscreen)
     {
-        if (this->tiled_edges)
+        if (this->tiled_edges == 0)
         {
-            this->view_impl->last_maximized_geometry = get_wm_geometry();
-        } else
-        {
-            this->view_impl->last_windowed_geometry = get_wm_geometry();
+            view_impl->update_windowed_geometry(self(), get_wm_geometry());
         }
     }
 
@@ -521,7 +518,65 @@ void wf::view_interface_t::resize_request(uint32_t edges)
 
 void wf::view_interface_t::tile_request(uint32_t edges)
 {
-    if (fullscreen)
+    if (get_output())
+    {
+        tile_request(edges, get_output()->workspace->get_current_workspace());
+    }
+}
+
+/**
+ * Put a view on the given workspace.
+ */
+static void move_to_workspace(wf::view_interface_t *view, wf::point_t workspace)
+{
+    auto output = view->get_output();
+    auto wm_geometry = view->get_wm_geometry();
+    auto delta    = workspace - output->workspace->get_current_workspace();
+    auto scr_size = output->get_screen_size();
+
+    wm_geometry.x += scr_size.width * delta.x;
+    wm_geometry.y += scr_size.height * delta.y;
+    view->move(wm_geometry.x, wm_geometry.y);
+}
+
+void wf::view_interface_t::view_priv_impl::update_windowed_geometry(
+    wayfire_view self, wf::geometry_t geometry)
+{
+    this->last_windowed_geometry = geometry;
+    if (self->get_output())
+    {
+        this->windowed_geometry_workarea =
+            self->get_output()->workspace->get_workarea();
+    } else
+    {
+        this->windowed_geometry_workarea = {0, 0, -1, -1};
+    }
+}
+
+wf::geometry_t wf::view_interface_t::view_priv_impl::calculate_windowed_geometry(
+    wf::output_t *output)
+{
+    if (!output || (windowed_geometry_workarea.width <= 0))
+    {
+        return last_windowed_geometry;
+    }
+
+    const auto& geom     = last_windowed_geometry;
+    const auto& old_area = windowed_geometry_workarea;
+    const auto& new_area = output->workspace->get_workarea();
+    return {
+        .x = new_area.x + (geom.x - old_area.x) * new_area.width /
+            old_area.width,
+        .y = new_area.y + (geom.y - old_area.y) * new_area.height /
+            old_area.height,
+        .width  = geom.width * new_area.width / old_area.width,
+        .height = geom.height * new_area.height / old_area.height
+    };
+}
+
+void wf::view_interface_t::tile_request(uint32_t edges, wf::point_t workspace)
+{
+    if (fullscreen || !get_output())
     {
         return;
     }
@@ -529,8 +584,9 @@ void wf::view_interface_t::tile_request(uint32_t edges)
     view_tile_request_signal data;
     data.view  = self();
     data.edges = edges;
+    data.workspace    = workspace;
     data.desired_size = edges ? get_output()->workspace->get_workarea() :
-        view_impl->last_windowed_geometry;
+        view_impl->calculate_windowed_geometry(get_output());
 
     set_tiled(edges);
     if (is_mapped())
@@ -547,6 +603,8 @@ void wf::view_interface_t::tile_request(uint32_t edges)
         {
             request_native_size();
         }
+
+        move_to_workspace(this, workspace);
     }
 }
 
@@ -581,6 +639,16 @@ void wf::view_interface_t::minimize_request(bool state)
 
 void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
 {
+    if (get_output())
+    {
+        fullscreen_request(out, state,
+            out->workspace->get_current_workspace());
+    }
+}
+
+void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state,
+    wf::point_t workspace)
+{
     auto wo = (out ?: (get_output() ?: wf::get_core().get_active_output()));
     assert(wo);
 
@@ -594,13 +662,14 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
     view_fullscreen_signal data;
     data.view  = self();
     data.state = state;
+    data.workspace    = workspace;
     data.desired_size = get_output()->get_relative_geometry();
 
     if (!state)
     {
         data.desired_size = this->tiled_edges ?
-            this->view_impl->last_maximized_geometry :
-            this->view_impl->last_windowed_geometry;
+            this->get_output()->workspace->get_workarea() :
+            this->view_impl->calculate_windowed_geometry(get_output());
     }
 
     set_fullscreen(state);
@@ -618,6 +687,8 @@ void wf::view_interface_t::fullscreen_request(wf::output_t *out, bool state)
         {
             request_native_size();
         }
+
+        move_to_workspace(this, workspace);
     }
 }
 

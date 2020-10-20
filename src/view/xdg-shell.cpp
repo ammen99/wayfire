@@ -309,6 +309,8 @@ void wayfire_xdg_view::commit()
          * old geometry */
         set_position(wm.x, wm.y, wm, true);
     }
+
+    this->last_size_request = wf::dimensions(xdg_g);
 }
 
 wf::point_t wayfire_xdg_view::get_window_offset()
@@ -327,10 +329,10 @@ wf::geometry_t wayfire_xdg_view::get_wm_geometry()
     auto xdg_geometry = get_xdg_geometry(xdg_toplevel);
 
     wf::geometry_t wm = {
-        output_g.x + xdg_surface_offset.x,
-        output_g.y + xdg_surface_offset.y,
-        xdg_geometry.width,
-        xdg_geometry.height
+        .x     = output_g.x + xdg_surface_offset.x,
+        .y     = output_g.y + xdg_surface_offset.y,
+        .width = xdg_geometry.width,
+        .height = xdg_geometry.height
     };
 
     if (view_impl->frame)

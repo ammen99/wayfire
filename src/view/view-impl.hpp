@@ -40,10 +40,15 @@ class view_interface_t::view_priv_impl
 
     bool keyboard_focus_enabled = true;
 
-    /* For window restoration from maximized or fullscreen
-     * -1 means that no such geometry has been stored. */
-    wf::geometry_t last_windowed_geometry  = {0, 0, -1, -1};
-    wf::geometry_t last_maximized_geometry = {0, 0, -1, -1};
+    /**
+     * Calculate the windowed geometry relative to the output's workarea.
+     */
+    wf::geometry_t calculate_windowed_geometry(wf::output_t *output);
+
+    /**
+     * Update the stored window geometry and workarea.
+     */
+    void update_windowed_geometry(wayfire_view self, wf::geometry_t geometry);
 
     /* those two point to the same object. Two fields are used to avoid
      * constant casting to and from types */
@@ -67,6 +72,18 @@ class view_interface_t::view_priv_impl
     } offscreen_buffer;
 
     wlr_box minimize_hint = {0, 0, 0, 0};
+
+  private:
+    /** Last geometry the view has had in non-tiled and non-fullscreen state.
+     * -1 as width/height means that no such geometry has been stored. */
+    wf::geometry_t last_windowed_geometry = {0, 0, -1, -1};
+
+    /**
+     * The workarea when last_windowed_geometry was stored. This is used
+     * for ex. when untiling a view to determine its geometry relative to the
+     * (potentially changed) workarea of its output.
+     */
+    wf::geometry_t windowed_geometry_workarea = {0, 0, -1, -1};
 };
 
 /**

@@ -219,7 +219,7 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
      * set_activated() or focus_request() */
     bool activated = false;
     /** Whether the view is in minimized state, usually you want to use either
-     * set_minizied() or minimize_request() */
+     * set_minimized() or minimize_request() */
     bool minimized = false;
     /** Whether the view is sticky. If a view is sticky it will not be affected
      * by changes of the current workspace. */
@@ -250,12 +250,28 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     /**
      * Request that the view is (un)tiled.
      *
+     * If the view is being tiled, the caller should ensure thaat the view is on
+     * the correct workspace.
+     *
      * Note: by default, any tiled edges means that the view gets the full
      * workarea.
      */
     virtual void tile_request(uint32_t tiled_edges);
+
+    /**
+     * Request that the view is (un)tiled on the given workspace.
+     */
+    virtual void tile_request(uint32_t tiled_edges, wf::point_t ws);
+
     /** Request that the view is (un)fullscreened on the given output */
     virtual void fullscreen_request(wf::output_t *output, bool state);
+
+    /**
+     * Request that the view is (un)fullscreened on the given output
+     * and workspace.
+     */
+    virtual void fullscreen_request(wf::output_t *output, bool state,
+        wf::point_t ws);
 
     /** @return true if the view is visible */
     virtual bool is_visible();

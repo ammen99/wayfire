@@ -412,6 +412,11 @@ struct view_tile_request_signal : public _view_signal
     wf::geometry_t desired_size;
 
     /**
+     * The target workspace of the operation.
+     */
+    wf::point_t workspace;
+
+    /**
      * Whether some plugin will service the tile request, in which case other
      * plugins and core should ignore the request.
      */
@@ -445,6 +450,13 @@ struct view_fullscreen_signal : public _view_signal
      * by core and plugins may override it. It may also be undefined (0,0 0x0).
      */
     wf::geometry_t desired_size;
+
+    /**
+     * For view-fullscreen-request:
+     *
+     * The target workspace of the operation.
+     */
+    wf::point_t workspace;
 };
 
 /**

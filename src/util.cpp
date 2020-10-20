@@ -31,6 +31,16 @@ std::ostream& operator <<(std::ostream& stream, const wf::pointf_t& pointf)
     return stream;
 }
 
+wf::point_t wf::origin(const geometry_t& geometry)
+{
+    return {geometry.x, geometry.y};
+}
+
+wf::dimensions_t wf::dimensions(const geometry_t& geometry)
+{
+    return {geometry.width, geometry.height};
+}
+
 bool operator ==(const wf::dimensions_t& a, const wf::dimensions_t& b)
 {
     return a.width == b.width && a.height == b.height;
@@ -622,4 +632,4 @@ void wl_timer::execute()
         call();
     }
 }
-}
+} // namespace wf
