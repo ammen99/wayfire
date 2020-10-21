@@ -50,14 +50,23 @@ void wf::output_impl_t::refocus(wayfire_view skip_view, uint32_t layers)
     auto views = workspace->get_views_on_workspace(
         workspace->get_current_workspace(), layers);
 
+    const auto& suitable_for_focus = [&] (wayfire_view view)
+    {
+        return (view != skip_view) && view->is_mapped() &&
+               view->get_keyboard_focus_surface() && !view->minimized;
+    };
+
+    const auto& newer_than_candidate = [&] (wayfire_view view)
+    {
+        return (!next_focus ||
+            (next_focus->last_focus_timestamp < view->last_focus_timestamp));
+    };
+
     for (auto v : views)
     {
-        if ((v != skip_view) && v->is_mapped() &&
-            v->get_keyboard_focus_surface() &&
-            !v->minimized)
+        if (suitable_for_focus(v) && newer_than_candidate(v))
         {
             next_focus = v;
-            break;
         }
     }
 
@@ -225,6 +234,16 @@ void wf::output_impl_t::update_active_view(wayfire_view v, uint32_t flags)
     }
 }
 
+static void update_focus_timestamp(wayfire_view view)
+{
+    if (view)
+    {
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        view->last_focus_timestamp = ts.tv_sec * 1'000'000'000ll + ts.tv_nsec;
+    }
+}
+
 void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
 {
     const auto& make_view_visible = [this, flags] (wayfire_view view)
@@ -255,6 +274,7 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
              * view on top, so that it gets the focus next. */
             update_active_view(nullptr, flags);
             make_view_visible(v);
+            update_focus_timestamp(v);
         } else
         {
             LOGD("Denying focus request for a view from a lower layer than the"
@@ -283,6 +303,7 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
     if (v->get_keyboard_focus_surface() || interactive_view_from_view(v.get()))
     {
         make_view_visible(v);
+        update_focus_timestamp(v);
         update_active_view(v, flags);
         data.view = v;
         emit_signal("view-focused", &data);

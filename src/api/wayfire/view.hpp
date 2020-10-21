@@ -458,6 +458,12 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
     class view_priv_impl;
     std::unique_ptr<view_priv_impl> view_impl;
 
+    /**
+     * The last time(nanoseconds since epoch) when the view was focused.
+     * Updated automatically by core.
+     */
+    uint64_t last_focus_timestamp = 0;
+
   protected:
     view_interface_t();
 
