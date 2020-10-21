@@ -217,29 +217,7 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
 
         for (auto& view : views)
         {
-            wf::get_core().move_view_to_output(view, to, false);
-            to->workspace->move_to_workspace(view,
-                to->workspace->get_current_workspace());
-
-            if (view->is_mapped())
-            {
-                if (view->tiled_edges)
-                {
-                    view->tile_request(view->tiled_edges);
-                }
-
-                if (view->fullscreen)
-                {
-                    view->fullscreen_request(to, true);
-                }
-
-                if (!view->fullscreen && !view->tiled_edges)
-                {
-                    auto geometry = wf::clamp(view->get_wm_geometry(),
-                        to->workspace->get_workarea());
-                    view->set_geometry(geometry);
-                }
-            }
+            wf::get_core().move_view_to_output(view, to, true);
         }
     }
 
