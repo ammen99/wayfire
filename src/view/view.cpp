@@ -493,8 +493,9 @@ void wf::view_interface_t::move_request()
 
 void wf::view_interface_t::focus_request()
 {
-    wf::get_core().focus_view(self());
+    wf::get_core().focus_output(get_output());
     get_output()->ensure_visible(self());
+    get_output()->focus_view(self(), true);
 }
 
 void wf::view_interface_t::resize_request(uint32_t edges)
