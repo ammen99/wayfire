@@ -82,10 +82,11 @@ static void handle_gtk_surface_present(wl_client *client, wl_resource *resource,
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
     if (view)
     {
-        wf::view_self_request_focus_signal data;
+        wf::view_focus_request_signal data;
         data.view = view;
-        view->emit_signal("self-request-focus", &data);
-        wf::get_core().emit_signal("view-self-request-focus", &data);
+        data.self_request = true;
+        view->emit_signal("view-focus-request", &data);
+        wf::get_core().emit_signal("view-focus-request", &data);
     }
 }
 
@@ -103,10 +104,11 @@ static void handle_gtk_surface_request_focus(struct wl_client *client,
     wayfire_view view = wf::wl_surface_to_wayfire_view(surface);
     if (view)
     {
-        wf::view_self_request_focus_signal data;
+        wf::view_focus_request_signal data;
         data.view = view;
-        view->emit_signal("self-request-focus", &data);
-        wf::get_core().emit_signal("view-self-request-focus", &data);
+        data.self_request = true;
+        view->emit_signal("view-focus-request", &data);
+        wf::get_core().emit_signal("view-focus-request", &data);
     }
 }
 

@@ -493,9 +493,21 @@ void wf::view_interface_t::move_request()
 
 void wf::view_interface_t::focus_request()
 {
-    wf::get_core().focus_output(get_output());
-    get_output()->ensure_visible(self());
-    get_output()->focus_view(self(), true);
+    if (get_output())
+    {
+        view_focus_request_signal data;
+        data.view = self();
+        data.self_request = false;
+
+        get_output()->emit_signal("view-focus-request", &data);
+        wf::get_core().emit_signal("view-focus-request", &data);
+        if (!data.carried_out)
+        {
+            wf::get_core().focus_output(get_output());
+            get_output()->ensure_visible(self());
+            get_output()->focus_view(self(), true);
+        }
+    }
 }
 
 void wf::view_interface_t::resize_request(uint32_t edges)

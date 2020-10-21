@@ -491,10 +491,11 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         {
             if (!this->activated)
             {
-                wf::view_self_request_focus_signal data;
-                data.view = this;
-                wf::get_core().emit_signal("view-self-request-focus", &data);
-                this->emit_signal("self-request-focus", &data);
+                wf::view_focus_request_signal data;
+                data.view = self();
+                data.self_request = true;
+                emit_signal("view-focus-request", &data);
+                wf::get_core().emit_signal("view-focus-request", &data);
             }
         });
 

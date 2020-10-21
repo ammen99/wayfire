@@ -469,6 +469,20 @@ struct view_fullscreen_signal : public _view_signal
 using view_fullscreen_request_signal = view_fullscreen_signal;
 
 /**
+ * name: view-focus-request
+ * on: output, core
+ * when: Emitted whenever some entity (typically a panel) wants to focus the view.
+ */
+struct view_focus_request_signal : public _view_signal
+{
+    /** Set to true if core and other plugins should not handle this request. */
+    bool carried_out = false;
+
+    /** Set to true if the request comes from the view client itself */
+    bool self_request;
+};
+
+/**
  * name: set-sticky
  * on: view, output(view-)
  * when: Whenever the view's sticky state changes.
@@ -640,13 +654,6 @@ struct view_hints_changed_signal : public _view_signal
 {
     bool demands_attention = false;
 };
-
-/**
- * name: self-request-focus
- * on: view, core(view-)
- * when: Whenever the client requests that a view be focused.
- */
-using view_self_request_focus_signal = _view_signal;
 
 /**
  * name: view-system-bell
