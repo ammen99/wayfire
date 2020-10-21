@@ -399,6 +399,16 @@ class wayfire_grid : public wf::plugin_interface_t
         handle_slot(data->view, data->slot);
     };
 
+    wf::geometry_t adjust_for_workspace(wf::geometry_t geometry,
+        wf::point_t workspace)
+    {
+        auto delta_ws = workspace - output->workspace->get_current_workspace();
+        auto scr_size = output->get_screen_size();
+        geometry.x += delta_ws.x * scr_size.width;
+        geometry.y += delta_ws.y * scr_size.height;
+        return geometry;
+    }
+
     wf::signal_callback_t on_maximize_signal = [=] (wf::signal_data_t *ddata)
     {
         auto data = static_cast<wf::view_tile_request_signal*>(ddata);
@@ -417,7 +427,8 @@ class wayfire_grid : public wf::plugin_interface_t
         }
 
         data->view->get_data_safe<wf_grid_slot_data>()->slot = slot;
-        ensure_grid_view(data->view)->adjust_target_geometry(data->desired_size,
+        ensure_grid_view(data->view)->adjust_target_geometry(
+            adjust_for_workspace(data->desired_size, data->workspace),
             get_tiled_edges_for_slot(slot));
     };
 
@@ -434,7 +445,7 @@ class wayfire_grid : public wf::plugin_interface_t
 
         data->carried_out = true;
         ensure_grid_view(data->view)->adjust_target_geometry(
-            data->desired_size, -1);
+            adjust_for_workspace(data->desired_size, data->workspace), -1);
     };
 
     void fini() override
