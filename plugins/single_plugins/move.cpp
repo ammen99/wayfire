@@ -311,7 +311,6 @@ class wayfire_move : public wf::plugin_interface_t
         }
 
         MOVE_HELPER->handle_input_released();
-        view->erase_data<wf::move_snap_helper_t>();
 
         /* Delete any mirrors we have left, showing an animation */
         delete_mirror_views(true);
@@ -319,8 +318,8 @@ class wayfire_move : public wf::plugin_interface_t
         /* Don't do snapping, etc for shell views */
         if (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT)
         {
+            view->erase_data<wf::move_snap_helper_t>();
             this->view = nullptr;
-
             return;
         }
 
@@ -342,6 +341,7 @@ class wayfire_move : public wf::plugin_interface_t
         workspace_may_changed.old_viewport_invalid = false;
         output->emit_signal("view-change-viewport", &workspace_may_changed);
 
+        view->erase_data<wf::move_snap_helper_t>();
         this->view = nullptr;
     }
 

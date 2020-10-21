@@ -229,6 +229,7 @@ void wf::view_interface_t::set_geometry(wf::geometry_t g)
 
 void wf::view_interface_t::set_resizing(bool resizing, uint32_t edges)
 {
+    view_impl->update_windowed_geometry(self(), get_wm_geometry());
     /* edges are reset on the next commit */
     if (resizing)
     {
@@ -246,6 +247,7 @@ void wf::view_interface_t::set_resizing(bool resizing, uint32_t edges)
 
 void wf::view_interface_t::set_moving(bool moving)
 {
+    view_impl->update_windowed_geometry(self(), get_wm_geometry());
     auto& in_move = this->view_impl->in_continuous_move;
 
     in_move += moving ? 1 : -1;
@@ -421,8 +423,7 @@ void wf::view_interface_t::set_sticky(bool sticky)
 
 void wf::view_interface_t::set_tiled(uint32_t edges)
 {
-    // store last unmaximized geometry for restoring
-    if (edges && !this->tiled_edges && is_mapped())
+    if (edges)
     {
         view_impl->update_windowed_geometry(self(), get_wm_geometry());
     }
@@ -453,10 +454,7 @@ void wf::view_interface_t::set_fullscreen(bool full)
      * before getting fullscreen so that we can restore to it */
     if (full && !fullscreen)
     {
-        if (this->tiled_edges == 0)
-        {
-            view_impl->update_windowed_geometry(self(), get_wm_geometry());
-        }
+        view_impl->update_windowed_geometry(self(), get_wm_geometry());
     }
 
     fullscreen = full;
@@ -542,6 +540,12 @@ static void move_to_workspace(wf::view_interface_t *view, wf::point_t workspace)
 void wf::view_interface_t::view_priv_impl::update_windowed_geometry(
     wayfire_view self, wf::geometry_t geometry)
 {
+    if (!self->is_mapped() || self->tiled_edges || this->in_continuous_move ||
+        this->in_continuous_resize)
+    {
+        return;
+    }
+
     this->last_windowed_geometry = geometry;
     if (self->get_output())
     {

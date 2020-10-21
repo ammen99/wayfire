@@ -138,6 +138,8 @@ class move_snap_helper_t : public wf::custom_data_t
         {
             end_wobbly(v);
         }
+
+        view->disconnect_signal("geometry-changed", &view_geometry_changed);
     }
 
     /** @return Whether the view is freely moving or stays at the same place */

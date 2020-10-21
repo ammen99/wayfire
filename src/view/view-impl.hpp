@@ -46,7 +46,8 @@ class view_interface_t::view_priv_impl
     wf::geometry_t calculate_windowed_geometry(wf::output_t *output);
 
     /**
-     * Update the stored window geometry and workarea.
+     * Update the stored window geometry and workarea, if the current view
+     * state is not-tiled and not-moving.
      */
     void update_windowed_geometry(wayfire_view self, wf::geometry_t geometry);
 
