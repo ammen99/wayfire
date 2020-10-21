@@ -132,7 +132,7 @@ class vswitch : public wf::plugin_interface_t
 
         /* Make sure that when we add this direction, we won't go outside
          * of the workspace grid */
-        auto target = algorithm->get_target_workspace();
+        auto target = output->workspace->get_current_workspace();
         auto wsize  = output->workspace->get_workspace_grid_size();
         int tvx     = wf::clamp(target.x + delta.x, 0, wsize.width - 1);
         int tvy     = wf::clamp(target.y + delta.y, 0, wsize.height - 1);
@@ -154,11 +154,7 @@ class vswitch : public wf::plugin_interface_t
         wf::signal_data_t *data)
     {
         auto ev = static_cast<wf::workspace_change_request_signal*>(data);
-
-        auto old_ws = is_active() ?
-            algorithm->get_target_workspace() : ev->old_viewport;
-
-        if (old_ws == ev->new_viewport)
+        if (ev->old_viewport == ev->new_viewport)
         {
             // nothing to do
             ev->carried_out = true;
@@ -168,7 +164,7 @@ class vswitch : public wf::plugin_interface_t
 
         if (is_active())
         {
-            ev->carried_out = add_direction(ev->new_viewport - old_ws);
+            ev->carried_out = add_direction(ev->new_viewport - ev->old_viewport);
         } else
         {
             if (this->set_capabilities(0))
@@ -179,7 +175,7 @@ class vswitch : public wf::plugin_interface_t
                         "changing workspace with more than 1 fixed view");
                 }
 
-                ev->carried_out = add_direction(ev->new_viewport - old_ws,
+                ev->carried_out = add_direction(ev->new_viewport - ev->old_viewport,
                     ev->fixed_views.empty() ? nullptr : ev->fixed_views[0]);
             }
         }

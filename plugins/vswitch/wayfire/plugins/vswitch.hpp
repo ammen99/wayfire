@@ -75,20 +75,12 @@ class workspace_switch_t
     virtual void set_target_workspace(point_t workspace)
     {
         point_t cws = output->workspace->get_current_workspace();
-        animation.dx.restart_with_end(workspace.x - cws.x);
-        animation.dy.restart_with_end(workspace.y - cws.y);
+
+        animation.dx.set(animation.dx + cws.x - workspace.x, 0);
+        animation.dy.set(animation.dy + cws.y - workspace.y, 0);
         animation.start();
-    }
 
-    /** @return The current target workspace. */
-    virtual point_t get_target_workspace()
-    {
-        point_t ws = output->workspace->get_current_workspace();
-
-        return {
-            (int)std::round(ws.x + animation.dx.end),
-            (int)std::round(ws.y + animation.dy.end),
-        };
+        output->workspace->set_workspace(workspace);
     }
 
     /**
@@ -152,7 +144,6 @@ class workspace_switch_t
             }
 
             auto old_ws = output->workspace->get_current_workspace();
-            output->workspace->set_workspace(get_target_workspace(), fixed_views);
             adjust_overlay_view_switch_done(old_ws);
         }
 
