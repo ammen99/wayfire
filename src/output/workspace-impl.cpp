@@ -658,7 +658,8 @@ class output_viewport_manager_t
         auto dx     = (data.old_viewport.x - nws.x) * screen.width;
         auto dy     = (data.old_viewport.y - nws.y) * screen.height;
 
-        for (auto& view : output->workspace->get_views_in_layer(MIDDLE_LAYERS))
+        for (auto& view : output->workspace->get_views_in_layer(
+            MIDDLE_LAYERS | LAYER_MINIMIZED))
         {
             auto it = std::find(fixed_views.cbegin(), fixed_views.cend(), view);
             if ((it == fixed_views.end()) && !view->sticky)

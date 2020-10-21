@@ -376,15 +376,6 @@ void wf::view_interface_t::set_minimized(bool minim)
         data.view = self();
         get_output()->emit_signal("view-disappeared", &data);
         get_output()->workspace->add_view(self(), wf::LAYER_MINIMIZED);
-
-        /* We want to be sure that when we restore the view, it will be visible
-         * on the then current workspace
-         *
-         * Because the minimized layer doesn't move when switching workspaces,
-         * we know that making it "visible" in the minimize layer will ensure
-         * it is visible when we restore it */
-        get_output()->workspace->move_to_workspace(self(),
-            get_output()->workspace->get_current_workspace());
     } else
     {
         get_output()->workspace->add_view(self(), wf::LAYER_WORKSPACE);
