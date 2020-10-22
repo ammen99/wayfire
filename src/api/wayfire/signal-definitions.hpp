@@ -470,7 +470,7 @@ using view_fullscreen_request_signal = view_fullscreen_signal;
 
 /**
  * name: view-focus-request
- * on: output, core
+ * on: view, core
  * when: Emitted whenever some entity (typically a panel) wants to focus the view.
  */
 struct view_focus_request_signal : public _view_signal

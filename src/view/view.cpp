@@ -499,7 +499,7 @@ void wf::view_interface_t::focus_request()
         data.view = self();
         data.self_request = false;
 
-        get_output()->emit_signal("view-focus-request", &data);
+        emit_signal("view-focus-request", &data);
         wf::get_core().emit_signal("view-focus-request", &data);
         if (!data.carried_out)
         {
