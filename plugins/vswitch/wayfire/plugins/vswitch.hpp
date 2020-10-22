@@ -288,36 +288,36 @@ class control_bindings_t
     {
         callback_left = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({-1, 0}, nullptr);
+            return handle_dir({-1, 0}, nullptr, callback);
         };
         callback_right = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({1, 0}, nullptr);
+            return handle_dir({1, 0}, nullptr, callback);
         };
         callback_up = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({0, -1}, nullptr);
+            return handle_dir({0, -1}, nullptr, callback);
         };
         callback_down = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({0, 1}, nullptr);
+            return handle_dir({0, 1}, nullptr, callback);
         };
 
         callback_win_left = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({-1, 0}, get_top_view());
+            return handle_dir({-1, 0}, get_top_view(), callback);
         };
         callback_win_right = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({1, 0}, get_top_view());
+            return handle_dir({1, 0}, get_top_view(), callback);
         };
         callback_win_up = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({0, -1}, get_top_view());
+            return handle_dir({0, -1}, get_top_view(), callback);
         };
         callback_win_down = [=] (wf::activator_source_t, uint32_t)
         {
-            return callback({0, 1}, get_top_view());
+            return handle_dir({0, 1}, get_top_view(), callback);
         };
 
         wf::option_wrapper_t<wf::activatorbinding_t> binding_left{
@@ -370,6 +370,8 @@ class control_bindings_t
     wf::activator_callback callback_win_left, callback_win_right, callback_win_up,
         callback_win_down;
 
+    wf::option_wrapper_t<bool> wraparound{"vswitch/wraparound"};
+
     wf::output_t *output;
 
     /** Find the topmost view to switch workspace with */
@@ -380,6 +382,32 @@ class control_bindings_t
             wf::LAYER_WORKSPACE);
 
         return views.empty() ? nullptr : views[0];
+    }
+
+    /**
+     * Handle binding in the given direction. The next workspace will be
+     * determined by the current workspace, target direction and wraparound
+     * mode.
+     */
+    virtual bool handle_dir(wf::point_t dir, wayfire_view view,
+        binding_callback_t callback)
+    {
+        auto ws = output->workspace->get_current_workspace();
+        auto target_ws = ws + dir;
+        if (!output->workspace->is_workspace_valid(target_ws))
+        {
+            if (wraparound)
+            {
+                auto grid_size = output->workspace->get_workspace_grid_size();
+                target_ws.x = (target_ws.x + grid_size.width) % grid_size.width;
+                target_ws.y = (target_ws.y + grid_size.height) % grid_size.height;
+            } else
+            {
+                target_ws = ws;
+            }
+        }
+
+        return callback(target_ws - ws, view);
     }
 };
 }

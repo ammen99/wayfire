@@ -65,6 +65,12 @@ class vswitch : public wf::plugin_interface_t
 
             if (this->set_capabilities(wf::CAPABILITY_MANAGE_DESKTOP))
             {
+                if (delta == wf::point_t{0, 0})
+                {
+                    // Consume input event
+                    return true;
+                }
+
                 return add_direction(delta, view);
             } else
             {
@@ -76,6 +82,11 @@ class vswitch : public wf::plugin_interface_t
     inline bool is_active()
     {
         return output->is_plugin_active(grab_interface->name);
+    }
+
+    inline bool can_activate()
+    {
+        return is_active() || output->can_activate_plugin(grab_interface);
     }
 
     /**
@@ -129,14 +140,8 @@ class vswitch : public wf::plugin_interface_t
         }
 
         algorithm->set_overlay_view(view);
-
-        /* Make sure that when we add this direction, we won't go outside
-         * of the workspace grid */
-        auto target = output->workspace->get_current_workspace();
-        auto wsize  = output->workspace->get_workspace_grid_size();
-        int tvx     = wf::clamp(target.x + delta.x, 0, wsize.width - 1);
-        int tvy     = wf::clamp(target.y + delta.y, 0, wsize.height - 1);
-        algorithm->set_target_workspace({tvx, tvy});
+        algorithm->set_target_workspace(
+            output->workspace->get_current_workspace() + delta);
 
         return true;
     }

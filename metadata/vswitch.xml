@@ -59,5 +59,10 @@
 			<_long>Sets the background color of gaps.</_long>
 			<default>0.1 0.1 0.1 1.0</default>
 		</option>
+		<option name="wraparound" type="bool">
+			<_short>Wraparound</_short>
+			<_long>Whether to wrap around when at the edge of the workspace grid.</_long>
+			<default>false</default>
+		</option>
 	</plugin>
 </wayfire>

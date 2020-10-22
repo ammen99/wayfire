@@ -150,11 +150,13 @@ class wayfire_scale : public wf::plugin_interface_t
                 return false;
             }
 
-            auto ws = output->workspace->get_current_workspace() + delta;
-            if (!output->workspace->is_workspace_valid(ws))
+            if (delta == wf::point_t{0, 0})
             {
-                return false;
+                // Consume input event
+                return true;
             }
+
+            auto ws = output->workspace->get_current_workspace() + delta;
 
             // vswitch picks the top view, we want the focused one
             std::vector<wayfire_view> fixed_views;
