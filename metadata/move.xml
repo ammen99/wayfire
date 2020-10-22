@@ -20,6 +20,11 @@
 			<_long>Sets the amount of pixels from the edge of the screen for which aero-snap gets triggered.</_long>
 			<default>10</default>
 		</option>
+		<option name="quarter_snap_threshold" type="int">
+			<_short>Quarter snap theshold</_short>
+			<_long>Sets the amount of pixels from the corner of the screen for which quarter aero-snap gets triggered. The mouse should still be within snap_threshold of at least one edge of the screen.</_long>
+			<default>50</default>
+		</option>
 		<option name="enable_snap_off" type="bool">
 			<_short>Snap off</_short>
 			<_long>Enables or disables snapping off the window being grabbed from an edge of the screen.</_long>

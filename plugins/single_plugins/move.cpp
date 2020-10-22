@@ -71,6 +71,7 @@ class wayfire_move : public wf::plugin_interface_t
     wf::option_wrapper_t<bool> enable_snap{"move/enable_snap"};
     wf::option_wrapper_t<bool> join_views{"move/join_views"};
     wf::option_wrapper_t<int> snap_threshold{"move/snap_threshold"};
+    wf::option_wrapper_t<int> quarter_snap_threshold{"move/quarter_snap_threshold"};
     wf::option_wrapper_t<int> workspace_switch_after{"move/workspace_switch_after"};
     wf::option_wrapper_t<wf::buttonbinding_t> activate_button{"move/activate"};
 
@@ -367,31 +368,37 @@ class wayfire_move : public wf::plugin_interface_t
         bool is_top    = y - g.y < threshold;
         bool is_bottom = g.x + g.height - y < threshold;
 
-        int slot = 1;
-        if (is_top)
-        {
-            slot += 6; // top slots are 7, 8, 9
-        } else if (!is_bottom) // one of 4, 5, 6
-        {
-            slot += 3;
-        }
+        bool is_far_left   = x - g.x <= quarter_snap_threshold;
+        bool is_far_right  = g.x + g.width - x <= quarter_snap_threshold;
+        bool is_far_top    = y - g.y < quarter_snap_threshold;
+        bool is_far_bottom = g.x + g.height - y < quarter_snap_threshold;
 
-        if (is_right)
+        int slot = 0;
+        if ((is_left && is_far_top) || (is_far_left && is_top))
         {
-            slot += 2; // one of 3, 6, 9
-        } else if (!is_left)
+            slot = SLOT_TL;
+        } else if ((is_right && is_far_top) || (is_far_right && is_top))
         {
-            slot += 1;
-        }
-
-        if (slot == 5) // in the center, no snap
+            slot = SLOT_TR;
+        } else if ((is_right && is_far_bottom) || (is_far_right && is_bottom))
         {
-            slot = 0;
-        }
-
-        if (slot == 8) // maximize is drag to top
+            slot = SLOT_BR;
+        } else if ((is_left && is_far_bottom) || (is_far_left && is_bottom))
         {
-            slot = 5;
+            slot = SLOT_BL;
+        } else if (is_right)
+        {
+            slot = SLOT_RIGHT;
+        } else if (is_left)
+        {
+            slot = SLOT_LEFT;
+        } else if (is_top)
+        {
+            // Maximize when dragging to the top
+            slot = SLOT_CENTER;
+        } else if (is_bottom)
+        {
+            slot = SLOT_BOTTOM;
         }
 
         return slot;
