@@ -68,7 +68,8 @@ class workspace_switch_t
     }
 
     /**
-     * Start workspace switch animation towards the given workspace.
+     * Start workspace switch animation towards the given workspace,
+     * and set that workspace as current.
      *
      * @param workspace The new target workspace.
      */
@@ -80,7 +81,13 @@ class workspace_switch_t
         animation.dy.set(animation.dy + cws.y - workspace.y, 0);
         animation.start();
 
-        output->workspace->set_workspace(workspace);
+        std::vector<wayfire_view> fixed_views;
+        if (overlay_view)
+        {
+            fixed_views.push_back(overlay_view);
+        }
+
+        output->workspace->set_workspace(workspace, fixed_views);
     }
 
     /**
@@ -137,12 +144,6 @@ class workspace_switch_t
     {
         if (normal_exit)
         {
-            std::vector<wayfire_view> fixed_views;
-            if (overlay_view)
-            {
-                fixed_views.push_back(overlay_view);
-            }
-
             auto old_ws = output->workspace->get_current_workspace();
             adjust_overlay_view_switch_done(old_ws);
         }
