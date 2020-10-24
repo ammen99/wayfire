@@ -366,6 +366,7 @@ class output_layer_manager_t
             try_push(layer);
         }
 
+        try_push(LAYER_MINIMIZED);
         return views;
     }
 
