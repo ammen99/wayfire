@@ -672,10 +672,7 @@ class output_viewport_manager_t
             }
         }
 
-        /* unfocus view from last workspace */
-        output->focus_view(nullptr);
-        /* we iterate through views on current viewport from bottom to top
-         * that way we ensure that they will be focused before all others */
+        // Bring views from the new workspace to the top
         auto views = get_views_on_workspace(get_current_workspace(),
             MIDDLE_LAYERS);
 
@@ -684,17 +681,7 @@ class output_viewport_manager_t
             output->workspace->bring_to_front(view);
         }
 
-        /* Focus last window */
-        auto it = std::find_if(views.begin(), views.end(),
-            [] (wayfire_view view)
-        {
-            return view->is_mapped() && !view->minimized;
-        });
-        if (it != views.end())
-        {
-            output->focus_view(*it);
-        }
-
+        output->refocus(nullptr, wf::MIDDLE_LAYERS);
         output->emit_signal("workspace-changed", &data);
     }
 };
