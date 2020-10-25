@@ -23,7 +23,7 @@ class view_interface_t;
 namespace touch
 {
 class gesture_t;
-class gesture_state_t;
+struct gesture_state_t;
 }
 }
 
