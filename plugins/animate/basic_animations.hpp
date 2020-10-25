@@ -63,6 +63,7 @@ class zoom_animation : public animation_base
     wayfire_view view;
     wf::view_2D *our_transform = nullptr;
     zoom_animation_t progression;
+    std::string name;
 
   public:
 
@@ -112,8 +113,9 @@ class zoom_animation : public animation_base
             progression.offset_y.flip();
         }
 
+        name = "animation-zoom-" + std::to_string(type);
         our_transform = new wf::view_2D(view);
-        view->add_transformer(std::unique_ptr<wf::view_2D>(our_transform));
+        view->add_transformer(std::unique_ptr<wf::view_2D>(our_transform), name);
     }
 
     bool step() override
@@ -132,6 +134,6 @@ class zoom_animation : public animation_base
 
     ~zoom_animation()
     {
-        view->pop_transformer(nonstd::make_observer(our_transform));
+        view->pop_transformer(name);
     }
 };
