@@ -15,6 +15,7 @@
 struct wlr_seat;
 namespace wf
 {
+struct sublayer_t;
 struct view_transform_block_t : public noncopyable_t
 {
     std::string plugin_name = "";
@@ -73,6 +74,11 @@ class view_interface_t::view_priv_impl
     } offscreen_buffer;
 
     wlr_box minimize_hint = {0, 0, 0, 0};
+
+    /** The sublayer of the view. For workspace-manager. */
+    nonstd::observer_ptr<sublayer_t> sublayer;
+    /* Promoted to the fullscreen layer? For workspace-manager. */
+    bool is_promoted = false;
 
   private:
     /** Last geometry the view has had in non-tiled and non-fullscreen state.

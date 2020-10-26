@@ -10,6 +10,8 @@
 #include <wayfire/nonstd/reverse.hpp>
 #include <wayfire/util/log.hpp>
 
+#include "../view/view-impl.hpp"
+
 namespace wf
 {
 /** Find a smart pointer inside a list */
@@ -92,14 +94,6 @@ struct sublayer_t
     bool is_single_view;
 };
 
-class layer_view_data_t : public custom_data_t
-{
-  public:
-    nonstd::observer_ptr<sublayer_t> sublayer;
-    /* Promoted to the fullscreen layer? */
-    bool is_promoted = false;
-};
-
 /**
  * A container for all the sublayers of a layer.
  */
@@ -149,16 +143,11 @@ class output_layer_manager_t
 
     nonstd::observer_ptr<sublayer_t>& get_view_sublayer(wayfire_view view)
     {
-        return view->get_data_safe<layer_view_data_t>()->sublayer;
+        return view->view_impl->sublayer;
     }
 
     uint32_t get_view_layer(wayfire_view view)
     {
-        if (!view->has_data<layer_view_data_t>())
-        {
-            return 0;
-        }
-
         /*
          * A view might have layer data set from a previous output.
          * That does not mean it has an assigned layer.
@@ -328,10 +317,7 @@ class output_layer_manager_t
                 std::copy_if(container.begin(), container.end(),
                     std::back_inserter(into), [=] (wayfire_view view)
                 {
-                    const auto& layer_data =
-                        view->get_data_safe<layer_view_data_t>();
-
-                    return layer_data->is_promoted == promoted;
+                    return view->view_impl->is_promoted == promoted;
                 });
             }
         }
@@ -942,7 +928,7 @@ class workspace_manager::impl
         auto already_promoted = viewport_manager.get_promoted_views(vp);
         for (auto& view : already_promoted)
         {
-            view->get_data_safe<layer_view_data_t>()->is_promoted = false;
+            view->view_impl->is_promoted = false;
         }
 
         auto views = viewport_manager.get_views_on_workspace(
@@ -958,7 +944,7 @@ class workspace_manager::impl
 
         if (!views.empty() && views.front()->fullscreen)
         {
-            views.front()->get_data_safe<layer_view_data_t>()->is_promoted = true;
+            views.front()->view_impl->is_promoted = true;
         }
 
         check_autohide_panels();
