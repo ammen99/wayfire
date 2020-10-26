@@ -161,6 +161,11 @@ wf::seat_t::seat_t()
           case WLR_INPUT_DEVICE_KEYBOARD:
             this->keyboards.emplace_back(std::make_unique<wf::keyboard_t>(
                 ev->device->get_wlr_handle()));
+            if (this->current_keyboard == nullptr)
+            {
+                set_keyboard(keyboards.back().get());
+            }
+
             break;
 
           case WLR_INPUT_DEVICE_TOUCH:
