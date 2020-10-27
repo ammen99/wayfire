@@ -32,7 +32,7 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
     /* Ungrab surface, and update focused surface if a surface is unmapped,
      * we don't want to end up with a reference to unfocused or a destroyed
      * surface. */
-    on_surface_map_state_changed = [=] (signal_data_t *data)
+    on_surface_map_state_changed.set_callback([=] (signal_data_t *data)
     {
         auto ev = static_cast<surface_map_state_changed_signal*>(data);
         if (!ev->surface->is_mapped() && (ev->surface == this->grabbed_surface))
@@ -41,17 +41,17 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
         }
 
         update_tool_position();
-    };
+    });
 
     wf::get_core().connect_signal("surface-mapped",
         &on_surface_map_state_changed);
     wf::get_core().connect_signal("surface-unmapped",
         &on_surface_map_state_changed);
 
-    on_views_updated = [&] (wf::signal_data_t *data)
+    on_views_updated.set_callback([&] (wf::signal_data_t *data)
     {
         update_tool_position();
-    };
+    });
 
     wf::get_core().connect_signal("output-stack-order-changed", &on_views_updated);
     wf::get_core().connect_signal("view-geometry-changed", &on_views_updated);
@@ -93,11 +93,6 @@ wf::tablet_tool_t::tablet_tool_t(wlr_tablet_tool *tool,
 
 wf::tablet_tool_t::~tablet_tool_t()
 {
-    wf::get_core().disconnect_signal("surface-mapped",
-        &on_surface_map_state_changed);
-    wf::get_core().disconnect_signal("surface-unmapped",
-        &on_surface_map_state_changed);
-
     tool->data = NULL;
 }
 
