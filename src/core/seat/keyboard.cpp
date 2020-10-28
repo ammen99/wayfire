@@ -306,7 +306,7 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
         }
 
         handled_in_binding = input->get_active_bindings().handle_key(
-            wf::keybinding_t{get_modifiers(), key});
+            wf::keybinding_t{get_modifiers(), key}, mod_binding_key);
     } else
     {
         if (mod_binding_key != 0)
@@ -319,7 +319,7 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
             if ((timeout <= 0) || (time_elapsed < milliseconds(timeout)))
             {
                 handled_in_binding = input->get_active_bindings().handle_key(
-                    wf::keybinding_t{get_modifiers() | mod, 0});
+                    wf::keybinding_t{get_modifiers() | mod, 0}, mod_binding_key);
             }
         }
 

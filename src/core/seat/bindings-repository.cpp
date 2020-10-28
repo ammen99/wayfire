@@ -2,7 +2,8 @@
 #include <wayfire/core.hpp>
 #include <algorithm>
 
-bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed)
+bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed,
+    uint32_t mod_binding_key)
 {
     std::vector<std::function<bool()>> callbacks;
     for (auto& binding : this->keys)
@@ -26,12 +27,19 @@ bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed)
             /* We must be careful because the callback might be erased,
              * so force copy the callback into the lambda */
             auto callback = binding->callback;
-            callbacks.emplace_back([pressed, callback] ()
+            callbacks.emplace_back([pressed, callback, mod_binding_key] ()
             {
                 wf::activator_data_t ev = {
                     .source = activator_source_t::KEYBINDING,
                     .activation_data = pressed.get_key()
                 };
+
+                if (mod_binding_key)
+                {
+                    ev.source = activator_source_t::MODIFIERBINDING;
+                    ev.activation_data = mod_binding_key;
+                }
+
                 return (*callback)(ev);
             });
         }
