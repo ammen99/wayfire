@@ -688,6 +688,12 @@ void program_t::uniform2f(const std::string& name, float x, float y)
     GL_CALL(glUniform2f(loc, x, y));
 }
 
+void program_t::uniform3f(const std::string& name, float x, float y, float z)
+{
+    int loc = priv->find_uniform_loc(name);
+    GL_CALL(glUniform3f(loc, x, y, z));
+}
+
 void program_t::uniform4f(const std::string& name, const glm::vec4& value)
 {
     int loc = priv->find_uniform_loc(name);

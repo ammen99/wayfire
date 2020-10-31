@@ -320,6 +320,8 @@ class program_t : public noncopyable_t
     /** Set the given uniform for the currently used program. */
     void uniform2f(const std::string& name, float x, float y);
     /** Set the given uniform for the currently used program. */
+    void uniform3f(const std::string& name, float x, float y, float z);
+    /** Set the given uniform for the currently used program. */
     void uniform4f(const std::string& name, const glm::vec4& value);
     /** Set the given uniform for the currently used program. */
     void uniformMatrix4f(const std::string& name, const glm::mat4& value);
