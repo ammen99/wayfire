@@ -301,7 +301,32 @@ void wf::compositor_core_impl_t::init()
     image_io::init();
     OpenGL::init();
 
+    init_last_view_tracking();
     this->state = compositor_state_t::START_BACKEND;
+}
+
+void wf::compositor_core_impl_t::init_last_view_tracking()
+{
+    on_new_output.set_callback([&] (wf::signal_data_t *data)
+    {
+        auto wo = get_signaled_output(data);
+        wo->connect_signal("view-unmapped", &on_view_unmap);
+    });
+    output_layout->connect_signal("output-added", &on_new_output);
+
+    on_view_unmap.set_callback([&] (wf::signal_data_t *data)
+    {
+        auto view = get_signaled_view(data);
+        if (view == last_active_toplevel)
+        {
+            last_active_toplevel = nullptr;
+        }
+
+        if (view == last_active_view)
+        {
+            last_active_view = nullptr;
+        }
+    });
 }
 
 void wf::compositor_core_impl_t::post_init()
@@ -832,7 +857,7 @@ wf::compositor_core_impl_t::~compositor_core_impl_t()
     /* Unloading order is important. First we want to free any remaining views,
      * then we destroy the input manager, and finally the rest is auto-freed */
     views.clear();
-    input.release();
+    input.reset();
 }
 
 wf::compositor_core_impl_t& wf::compositor_core_impl_t::get()

@@ -120,6 +120,11 @@ class compositor_core_impl_t : public compositor_core_t
      */
     wayfire_view last_active_view;
 
+    void init_last_view_tracking();
+
+    wf::signal_connection_t on_view_unmap;
+    wf::signal_connection_t on_new_output;
+
     compositor_state_t state = compositor_state_t::UNKNOWN;
 
     compositor_core_impl_t();
