@@ -296,7 +296,7 @@ wf::bindings_repository_t& wf::input_manager_t::get_active_bindings()
     auto impl = dynamic_cast<wf::output_impl_t*>(wo);
     if (!impl)
     {
-        static wf::bindings_repository_t dummy_repo;
+        static wf::bindings_repository_t dummy_repo{nullptr};
         return dummy_repo;
     }
 

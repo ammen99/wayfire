@@ -21,13 +21,18 @@ enum activator_source_t
     ACTIVATOR_SOURCE_KEYBINDING,
     ACTIVATOR_SOURCE_BUTTONBINDING,
     ACTIVATOR_SOURCE_GESTURE,
+    ACTIVATOR_SOURCE_HOTSPOT,
 };
 
-/* First argument is the source which was used to activate, the second one is
- * the key or button which triggered it, if applicable.
- *
- * Special case: modifier bindings. In that case, the source is a keybinding,
- * but the second argument is 0 */
+/*
+ * The first argument shows the activator source.
+ * The second argument has a different meaning:
+ * - For keybindings, it is the key which triggered the binding.
+ *   Zero for modifier bindings.
+ * - For buttonbindings, the button that triggered the binding.
+ * - Unused for gestures.
+ * - The edges of the activating hotspot.
+ */
 using activator_callback = std::function<bool (wf::activator_source_t, uint32_t)>;
 }
 

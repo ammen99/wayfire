@@ -20,7 +20,7 @@ wf::output_t::output_t() = default;
 wf::output_impl_t::output_impl_t(wlr_output *handle,
     const wf::dimensions_t& effective_size)
 {
-    this->bindings = std::make_unique<bindings_repository_t>();
+    this->bindings = std::make_unique<bindings_repository_t>(this);
     this->set_effective_size(effective_size);
     this->handle = handle;
     workspace    = std::make_unique<workspace_manager>(this);
@@ -479,7 +479,7 @@ namespace wf
 {
 template<class Option, class Callback>
 static wf::binding_t *push_binding(
-    bindings_repository_t::binding_container_t<Option, Callback>& bindings,
+    binding_container_t<Option, Callback>& bindings,
     option_sptr_t<Option> opt,
     Callback *callback)
 {
@@ -512,7 +512,9 @@ binding_t*output_impl_t::add_button(option_sptr_t<buttonbinding_t> button,
 binding_t*output_impl_t::add_activator(
     option_sptr_t<activatorbinding_t> activator, wf::activator_callback *callback)
 {
-    return push_binding(this->bindings->activators, activator, callback);
+    auto result = push_binding(this->bindings->activators, activator, callback);
+    this->bindings->hotspot_mgr.update_hotspots(bindings->activators);
+    return result;
 }
 
 void wf::output_impl_t::rem_binding(wf::binding_t *binding)

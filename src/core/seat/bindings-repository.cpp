@@ -143,6 +143,8 @@ void wf::bindings_repository_t::rem_binding(void *callback)
     erase(buttons);
     erase(axes);
     erase(activators);
+
+    hotspot_mgr.update_hotspots(activators);
 }
 
 void wf::bindings_repository_t::rem_binding(binding_t *binding)
@@ -161,4 +163,10 @@ void wf::bindings_repository_t::rem_binding(binding_t *binding)
     erase(buttons);
     erase(axes);
     erase(activators);
+
+    hotspot_mgr.update_hotspots(activators);
 }
+
+wf::bindings_repository_t::bindings_repository_t(wf::output_t *output) :
+    hotspot_mgr(output)
+{}

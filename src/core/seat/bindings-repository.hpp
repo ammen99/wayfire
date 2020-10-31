@@ -6,25 +6,10 @@
 #include <wayfire/bindings.hpp>
 #include <wayfire/config/option-wrapper.hpp>
 #include <wayfire/config/types.hpp>
+#include "hotspot-manager.hpp"
 
 namespace wf
 {
-/**
- * Opaque binding handle for plugins.
- */
-struct binding_t
-{};
-
-/**
- * Represents a binding with a plugin-provided callback and activation option.
- */
-template<class Option, class Callback>
-struct output_binding_t : public binding_t
-{
-    wf::option_sptr_t<Option> activated_by;
-    Callback *callback;
-};
-
 /**
  * bindings_repository_t is responsible for managing a list of all bindings in
  * Wayfire, and for calling these bindings on the corresponding events.
@@ -32,6 +17,8 @@ struct output_binding_t : public binding_t
 class bindings_repository_t
 {
   public:
+    bindings_repository_t(wf::output_t *output);
+
     /**
      * Handle a keybinding pressed by the user.
      *
@@ -59,9 +46,6 @@ class bindings_repository_t
     /** Erase binding of any type */
     void rem_binding(binding_t *binding);
 
-    template<class Option, class Callback> using binding_container_t =
-        std::vector<std::unique_ptr<output_binding_t<Option, Callback>>>;
-
   private:
     // output_t directly pushes in the binding containers to avoid having the
     // same wrapped functions as in the output public API.
@@ -71,5 +55,7 @@ class bindings_repository_t
     binding_container_t<wf::keybinding_t, axis_callback> axes;
     binding_container_t<wf::buttonbinding_t, button_callback> buttons;
     binding_container_t<wf::activatorbinding_t, activator_callback> activators;
+
+    hotspot_manager_t hotspot_mgr;
 };
 }
