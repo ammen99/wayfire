@@ -162,11 +162,8 @@ struct wf_layer_shell_manager
         return result;
     }
 
-    void set_exclusive_zone(wayfire_layer_shell_view *v)
+    int find_exclusive_edge(int edges)
     {
-        int edges = v->lsurface->current.anchor;
-
-        /* Special case we support */
         if (__builtin_popcount(edges) == 3)
         {
             if ((edges & both_horiz) == both_horiz)
@@ -179,6 +176,14 @@ struct wf_layer_shell_manager
                 edges ^= both_vert;
             }
         }
+
+        return edges;
+    }
+
+    void set_exclusive_zone(wayfire_layer_shell_view *v)
+    {
+        int edges = v->lsurface->current.anchor;
+        edges = find_exclusive_edge(edges);
 
         if ((edges == 0) || (__builtin_popcount(edges) > 1))
         {
@@ -326,6 +331,48 @@ struct wf_layer_shell_manager
             focused_layer_request_uid);
         output->workspace->reflow_reserved_areas();
     }
+
+    /** Configure the view before it is mapped. */
+    void configure_before_map(wayfire_layer_shell_view *view)
+    {
+        auto workarea = view->get_output()->workspace->get_workarea();
+        if (view->lsurface->current.exclusive_zone < 1)
+        {
+            pin_view(view, workarea);
+        } else
+        {
+            int edge = find_exclusive_edge(view->lsurface->current.anchor);
+
+            wf::geometry_t geometry = workarea;
+            switch (edge)
+            {
+              case ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP:
+                geometry.height = view->lsurface->current.desired_height;
+                break;
+
+              case ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM:
+                geometry.height = view->lsurface->current.desired_height;
+                geometry.y = workarea.y + workarea.height - geometry.height;
+                break;
+
+              case ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT:
+                geometry.width = view->lsurface->current.desired_width;
+                break;
+
+              case ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT:
+                geometry.width = view->lsurface->current.desired_width;
+                geometry.x     = workarea.x + workarea.width - geometry.width;
+                break;
+
+              default:
+                LOGE("Failed to configure layer shell surface with exclusive zone: ",
+                    view->lsurface->current.anchor);
+                break;
+            }
+
+            view->configure(geometry);
+        }
+    }
 };
 
 wayfire_layer_shell_view::wayfire_layer_shell_view(wlr_layer_surface_v1 *lsurf) :
@@ -464,6 +511,13 @@ void wayfire_layer_shell_view::commit()
         }
 
         prev_state = *state;
+    }
+
+    if (!is_mapped())
+    {
+        // Support commit before map.
+        // This makes sure that the client is configured correctly.
+        wf_layer_shell_manager::get_instance().configure_before_map(this);
     }
 }
 
