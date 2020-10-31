@@ -19,6 +19,7 @@ static const uint32_t both_horiz =
 class wayfire_layer_shell_view : public wf::wlr_view_t
 {
     wf::wl_listener_wrapper on_map, on_unmap, on_destroy, on_new_popup;
+    wf::wl_listener_wrapper on_commit_unmapped;
 
   protected:
     void initialize() override;
@@ -369,12 +370,19 @@ void wayfire_layer_shell_view::initialize()
         create_xdg_popup((wlr_xdg_popup*)data);
     });
 
+    on_commit_unmapped.set_callback([&] (void*)
+    {
+        wf_layer_shell_manager::get_instance().arrange_unmapped_view(this);
+    });
+
     on_map.connect(&lsurface->events.map);
     on_unmap.connect(&lsurface->events.unmap);
     on_destroy.connect(&lsurface->events.destroy);
     on_new_popup.connect(&lsurface->events.new_popup);
+    on_commit_unmapped.connect(&lsurface->surface->events.commit);
 
-    wf_layer_shell_manager::get_instance().arrange_unmapped_view(this);
+    // Initial configure
+    on_commit_unmapped.emit(NULL);
 }
 
 void wayfire_layer_shell_view::destroy()
@@ -425,6 +433,9 @@ wf::layer_t wayfire_layer_shell_view::get_layer()
 
 void wayfire_layer_shell_view::map(wlr_surface *surface)
 {
+    // Disconnect, from now on regular commits will work
+    on_commit_unmapped.disconnect();
+
     /* Read initial data */
     view_impl->keyboard_focus_enabled = lsurface->current.keyboard_interactive;
     handle_app_id_changed(nonull(lsurface->namespace_t));
