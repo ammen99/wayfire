@@ -169,4 +169,11 @@ void wf::bindings_repository_t::rem_binding(binding_t *binding)
 
 wf::bindings_repository_t::bindings_repository_t(wf::output_t *output) :
     hotspot_mgr(output)
-{}
+{
+    on_config_reload.set_callback([=] (wf::signal_data_t*)
+    {
+        hotspot_mgr.update_hotspots(activators);
+    });
+
+    wf::get_core().connect_signal("reload-config", &on_config_reload);
+}

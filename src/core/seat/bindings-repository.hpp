@@ -57,5 +57,7 @@ class bindings_repository_t
     binding_container_t<wf::activatorbinding_t, activator_callback> activators;
 
     hotspot_manager_t hotspot_mgr;
+
+    wf::signal_connection_t on_config_reload;
 };
 }
