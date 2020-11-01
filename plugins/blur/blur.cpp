@@ -1,5 +1,6 @@
 #include <wayfire/plugin.hpp>
 #include <wayfire/view.hpp>
+#include <wayfire/matcher.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/view-transform.hpp>
 #include <wayfire/workspace-stream.hpp>
@@ -120,13 +121,10 @@ class wayfire_blur : public wf::plugin_interface_t
     wf::signal_callback_t workspace_stream_pre, workspace_stream_post,
         view_attached, view_detached;
 
-    const std::string normal_mode = "normal";
-    std::string last_mode;
-
-    wf::option_wrapper_t<std::string> method_opt{"blur/method"},
-    mode_opt{"blur/mode"};
+    wf::view_matcher_t blur_by_default{"blur/blur_by_default"};
+    wf::option_wrapper_t<std::string> method_opt{"blur/method"};
     wf::option_wrapper_t<wf::buttonbinding_t> toggle_button{"blur/toggle"};
-    wf::config::option_base_t::updated_callback_t blur_method_changed, mode_changed;
+    wf::config::option_base_t::updated_callback_t blur_method_changed;
     std::unique_ptr<wf_blur_base> blur_algorithm;
 
     const std::string transformer_name = "blur";
@@ -193,36 +191,6 @@ class wayfire_blur : public wf::plugin_interface_t
         blur_method_changed();
         method_opt.set_callback(blur_method_changed);
 
-        /* Default mode is normal, which means attach the blur transformer
-         * to each view on the output. If on toggle, this means that the user
-         * has to manually click on the views they want to blur */
-        last_mode    = "none";
-        mode_changed = [=] ()
-        {
-            if (std::string(mode_opt) == last_mode)
-            {
-                return;
-            }
-
-            if (last_mode == normal_mode)
-            {
-                remove_transformers();
-            }
-
-            if (std::string(mode_opt) == normal_mode)
-            {
-                for (auto& view :
-                     output->workspace->get_views_in_layer(wf::ALL_LAYERS))
-                {
-                    add_transformer(view);
-                }
-            }
-
-            last_mode = mode_opt;
-        };
-        mode_changed();
-        mode_opt.set_callback(mode_changed);
-
         /* Toggles the blur state of the view the user clicked on */
         button_toggle = [=] (uint32_t, int, int)
         {
@@ -249,12 +217,7 @@ class wayfire_blur : public wf::plugin_interface_t
         };
         output->add_button(toggle_button, &button_toggle);
 
-        /* If a view is attached to this output, and we are in normal mode,
-         * we should add a blur transformer so it gets blurred
-         *
-         * Additionally, we don't blur windows in the background layers,
-         * as they usually are fully opaque, and there is actually nothing
-         * behind them which can be blurred. */
+        // Add blur transformers to views which have blur enabled
         view_attached = [=] (wf::signal_data_t *data)
         {
             auto view = get_signaled_view(data);
@@ -264,13 +227,9 @@ class wayfire_blur : public wf::plugin_interface_t
                 return;
             }
 
-            if (((std::string)mode_opt == normal_mode) &&
-                !(output->workspace->get_view_layer(view) & wf::BELOW_LAYERS))
+            if (blur_by_default.matches(view))
             {
-                if (!view->get_transformer(transformer_name))
-                {
-                    add_transformer(view);
-                }
+                add_transformer(view);
             }
         };
 

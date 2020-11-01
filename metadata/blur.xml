@@ -5,18 +5,10 @@
 		<_long>A plugin to blur windows.</_long>
 		<category>Effects</category>
 		<!-- Mode -->
-		<option name="mode" type="string">
-			<_short>Mode</_short>
-			<_long>Specifies whether blurring should be automatic or manual.  Possible values are `normal` and `toggle`.  `normal` means automatic and `toggle` manual.</_long>
-			<default>normal</default>
-			<desc>
-				<value>normal</value>
-				<_name>Normal</_name>
-			</desc>
-			<desc>
-				<value>toggle</value>
-				<_name>Toggle</_name>
-			</desc>
+		<option name="blur_by_default" type="string">
+			<_short>Blur by default</_short>
+			<_long>Criteria for which apps to be blurred when they are opened</_long>
+			<default>type is "toplevel"</default>
 		</option>
 		<!-- Key-bindings -->
 		<option name="toggle" type="button">
