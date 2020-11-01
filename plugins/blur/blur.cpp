@@ -176,6 +176,68 @@ class wayfire_blur : public wf::plugin_interface_t
         return result;
     }
 
+    wf::region_t expand_region(const wf::region_t& region, double scale) const
+    {
+        // As long as the padding is big enough to cover the
+        // furthest sampled pixel by the shader, there should
+        // be no visual artifacts.
+        int padding = std::ceil(
+            blur_algorithm->calculate_blur_radius() / scale);
+
+        wf::region_t padded;
+        for (const auto& rect : region)
+        {
+            padded |= wlr_box{
+                (rect.x1 - padding),
+                (rect.y1 - padding),
+                (rect.x2 - rect.x1) + 2 * padding,
+                (rect.y2 - rect.y1) + 2 * padding
+            };
+        }
+
+        return padded;
+    }
+
+    // Blur region for current frame
+    wf::region_t blur_region;
+
+    void update_blur_region()
+    {
+        blur_region.clear();
+        auto views = output->workspace->get_views_in_layer(wf::ALL_LAYERS);
+
+        for (auto& view : views)
+        {
+            if (!view->get_transformer("blur"))
+            {
+                continue;
+            }
+
+            auto bbox = view->get_bounding_box();
+            if (!view->sticky)
+            {
+                blur_region |= bbox;
+            } else
+            {
+                auto wsize = output->workspace->get_workspace_grid_size();
+                for (int i = 0; i < wsize.width; i++)
+                {
+                    for (int j = 0; j < wsize.height; j++)
+                    {
+                        blur_region |=
+                            bbox + wf::origin(output->render->get_ws_box({i, j}));
+                    }
+                }
+            }
+        }
+    }
+
+    /** Find the region of blurred views on the given workspace */
+    wf::region_t get_blur_region(wf::point_t ws) const
+    {
+        return blur_region & output->render->get_ws_box(ws);
+    }
+
   public:
     void init() override
     {
@@ -252,6 +314,7 @@ class wayfire_blur : public wf::plugin_interface_t
          * that comes from client damage */
         frame_pre_paint = [=] ()
         {
+            update_blur_region();
             auto damage    = output->render->get_scheduled_damage();
             const auto& fb = output->render->get_target_framebuffer();
 
@@ -260,18 +323,9 @@ class wayfire_blur : public wf::plugin_interface_t
             wf::surface_interface_t::set_opaque_shrink_constraint("blur",
                 padding);
 
-            wf::region_t padded;
-            for (const auto& rect : damage)
-            {
-                padded |= wlr_box{
-                    (rect.x1 - padding),
-                    (rect.y1 - padding),
-                    (rect.x2 - rect.x1) + 2 * padding,
-                    (rect.y2 - rect.y1) + 2 * padding
-                };
-            }
-
-            output->render->damage(padded);
+            output->render->damage(expand_region(
+                damage & this->blur_region, fb.scale));
+            return;
         };
         output->render->add_effect(&frame_pre_paint, wf::OUTPUT_EFFECT_DAMAGE);
 
@@ -287,24 +341,10 @@ class wayfire_blur : public wf::plugin_interface_t
             const auto& ws = static_cast<wf::stream_signal_t*>(data)->ws;
             const auto& target_fb = static_cast<wf::stream_signal_t*>(data)->fb;
 
-            /* As long as the padding is big enough to cover the
-             * furthest sampled pixel by the shader, there should
-             * be no visual artifacts. */
-            int padding = std::ceil(
-                blur_algorithm->calculate_blur_radius() / target_fb.scale);
-
-            wf::region_t expanded_damage;
-            for (const auto& rect : damage)
-            {
-                expanded_damage |= {
-                    rect.x1 - padding,
-                    rect.y1 - padding,
-                    (rect.x2 - rect.x1) + 2 * padding,
-                    (rect.y2 - rect.y1) + 2 * padding
-                };
-            }
+            wf::region_t expanded_damage = expand_region(damage, target_fb.scale);
 
             /* Keep rects on screen */
+            expanded_damage &= expand_region(get_blur_region(ws), target_fb.scale);
             expanded_damage &= output->render->get_ws_box(ws);
 
             /* Compute padded region and store result in padded_region.
