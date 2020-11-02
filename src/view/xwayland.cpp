@@ -61,7 +61,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
   protected:
     wf::wl_listener_wrapper on_destroy, on_unmap, on_map, on_configure,
         on_set_title, on_set_app_id, on_or_changed, on_set_decorations,
-        on_ping_timeout;
+        on_ping_timeout, on_set_window_type;
 
     wlr_xwayland_surface *xw;
     /** The geometry requested by the client */
@@ -77,17 +77,23 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         }
     };
 
-    bool is_dialog()
+    bool has_type(xcb_atom_t type)
     {
         for (size_t i = 0; i < xw->window_type_len; i++)
         {
-            if (xw->window_type[i] == _NET_WM_WINDOW_TYPE_DIALOG)
+            if (xw->window_type[i] == type)
             {
                 return true;
             }
         }
 
-        if (xw->parent && (xw->window_type_len == 0))
+        return false;
+    }
+
+    bool is_dialog()
+    {
+        if (has_type(_NET_WM_WINDOW_TYPE_DIALOG) ||
+            (xw->parent && (xw->window_type_len == 0)))
         {
             return true;
         } else
@@ -107,7 +113,8 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         }
 
         /** Example: Android Studio dialogs */
-        if (xw->parent && !this->is_dialog())
+        if (xw->parent && !this->is_dialog() &&
+            !this->has_type(_NET_WM_WINDOW_TYPE_NORMAL))
         {
             return true;
         }
@@ -203,6 +210,10 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         {
             wf::emit_ping_timeout_signal(self());
         });
+        on_set_window_type.set_callback([&] (void*)
+        {
+            recreate_view_with_or_type();
+        });
 
         handle_title_changed(nonull(xw->title));
         handle_app_id_changed(nonull(xw->class_t));
@@ -217,6 +228,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_or_changed.connect(&xw->events.set_override_redirect);
         on_ping_timeout.connect(&xw->events.ping_timeout);
         on_set_decorations.connect(&xw->events.set_decorations);
+        on_set_window_type.connect(&xw->events.set_window_type);
     }
 
     /**
@@ -239,6 +251,7 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         on_or_changed.disconnect();
         on_ping_timeout.disconnect();
         on_set_decorations.disconnect();
+        on_set_window_type.disconnect();
 
         wf::wlr_view_t::destroy();
     }
@@ -856,6 +869,14 @@ void wayfire_xwayland_view_base::recreate_view_with_or_type()
     auto xw_surf    = this->xw;
     bool was_mapped = is_mapped();
     bool is_unmanaged = this->is_unmanaged();
+
+    bool is_currently_unmanaged =
+        (dynamic_cast<wayfire_unmanaged_xwayland_view*>(this) != nullptr);
+    if (is_currently_unmanaged == is_unmanaged)
+    {
+        // Nothing changed
+        return;
+    }
 
     // destroy the view (unmap + destroy)
     if (was_mapped)
