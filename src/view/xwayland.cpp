@@ -539,13 +539,18 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
             auto parent = xw->parent ?
                 wf::wf_view_from_void(xw->parent->data)->self() : nullptr;
-            /* XXX: Do not set parent if parent is unmapped. This happens on
-             * some Xwayland clients which have a WM leader and dialogues are
-             * then children of this unmapped WM leader... */
-            if (!parent || parent->is_mapped())
+
+            // Make sure the parent is mapped, and that we are not a toplevel view
+            if (parent)
             {
-                set_toplevel_parent(parent);
+                if (!parent->is_mapped() ||
+                    this->has_type(_NET_WM_WINDOW_TYPE_NORMAL))
+                {
+                    parent = nullptr;
+                }
             }
+
+            set_toplevel_parent(parent);
         });
 
         on_set_hints.set_callback([&] (void*)
