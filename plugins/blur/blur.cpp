@@ -325,7 +325,6 @@ class wayfire_blur : public wf::plugin_interface_t
 
             output->render->damage(expand_region(
                 damage & this->blur_region, fb.scale));
-            return;
         };
         output->render->add_effect(&frame_pre_paint, wf::OUTPUT_EFFECT_DAMAGE);
 

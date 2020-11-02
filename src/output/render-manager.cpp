@@ -68,6 +68,8 @@ struct output_damage_t
         wlr_output_damage_add_box(damage_manager, &scaled_box);
     }
 
+    wf::region_t acc_damage;
+
     /**
      * Make the output current. This sets its EGL context as current, checks
      * whether there is any damage and makes sure frame_damage contains all the
@@ -80,25 +82,31 @@ struct output_damage_t
             return false;
         }
 
-        wf::region_t tmp_region;
         auto r = wlr_output_damage_attach_render(damage_manager, &needs_swap,
-            tmp_region.to_pixman());
+            acc_damage.to_pixman());
 
         if (!r)
         {
             return false;
         }
 
-        frame_damage |= tmp_region;
-        if (runtime_config.no_damage_track)
-        {
-            frame_damage |= get_wlr_damage_box();
-        }
-
         needs_swap |= force_next_frame;
         force_next_frame = false;
 
         return true;
+    }
+
+    /**
+     * Accumulate damage from last frame.
+     * Needs to be called after make_current()
+     */
+    void accumulate_damage()
+    {
+        frame_damage |= acc_damage;
+        if (runtime_config.no_damage_track)
+        {
+            frame_damage |= get_wlr_damage_box();
+        }
     }
 
     /**
@@ -743,6 +751,11 @@ class wf::render_manager::impl
 
             return;
         }
+
+        // Accumulate damage now, when we are sure we will render the frame.
+        // Doing this earlier may mean that the damage from the previous frames
+        // creeps into the current frame damage, if we had skipped a frame.
+        output_damage->accumulate_damage();
 
         update_bound_output();
 
