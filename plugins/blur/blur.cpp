@@ -341,10 +341,10 @@ class wayfire_blur : public wf::plugin_interface_t
             const auto& ws = static_cast<wf::stream_signal_t*>(data)->ws;
             const auto& target_fb = static_cast<wf::stream_signal_t*>(data)->fb;
 
-            wf::region_t expanded_damage = expand_region(damage, target_fb.scale);
+            wf::region_t expanded_damage =
+                expand_region(damage & get_blur_region(ws), target_fb.scale);
 
             /* Keep rects on screen */
-            expanded_damage &= expand_region(get_blur_region(ws), target_fb.scale);
             expanded_damage &= output->render->get_ws_box(ws);
 
             /* Compute padded region and store result in padded_region.
