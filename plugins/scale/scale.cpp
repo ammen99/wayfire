@@ -238,7 +238,7 @@ class wayfire_scale : public wf::plugin_interface_t
     }
 
     /* Activate scale for views on the current workspace */
-    wf::activator_callback toggle_cb = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback toggle_cb = [=] (auto)
     {
         if (handle_toggle(false))
         {
@@ -251,7 +251,7 @@ class wayfire_scale : public wf::plugin_interface_t
     };
 
     /* Activate scale for views on all workspaces */
-    wf::activator_callback toggle_all_cb = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback toggle_all_cb = [=] (auto)
     {
         if (handle_toggle(true))
         {

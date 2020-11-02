@@ -332,8 +332,7 @@ void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev)
         }
 
         handled_in_binding = input->get_active_bindings().handle_button(
-            wf::buttonbinding_t{seat->get_modifiers(), ev->button},
-            seat->cursor->get_cursor_position());
+            wf::buttonbinding_t{seat->get_modifiers(), ev->button});
     } else
     {
         count_pressed_buttons--;

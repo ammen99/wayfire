@@ -113,17 +113,17 @@ class wayfire_cube : public wf::plugin_interface_t
 
         reload_background();
 
-        activate_binding = [=] (uint32_t, int, int)
+        activate_binding = [=] (auto)
         {
             return input_grabbed();
         };
 
-        rotate_left = [=] (wf::activator_source_t, uint32_t)
+        rotate_left = [=] (auto)
         {
             return move_vp(-1);
         };
 
-        rotate_right = [=] (wf::activator_source_t, uint32_t)
+        rotate_right = [=] (auto)
         {
             return move_vp(1);
         };

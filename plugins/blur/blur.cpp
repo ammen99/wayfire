@@ -254,7 +254,7 @@ class wayfire_blur : public wf::plugin_interface_t
         method_opt.set_callback(blur_method_changed);
 
         /* Toggles the blur state of the view the user clicked on */
-        button_toggle = [=] (uint32_t, int, int)
+        button_toggle = [=] (auto)
         {
             if (!output->can_activate_plugin(grab_interface))
             {

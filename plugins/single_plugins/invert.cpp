@@ -55,7 +55,7 @@ class wayfire_invert_screen : public wf::plugin_interface_t
             render(source, destination);
         };
 
-        toggle_cb = [=] (wf::activator_source_t, uint32_t)
+        toggle_cb = [=] (auto)
         {
             if (!output->can_activate_plugin(grab_interface))
             {

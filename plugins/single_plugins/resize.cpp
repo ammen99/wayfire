@@ -31,7 +31,7 @@ class wayfire_resize : public wf::plugin_interface_t
         grab_interface->capabilities =
             wf::CAPABILITY_GRAB_INPUT | wf::CAPABILITY_MANAGE_DESKTOP;
 
-        activate_binding = [=] (uint32_t, int, int)
+        activate_binding = [=] (auto)
         {
             auto view = wf::get_core().get_cursor_focus_view();
             if (view)

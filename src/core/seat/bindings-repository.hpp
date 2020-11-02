@@ -34,8 +34,7 @@ class bindings_repository_t
      *
      * @return true if any of the matching registered bindings consume the event.
      */
-    bool handle_button(const wf::buttonbinding_t& pressed,
-        const wf::pointf_t& cursor);
+    bool handle_button(const wf::buttonbinding_t& pressed);
 
     /** Handle a gesture from the user. */
     void handle_gesture(const wf::touchgesture_t& gesture);

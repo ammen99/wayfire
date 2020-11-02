@@ -128,12 +128,12 @@ class WayfireSwitcher : public wf::plugin_interface_t
         grab_interface->callbacks.cancel = [=] () {deinit_switcher();};
     }
 
-    wf::key_callback next_view_binding = [=] (uint32_t)
+    wf::key_callback next_view_binding = [=] (auto)
     {
         return handle_switch_request(-1);
     };
 
-    wf::key_callback prev_view_binding = [=] (uint32_t)
+    wf::key_callback prev_view_binding = [=] (auto)
     {
         return handle_switch_request(1);
     };

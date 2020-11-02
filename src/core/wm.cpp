@@ -18,7 +18,7 @@ static void idle_shutdown(void *data)
 
 void wayfire_exit::init()
 {
-    key = [] (uint32_t key)
+    key = [] (const wf::keybinding_t&)
     {
         auto output_impl =
             static_cast<wf::output_impl_t*>(wf::get_core().get_active_output());
@@ -72,7 +72,7 @@ void wayfire_close::init()
 {
     grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
     wf::option_wrapper_t<wf::activatorbinding_t> key("core/close_top_view");
-    callback = [=] (wf::activator_source_t, uint32_t)
+    callback = [=] (const wf::activator_data_t& ev)
     {
         if (!output->activate_plugin(grab_interface))
         {
@@ -109,7 +109,7 @@ void wayfire_focus::init()
     };
     output->connect_signal("wm-focus-request", &on_wm_focus_request);
 
-    on_button = [=] (uint32_t button, int x, int y)
+    on_button = [=] (const wf::buttonbinding_t&)
     {
         this->check_focus_surface(wf::get_core().get_cursor_focus());
 
