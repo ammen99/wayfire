@@ -51,7 +51,7 @@
 			<_long>Sets the degrade value for the box method.</_long>
 			<default>1</default>
 			<min>1</min>
-			<max>5</max>
+			<max>10</max>
 		</option>
 		<option name="box_iterations" type="int">
 			<_short>Box iterations</_short>
@@ -73,7 +73,7 @@
 			<_long>Sets the degrade value for the gaussian method.</_long>
 			<default>1</default>
 			<min>1</min>
-			<max>5</max>
+			<max>10</max>
 		</option>
 		<option name="gaussian_iterations" type="int">
 			<_short>Gaussian iterations</_short>
@@ -95,7 +95,7 @@
 			<_long>Sets the degrade value for the kawase method.</_long>
 			<default>1</default>
 			<min>1</min>
-			<max>5</max>
+			<max>10</max>
 		</option>
 		<option name="kawase_iterations" type="int">
 			<_short>Kawase iterations</_short>
@@ -117,7 +117,7 @@
 			<_long>Sets the degrade value for the bokeh method.</_long>
 			<default>1</default>
 			<min>1</min>
-			<max>5</max>
+			<max>10</max>
 		</option>
 		<option name="bokeh_iterations" type="int">
 			<_short>Bokeh iterations</_short>

@@ -93,6 +93,38 @@ void wf_blur_base::render_iteration(wf::region_t blur_region,
     }
 }
 
+/** @return Smallest integer >= x which is divisible by mod */
+static int round_up(int x, int mod)
+{
+    return mod * int((x + mod - 1) / mod);
+}
+
+/**
+ * Calculate the smallest box which contains @box and whose x, y, width, height
+ * are divisible by @degrade, and clamp that box to @bounds.
+ */
+static wf::geometry_t sanitize(wf::geometry_t box, int degrade,
+    wf::geometry_t bounds)
+{
+    wf::geometry_t out_box;
+    out_box.x     = degrade * int(box.x / degrade);
+    out_box.y     = degrade * int(box.y / degrade);
+    out_box.width = round_up(box.width, degrade);
+    out_box.height = round_up(box.height, degrade);
+
+    if (out_box.x + out_box.width < box.x + box.width)
+    {
+        out_box.width += degrade;
+    }
+
+    if (out_box.y + out_box.height < box.y + box.height)
+    {
+        out_box.height += degrade;
+    }
+
+    return wf::clamp(out_box, bounds);
+}
+
 wlr_box wf_blur_base::copy_region(wf::framebuffer_base_t& result,
     const wf::framebuffer_t& source, const wf::region_t& region)
 {
@@ -102,23 +134,21 @@ wlr_box wf_blur_base::copy_region(wf::framebuffer_base_t& result,
     auto source_box =
         source.framebuffer_box_from_geometry_box(source.geometry);
 
-    /* Scaling down might cause issues like flickering or some discrepancies
-     * between the source and final image.
-     * To make things a bit more stable, we first blit to a size which
-     * is divisble by degrade */
-    int degrade = degrade_opt;
-    int rounded_width  = std::max(1, subbox.width + subbox.width % degrade);
-    int rounded_height = std::max(1, subbox.height + subbox.height % degrade);
+    // Make sure that the box is aligned properly for degrading, otherwise,
+    // we get a flickering
+    subbox = sanitize(subbox, degrade_opt, source_box);
+    int degraded_width  = subbox.width / degrade_opt;
+    int degraded_height = subbox.height / degrade_opt;
 
     OpenGL::render_begin(source);
-    result.allocate(rounded_width, rounded_height);
+    result.allocate(degraded_width, degraded_height);
 
     GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
     GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, result.fb));
     GL_CALL(glBlitFramebuffer(
         subbox.x, source_box.height - subbox.y - subbox.height,
         subbox.x + subbox.width, source_box.height - subbox.y,
-        0, 0, rounded_width, rounded_height,
+        0, 0, degraded_width, degraded_height,
         GL_COLOR_BUFFER_BIT, GL_LINEAR));
     OpenGL::render_end();
 
@@ -130,8 +160,6 @@ void wf_blur_base::pre_render(wf::texture_t src_tex, wlr_box src_box,
 {
     int degrade     = degrade_opt;
     auto damage_box = copy_region(fb[0], target_fb, damage);
-    int scaled_width  = std::max(1, damage_box.width / degrade);
-    int scaled_height = std::max(1, damage_box.height / degrade);
 
     /* As an optimization, we create a region that blur can use
      * to perform minimal rendering required to blur. We start
@@ -147,31 +175,12 @@ void wf_blur_base::pre_render(wf::texture_t src_tex, wlr_box src_box,
     blur_damage += -wf::point_t{damage_box.x, damage_box.y};
     blur_damage *= 1.0 / degrade;
 
-    int r = blur_fb0(blur_damage, scaled_width, scaled_height);
+    int r = blur_fb0(blur_damage, fb[0].viewport_width, fb[0].viewport_height);
 
     /* Make sure the result is always fb[1], because that's what is used in render()
      * */
     if (r != 0)
     {
-        std::swap(fb[0], fb[1]);
-    }
-
-    /* Support iterations = 0 */
-    if ((iterations_opt == 0) && (algorithm_name != "bokeh"))
-    {
-        int rounded_width = std::max(1,
-            damage_box.width + damage_box.width % degrade);
-        int rounded_height = std::max(1,
-            damage_box.height + damage_box.height %
-            degrade);
-        OpenGL::render_begin();
-        fb[1].allocate(scaled_width, scaled_height);
-        fb[1].bind();
-        GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb[0].fb));
-        GL_CALL(glBlitFramebuffer(0, 0, rounded_width, rounded_height,
-            0, 0, scaled_width, scaled_height,
-            GL_COLOR_BUFFER_BIT, GL_LINEAR));
-        OpenGL::render_end();
         std::swap(fb[0], fb[1]);
     }
 
@@ -190,7 +199,7 @@ void wf_blur_base::pre_render(wf::texture_t src_tex, wlr_box src_box,
      *
      * local_geometry is damage_box relative to view box */
     wlr_box local_box = damage_box + wf::point_t{-view_box.x, -view_box.y};
-    GL_CALL(glBlitFramebuffer(0, 0, scaled_width, scaled_height,
+    GL_CALL(glBlitFramebuffer(0, 0, fb[0].viewport_width, fb[0].viewport_height,
         local_box.x,
         view_box.height - local_box.y - local_box.height,
         local_box.x + local_box.width,
