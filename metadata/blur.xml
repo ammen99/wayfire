@@ -38,6 +38,13 @@
 				<_name>Bokeh</_name>
 			</desc>
 		</option>
+		<option name="saturation" type="double">
+			<_short>Blur saturation</_short>
+			<_long>Sets the saturation of the blurred content.</_long>
+			<default>1.0</default>
+			<min>0.0</min>
+			<max>3.0</max>
+		</option>
 		<!-- Box -->
 		<option name="box_offset" type="double">
 			<_short>Box offset</_short>

@@ -26,13 +26,23 @@ static const char *blur_blend_fragment_shader =
 precision mediump float;
 
 @builtin@
+uniform float sat;
 uniform sampler2D bg_texture;
 
 varying mediump vec2 uvpos[2];
 
+vec3 saturation(vec3 rgb, float adjustment)
+{
+    // Algorithm from Chapter 16 of OpenGL Shading Language
+    const vec3 w = vec3(0.2125, 0.7154, 0.0721);
+    vec3 intensity = vec3(dot(rgb, w));
+    return mix(intensity, rgb, adjustment);
+}
+
 void main()
 {
     vec4 bp = texture2D(bg_texture, uvpos[0]);
+    bp = vec4(saturation(bp.rgb, sat), bp.a);
     vec4 wp = get_pixel(uvpos[1]);
     vec4 c = clamp(4.0 * wp.a, 0.0, 1.0) * bp;
     gl_FragColor = wp + (1.0 - wp.a) * c;
@@ -43,11 +53,13 @@ wf_blur_base::wf_blur_base(wf::output_t *output, std::string name)
     this->output = output;
     this->algorithm_name = name;
 
+    this->saturation_opt.load_option("blur/saturation");
     this->offset_opt.load_option("blur/" + algorithm_name + "_offset");
     this->degrade_opt.load_option("blur/" + algorithm_name + "_degrade");
     this->iterations_opt.load_option("blur/" + algorithm_name + "_iterations");
 
     this->options_changed = [=] () { output->render->damage_whole(); };
+    this->saturation_opt.set_callback(options_changed);
     this->offset_opt.set_callback(options_changed);
     this->degrade_opt.set_callback(options_changed);
     this->iterations_opt.set_callback(options_changed);
@@ -233,6 +245,7 @@ void wf_blur_base::render(wf::texture_t src_tex, wlr_box src_box,
     blend_program.uniformMatrix4f("mvp", glm::inverse(target_fb.transform));
     /* XXX: core should give us the number of texture units used */
     blend_program.uniform1i("bg_texture", 1);
+    blend_program.uniform1f("sat", saturation_opt);
 
     blend_program.set_active_texture(src_tex);
     GL_CALL(glActiveTexture(GL_TEXTURE0 + 1));
