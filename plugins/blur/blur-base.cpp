@@ -70,7 +70,7 @@ wf_blur_base::~wf_blur_base()
 
 int wf_blur_base::calculate_blur_radius()
 {
-    return offset_opt * degrade_opt * iterations_opt;
+    return offset_opt * degrade_opt * std::max(1, (int)iterations_opt);
 }
 
 void wf_blur_base::render_iteration(wf::region_t blur_region,
