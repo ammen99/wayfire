@@ -144,7 +144,7 @@ void wf::bindings_repository_t::rem_binding(void *callback)
     erase(axes);
     erase(activators);
 
-    hotspot_mgr.update_hotspots(activators);
+    recreate_hotspots();
 }
 
 void wf::bindings_repository_t::rem_binding(binding_t *binding)
@@ -164,7 +164,7 @@ void wf::bindings_repository_t::rem_binding(binding_t *binding)
     erase(axes);
     erase(activators);
 
-    hotspot_mgr.update_hotspots(activators);
+    recreate_hotspots();
 }
 
 wf::bindings_repository_t::bindings_repository_t(wf::output_t *output) :
@@ -172,8 +172,16 @@ wf::bindings_repository_t::bindings_repository_t(wf::output_t *output) :
 {
     on_config_reload.set_callback([=] (wf::signal_data_t*)
     {
-        hotspot_mgr.update_hotspots(activators);
+        recreate_hotspots();
     });
 
     wf::get_core().connect_signal("reload-config", &on_config_reload);
+}
+
+void wf::bindings_repository_t::recreate_hotspots()
+{
+    this->idle_recreate_hotspots.run_once([=] ()
+    {
+        hotspot_mgr.update_hotspots(activators);
+    });
 }

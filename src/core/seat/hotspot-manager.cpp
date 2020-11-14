@@ -110,3 +110,25 @@ wf::hotspot_instance_t::hotspot_instance_t(wf::output_t *output, uint32_t edges,
         recalc_geometry();
     });
 }
+
+void wf::hotspot_manager_t::update_hotspots(const container_t& activators)
+{
+    hotspots.clear();
+    for (const auto& opt : activators)
+    {
+        auto opt_hotspots = opt->activated_by->get_value().get_hotspots();
+        for (const auto& hs : opt_hotspots)
+        {
+            auto activator_cb = opt->callback;
+            auto callback = [activator_cb] (uint32_t edges)
+            {
+                (*activator_cb)(ACTIVATOR_SOURCE_HOTSPOT, edges);
+            };
+
+            auto instance = std::make_unique<hotspot_instance_t>(output,
+                hs.get_edges(), hs.get_size_along_edge(),
+                hs.get_size_away_from_edge(), hs.get_timeout(), callback);
+            hotspots.push_back(std::move(instance));
+        }
+    }
+}

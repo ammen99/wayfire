@@ -46,6 +46,13 @@ class bindings_repository_t
     /** Erase binding of any type */
     void rem_binding(binding_t *binding);
 
+    /**
+     * Recreate hotspots.
+     *
+     * The action will take place on the next idle.
+     */
+    void recreate_hotspots();
+
   private:
     // output_t directly pushes in the binding containers to avoid having the
     // same wrapped functions as in the output public API.
@@ -59,5 +66,6 @@ class bindings_repository_t
     hotspot_manager_t hotspot_mgr;
 
     wf::signal_connection_t on_config_reload;
+    wf::wl_idle_call idle_recreate_hotspots;
 };
 }

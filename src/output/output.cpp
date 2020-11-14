@@ -513,7 +513,7 @@ binding_t*output_impl_t::add_activator(
     option_sptr_t<activatorbinding_t> activator, wf::activator_callback *callback)
 {
     auto result = push_binding(this->bindings->activators, activator, callback);
-    this->bindings->hotspot_mgr.update_hotspots(bindings->activators);
+    this->bindings->recreate_hotspots();
     return result;
 }
 
