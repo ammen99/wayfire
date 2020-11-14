@@ -42,7 +42,14 @@ extern "C"
     struct wlr_texture;
 
 #include <wlr/types/wlr_input_device.h>
+#include <wlr/types/wlr_pointer.h>
+#include <wlr/types/wlr_keyboard.h>
+#include <wlr/types/wlr_touch.h>
 #include <wlr/types/wlr_output.h>
 #include <wlr/types/wlr_box.h>
 #include <wlr/util/edges.h>
+#include <wayland-server.h>
+
+    static constexpr uint32_t WLR_KEY_PRESSED  = WL_KEYBOARD_KEY_STATE_PRESSED;
+    static constexpr uint32_t WLR_KEY_RELEASED = WL_KEYBOARD_KEY_STATE_RELEASED;
 }

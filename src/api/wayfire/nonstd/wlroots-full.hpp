@@ -102,6 +102,7 @@ extern "C"
 #if __has_include(<tablet-unstable-v2-protocol.h>)
     #include <wlr/types/wlr_tablet_v2.h>
 #endif
+#include <wlr/types/wlr_tablet_tool.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
 #include <wlr/types/wlr_switch.h>
@@ -109,6 +110,8 @@ extern "C"
 #include <wlr/types/wlr_pointer_gestures_v1.h>
 #include <wlr/types/wlr_idle.h>
 #include <wlr/interfaces/wlr_keyboard.h>
+#include <wlr/types/wlr_touch.h>
+#include <wlr/types/wlr_pointer_gestures_v1.h>
 #include <wlr/xcursor.h>
 #include <wlr/types/wlr_data_control_v1.h>
 #include <wlr/types/wlr_virtual_keyboard_v1.h>

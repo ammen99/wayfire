@@ -1,3 +1,4 @@
+#include <wayfire/nonstd/wlroots-full.hpp>
 #include <wayfire/plugin.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/core.hpp>
