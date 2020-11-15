@@ -543,6 +543,12 @@ bindings_repository_t& output_impl_t::get_bindings()
     return *bindings;
 }
 
+bool output_impl_t::call_plugin(
+    const std::string& activator, const wf::activator_data_t& data) const
+{
+    return this->bindings->handle_activator(activator, data);
+}
+
 uint32_t all_layers_not_below(uint32_t layer)
 {
     uint32_t mask = 0;
@@ -556,4 +562,4 @@ uint32_t all_layers_not_below(uint32_t layer)
 
     return mask;
 }
-}
+} // namespace wf

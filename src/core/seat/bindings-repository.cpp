@@ -1,4 +1,5 @@
 #include "bindings-repository.hpp"
+#include <wayfire/core.hpp>
 #include <algorithm>
 
 bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed)
@@ -135,6 +136,21 @@ void wf::bindings_repository_t::handle_gesture(const wf::touchgesture_t& gesture
     {
         cb();
     }
+}
+
+bool wf::bindings_repository_t::handle_activator(
+    const std::string& activator, const wf::activator_data_t& data)
+{
+    auto opt = wf::get_core().config.get_option(activator);
+    for (auto& act : this->activators)
+    {
+        if (act->activated_by == opt)
+        {
+            return (*act->callback)(data);
+        }
+    }
+
+    return false;
 }
 
 void wf::bindings_repository_t::rem_binding(void *callback)
