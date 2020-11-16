@@ -282,7 +282,7 @@ struct postprocessing_manager_t
         }
 
         fb.wl_transform = wlr_output_transform_compose(
-            (wl_output_transform)fb.wl_transform, WL_OUTPUT_TRANSFORM_NORMAL);
+            (wl_output_transform)fb.wl_transform, WL_OUTPUT_TRANSFORM_FLIPPED_180);
         fb.transform = get_output_matrix_from_transform(
             (wl_output_transform)fb.wl_transform);
     }
