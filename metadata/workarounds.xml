@@ -21,5 +21,10 @@
 				<_name>Full</_name>
 			</desc>
 		</option>
+		<option name="all_dialogs_modal" type="bool">
+			<_short>Make all dialogs modal</_short>
+			<_long>If false, the main window can be focused even if it has a dialog. The dialog is nevertheless kept on top of the main window. Kwin defaults to false.</_long>
+			<default>true</default>
+		</option>
 	</plugin>
 </wayfire>

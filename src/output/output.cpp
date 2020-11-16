@@ -62,11 +62,14 @@ void wf::output_impl_t::refocus(wayfire_view skip_view, uint32_t layers)
             (next_focus->last_focus_timestamp < view->last_focus_timestamp));
     };
 
-    for (auto v : views)
+    for (auto toplevel : views)
     {
-        if (suitable_for_focus(v) && newer_than_candidate(v))
+        for (auto& v : toplevel->enumerate_views())
         {
-            next_focus = v;
+            if (suitable_for_focus(v) && newer_than_candidate(v))
+            {
+                next_focus = v;
+            }
         }
     }
 
@@ -246,6 +249,9 @@ static void update_focus_timestamp(wayfire_view view)
 
 void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
 {
+    static wf::option_wrapper_t<bool>
+    all_dialogs_modal{"workarounds/all_dialogs_modal"};
+
     const auto& make_view_visible = [this, flags] (wayfire_view view)
     {
         if (view->minimized)
@@ -255,6 +261,11 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
 
         if (flags & FOCUS_VIEW_RAISE)
         {
+            while (view->parent)
+            {
+                view = view->parent;
+            }
+
             workspace->bring_to_front(view);
         }
     };
@@ -294,7 +305,7 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
         return;
     }
 
-    while (v->parent && v->parent->is_mapped())
+    while (all_dialogs_modal && v->parent && v->parent->is_mapped())
     {
         v = v->parent;
     }

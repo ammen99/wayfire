@@ -655,15 +655,21 @@ std::vector<wayfire_view> wf::compositor_core_impl_t::get_all_views()
  */
 void wf::compositor_core_impl_t::set_active_view(wayfire_view new_focus)
 {
+    static wf::option_wrapper_t<bool>
+    all_dialogs_modal{"workarounds/all_dialogs_modal"};
+
     if (new_focus && !new_focus->is_mapped())
     {
         new_focus = nullptr;
     }
 
-    /* Descend into frontmost child view */
-    new_focus = new_focus ? new_focus->enumerate_views().front() : nullptr;
-    bool refocus = (last_active_view == new_focus);
+    if (all_dialogs_modal)
+    {
+        /* Descend into frontmost child view */
+        new_focus = new_focus ? new_focus->enumerate_views().front() : nullptr;
+    }
 
+    bool refocus = (last_active_view == new_focus);
     /* don't deactivate view if the next focus is not a toplevel */
     if ((new_focus == nullptr) || (new_focus->role == VIEW_ROLE_TOPLEVEL))
     {
