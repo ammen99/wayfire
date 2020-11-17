@@ -1,6 +1,6 @@
 [submodule "subprojects/wf-config"]
 	path = subprojects/wf-config
-	url = https://github.com/ammen99/wf-config
+	url = https://github.com/WayfireWM/wf-config
 [submodule "subprojects/wlroots"]
 	path = subprojects/wlroots
 	url = https://github.com/swaywm/wlroots
