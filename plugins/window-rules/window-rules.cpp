@@ -26,6 +26,7 @@ class wayfire_window_rules_t : public wf::plugin_interface_t
     void apply(const std::string & signal, wf::signal_data_t *data);
 
   private:
+    void setup_rules_from_config();
     wf::lexer_t _lexer;
 
     wf::signal_callback_t _created;
@@ -33,6 +34,7 @@ class wayfire_window_rules_t : public wf::plugin_interface_t
     wf::signal_callback_t _unmaximized;
     wf::signal_callback_t _minimized;
     wf::signal_callback_t _fullscreened;
+    wf::signal_callback_t reload_config;
 
     std::vector<std::shared_ptr<wf::rule_t>> _rules;
 
@@ -48,17 +50,7 @@ void wayfire_window_rules_t::init()
     _lambda_registrations = wf::lambda_rules_registrations_t::get_instance();
     _lambda_registrations->window_rule_instances++;
 
-    // Build rule list.
-    auto section = wf::get_core().config.get_section("window-rules");
-    for (auto opt : section->get_registered_options())
-    {
-        _lexer.reset(opt->get_value_str());
-        auto rule = wf::rule_parser_t().parse(_lexer);
-        if (rule != nullptr)
-        {
-            _rules.push_back(rule);
-        }
-    }
+    setup_rules_from_config();
 
     // Created rule handler.
     _created = [=] (wf::signal_data_t *data)
@@ -94,6 +86,13 @@ void wayfire_window_rules_t::init()
         apply("fullscreened", data);
     };
     output->connect_signal("view-fullscreen", &_fullscreened);
+
+    /* Auto-reload config */
+    reload_config = [=] (wf::signal_data_t*)
+    {
+        setup_rules_from_config();
+    };
+    wf::get_core().connect_signal("reload-config", &reload_config);
 }
 
 void wayfire_window_rules_t::fini()
@@ -109,6 +108,8 @@ void wayfire_window_rules_t::fini()
     {
         wf::get_core().erase_data<wf::lambda_rules_registrations_t>();
     }
+
+    wf::get_core().disconnect_signal("reload-config", &reload_config);
 }
 
 void wayfire_window_rules_t::apply(const std::string & signal,
@@ -200,6 +201,23 @@ void wayfire_window_rules_t::apply(const std::string & signal,
         }
 
         ++begin;
+    }
+}
+
+void wayfire_window_rules_t::setup_rules_from_config()
+{
+    _rules.clear();
+
+    // Build rule list.
+    auto section = wf::get_core().config.get_section("window-rules");
+    for (auto opt : section->get_registered_options())
+    {
+        _lexer.reset(opt->get_value_str());
+        auto rule = wf::rule_parser_t().parse(_lexer);
+        if (rule != nullptr)
+        {
+            _rules.push_back(rule);
+        }
     }
 }
 
