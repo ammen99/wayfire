@@ -201,7 +201,8 @@ class WayfireSwitcher : public wf::plugin_interface_t
             active = true;
 
             // grabs shouldn't fail if we could successfully activate plugin
-            assert(grab_interface->grab());
+            auto grab = grab_interface->grab();
+            assert(grab);
 
             focus_next(dir);
             arrange();
