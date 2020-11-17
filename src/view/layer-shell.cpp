@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstring>
+#include <cstdlib>
 
 #include "xdg-shell.hpp"
 #include "wayfire/core.hpp"
@@ -69,7 +70,7 @@ wf::workspace_manager::anchored_edge anchor_to_edge(uint32_t edges)
         return wf::workspace_manager::ANCHORED_EDGE_RIGHT;
     }
 
-    assert(false);
+    abort();
 }
 
 struct wf_layer_shell_manager
