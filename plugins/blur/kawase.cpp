@@ -33,7 +33,7 @@ void main()
     gl_FragColor = sum / 8.0;
 })";
 
-static const char *kawase_fragment_shader_down_up =
+static const char *kawase_fragment_shader_up =
     R"(
 #version 100
 precision mediump float;
@@ -67,7 +67,7 @@ class wf_kawase_blur : public wf_blur_base
         program[0].set_simple(OpenGL::compile_program(kawase_vertex_shader,
             kawase_fragment_shader_down));
         program[1].set_simple(OpenGL::compile_program(kawase_vertex_shader,
-            kawase_fragment_shader_down_up));
+            kawase_fragment_shader_up));
         OpenGL::render_end();
     }
 
