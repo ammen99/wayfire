@@ -413,6 +413,15 @@ class wayfire_blur : public wf::plugin_interface_t
 
         output->render->connect_signal("workspace-stream-post",
             &workspace_stream_post);
+
+        for (auto& view :
+             output->workspace->get_views_in_layer(wf::ALL_LAYERS))
+        {
+            if (blur_by_default.matches(view))
+            {
+                add_transformer(view);
+            }
+        }
     }
 
     void fini() override
