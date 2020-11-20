@@ -19,5 +19,15 @@
 			<_long>Toggle the sticky state of a view.</_long>
 			<default>disabled</default>
 		</option>
+		<option name="toggle_maximize" type="activator">
+			<_short>Toggle Maximize</_short>
+			<_long>Toggle the maximize state of the active view.</_long>
+			<default>disabled</default>
+		</option>
+		<option name="minimize" type="activator">
+			<_short>Minimize View</_short>
+			<_long>Minimize the active view.</_long>
+			<default>disabled</default>
+		</option>
 	</plugin>
 </wayfire>
