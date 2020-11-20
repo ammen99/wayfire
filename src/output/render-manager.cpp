@@ -239,6 +239,12 @@ struct effect_hook_manager_t
         effects[type].push_back(hook);
     }
 
+    bool can_scanout() const
+    {
+        return effects[OUTPUT_EFFECT_OVERLAY].size() == 0 &&
+               effects[OUTPUT_EFFECT_POST].size() == 0;
+    }
+
     void rem_effect(effect_hook_t *hook)
     {
         for (int i = 0; i < OUTPUT_EFFECT_TOTAL; i++)
@@ -379,6 +385,11 @@ struct postprocessing_manager_t
         fb.viewport_height = output->handle->height;
 
         return fb;
+    }
+
+    bool can_scanout() const
+    {
+        return post_effects.size() == 0;
     }
 };
 
@@ -675,6 +686,86 @@ class wf::render_manager::impl
         }
     }
 
+    wayfire_view last_scanout;
+    /**
+     * Try to directly scanout a view
+     */
+    bool do_direct_scanout()
+    {
+        const bool can_scanout =
+            !wf::get_core_impl().seat->drag_active &&
+            !output_inhibit_counter &&
+            !renderer &&
+            effects->can_scanout() &&
+            postprocessing->can_scanout();
+
+        if (!can_scanout)
+        {
+            return false;
+        }
+
+        auto views = output->workspace->get_views_on_workspace(
+            output->workspace->get_current_workspace(), wf::VISIBLE_LAYERS);
+
+        if (views.empty())
+        {
+            return false;
+        }
+
+        auto candidate = views.front();
+
+        // The candidate must cover the whole output
+        if (candidate->get_output_geometry() != output->get_relative_geometry())
+        {
+            return false;
+        }
+
+        // The view must have only a single surface and no transformers
+        if (candidate->has_transformer() ||
+            !candidate->priv->surface_children_above.empty() ||
+            !candidate->children.empty())
+        {
+            return false;
+        }
+
+        // Must have a wlr surface with the correct scale and transform
+        auto surface = candidate->get_wlr_surface();
+        if (!surface ||
+            (surface->current.scale != output->handle->scale) ||
+            (surface->current.transform != output->handle->transform))
+        {
+            return false;
+        }
+
+        // Finally, the opaque region must be the full surface.
+        wf::region_t non_opaque = output->get_relative_geometry();
+        non_opaque ^= candidate->get_opaque_region(wf::point_t{0, 0});
+        if (!non_opaque.empty())
+        {
+            return false;
+        }
+
+        wlr_presentation_surface_sampled_on_output(
+            wf::get_core().protocols.presentation, surface, output->handle);
+        wlr_output_attach_buffer(output->handle, &surface->buffer->base);
+
+        if (wlr_output_commit(output->handle))
+        {
+            if (candidate != last_scanout)
+            {
+                last_scanout = candidate;
+                LOGD("Scanned out ",
+                    candidate->get_title(), ",", candidate->get_app_id());
+            }
+
+            return true;
+        } else
+        {
+            LOGD("Failed to scan out view ", candidate->get_title());
+            return false;
+        }
+    }
+
     /**
      * Return the swap damage if called from overlay or postprocessing
      * effect callbacks or empty region otherwise.
@@ -732,6 +823,16 @@ class wf::render_manager::impl
         /* Part 1: frame setup: query damage, etc. */
         effects->run_effects(OUTPUT_EFFECT_PRE);
         effects->run_effects(OUTPUT_EFFECT_DAMAGE);
+
+        if (do_direct_scanout())
+        {
+            // Yet another optimization: if we can directly scanout, we should
+            // stop the rest of the repaint cycle.
+            return;
+        } else
+        {
+            last_scanout = nullptr;
+        }
 
         bool needs_swap;
         if (!output_damage->make_current(needs_swap))
