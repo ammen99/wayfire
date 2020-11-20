@@ -4,7 +4,7 @@ project(
 	'cpp',
 	version: '0.6.0',
 	license: 'MIT',
-	meson_version: '>=0.50.0',
+	meson_version: '>=0.53.0',
 	default_options: [
 		'cpp_std=c++17',
 		'c_std=c11',
