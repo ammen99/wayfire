@@ -39,6 +39,11 @@ class wayfire_decoration :
 
         output->connect_signal("view-mapped", &view_updated);
         output->connect_signal("view-decoration-state-updated", &view_updated);
+        for (auto& view :
+             output->workspace->get_views_in_layer(wf::ALL_LAYERS))
+        {
+            update_view_decoration(view);
+        }
     }
 
     /**
