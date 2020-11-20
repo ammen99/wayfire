@@ -8,7 +8,10 @@
 class wayfire_wm_actions_t : public wf::plugin_interface_t
 {
     nonstd::observer_ptr<wf::sublayer_t> always_above;
+    bool showdesktop_active = false;
 
+    wf::option_wrapper_t<wf::activatorbinding_t> toggle_showdesktop{
+        "wm-actions/toggle_showdesktop"};
     wf::option_wrapper_t<wf::activatorbinding_t> minimize{
         "wm-actions/minimize"};
     wf::option_wrapper_t<wf::activatorbinding_t> toggle_maximize{
@@ -139,6 +142,41 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
     };
 
     /**
+     * Disables show desktop if the workspace is changed or any view is
+     * attached, mapped or unminimized.
+     */
+    wf::signal_connection_t view_attached = [this] (wf::signal_data_t *data)
+    {
+        auto view = get_signaled_view(data);
+        if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
+        {
+            return;
+        }
+
+        disable_showdesktop();
+    };
+
+    wf::signal_connection_t workspace_changed = [this] (wf::signal_data_t *data)
+    {
+        disable_showdesktop();
+    };
+
+    wf::signal_connection_t view_minimized = [this] (wf::signal_data_t *data)
+    {
+        auto ev = static_cast<wf::view_minimized_signal*>(data);
+
+        if ((ev->view->role != wf::VIEW_ROLE_TOPLEVEL) || !ev->view->is_mapped())
+        {
+            return;
+        }
+
+        if (!ev->state)
+        {
+            disable_showdesktop();
+        }
+    };
+
+    /**
      * Execute for_view on the selected view, if available.
      */
     bool execute_for_selected_view(wf::activator_source_t source,
@@ -200,11 +238,59 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
         });
     };
 
+    wf::activator_callback on_toggle_showdesktop = [=] (auto ev) -> bool
+    {
+        showdesktop_active = !showdesktop_active;
+
+        if (showdesktop_active)
+        {
+            for (auto& view : output->workspace->get_views_in_layer(wf::WM_LAYERS))
+            {
+                if (!view->minimized)
+                {
+                    view->minimize_request(true);
+                    view->store_data(
+                        std::make_unique<wf::custom_data_t>(),
+                        "wm-actions-showdesktop");
+                }
+            }
+
+            output->connect_signal("view-layer-attached", &view_attached);
+            output->connect_signal("view-mapped", &view_attached);
+            output->connect_signal("workspace-changed", &workspace_changed);
+            output->connect_signal("view-minimized", &view_minimized);
+            return true;
+        }
+
+        disable_showdesktop();
+
+        return true;
+    };
+
+    void disable_showdesktop()
+    {
+        view_attached.disconnect();
+        workspace_changed.disconnect();
+        view_minimized.disconnect();
+
+        for (auto& view : output->workspace->get_views_in_layer(wf::ALL_LAYERS))
+        {
+            if (view->has_data("wm-actions-showdesktop"))
+            {
+                view->erase_data("wm-actions-showdesktop");
+                view->minimize_request(false);
+            }
+        }
+
+        showdesktop_active = false;
+    }
+
   public:
     void init() override
     {
         always_above = output->workspace->create_sublayer(
             wf::LAYER_WORKSPACE, wf::SUBLAYER_DOCKED_ABOVE);
+        output->add_activator(toggle_showdesktop, &on_toggle_showdesktop);
         output->add_activator(minimize, &on_minimize);
         output->add_activator(toggle_maximize, &on_toggle_maximize);
         output->add_activator(toggle_above, &on_toggle_above);
@@ -227,6 +313,7 @@ class wayfire_wm_actions_t : public wf::plugin_interface_t
         }
 
         output->workspace->destroy_sublayer(always_above);
+        output->rem_binding(&on_toggle_showdesktop);
         output->rem_binding(&on_minimize);
         output->rem_binding(&on_toggle_maximize);
         output->rem_binding(&on_toggle_above);
