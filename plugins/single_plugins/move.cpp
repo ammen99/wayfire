@@ -96,7 +96,7 @@ class wayfire_move : public wf::plugin_interface_t
         grab_interface->capabilities =
             wf::CAPABILITY_GRAB_INPUT | wf::CAPABILITY_MANAGE_DESKTOP;
 
-        activate_binding = [=] (uint32_t, int, int)
+        activate_binding = [=] (auto)
         {
             is_using_touch     = false;
             was_client_request = false;

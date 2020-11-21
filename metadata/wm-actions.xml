@@ -3,7 +3,7 @@
 	<plugin name="wm-actions">
 		<_short>WM Actions</_short>
 		<_long>A plugin which provides various window management functionalities.</_long>
-		<category>Desktop</category>
+		<category>Window Management</category>
 		<option name="toggle_always_on_top" type="activator">
 			<_short>Toggle Always on Top</_short>
 			<_long>Toggle the always-on-top state of a view.</_long>
@@ -17,6 +17,16 @@
 		<option name="toggle_sticky" type="activator">
 			<_short>Toggle Sticky</_short>
 			<_long>Toggle the sticky state of a view.</_long>
+			<default>disabled</default>
+		</option>
+		<option name="toggle_maximize" type="activator">
+			<_short>Toggle Maximize</_short>
+			<_long>Toggle the maximize state of the active view.</_long>
+			<default>disabled</default>
+		</option>
+		<option name="minimize" type="activator">
+			<_short>Minimize View</_short>
+			<_long>Minimize the active view.</_long>
 			<default>disabled</default>
 		</option>
 	</plugin>

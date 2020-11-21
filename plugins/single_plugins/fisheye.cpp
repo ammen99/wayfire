@@ -134,7 +134,7 @@ class wayfire_fisheye : public wf::plugin_interface_t
         OpenGL::render_end();
     }
 
-    wf::activator_callback toggle_cb = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback toggle_cb = [=] (auto)
     {
         if (!output->can_activate_plugin(grab_interface))
         {

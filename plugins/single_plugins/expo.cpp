@@ -35,7 +35,7 @@ class wayfire_expo : public wf::plugin_interface_t
         return wf::point_t{x, y};
     }
 
-    wf::activator_callback toggle_cb = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback toggle_cb = [=] (auto)
     {
         if (!state.active)
         {
@@ -115,7 +115,7 @@ class wayfire_expo : public wf::plugin_interface_t
                 opt->get_value_str());
             keyboard_select_options.push_back(wf::create_option(value.value()));
 
-            keyboard_select_cbs.push_back([=] (wf::activator_source_t, uint32_t)
+            keyboard_select_cbs.push_back([=] (auto)
             {
                 if (!state.active)
                 {

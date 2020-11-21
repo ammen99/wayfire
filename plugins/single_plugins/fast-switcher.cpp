@@ -123,7 +123,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         view->damage();
     }
 
-    wf::key_callback fast_switch = [=] (uint32_t)
+    wf::key_callback fast_switch = [=] (auto)
     {
         if (active)
         {

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <wayfire>
 	<plugin name="vswipe">
-		<_short>Viewport swipe</_short>
+		<_short>Viewport Swipe</_short>
 		<_long>A plugin to swipe workspaces in a grid.</_long>
 		<category>Desktop</category>
 		<option name="enable_horizontal" type="bool">

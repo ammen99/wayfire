@@ -737,7 +737,6 @@ class wf::render_manager::impl
         if (!output_damage->make_current(needs_swap))
         {
             wlr_output_rollback(output->handle);
-
             return;
         }
 
@@ -746,9 +745,7 @@ class wf::render_manager::impl
             /* Optimization: the output doesn't need a swap (so isn't damaged),
              * and no plugin wants custom redrawing - we can just skip the whole
              * repaint */
-            post_paint();
             wlr_output_rollback(output->handle);
-
             return;
         }
 

@@ -66,8 +66,7 @@ class wayfire_command : public wf::plugin_interface_t
     };
 
     bool on_binding(std::string command, binding_mode mode,
-        wf::activator_source_t source,
-        uint32_t value)
+        const wf::activator_data_t& data)
     {
         /* We already have a repeatable command, do not accept further bindings */
         if (repeat.pressed_key || repeat.pressed_button)
@@ -89,8 +88,9 @@ class wayfire_command : public wf::plugin_interface_t
         wf::get_core().run(command.c_str());
 
         /* No repeat necessary in any of those cases */
-        if ((mode != BINDING_REPEAT) || (source == wf::ACTIVATOR_SOURCE_GESTURE) ||
-            (value == 0))
+        if ((mode != BINDING_REPEAT) ||
+            (data.source == wf::activator_source_t::GESTURE) ||
+            (data.activation_data == 0))
         {
             output->deactivate_plugin(grab_interface);
 
@@ -98,12 +98,12 @@ class wayfire_command : public wf::plugin_interface_t
         }
 
         repeat.repeat_command = command;
-        if (source == wf::ACTIVATOR_SOURCE_KEYBINDING)
+        if (data.source == wf::activator_source_t::KEYBINDING)
         {
-            repeat.pressed_key = value;
+            repeat.pressed_key = data.activation_data;
         } else
         {
-            repeat.pressed_button = value;
+            repeat.pressed_button = data.activation_data;
         }
 
         repeat_delay_source = wl_event_loop_add_timer(wf::get_core().ev_loop,
@@ -234,17 +234,17 @@ class wayfire_command : public wf::plugin_interface_t
             if (repeatable_opt)
             {
                 bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
-                    this, executable, BINDING_REPEAT, _1, _2);
+                    this, executable, BINDING_REPEAT, _1);
                 output->add_activator(repeatable_opt, &bindings[i]);
             } else if (always_opt)
             {
                 bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
-                    this, executable, BINDING_ALWAYS, _1, _2);
+                    this, executable, BINDING_ALWAYS, _1);
                 output->add_activator(always_opt, &bindings[i]);
             } else if (regular_opt)
             {
                 bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
-                    this, executable, BINDING_NORMAL, _1, _2);
+                    this, executable, BINDING_NORMAL, _1);
                 output->add_activator(regular_opt, &bindings[i]);
             }
         }

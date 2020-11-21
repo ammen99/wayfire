@@ -287,36 +287,36 @@ class control_bindings_t
      */
     void setup(binding_callback_t callback)
     {
-        callback_left = [=] (wf::activator_source_t, uint32_t)
+        callback_left = [=] (const wf::activator_data_t&)
         {
             return handle_dir({-1, 0}, nullptr, callback);
         };
-        callback_right = [=] (wf::activator_source_t, uint32_t)
+        callback_right = [=] (const wf::activator_data_t&)
         {
             return handle_dir({1, 0}, nullptr, callback);
         };
-        callback_up = [=] (wf::activator_source_t, uint32_t)
+        callback_up = [=] (const wf::activator_data_t&)
         {
             return handle_dir({0, -1}, nullptr, callback);
         };
-        callback_down = [=] (wf::activator_source_t, uint32_t)
+        callback_down = [=] (const wf::activator_data_t&)
         {
             return handle_dir({0, 1}, nullptr, callback);
         };
 
-        callback_win_left = [=] (wf::activator_source_t, uint32_t)
+        callback_win_left = [=] (const wf::activator_data_t&)
         {
             return handle_dir({-1, 0}, get_top_view(), callback);
         };
-        callback_win_right = [=] (wf::activator_source_t, uint32_t)
+        callback_win_right = [=] (const wf::activator_data_t&)
         {
             return handle_dir({1, 0}, get_top_view(), callback);
         };
-        callback_win_up = [=] (wf::activator_source_t, uint32_t)
+        callback_win_up = [=] (const wf::activator_data_t&)
         {
             return handle_dir({0, -1}, get_top_view(), callback);
         };
-        callback_win_down = [=] (wf::activator_source_t, uint32_t)
+        callback_win_down = [=] (const wf::activator_data_t&)
         {
             return handle_dir({0, 1}, get_top_view(), callback);
         };

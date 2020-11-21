@@ -150,6 +150,19 @@ class output_t : public wf::object_base_t
     virtual bool is_plugin_active(std::string owner_name) const = 0;
 
     /**
+     * Call a plugin's registered activator binding.
+     *
+     * @param activator The name of the activator binding, for ex. "expo/toggle"
+     * @param data The activator data to pass to the view.
+     *   Supports also custom data types.
+     *
+     * @return True if a plugin's binding matches the given name and the plugin
+     *   consumes the event, False otherwise.
+     */
+    virtual bool call_plugin(const std::string& activator,
+        const wf::activator_data_t& data) const = 0;
+
+    /**
      * @return The topmost view in the workspace layer
      */
     wayfire_view get_top_view() const;

@@ -3,7 +3,7 @@
 	<plugin name="switcher">
 		<_short>Switcher</_short>
 		<_long>A plugin to change active window with an animation.</_long>
-		<category>Window management</category>
+		<category>Window Management</category>
 		<!-- Key-bindings -->
 		<option name="next_view" type="key">
 			<_short>Next view</_short>

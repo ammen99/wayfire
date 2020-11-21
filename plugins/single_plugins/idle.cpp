@@ -129,7 +129,7 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
     wlr_idle_timeout *timeout_screensaver = NULL;
     wf::wl_listener_wrapper on_idle_screensaver, on_resume_screensaver;
 
-    wf::activator_callback toggle = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback toggle = [=] (auto)
     {
         if (!output->can_activate_plugin(grab_interface))
         {

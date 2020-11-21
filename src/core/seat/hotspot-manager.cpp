@@ -122,7 +122,11 @@ void wf::hotspot_manager_t::update_hotspots(const container_t& activators)
             auto activator_cb = opt->callback;
             auto callback = [activator_cb] (uint32_t edges)
             {
-                (*activator_cb)(ACTIVATOR_SOURCE_HOTSPOT, edges);
+                wf::activator_data_t data = {
+                    .source = activator_source_t::HOTSPOT,
+                    .activation_data = edges,
+                };
+                (*activator_cb)(data);
             };
 
             auto instance = std::make_unique<hotspot_instance_t>(output,

@@ -3,7 +3,7 @@
 	<plugin name="move">
 		<_short>Move</_short>
 		<_long>A plugin to move windows around by dragging them from any part (not just the title bar).</_long>
-		<category>Window management</category>
+		<category>Window Management</category>
 		<option name="activate" type="button">
 			<_short>Activate</_short>
 			<_long>When the specified button is held down, you can drag windows to move them.</_long>

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <wayfire>
 	<plugin name="wrot">
-		<_short>Window rotate</_short>
+		<_short>Window Rotate</_short>
 		<_long>A plugin to rotate windows with the mouse.</_long>
 		<category>Effects</category>
 		<option name="activate" type="button">

@@ -1560,12 +1560,9 @@ class output_layout_t::impl
             }
         }
 
-        if (result.empty())
+        if (noop_output && noop_output->output)
         {
-            if (noop_output && noop_output->output)
-            {
-                result.push_back(noop_output->output.get());
-            }
+            result.push_back(noop_output->output.get());
         }
 
         return result;

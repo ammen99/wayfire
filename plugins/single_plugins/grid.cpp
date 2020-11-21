@@ -237,7 +237,7 @@ class wayfire_grid : public wf::plugin_interface_t
     wf::option_wrapper_t<wf::activatorbinding_t> keys[10];
     wf::option_wrapper_t<wf::activatorbinding_t> restore_opt{"grid/restore"};
 
-    wf::activator_callback restore = [=] (wf::activator_source_t, uint32_t)
+    wf::activator_callback restore = [=] (auto)
     {
         if (!output->can_activate_plugin(grab_interface))
         {
@@ -269,7 +269,7 @@ class wayfire_grid : public wf::plugin_interface_t
         for (int i = 1; i < 10; i++)
         {
             keys[i].load_option("grid/slot_" + slots[i]);
-            bindings[i] = [=] (wf::activator_source_t, uint32_t)
+            bindings[i] = [=] (auto)
             {
                 auto view = output->get_active_view();
                 if (!view || (view->role != wf::VIEW_ROLE_TOPLEVEL))

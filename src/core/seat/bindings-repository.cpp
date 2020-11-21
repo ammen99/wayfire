@@ -1,7 +1,9 @@
 #include "bindings-repository.hpp"
+#include <wayfire/core.hpp>
 #include <algorithm>
 
-bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed)
+bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed,
+    uint32_t mod_binding_key)
 {
     std::vector<std::function<bool()>> callbacks;
     for (auto& binding : this->keys)
@@ -13,7 +15,7 @@ bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed)
             auto callback = binding->callback;
             callbacks.emplace_back([pressed, callback] ()
             {
-                return (*callback)(pressed.get_key());
+                return (*callback)(pressed);
             });
         }
     }
@@ -25,9 +27,20 @@ bool wf::bindings_repository_t::handle_key(const wf::keybinding_t& pressed)
             /* We must be careful because the callback might be erased,
              * so force copy the callback into the lambda */
             auto callback = binding->callback;
-            callbacks.emplace_back([pressed, callback] ()
+            callbacks.emplace_back([pressed, callback, mod_binding_key] ()
             {
-                return (*callback)(ACTIVATOR_SOURCE_KEYBINDING, pressed.get_key());
+                wf::activator_data_t ev = {
+                    .source = activator_source_t::KEYBINDING,
+                    .activation_data = pressed.get_key()
+                };
+
+                if (mod_binding_key)
+                {
+                    ev.source = activator_source_t::MODIFIERBINDING;
+                    ev.activation_data = mod_binding_key;
+                }
+
+                return (*callback)(ev);
             });
         }
     }
@@ -62,8 +75,7 @@ bool wf::bindings_repository_t::handle_axis(uint32_t modifiers,
     return !callbacks.empty();
 }
 
-bool wf::bindings_repository_t::handle_button(const wf::buttonbinding_t& pressed,
-    const wf::pointf_t& cursor)
+bool wf::bindings_repository_t::handle_button(const wf::buttonbinding_t& pressed)
 {
     std::vector<std::function<bool()>> callbacks;
     for (auto& binding : this->buttons)
@@ -75,7 +87,7 @@ bool wf::bindings_repository_t::handle_button(const wf::buttonbinding_t& pressed
             auto callback = binding->callback;
             callbacks.emplace_back([=] ()
             {
-                return (*callback)(pressed.get_button(), cursor.x, cursor.y);
+                return (*callback)(pressed);
             });
         }
     }
@@ -89,8 +101,11 @@ bool wf::bindings_repository_t::handle_button(const wf::buttonbinding_t& pressed
             auto callback = binding->callback;
             callbacks.emplace_back([=] ()
             {
-                return (*callback)(wf::ACTIVATOR_SOURCE_BUTTONBINDING,
-                    pressed.get_button());
+                wf::activator_data_t data = {
+                    .source = activator_source_t::BUTTONBINDING,
+                    .activation_data = pressed.get_button(),
+                };
+                return (*callback)(data);
             });
         }
     }
@@ -116,7 +131,11 @@ void wf::bindings_repository_t::handle_gesture(const wf::touchgesture_t& gesture
             auto callback = binding->callback;
             callbacks.emplace_back([=] ()
             {
-                (*callback)(ACTIVATOR_SOURCE_GESTURE, 0);
+                wf::activator_data_t data = {
+                    .source = activator_source_t::GESTURE,
+                    .activation_data = 0
+                };
+                (*callback)(data);
             });
         }
     }
@@ -125,6 +144,21 @@ void wf::bindings_repository_t::handle_gesture(const wf::touchgesture_t& gesture
     {
         cb();
     }
+}
+
+bool wf::bindings_repository_t::handle_activator(
+    const std::string& activator, const wf::activator_data_t& data)
+{
+    auto opt = wf::get_core().config.get_option(activator);
+    for (auto& act : this->activators)
+    {
+        if (act->activated_by == opt)
+        {
+            return (*act->callback)(data);
+        }
+    }
+
+    return false;
 }
 
 void wf::bindings_repository_t::rem_binding(void *callback)

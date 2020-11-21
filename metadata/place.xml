@@ -3,7 +3,7 @@
 	<plugin name="place">
 		<_short>Place</_short>
 		<_long>A plugin to position newly opened windows.</_long>
-		<category>Window management</category>
+		<category>Window Management</category>
 		<option name="mode" type="string">
 			<_short>Window placement mode</_short>
 			<_long>Specifies how to position newly opened windows.</_long>
@@ -15,6 +15,10 @@
 			<desc>
 				<value>cascade</value>
 				<_name>Cascade</_name>
+			</desc>
+			<desc>
+				<value>maximize</value>
+				<_name>Maximize</_name>
 			</desc>
 			<desc>
 				<value>random</value>

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <wayfire>
 	<plugin name="vswitch">
-		<_short>Viewport switcher</_short>
+		<_short>Viewport Switcher</_short>
 		<_long>A plugin to switch workspaces in a grid.</_long>
 		<category>Desktop</category>
 		<option name="binding_left" type="activator">

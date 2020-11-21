@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <wayfire>
 	<plugin name="fast-switcher">
-		<_short>Fast switcher</_short>
+		<_short>Fast Switcher</_short>
 		<_long>A plugin to switch active window.</_long>
-		<category>Window management</category>
+		<category>Window Management</category>
 		<option name="activate" type="key">
 			<_short>Activate</_short>
 			<_long>Activates fast switcher with the specified key.</_long>

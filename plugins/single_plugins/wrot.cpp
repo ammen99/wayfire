@@ -20,7 +20,7 @@ class wf_wrot : public wf::plugin_interface_t
     wf::button_callback call;
     wf::option_wrapper_t<double> reset_radius{"wrot/reset_radius"};
 
-    int last_x, last_y;
+    wf::pointf_t last_position;
     wayfire_view current_view;
 
   public:
@@ -29,7 +29,7 @@ class wf_wrot : public wf::plugin_interface_t
         grab_interface->name = "wrot";
         grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
 
-        call = [=] (uint32_t, int x, int y)
+        call = [=] (auto)
         {
             if (!output->activate_plugin(grab_interface))
             {
@@ -47,9 +47,7 @@ class wf_wrot : public wf::plugin_interface_t
             output->focus_view(current_view, true);
             grab_interface->grab();
 
-            last_x = x;
-            last_y = y;
-
+            last_position = output->get_cursor_position();
             return true;
         };
 
@@ -75,7 +73,7 @@ class wf_wrot : public wf::plugin_interface_t
             double cx = g.x + g.width / 2.0;
             double cy = g.y + g.height / 2.0;
 
-            double x1 = last_x - cx, y1 = last_y - cy;
+            double x1 = last_position.x - cx, y1 = last_position.y - cy;
             double x2 = x - cx, y2 = y - cy;
 
             if (vlen(x2, y2) <= reset_radius)
@@ -89,8 +87,7 @@ class wf_wrot : public wf::plugin_interface_t
 
             current_view->damage();
 
-            last_x = x;
-            last_y = y;
+            last_position = {1.0 * x, 1.0 * y};
         };
 
         grab_interface->callbacks.pointer.button = [=] (uint32_t, uint32_t s)

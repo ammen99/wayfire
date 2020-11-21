@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <wayfire>
 	<plugin name="oswitch">
-		<_short>Output switcher</_short>
+		<_short>Output Switcher</_short>
 		<_long>A plugin to change the focused output.</_long>
 		<category>Desktop</category>
 		<option name="next_output" type="activator">

@@ -3,7 +3,7 @@
 	<plugin name="grid">
 		<_short>Grid</_short>
 		<_long>A plugin to position the windows in certain regions of the output.</_long>
-		<category>Window management</category>
+		<category>Window Management</category>
 		<option name="duration" type="int">
 			<_short>Duration</_short>
 			<_long>Sets the duration of the animation in milliseconds.</_long>

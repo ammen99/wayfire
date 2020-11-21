@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <wayfire>
 	<plugin name="extra-gestures">
-		<_short>Extra touchscreen gestures</_short>
+		<_short>Extra Touchscreen Gestures</_short>
 		<_long>A plugin which provides several touchscreen gestures.</_long>
 		<category>Desktop</category>
 		<option name="move_fingers" type="int">
