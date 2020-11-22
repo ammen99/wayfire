@@ -112,6 +112,10 @@ class compositor_core_t : public wf::object_base_t
         wlr_gtk_primary_selection_device_manager *gtk_primary_selection;
         wlr_primary_selection_v1_device_manager *primary_selection_v1;
         wlr_viewporter *viewporter;
+
+        wlr_xdg_foreign_registry *foreign_registry;
+        wlr_xdg_foreign_v1 *foreign_v1;
+        wlr_xdg_foreign_v2 *foreign_v2;
     } protocols;
 
     std::string to_string() const
