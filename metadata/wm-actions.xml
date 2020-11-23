@@ -29,5 +29,10 @@
 			<_long>Minimize the active view.</_long>
 			<default>disabled</default>
 		</option>
+		<option name="toggle_showdesktop" type="activator">
+			<_short>Toggle Show Desktop</_short>
+			<_long>Show the desktop.</_long>
+			<default>disabled</default>
+		</option>
 	</plugin>
 </wayfire>
