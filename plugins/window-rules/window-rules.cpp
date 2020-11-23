@@ -29,12 +29,41 @@ class wayfire_window_rules_t : public wf::plugin_interface_t
     void setup_rules_from_config();
     wf::lexer_t _lexer;
 
-    wf::signal_callback_t _created;
-    wf::signal_callback_t _maximized;
-    wf::signal_callback_t _unmaximized;
-    wf::signal_callback_t _minimized;
-    wf::signal_callback_t _fullscreened;
-    wf::signal_callback_t reload_config;
+    // Created rule handler.
+    wf::signal_connection_t _created = [=] (wf::signal_data_t *data)
+    {
+        apply("created", data);
+    };
+
+    // Maximized rule handler.
+    wf::signal_connection_t _maximized = [=] (wf::signal_data_t *data)
+    {
+        apply("maximized", data);
+    };
+
+    // Unaximized rule handler.
+    wf::signal_connection_t _unmaximized = [=] (wf::signal_data_t *data)
+    {
+        apply("unmaximized", data);
+    };
+
+    // Minimized rule handler.
+    wf::signal_connection_t _minimized = [=] (wf::signal_data_t *data)
+    {
+        apply("minimized", data);
+    };
+
+    // Fullscreened rule handler.
+    wf::signal_connection_t _fullscreened = [=] (wf::signal_data_t *data)
+    {
+        apply("fullscreened", data);
+    };
+
+    // Auto-reload on changes to config file
+    wf::signal_connection_t _reload_config = [=] (wf::signal_data_t*)
+    {
+        setup_rules_from_config();
+    };
 
     std::vector<std::shared_ptr<wf::rule_t>> _rules;
 
@@ -52,64 +81,21 @@ void wayfire_window_rules_t::init()
 
     setup_rules_from_config();
 
-    // Created rule handler.
-    _created = [=] (wf::signal_data_t *data)
-    {
-        apply("created", data);
-    };
     output->connect_signal("view-mapped", &_created);
-
-    // Maximized rule handler.
-    _maximized = [=] (wf::signal_data_t *data)
-    {
-        apply("maximized", data);
-    };
     output->connect_signal("view-tiled", &_maximized);
-
-    // Unaximized rule handler.
-    _unmaximized = [=] (wf::signal_data_t *data)
-    {
-        apply("unmaximized", data);
-    };
     output->connect_signal("view-tiled", &_unmaximized);
-
-    // Minimized rule handler.
-    _minimized = [=] (wf::signal_data_t *data)
-    {
-        apply("minimized", data);
-    };
     output->connect_signal("view-minimized", &_minimized);
-
-    // Fullscreened rule handler.
-    _fullscreened = [=] (wf::signal_data_t *data)
-    {
-        apply("fullscreened", data);
-    };
     output->connect_signal("view-fullscreen", &_fullscreened);
-
-    /* Auto-reload config */
-    reload_config = [=] (wf::signal_data_t*)
-    {
-        setup_rules_from_config();
-    };
-    wf::get_core().connect_signal("reload-config", &reload_config);
+    wf::get_core().connect_signal("reload-config", &_reload_config);
 }
 
 void wayfire_window_rules_t::fini()
 {
-    output->disconnect_signal("view-mapped", &_created);
-    output->disconnect_signal("view-tiled", &_maximized);
-    output->disconnect_signal("view-tiled", &_unmaximized);
-    output->disconnect_signal("view-minimized", &_minimized);
-    output->disconnect_signal("view-fullscreen", &_fullscreened);
-
     _lambda_registrations->window_rule_instances--;
     if (_lambda_registrations->window_rule_instances == 0)
     {
         wf::get_core().erase_data<wf::lambda_rules_registrations_t>();
     }
-
-    wf::get_core().disconnect_signal("reload-config", &reload_config);
 }
 
 void wayfire_window_rules_t::apply(const std::string & signal,
