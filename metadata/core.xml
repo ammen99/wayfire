@@ -53,5 +53,20 @@
 			<_long>Sets the compositor render delay in milliseconds, which allows applications to render with low latency.</_long>
 			<default>-1</default>
 		</option>
+		<option name="focus_btn_mod" type="bool">
+			<_short>Focus on click if keyboard modifiers are pressed</_short>
+			<_long>Allow focusing the clicked view even if keyboard modifiers are pressed. Without this option, click-to-focus only works if no modifiers are pressed.</_long>
+			<default>false</default>
+		</option>
+		<option name="focus_btn_middle" type="bool">
+			<_short>Focus on click with middle mouse button</_short>
+			<_long>Allow focusing the clicked view with the middle mouse button.</_long>
+			<default>false</default>
+		</option>
+		<option name="focus_btn_right" type="bool">
+			<_short>Focus on click with right mouse button</_short>
+			<_long>Allow focusing the clicked view with the right mouse button.</_long>
+			<default>false</default>
+		</option>
 	</plugin>
 </wayfire>
