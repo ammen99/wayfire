@@ -30,8 +30,7 @@ class wayfire_focus : public wf::plugin_interface_t
     void check_focus_surface(wf::surface_interface_t *surface);
 
     wf::option_wrapper_t<bool> focus_modifiers{"core/focus_btn_mod"};
-    wf::option_wrapper_t<bool> focus_btn_middle{"core/focus_btn_middle"};
-    wf::option_wrapper_t<bool> focus_btn_right{"core/focus_btn_right"};
+    wf::option_wrapper_t<wf::activatorbinding_t> focus_btns{"core/focus_btns"};
 
   public:
     void init() override;
