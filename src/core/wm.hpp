@@ -29,8 +29,8 @@ class wayfire_focus : public wf::plugin_interface_t
     std::unique_ptr<wf::touch::gesture_t> tap_gesture;
     void check_focus_surface(wf::surface_interface_t *surface);
 
-    wf::option_wrapper_t<bool> focus_modifiers{"core/focus_btn_mod"};
-    wf::option_wrapper_t<wf::activatorbinding_t> focus_btns{"core/focus_btns"};
+    wf::option_wrapper_t<bool> focus_modifiers{"core/focus_button_with_modifiers"};
+    wf::option_wrapper_t<wf::activatorbinding_t> focus_btns{"core/focus_buttons"};
 
   public:
     void init() override;
