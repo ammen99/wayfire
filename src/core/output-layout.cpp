@@ -126,7 +126,7 @@ static bool parse_modeline(const char *modeline, drmModeModeInfo & mode)
     char hsync[16];
     char vsync[16];
     char interlace[16];
-    interlace[0] = '\0'
+    interlace[0] = '\0';
     float fclock;
 
     std::memset(&mode, 0, sizeof(mode));
