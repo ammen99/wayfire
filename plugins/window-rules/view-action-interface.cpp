@@ -148,14 +148,22 @@ bool view_action_interface_t::execute(const std::string & name,
         if (std::get<0>(position))
         {
             _move(std::get<1>(position), std::get<2>(position));
+            return false;
         }
+
+        LOGE("View action interface: invalid arguments for move");
+        return true;
     } else if (name == "resize")
     {
         auto size = _validate_size(args);
         if (std::get<0>(size))
         {
             _resize(std::get<1>(size), std::get<2>(size));
+            return false;
         }
+
+        LOGE("View action interface: invalid arguments for resize");
+        return true;
     }
 
     LOGE("View action interface: Unsupported action execution requested. Name: ",

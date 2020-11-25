@@ -11,6 +11,8 @@
 #include "../output/output-impl.hpp"
 #include "wayfire/signal-definitions.hpp"
 
+#include <linux/input-event-codes.h>
+
 static void idle_shutdown(void *data)
 {
     wf::get_core().shutdown();
@@ -109,14 +111,27 @@ void wayfire_focus::init()
     };
     output->connect_signal("wm-focus-request", &on_wm_focus_request);
 
-    on_button = [=] (const wf::buttonbinding_t&)
+    on_button.set_callback([=] (wf::signal_data_t *data)
     {
-        this->check_focus_surface(wf::get_core().get_cursor_focus());
+        auto ev = static_cast<
+            wf::input_event_signal<wlr_event_pointer_button>*>(data);
 
-        return false;
-    };
-    output->add_button(
-        wf::create_option_string<wf::buttonbinding_t>("BTN_LEFT"), &on_button);
+        if (ev->event->state != WLR_BUTTON_PRESSED)
+        {
+            return;
+        }
+
+        /* focuse_btns->get_value() does not compile */
+        wf::option_sptr_t<wf::activatorbinding_t> tmp = focus_btns;
+        if ((!focus_modifiers && wf::get_core().get_keyboard_modifiers()) ||
+            !tmp->get_value().has_match(wf::buttonbinding_t(0, ev->event->button)))
+        {
+            return;
+        }
+
+        this->check_focus_surface(wf::get_core().get_cursor_focus());
+    });
+    wf::get_core().connect_signal("pointer_button", &on_button);
 
     // build touch gesture
     auto on_tap = std::make_unique<wf::touch::touch_action_t>(1, true);

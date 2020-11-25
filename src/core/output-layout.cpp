@@ -125,15 +125,17 @@ static bool parse_modeline(const char *modeline, drmModeModeInfo & mode)
 {
     char hsync[16];
     char vsync[16];
+    char interlace[16];
+    interlace[0] = '\0';
     float fclock;
 
     std::memset(&mode, 0, sizeof(mode));
     mode.type = DRM_MODE_TYPE_USERDEF;
 
-    if (sscanf(modeline, "%f %hd %hd %hd %hd %hd %hd %hd %hd %15s %15s",
+    if (sscanf(modeline, "%f %hd %hd %hd %hd %hd %hd %hd %hd %15s %15s %15s",
         &fclock, &mode.hdisplay, &mode.hsync_start, &mode.hsync_end,
         &mode.htotal, &mode.vdisplay, &mode.vsync_start, &mode.vsync_end,
-        &mode.vtotal, hsync, vsync) != 11)
+        &mode.vtotal, hsync, vsync, interlace) < 11)
     {
         return false;
     }
@@ -160,6 +162,11 @@ static bool parse_modeline(const char *modeline, drmModeModeInfo & mode)
     } else
     {
         return false;
+    }
+
+    if (strcasecmp(interlace, "interlace") == 0)
+    {
+        mode.flags |= DRM_MODE_FLAG_INTERLACE;
     }
 
     snprintf(mode.name, sizeof(mode.name), "%dx%d@%d",
