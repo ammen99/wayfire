@@ -135,7 +135,7 @@ static bool parse_modeline(const char *modeline, drmModeModeInfo & mode)
     if (sscanf(modeline, "%f %hd %hd %hd %hd %hd %hd %hd %hd %15s %15s %15s",
         &fclock, &mode.hdisplay, &mode.hsync_start, &mode.hsync_end,
         &mode.htotal, &mode.vdisplay, &mode.vsync_start, &mode.vsync_end,
-        &mode.vtotal, hsync, vsync, interlace ) < 11)
+        &mode.vtotal, hsync, vsync, interlace) < 11)
     {
         return false;
     }
@@ -167,8 +167,8 @@ static bool parse_modeline(const char *modeline, drmModeModeInfo & mode)
     if (strcasecmp(interlace, "interlace") == 0)
     {
         mode.flags |= DRM_MODE_FLAG_INTERLACE;
-    }    
-    
+    }
+
     snprintf(mode.name, sizeof(mode.name), "%dx%d@%d",
         mode.hdisplay, mode.vdisplay, mode.vrefresh / 1000);
 
