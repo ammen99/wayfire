@@ -146,6 +146,7 @@ void wf::tablet_tool_t::set_focus(wf::surface_interface_t *surface)
     }
 
     /* Set the new focus, if it is a wlr surface */
+    wf::get_core_impl().seat->ensure_input_surface(surface);
     wlr_surface *next_focus = surface ? surface->get_wlr_surface() : nullptr;
     if (next_focus && wlr_surface_accepts_tablet_v2(tablet_v2, next_focus))
     {

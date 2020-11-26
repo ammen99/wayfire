@@ -54,7 +54,6 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             "_NET_WM_WINDOW_TYPE_DIALOG");
 
         xcb_disconnect(connection);
-
         return true;
     }
 
@@ -984,6 +983,18 @@ void wf::xwayland_update_default_cursor()
         wlr_xwayland_set_cursor(xwayland_handle, image->buffer,
             image->width * 4, image->width, image->height,
             image->hotspot_x, image->hotspot_y);
+    }
+
+#endif
+}
+
+void wf::xwayland_bring_to_front(wlr_surface *surface)
+{
+#if WF_HAS_XWAYLAND
+    if (wlr_surface_is_xwayland_surface(surface))
+    {
+        auto xw = wlr_xwayland_surface_from_wlr_surface(surface);
+        wlr_xwayland_surface_restack(xw, NULL, XCB_STACK_MODE_ABOVE);
     }
 
 #endif

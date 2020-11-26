@@ -243,6 +243,9 @@ void init_layer_shell();
 std::string xwayland_get_display();
 void xwayland_update_default_cursor();
 
+/* Ensure that the given surface is on top of the Xwayland stack order. */
+void xwayland_bring_to_front(wlr_surface *surface);
+
 void init_desktop_apis();
 }
 

@@ -146,6 +146,7 @@ void wf::touch_interface_t::set_touch_focus(wf::surface_interface_t *surface,
 {
     bool focus_compositor_surface = wf::compositor_surface_from_surface(surface);
     bool had_focus = wlr_seat_touch_get_point(seat, id);
+    wf::get_core_impl().seat->ensure_input_surface(surface);
 
     wlr_surface *next_focus = NULL;
     if (surface && !focus_compositor_surface)

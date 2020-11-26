@@ -129,6 +129,8 @@ void wf::pointer_t::update_cursor_focus(
     }
 
     cursor_focus = focus;
+    seat->ensure_input_surface(focus);
+
     wlr_surface *next_focus_wlr_surface = nullptr;
     if (focus && focus->get_wlr_surface())
     {

@@ -3,6 +3,7 @@
 #include "wayfire/compositor-view.hpp"
 #include "wayfire/opengl.hpp"
 #include "../core-impl.hpp"
+#include "../view/view-impl.hpp"
 #include "keyboard.hpp"
 #include "pointer.hpp"
 #include "touch.hpp"
@@ -11,6 +12,7 @@
 #include "wayfire/output-layout.hpp"
 #include <wayfire/util/log.hpp>
 #include "wayfire/signal-definitions.hpp"
+#include <wayfire/nonstd/wlroots.hpp>
 
 /* ------------------------ Drag icon impl ---------------------------------- */
 wf::drag_icon_t::drag_icon_t(wlr_drag_icon *ic) :
@@ -331,6 +333,24 @@ void wf::seat_t::set_keyboard_focus(wayfire_view view)
     wf::get_core().emit_signal("keyboard-focus-changed", &data);
 }
 
+void wf::seat_t::ensure_input_surface(wf::surface_interface_t *surface)
+{
+    if (!surface || !surface->get_wlr_surface())
+    {
+        last_focus_surface = nullptr;
+        return;
+    }
+
+    auto wlr_surf = surface->get_wlr_surface();
+    if (this->last_focus_surface == wlr_surf)
+    {
+        return;
+    }
+
+    this->last_focus_surface = wlr_surf;
+    wf::xwayland_bring_to_front(wlr_surf);
+}
+
 namespace wf
 {
 wlr_input_device*input_device_t::get_wlr_handle()
@@ -380,7 +400,7 @@ input_device_t::input_device_t(wlr_input_device *handle)
 {
     this->handle = handle;
 }
-}
+} // namespace wf
 
 wf::input_device_impl_t::input_device_impl_t(wlr_input_device *dev) :
     wf::input_device_t(dev)
