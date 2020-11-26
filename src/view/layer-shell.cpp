@@ -303,7 +303,7 @@ struct wf_layer_shell_manager
             for (auto& v : layer)
             {
                 if (v->is_mapped() &&
-                    v->lsurface->client_pending.keyboard_interactive)
+                    (v->lsurface->client_pending.keyboard_interactive == 1))
                 {
                     focus_mask = std::max(focus_mask, (uint32_t)v->get_layer());
                 }
