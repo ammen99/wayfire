@@ -9,5 +9,10 @@
 			<_long>Inverts the colors of the whole output with the specified activator.</_long>
 			<default>&lt;super&gt; KEY_I</default>
 		</option>
+		<option name="preserve_hue" type="bool">
+			<_short>Preserve Hue</_short>
+			<_long>Only operate on black and white, preserving the hue</_long>
+			<default>false</default>
+		</option>
 	</plugin>
 </wayfire>
