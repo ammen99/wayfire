@@ -491,13 +491,172 @@ class depth_buffer_manager_t : public noncopyable_t
     std::vector<depth_buffer_t> buffers;
 };
 
+/**
+ * A struct which manages the repaint delay.
+ *
+ * The repaint delay is a technique to potentially lower the input latency.
+ *
+ * It works by delaying Wayfire's repainting after getting the next frame event.
+ * During this time the clients have time to update and submit their buffers.
+ * If they manage this on time, the next frame will contain the already new
+ * application contents, otherwise, the changes are visible after 1 more frame.
+ *
+ * The repaint delay however should be chosen so that Wayfire's own rendering
+ * starts early enough for the next vblank, otherwise, the framerate will suffer.
+ *
+ * Calculating the maximal time Wayfire needs for rendering is very hard, and
+ * and can change depending on active plugins, number of opened windows, etc.
+ *
+ * Thus, we need to dynamically guess this time based on the previous frames.
+ * Currently, the following algorithm is implemented:
+ *
+ * Initially, the repaint delay is zero.
+ *
+ * If at some point Wayfire skips a frame, the delay is assumed too big and
+ * reduced by `2^i`, where `i` is the amount of consecutive skipped frames.
+ *
+ * If Wayfire renders in time for `increase_window` milliseconds, then the
+ * delay is increased by one. If the next frame is delayed, then
+ * `increase_window` is doubled, otherwise, it is halved
+ * (but it must stay between `MIN_INCREASE_WINDOW` and `MAX_INCREASE_WINDOW`).
+ */
+struct repaint_delay_manager_t
+{
+    repaint_delay_manager_t(wf::output_t *output)
+    {
+        on_present.set_callback([&] (void *data)
+        {
+            auto ev = static_cast<wlr_output_event_present*>(data);
+            this->refresh_nsec = ev->refresh;
+        });
+        on_present.connect(&output->handle->events.present);
+    }
+
+    /**
+     * The next frame will be skipped.
+     */
+    void skip_frame()
+    {
+        // Mark last frame as invalid, because we don't know how much time
+        // will pass until next frame
+        last_pageflip = -1;
+    }
+
+    /**
+     * Starting a new frame.
+     */
+    void start_frame()
+    {
+        if (last_pageflip == -1)
+        {
+            last_pageflip = get_current_time();
+            return;
+        }
+
+        const int64_t refresh = this->refresh_nsec / 1e6;
+        const int64_t on_time_thresh = refresh * 1.5;
+        const int64_t last_frame_len = get_current_time() - last_pageflip;
+        if (last_frame_len <= on_time_thresh)
+        {
+            // We rendered last frame on time
+            if (get_current_time() - last_increase >= increase_window)
+            {
+                increase_window = clamp(int64_t(increase_window * 0.75),
+                    MIN_INCREASE_WINDOW, MAX_INCREASE_WINDOW);
+                update_delay(+1);
+                reset_increase_timer();
+
+                // If we manage the next few frames, then we have reached a new
+                // stable state
+                expand_inc_window_on_miss = 20;
+            } else
+            {
+                --expand_inc_window_on_miss;
+            }
+
+            // Stop exponential decrease
+            consecutive_decrease = 1;
+        } else
+        {
+            // We missed last frame.
+            update_delay(-consecutive_decrease);
+            // Next decrease should be faster
+            consecutive_decrease = clamp(consecutive_decrease * 2, 1, 32);
+
+            // Next increase should be tried after a longer interval
+            if (expand_inc_window_on_miss >= 0)
+            {
+                increase_window = clamp(increase_window * 2,
+                    MIN_INCREASE_WINDOW, MAX_INCREASE_WINDOW);
+            }
+
+            reset_increase_timer();
+        }
+
+        last_pageflip = get_current_time();
+    }
+
+    /**
+     * @return The delay in milliseconds for the current frame.
+     */
+    int get_delay()
+    {
+        return delay;
+    }
+
+  private:
+    int delay = 0;
+
+    void update_delay(int delta)
+    {
+        int config_delay = std::max(0,
+            (int)(this->refresh_nsec / 1e6) - max_render_time);
+
+        int min = 0;
+        int max = config_delay;
+        if (max_render_time == -1)
+        {
+            max = 0;
+        } else if (!dynamic_delay)
+        {
+            min = config_delay;
+            max = config_delay;
+        }
+
+        delay = clamp(delay + delta, min, max);
+    }
+
+    void reset_increase_timer()
+    {
+        last_increase = get_current_time();
+    }
+
+    static constexpr int64_t MIN_INCREASE_WINDOW = 200; // 200 ms
+    static constexpr int64_t MAX_INCREASE_WINDOW = 30'000; // 30s
+    int64_t increase_window = MIN_INCREASE_WINDOW;
+    int64_t last_increase   = 0;
+
+    // > 0 => Increase increase_window
+    int64_t expand_inc_window_on_miss = 0;
+
+    // Expontential decrease in case of missed frames
+    int32_t consecutive_decrease = 1;
+
+    // Time of last frame
+    int64_t last_pageflip = -1; // -1 is invalid
+
+    int64_t refresh_nsec;
+    wf::option_wrapper_t<int> max_render_time{"core/max_render_time"};
+    wf::option_wrapper_t<bool> dynamic_delay{"workarounds/dynamic_repaint_delay"};
+
+    wf::wl_listener_wrapper on_present;
+};
+
 class wf::render_manager::impl
 {
   public:
     wf::wl_listener_wrapper on_frame;
-    wf::wl_listener_wrapper on_present;
     wf::wl_timer repaint_timer;
-    int64_t refresh_nsec = 0;
 
     output_t *output;
     wf::region_t swap_damage;
@@ -505,9 +664,9 @@ class wf::render_manager::impl
     std::unique_ptr<effect_hook_manager_t> effects;
     std::unique_ptr<postprocessing_manager_t> postprocessing;
     std::unique_ptr<depth_buffer_manager_t> depth_buffer_manager;
+    std::unique_ptr<repaint_delay_manager_t> delay_manager;
 
     wf::option_wrapper_t<wf::color_t> background_color_opt;
-    wf::option_wrapper_t<int> max_render_time_opt;
 
     impl(output_t *o) :
         output(o)
@@ -516,35 +675,22 @@ class wf::render_manager::impl
         effects = std::make_unique<effect_hook_manager_t>();
         postprocessing = std::make_unique<postprocessing_manager_t>(o);
         depth_buffer_manager = std::make_unique<depth_buffer_manager_t>();
+        delay_manager = std::make_unique<repaint_delay_manager_t>(o);
 
-        on_present.set_callback([&] (void *data)
-        {
-            auto ev = static_cast<wlr_output_event_present*>(data);
-            this->refresh_nsec = ev->refresh;
-        });
-        on_present.connect(&output->handle->events.present);
-
-        max_render_time_opt.load_option("core/max_render_time");
         on_frame.set_callback([&] (void*)
         {
-            /*
-             * Leave a bit of time for clients to render, see
-             * https://github.com/swaywm/sway/pull/4588
-             */
-            int64_t total = this->refresh_nsec / 1000000 - max_render_time_opt;
-            if ((total <= 0) || (max_render_time_opt <= 0) || this->renderer)
-            {
-                total = 0;
-            }
+            delay_manager->start_frame();
 
-            // We cannot really wait less than 1ms, render right away in that case
-            if (total < 1)
+            auto repaint_delay = delay_manager->get_delay();
+            // Leave a bit of time for clients to render, see
+            // https://github.com/swaywm/sway/pull/4588
+            if (repaint_delay < 1)
             {
                 paint();
             } else
             {
                 output->handle->frame_pending = true;
-                repaint_timer.set_timeout(total, [=] ()
+                repaint_timer.set_timeout(repaint_delay, [=] ()
                 {
                     output->handle->frame_pending = false;
                     paint();
@@ -737,6 +883,7 @@ class wf::render_manager::impl
         if (!output_damage->make_current(needs_swap))
         {
             wlr_output_rollback(output->handle);
+            delay_manager->skip_frame();
             return;
         }
 
@@ -746,6 +893,7 @@ class wf::render_manager::impl
              * and no plugin wants custom redrawing - we can just skip the whole
              * repaint */
             wlr_output_rollback(output->handle);
+            delay_manager->skip_frame();
             return;
         }
 

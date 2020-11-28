@@ -26,5 +26,10 @@
 			<_long>If false, the main window can be focused even if it has a dialog. The dialog is nevertheless kept on top of the main window. Kwin defaults to false.</_long>
 			<default>true</default>
 		</option>
+    <option name="dynamic_repaint_delay" type="bool">
+      <_short>Allow dynamic repaint delay</_short>
+      <_long>If true, allows Wayfire to dynamically recalculate its max_render_time, i.e allow render time higher than max_render_time.</_long>
+      <default>false</default>
+    </option>
 	</plugin>
 </wayfire>
