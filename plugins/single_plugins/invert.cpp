@@ -28,8 +28,9 @@ uniform sampler2D smp;
 
 void main()
 {
-    mediump vec4 tex_color = texture2D(smp, uvpos);
-    gl_FragColor = vec4(1.0 - tex_color.r, 1.0 - tex_color.g, 1.0 - tex_color.b, 1.0);
+    vec4 tex = texture2D(smp, uvpos);
+    float hue = tex.a - min(tex.r, min(tex.g, tex.b)) - max(tex.r, max(tex.g, tex.b));
+    gl_FragColor = hue + tex;
 }
 )";
 
