@@ -150,6 +150,7 @@ bool view_action_interface_t::execute(const std::string & name,
             _move(std::get<1>(position), std::get<2>(position));
             return false;
         }
+
         LOGE("View action interface: invalid arguments for move");
         return true;
     } else if (name == "resize")
@@ -160,6 +161,7 @@ bool view_action_interface_t::execute(const std::string & name,
             _resize(std::get<1>(size), std::get<2>(size));
             return false;
         }
+
         LOGE("View action interface: invalid arguments for resize");
         return true;
     }
