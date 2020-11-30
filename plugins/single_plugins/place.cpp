@@ -6,8 +6,14 @@
 
 class wayfire_place_window : public wf::plugin_interface_t
 {
-    wf::signal_callback_t created_cb;
-    wf::signal_callback_t workarea_changed_cb;
+    wf::signal_connection_t created_cb = [=] (wf::signal_data_t *data)
+    {
+        do_created(data);
+    };
+    wf::signal_connection_t workarea_changed_cb = [=] (wf::signal_data_t *data)
+    {
+        do_workarea_changed(data);
+    };
     wf::option_wrapper_t<std::string> placement_mode{"place/mode"};
 
     int cascade_x, cascade_y;
@@ -18,52 +24,6 @@ class wayfire_place_window : public wf::plugin_interface_t
         auto workarea = output->workspace->get_workarea();
         cascade_x = workarea.x;
         cascade_y = workarea.y;
-
-        created_cb = [=] (wf::signal_data_t *data)
-        {
-            auto ev   = (wf::view_mapped_signal*)(data);
-            auto view = get_signaled_view(data);
-
-            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || view->parent ||
-                view->fullscreen || view->tiled_edges || ev->is_positioned)
-            {
-                return;
-            }
-
-            ev->is_positioned = true;
-            auto workarea = output->workspace->get_workarea();
-
-            std::string mode = placement_mode;
-            if (mode == "cascade")
-            {
-                cascade(view, workarea);
-            } else if (mode == "maximize")
-            {
-                maximize(view, workarea);
-            } else if (mode == "random")
-            {
-                random(view, workarea);
-            } else
-            {
-                center(view, workarea);
-            }
-        };
-
-        workarea_changed_cb = [=] (wf::signal_data_t *data)
-        {
-            auto workarea = output->workspace->get_workarea();
-            if ((cascade_x < workarea.x) ||
-                (cascade_x > workarea.x + workarea.width))
-            {
-                cascade_x = workarea.x;
-            }
-
-            if ((cascade_y < workarea.y) ||
-                (cascade_y > workarea.y + workarea.height))
-            {
-                cascade_y = workarea.y;
-            }
-        };
 
         output->connect_signal("workarea-changed", &workarea_changed_cb);
         output->connect_signal("view-mapped", &created_cb);
@@ -123,10 +83,51 @@ class wayfire_place_window : public wf::plugin_interface_t
         view->tile_request(wf::TILED_EDGES_ALL);
     }
 
-    void fini() override
+  private:
+    void do_created(wf::signal_data_t *data)
     {
-        output->disconnect_signal("workarea-changed", &workarea_changed_cb);
-        output->disconnect_signal("view-mapped", &created_cb);
+        auto ev   = (wf::view_mapped_signal*)(data);
+        auto view = get_signaled_view(data);
+
+        if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || view->parent ||
+            view->fullscreen || view->tiled_edges || ev->is_positioned)
+        {
+            return;
+        }
+
+        ev->is_positioned = true;
+        auto workarea = output->workspace->get_workarea();
+
+        std::string mode = placement_mode;
+        if (mode == "cascade")
+        {
+            cascade(view, workarea);
+        } else if (mode == "maximize")
+        {
+            maximize(view, workarea);
+        } else if (mode == "random")
+        {
+            random(view, workarea);
+        } else
+        {
+            center(view, workarea);
+        }
+    }
+
+    void do_workarea_changed(wf::signal_data_t *data)
+    {
+        auto workarea = output->workspace->get_workarea();
+        if ((cascade_x < workarea.x) ||
+            (cascade_x > workarea.x + workarea.width))
+        {
+            cascade_x = workarea.x;
+        }
+
+        if ((cascade_y < workarea.y) ||
+            (cascade_y > workarea.y + workarea.height))
+        {
+            cascade_y = workarea.y;
+        }
     }
 };
 
