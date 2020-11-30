@@ -29,6 +29,8 @@ uniform bool preserve_hue;
 
 void main()
 {
+    mediump vec4 tex = texture2D(smp, uvpos);
+
     if (preserve_hue)
     {
         mediump float hue = tex.a - min(tex.r, min(tex.g, tex.b)) - max(tex.r, max(tex.g, tex.b));
