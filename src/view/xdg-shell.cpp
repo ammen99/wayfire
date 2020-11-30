@@ -230,7 +230,7 @@ void wayfire_xdg_view::initialize()
             return;
         }
 
-        wf::show_window_menu_signal d;
+        wf::view_show_window_menu_signal d;
         d.view = view;
         d.relative_position.x = event->x;
         d.relative_position.y = event->y;
@@ -270,12 +270,12 @@ void wayfire_xdg_view::initialize()
 
     on_set_title.connect(&xdg_toplevel->events.set_title);
     on_set_app_id.connect(&xdg_toplevel->events.set_app_id);
-    on_show_window_menu.connect(&xdg_toplevel->events.request_show_window_menu);
     on_set_parent.connect(&xdg_toplevel->events.set_parent);
     on_request_move.connect(&xdg_toplevel->events.request_move);
     on_request_resize.connect(&xdg_toplevel->events.request_resize);
     on_request_maximize.connect(&xdg_toplevel->events.request_maximize);
     on_request_minimize.connect(&xdg_toplevel->events.request_minimize);
+    on_show_window_menu.connect(&xdg_toplevel->events.request_show_window_menu);
     on_request_fullscreen.connect(&xdg_toplevel->events.request_fullscreen);
 
     xdg_toplevel->base->data = dynamic_cast<view_interface_t*>(this);
@@ -435,13 +435,13 @@ void wayfire_xdg_view::destroy()
     on_new_popup.disconnect();
     on_set_title.disconnect();
     on_set_app_id.disconnect();
-    on_show_window_menu.disconnect();
     on_set_parent.disconnect();
     on_ping_timeout.disconnect();
     on_request_move.disconnect();
     on_request_resize.disconnect();
     on_request_maximize.disconnect();
     on_request_minimize.disconnect();
+    on_show_window_menu.disconnect();
     on_request_fullscreen.disconnect();
 
     xdg_toplevel = nullptr;

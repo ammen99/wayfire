@@ -504,11 +504,11 @@ using title_changed_signal = _view_signal;
 using app_id_changed_signal = _view_signal;
 
 /**
- * name: show-window-menu
+ * name: view-show-window-menu
  * on: output
  * when: To show a menu with window related actions.
  */
-struct show_window_menu_signal : public _view_signal
+struct view_show_window_menu_signal : public _view_signal
 {
     /** The position as requested by the client, in surface coordinates */
     wf::point_t relative_position;
