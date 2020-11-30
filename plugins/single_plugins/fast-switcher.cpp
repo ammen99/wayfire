@@ -13,9 +13,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
 {
     wf::option_wrapper_t<wf::keybinding_t> activate_key{"fast-switcher/activate"};
     std::vector<wayfire_view> views; // all views on current viewport
-    size_t current_view_index  = 0;
-    size_t previous_view_index = 0;
-
+    size_t current_view_index = 0;
     bool active = false;
 
   public:
@@ -115,6 +113,17 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         view->damage();
     }
 
+    void update_views()
+    {
+        views = output->workspace->get_views_on_workspace(
+            output->workspace->get_current_workspace(), wf::WM_LAYERS);
+
+        std::sort(views.begin(), views.end(), [] (wayfire_view& a, wayfire_view& b)
+        {
+            return a->last_focus_timestamp > b->last_focus_timestamp;
+        });
+    }
+
     wf::key_callback fast_switch = [=] (auto)
     {
         if (active)
@@ -129,8 +138,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
             return false;
         }
 
-        views = output->workspace->get_views_on_workspace(
-            output->workspace->get_current_workspace(), wf::WM_LAYERS);
+        update_views();
 
         if (views.size() < 1)
         {
@@ -139,7 +147,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
             return false;
         }
 
-        current_view_index = previous_view_index - current_view_index;
+        current_view_index = 0;
         active = true;
 
         /* Set all to semi-transparent */
@@ -166,8 +174,6 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
         view_chosen(current_view_index, false);
-
-        previous_view_index = current_view_index;
         active = false;
 
         output->disconnect_signal("view-disappeared", &cleanup_view);
