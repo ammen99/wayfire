@@ -42,7 +42,8 @@ class wayfire_xdg_view : public wf::wlr_view_t
         on_request_move, on_request_resize,
         on_request_minimize, on_request_maximize,
         on_request_fullscreen, on_set_parent,
-        on_set_title, on_set_app_id, on_ping_timeout;
+        on_set_title, on_set_app_id, on_show_window_menu,
+        on_ping_timeout;
 
     wf::point_t xdg_surface_offset = {0, 0};
     wlr_xdg_toplevel *xdg_toplevel;
