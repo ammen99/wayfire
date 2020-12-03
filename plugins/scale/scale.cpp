@@ -787,6 +787,43 @@ class wayfire_scale : public wf::plugin_interface_t
             target_alpha);
     }
 
+    static bool view_compare_x(const wayfire_view& A, const wayfire_view& B)
+    {
+        auto vg_a = A->get_wm_geometry();
+        std::vector<int> a_coords = {vg_a.x, vg_a.width, vg_a.y, vg_a.height};
+        auto vg_b = B->get_wm_geometry();
+        std::vector<int> b_coords = {vg_b.x, vg_b.width, vg_b.y, vg_b.height};
+        return a_coords < b_coords;
+    }
+
+    static bool view_compare_y(const wayfire_view& A, const wayfire_view& B)
+    {
+        auto vg_a = A->get_wm_geometry();
+        std::vector<int> a_coords = {vg_a.y, vg_a.height, vg_a.x, vg_a.width};
+        auto vg_b = B->get_wm_geometry();
+        std::vector<int> b_coords = {vg_b.y, vg_b.height, vg_b.x, vg_b.width};
+        return a_coords < b_coords;
+    }
+
+    std::vector<std::vector<wayfire_view>> view_sort(
+        std::vector<wayfire_view>& views)
+    {
+        std::vector<std::vector<wayfire_view>> view_grid;
+        std::sort(views.begin(), views.end(), view_compare_y);
+        size_t n = views.size();
+        size_t i = 0, j;
+        while (i < n)
+        {
+            j = std::min(i + grid_cols, n);
+            std::sort(views.begin() + i, views.begin() + j, view_compare_x);
+            view_grid.push_back(std::vector<wayfire_view>(views.begin() + i,
+                views.begin() + j));
+            i += grid_cols;
+        }
+
+        return view_grid;
+    }
+
     /* Compute target scale layout geometry for all the view transformers
      * and start animating. Initial code borrowed from the compiz scale
      * plugin algorithm */
@@ -817,7 +854,7 @@ class wayfire_scale : public wf::plugin_interface_t
         y = workarea.y + (int)spacing;
         height = (workarea.height - (lines + 1) * (int)spacing) / lines;
 
-        std::sort(views.begin(), views.end());
+        view_sort(views);
 
         for (i = 0; i < lines; i++)
         {
