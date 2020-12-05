@@ -57,9 +57,7 @@ struct view_scale_data
 
 class wayfire_scale : public wf::plugin_interface_t
 {
-    int grid_cols;
-    int grid_rows;
-    int grid_last_row_cols;
+    std::vector<int> current_row_sizes;
     wf::point_t initial_workspace;
     bool input_release_impending = false;
     bool active, hook_set;
@@ -559,8 +557,10 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        int row = scale_data[view].row;
-        int col = scale_data[view].col;
+        int cur_row  = scale_data[view].row;
+        int cur_col  = scale_data[view].col;
+        int next_row = cur_row;
+        int next_col = cur_col;
 
         if ((state == WLR_KEY_RELEASED) &&
             ((key == KEY_ENTER) || (key == KEY_ESC)))
@@ -577,19 +577,19 @@ class wayfire_scale : public wf::plugin_interface_t
         switch (key)
         {
           case KEY_UP:
-            row--;
+            next_row--;
             break;
 
           case KEY_DOWN:
-            row++;
+            next_row++;
             break;
 
           case KEY_LEFT:
-            col--;
+            next_col--;
             break;
 
           case KEY_RIGHT:
-            col++;
+            next_col++;
             break;
 
           case KEY_ENTER:
@@ -612,50 +612,30 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        if ((grid_rows > 1) && (grid_cols > 1) &&
-            (grid_last_row_cols > 1))
+        if (!current_row_sizes.empty())
         {
-            /* when moving to and from the last row, the number of columns
-             * may be different, so this bit figures out which view we
-             * should switch focus to */
-            if (((key == KEY_DOWN) && (row == grid_rows - 1)) ||
-                ((key == KEY_UP) && (row == -1)))
+            next_row = (next_row + current_row_sizes.size()) %
+                current_row_sizes.size();
+
+            if (cur_row != next_row)
             {
-                auto p = col / (float)(grid_cols - 1);
-                col = p * (grid_last_row_cols - 1);
-                col = std::clamp(col, 0, grid_last_row_cols - 1);
-            } else if (((key == KEY_UP) && (row == grid_rows - 2)) ||
-                       ((key == KEY_DOWN) && (row == grid_rows)))
+                /* when moving to and from the last row, the number of columns
+                 * may be different, so this bit figures out which view we
+                 * should switch focus to */
+                float p = 1.0 * cur_col / current_row_sizes[cur_row];
+                next_col = p * current_row_sizes[next_row];
+            } else
             {
-                auto p = (col + 0.5) / (float)grid_last_row_cols;
-                col = p * grid_cols;
-                col = std::clamp(col, 0, grid_cols - 1);
+                next_col = (next_col + current_row_sizes[cur_row]) %
+                    current_row_sizes[cur_row];
             }
-        }
-
-        if (row < 0)
+        } else
         {
-            row = grid_rows - 1;
+            next_row = cur_row;
+            next_col = cur_col;
         }
 
-        if (row >= grid_rows)
-        {
-            row = 0;
-        }
-
-        int current_row_cols = (row == grid_rows - 1) ?
-            grid_last_row_cols : grid_cols;
-        if (col < 0)
-        {
-            col = current_row_cols - 1;
-        }
-
-        if (col >= current_row_cols)
-        {
-            col = 0;
-        }
-
-        view = find_view_in_grid(row, col);
+        view = find_view_in_grid(next_row, next_col);
         if (view && (current_focus_view != view))
         {
             // view_focused handler will update the view state
@@ -787,20 +767,20 @@ class wayfire_scale : public wf::plugin_interface_t
             target_alpha);
     }
 
-    static bool view_compare_x(const wayfire_view& A, const wayfire_view& B)
+    static bool view_compare_x(const wayfire_view& a, const wayfire_view& b)
     {
-        auto vg_a = A->get_wm_geometry();
+        auto vg_a = a->get_wm_geometry();
         std::vector<int> a_coords = {vg_a.x, vg_a.width, vg_a.y, vg_a.height};
-        auto vg_b = B->get_wm_geometry();
+        auto vg_b = b->get_wm_geometry();
         std::vector<int> b_coords = {vg_b.x, vg_b.width, vg_b.y, vg_b.height};
         return a_coords < b_coords;
     }
 
-    static bool view_compare_y(const wayfire_view& A, const wayfire_view& B)
+    static bool view_compare_y(const wayfire_view& a, const wayfire_view& b)
     {
-        auto vg_a = A->get_wm_geometry();
+        auto vg_a = a->get_wm_geometry();
         std::vector<int> a_coords = {vg_a.y, vg_a.height, vg_a.x, vg_a.width};
-        auto vg_b = B->get_wm_geometry();
+        auto vg_b = b->get_wm_geometry();
         std::vector<int> b_coords = {vg_b.y, vg_b.height, vg_b.x, vg_b.width};
         return a_coords < b_coords;
     }
@@ -810,15 +790,16 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         std::vector<std::vector<wayfire_view>> view_grid;
         std::sort(views.begin(), views.end(), view_compare_y);
+
+        int rows = sqrt(views.size() + 1);
+        int views_per_row = (int)std::ceil((double)views.size() / rows);
         size_t n = views.size();
-        size_t i = 0, j;
-        while (i < n)
+        for (size_t i = 0; i < n; i += views_per_row)
         {
-            j = std::min(i + grid_cols, n);
-            std::sort(views.begin() + i, views.begin() + j, view_compare_x);
-            view_grid.push_back(std::vector<wayfire_view>(views.begin() + i,
-                views.begin() + j));
-            i += grid_cols;
+            size_t j = std::min(i + views_per_row, n);
+            view_grid.emplace_back(views.begin() + i, views.begin() + j);
+            std::sort(view_grid.back().begin(), view_grid.back().end(),
+                view_compare_x);
         }
 
         return view_grid;
@@ -841,41 +822,37 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto workarea = output->workspace->get_workarea();
 
-        int lines = sqrt(views.size() + 1);
-        grid_rows = lines;
-        grid_cols = (int)std::ceil((double)views.size() / lines);
-        grid_last_row_cols = std::min(grid_cols, (int)views.size() -
-            (grid_rows - 1) * grid_cols);
-        int slots = 0;
-
-        int i, j, n;
-        double x, y, width, height;
-
-        y = workarea.y + (int)spacing;
-        height = (workarea.height - (lines + 1) * (int)spacing) / lines;
+        auto sorted_rows = view_sort(views);
+        size_t cnt_rows  = sorted_rows.size();
 
         view_sort(views);
 
-        for (i = 0; i < lines; i++)
+        const double scaled_height = (double)
+            (workarea.height - (cnt_rows + 1) * spacing) / cnt_rows;
+        current_row_sizes.clear();
+
+        for (size_t i = 0; i < cnt_rows; i++)
         {
-            n = (i == lines - 1) ? grid_last_row_cols : grid_cols;
+            size_t cnt_cols = sorted_rows[i].size();
+            current_row_sizes.push_back(cnt_cols);
+            const double scaled_width = (double)
+                (workarea.width - (cnt_cols + 1) * spacing) / cnt_cols;
 
-            std::vector<size_t> row;
-            x     = workarea.x + (int)spacing;
-            width = (workarea.width - (n + 1) * (int)spacing) / n;
-
-            for (j = 0; j < n; j++)
+            for (size_t j = 0; j < cnt_cols; j++)
             {
-                auto view = views[slots];
+                double x = workarea.x + spacing + (spacing + scaled_width) * j;
+                double y = workarea.y + spacing + (spacing + scaled_height) * i;
+
+                auto view = sorted_rows[i][j];
 
                 add_transformer(view);
                 auto& view_data = scale_data[view];
 
                 auto vg = view->get_wm_geometry();
-                double scale_x    = width / vg.width;
-                double scale_y    = height / vg.height;
-                int translation_x = x - vg.x + ((width - vg.width) / 2.0);
-                int translation_y = y - vg.y + ((height - vg.height) / 2.0);
+                double scale_x    = scaled_width / vg.width;
+                double scale_y    = scaled_height / vg.height;
+                int translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
+                int translation_y = y - vg.y + ((scaled_height - vg.height) / 2.0);
 
                 scale_x = scale_y = std::min(scale_x, scale_y);
                 if (!allow_scale_zoom)
@@ -909,8 +886,8 @@ class wayfire_scale : public wf::plugin_interface_t
 
                     vg = child->get_wm_geometry();
 
-                    double child_scale_x = width / vg.width;
-                    double child_scale_y = height / vg.height;
+                    double child_scale_x = scaled_width / vg.width;
+                    double child_scale_y = scaled_height / vg.height;
                     child_scale_x = child_scale_y = std::min(child_scale_x,
                         child_scale_y);
 
@@ -940,8 +917,8 @@ class wayfire_scale : public wf::plugin_interface_t
                             view_data.transformer->translation_y;
                     }
 
-                    translation_x = x - vg.x + ((width - vg.width) / 2.0);
-                    translation_y = y - vg.y + ((height - vg.height) / 2.0);
+                    translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
+                    translation_y = y - vg.y + ((scaled_height - vg.height) / 2.0);
 
                     if (active)
                     {
@@ -955,13 +932,7 @@ class wayfire_scale : public wf::plugin_interface_t
                     child_data.row = i;
                     child_data.col = j;
                 }
-
-                x += width + (int)spacing;
-
-                slots++;
             }
-
-            y += height + (int)spacing;
         }
 
         set_hook();
