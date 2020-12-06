@@ -6,3 +6,9 @@ shared_module('scale', 'scale.cpp',
         dependencies: all_deps,
         install: true,
         install_dir: conf_data.get('PLUGIN_PATH'))
+
+shared_module('scale_title_filter', 'scale_title_filter.cpp',
+        include_directories: all_include_dirs,
+        dependencies: all_deps,
+        install: true,
+        install_dir: conf_data.get('PLUGIN_PATH'))

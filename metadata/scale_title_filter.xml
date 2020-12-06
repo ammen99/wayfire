@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="scale_title_filter">
+		<_short>Scale Title Filter</_short>
+		<_long>Filter the views shown by scale by typing.</_long>
+		<category>Accessibility</category>
+		<option name="case_sensitive" type="bool">
+			<_short>Case Sensitive</_short>
+			<_long>Match titles in a case sensitive way.</_long>
+			<default>false</default>
+		</option>
+	</plugin>
+</wayfire>

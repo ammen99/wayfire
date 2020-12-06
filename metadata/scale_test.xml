@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="scale_test">
+		<_short>Test Scale Filter</_short>
+		<_long>Test activating scale from another plugin with a filter set.</_long>
+		<category>Accessibility</category>
+		<option name="activate" type="activator">
+			<_short>Activate</_short>
+			<_long>Activate scale with filtering.</_long>
+			<default>&lt;super&gt; KEY_1</default>
+		</option>
+		<option name="app_id" type="string">
+			<_short>App id</_short>
+			<_long>App id to use for filtering</_long>
+			<default>gedit</default>
+		</option>
+		<option name="case_sensitive" type="bool">
+			<_short>Case Sensitive</_short>
+			<_long>Match titles in a case sensitive way.</_long>
+			<default>false</default>
+		</option>
+		<option name="all_workspaces" type="bool">
+			<_short>All Workspaces</_short>
+			<_long>Include views from all workspaces.</_long>
+			<default>false</default>
+		</option>
+	</plugin>
+</wayfire>

@@ -11,9 +11,11 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/plugins/vswitch.hpp>
 #include <wayfire/touch/touch.hpp>
+#include <wayfire/plugins/common/scale-signal.hpp>
 
 #include <linux/input-event-codes.h>
 
+#include <algorithm>
 
 using namespace wf::animation;
 
@@ -120,6 +122,9 @@ class wayfire_scale : public wf::plugin_interface_t
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle_all"},
             &toggle_all_cb);
+        output->add_activator(
+            wf::option_wrapper_t<wf::activatorbinding_t>{"scale/activate"},
+            &activate_cb);
 
         grab_interface->callbacks.keyboard.key = [=] (uint32_t key, uint32_t state)
         {
@@ -259,6 +264,21 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         return false;
+    };
+
+    wf::activator_callback activate_cb = [=] (const wf::activator_data_t& data)
+    {
+        bool want_all_workspaces =
+            (data.source == wf::activator_source_t::PLUGIN_WITH_DATA) ?
+            data.activation_data : false;
+        if (!active || (want_all_workspaces != all_workspaces))
+        {
+            return handle_toggle(want_all_workspaces);
+        } else
+        {
+            layout_slots(get_views());
+            return true;
+        }
     };
 
     /* Connect button signal */
@@ -545,20 +565,21 @@ class wayfire_scale : public wf::plugin_interface_t
         if (!view)
         {
             view = current_focus_view;
-            fade_out_all_except(view);
-            fade_in(view);
-            output->focus_view(view, true);
+            if (view)
+            {
+                fade_out_all_except(view);
+                fade_in(view);
+                output->focus_view(view, true);
 
-            return;
-        }
-
-        if (!scale_data.count(view))
+                return;
+            }
+        } else if (!scale_data.count(view))
         {
             return;
         }
 
-        int cur_row  = scale_data[view].row;
-        int cur_col  = scale_data[view].col;
+        int cur_row  = view ? scale_data[view].row : 0;
+        int cur_col  = view ? scale_data[view].col : 0;
         int next_row = cur_row;
         int next_col = cur_col;
 
@@ -609,6 +630,16 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
 
           default:
+        {
+            scale_key_signal signal{key};
+            output->emit_signal("scale-key", &signal);
+        }
+
+            return;
+        }
+
+        if (!view)
+        {
             return;
         }
 
@@ -822,6 +853,34 @@ class wayfire_scale : public wf::plugin_interface_t
 
         auto workarea = output->workspace->get_workarea();
 
+        std::vector<wayfire_view> filtered_views;
+        bool need_new_focus = false;
+        auto it = std::remove_if(views.begin(), views.end(),
+            [&filtered_views, &need_new_focus, this] (wayfire_view v)
+        {
+            scale_filter_signal signal{v, false};
+            output->emit_signal("scale-filter", &signal);
+            if (signal.hide)
+            {
+                filtered_views.push_back(v);
+                if (v == current_focus_view)
+                {
+                    need_new_focus = true;
+                }
+
+                return true;
+            }
+
+            return false;
+        });
+        views.erase(it, views.end());
+
+        if (need_new_focus)
+        {
+            current_focus_view = views.empty() ? nullptr : views.front();
+            output->focus_view(current_focus_view, true);
+        }
+
         auto sorted_rows = view_sort(views);
         size_t cnt_rows  = sorted_rows.size();
 
@@ -844,99 +903,121 @@ class wayfire_scale : public wf::plugin_interface_t
                 double y = workarea.y + spacing + (spacing + scaled_height) * i;
 
                 auto view = sorted_rows[i][j];
-
-                add_transformer(view);
-                auto& view_data = scale_data[view];
-
-                auto vg = view->get_wm_geometry();
-                double scale_x    = scaled_width / vg.width;
-                double scale_y    = scaled_height / vg.height;
-                int translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
-                int translation_y = y - vg.y + ((scaled_height - vg.height) / 2.0);
-
-                scale_x = scale_y = std::min(scale_x, scale_y);
-                if (!allow_scale_zoom)
-                {
-                    scale_x = scale_y = std::min(scale_x, max_scale_factor);
-                }
-
-                double target_alpha;
-                if (active)
-                {
-                    target_alpha = (view == current_focus_view) ? 1 :
-                        (double)inactive_alpha;
-                    setup_view_transform(view_data, scale_x, scale_y,
-                        translation_x, translation_y, target_alpha);
-                } else
-                {
-                    target_alpha = 1;
-                    setup_view_transform(view_data, 1, 1, 0, 0, 1);
-                }
-
-                view_data.row = i;
-                view_data.col = j;
-
-                for (auto& child : view->enumerate_views(false))
-                {
-                    // skip the view itself
-                    if (child == view)
-                    {
-                        continue;
-                    }
-
-                    vg = child->get_wm_geometry();
-
-                    double child_scale_x = scaled_width / vg.width;
-                    double child_scale_y = scaled_height / vg.height;
-                    child_scale_x = child_scale_y = std::min(child_scale_x,
-                        child_scale_y);
-
-                    if (!allow_scale_zoom)
-                    {
-                        child_scale_x = child_scale_y = std::min(child_scale_x,
-                            max_scale_factor);
-                        if ((max_scale_child > 0.0) &&
-                            (child_scale_x > max_scale_child * scale_x))
-                        {
-                            child_scale_x = max_scale_child * scale_x;
-                            child_scale_y = child_scale_x;
-                        }
-                    }
-
-                    translation_x = view_data.transformer->translation_x;
-                    translation_y = view_data.transformer->translation_y;
-
-                    auto new_child   = add_transformer(child);
-                    auto& child_data = scale_data[child];
-
-                    if (new_child)
-                    {
-                        child_data.transformer->translation_x =
-                            view_data.transformer->translation_x;
-                        child_data.transformer->translation_y =
-                            view_data.transformer->translation_y;
-                    }
-
-                    translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
-                    translation_y = y - vg.y + ((scaled_height - vg.height) / 2.0);
-
-                    if (active)
-                    {
-                        setup_view_transform(child_data, scale_x, scale_y,
-                            translation_x, translation_y, target_alpha);
-                    } else
-                    {
-                        setup_view_transform(child_data, 1, 1, 0, 0, 1);
-                    }
-
-                    child_data.row = i;
-                    child_data.col = j;
-                }
+                setup_scale_view(view, x, y, false, scaled_width, scaled_height, i,
+                    j);
             }
+        }
+
+        for (auto view : filtered_views)
+        {
+            /* move view to the top; TODO: better way to hide filtered views! */
+            auto vg  = view->get_wm_geometry();
+            double x = vg.x;
+            double y = -1.0 * vg.height - spacing;
+            setup_scale_view(view, x, y, true, vg.width, vg.height, -1, -1);
         }
 
         set_hook();
         transform_views();
+    }
+
+    /* Set up transforms for this view and its children. x and y are the desired
+     * coordinates of the view. If hide is true, this is a view to be hidden:
+     * it is set to transparent and the scale is always 1. Otherwise,
+     * scaled_width and scaled_height are the desired width and height of
+     * the view.
+     * i and j are the position of this view in the grid of views (should be -1 if
+     * hide is true). */
+    void setup_scale_view(wayfire_view view, double x, double y, bool hide,
+        double scaled_width, double scaled_height, int i, int j)
+    {
+        add_transformer(view);
+        auto& view_data = scale_data[view];
+
+        auto vg = view->get_wm_geometry();
+        double scale_x    = hide ? 1.0 : scaled_width / vg.width;
+        double scale_y    = hide ? 1.0 : scaled_height / vg.height;
+        int translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
+        int translation_y = y - vg.y + ((scaled_height - vg.height) / 2.0);
+
+        scale_x = scale_y = std::min(scale_x, scale_y);
+        if (!allow_scale_zoom)
+        {
+            scale_x = scale_y = std::min(scale_x, max_scale_factor);
+        }
+
+        double target_alpha;
+        if (active)
+        {
+            target_alpha = hide ? 0.0 : ((view == current_focus_view) ? 1 :
+                (double)inactive_alpha);
+            setup_view_transform(view_data, scale_x, scale_y,
+                translation_x, translation_y, target_alpha);
+        } else
+        {
+            target_alpha = 1;
+            setup_view_transform(view_data, 1, 1, 0, 0, 1);
+        }
+
+        view_data.row = i;
+        view_data.col = j;
+
+        for (auto& child : view->enumerate_views(false))
+        {
+            // skip the view itself
+            if (child == view)
+            {
+                continue;
+            }
+
+            vg = child->get_wm_geometry();
+
+            double child_scale_x = hide ? 1.0 : scaled_width / vg.width;
+            double child_scale_y = hide ? 1.0 : scaled_height / vg.height;
+            child_scale_x = child_scale_y = std::min(child_scale_x,
+                child_scale_y);
+
+            if (!allow_scale_zoom)
+            {
+                child_scale_x = child_scale_y = std::min(child_scale_x,
+                    max_scale_factor);
+                if ((max_scale_child > 0.0) &&
+                    (child_scale_x > max_scale_child * scale_x))
+                {
+                    child_scale_x = max_scale_child * scale_x;
+                    child_scale_y = child_scale_x;
+                }
+            }
+
+            translation_x = view_data.transformer->translation_x;
+            translation_y = view_data.transformer->translation_y;
+
+            auto new_child   = add_transformer(child);
+            auto& child_data = scale_data[child];
+
+            if (new_child)
+            {
+                child_data.transformer->translation_x =
+                    view_data.transformer->translation_x;
+                child_data.transformer->translation_y =
+                    view_data.transformer->translation_y;
+            }
+
+            translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
+            translation_y = y - vg.y + ((scaled_height - vg.height) / 2.0);
+
+            if (active)
+            {
+                setup_view_transform(child_data, scale_x, scale_y,
+                    translation_x, translation_y, target_alpha);
+            } else
+            {
+                setup_view_transform(child_data, 1, 1, 0, 0, 1);
+            }
+
+            child_data.row = i;
+            child_data.col = j;
+        }
     }
 
     /* Handle interact option changed */
@@ -1238,6 +1319,7 @@ class wayfire_scale : public wf::plugin_interface_t
         view_minimized.disconnect();
         workspace_changed.disconnect();
         view_geometry_changed.disconnect();
+        output->emit_signal("scale-end", nullptr);
 
         if (!input_release_impending)
         {
@@ -1271,6 +1353,7 @@ class wayfire_scale : public wf::plugin_interface_t
         view_attached.disconnect();
         view_detached.disconnect();
         view_minimized.disconnect();
+        output->emit_signal("scale-end", nullptr);
         workspace_changed.disconnect();
         view_geometry_changed.disconnect();
         output->deactivate_plugin(grab_interface);
@@ -1308,6 +1391,7 @@ class wayfire_scale : public wf::plugin_interface_t
         finalize();
         output->rem_binding(&toggle_cb);
         output->rem_binding(&toggle_all_cb);
+        output->rem_binding(&activate_cb);
     }
 };
 

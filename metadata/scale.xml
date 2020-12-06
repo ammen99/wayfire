@@ -14,6 +14,11 @@
 			<_long>Toggles scale showing windows from all workspaces.</_long>
 			<default></default>
 		</option>
+		<option name="activate" type="activator">
+			<_short>Activate</_short>
+			<_long>Activates scale on the current workspace if it is not already running.</_long>
+			<default></default>
+		</option>
 		<option name="spacing" type="int">
 			<_short>Spacing</_short>
 			<_long>Sets the spacing between the views.</_long>
