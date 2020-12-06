@@ -267,7 +267,9 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
 
     auto& input = wf::get_core_impl().input;
     auto& seat  = wf::get_core_impl().seat;
+
     auto active_grab = input->active_grab;
+    bool handled_in_plugin = (active_grab != nullptr);
     if (active_grab && active_grab->callbacks.keyboard.key)
     {
         active_grab->callbacks.keyboard.key(key, state);
@@ -281,7 +283,6 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
 
     input->locked_mods = this->get_locked_mods();
 
-    bool handled_in_binding = false;
     if (state == WLR_KEY_PRESSED)
     {
         auto session = wlr_backend_get_session(wf::get_core().backend);
@@ -305,7 +306,7 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
             mod_binding_key = 0;
         }
 
-        handled_in_binding = input->get_active_bindings().handle_key(
+        handled_in_plugin |= input->get_active_bindings().handle_key(
             wf::keybinding_t{get_modifiers(), key}, mod_binding_key);
     } else
     {
@@ -318,7 +319,7 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
 
             if ((timeout <= 0) || (time_elapsed < milliseconds(timeout)))
             {
-                handled_in_binding = input->get_active_bindings().handle_key(
+                handled_in_plugin |= input->get_active_bindings().handle_key(
                     wf::keybinding_t{get_modifiers() | mod, 0}, mod_binding_key);
             }
         }
@@ -327,12 +328,12 @@ bool wf::keyboard_t::handle_keyboard_key(uint32_t key, uint32_t state)
     }
 
     auto iv = interactive_view_from_view(seat->keyboard_focus.get());
-    if (iv)
+    if (iv && !handled_in_plugin)
     {
         iv->handle_key(key, state);
     }
 
-    return active_grab || handled_in_binding;
+    return handled_in_plugin;
 }
 
 void wf::keyboard_t::handle_keyboard_mod(uint32_t modifier, uint32_t state)
