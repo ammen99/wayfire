@@ -109,8 +109,8 @@ class wayfire_scale : public wf::plugin_interface_t
     void init() override
     {
         grab_interface->name = "scale";
-        grab_interface->capabilities = 0;
-
+        grab_interface->capabilities =
+            wf::CAPABILITY_MANAGE_DESKTOP | wf::CAPABILITY_GRAB_INPUT;
         active = hook_set = false;
 
         output->add_activator(
@@ -1142,8 +1142,6 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             return false;
         }
-
-        grab_interface->capabilities = wf::CAPABILITY_GRAB_INPUT;
 
         if (!output->activate_plugin(grab_interface))
         {
