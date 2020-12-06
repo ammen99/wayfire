@@ -1017,6 +1017,8 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 output->focus_view(current_focus_view, true);
             }
+
+            layout_slots(get_views());
         }
     };
 
