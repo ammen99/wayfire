@@ -67,75 +67,6 @@ static void print_help()
     exit(0);
 }
 
-std::map<EGLint, EGLint> default_attribs = {
-    {EGL_RED_SIZE, 1},
-    {EGL_GREEN_SIZE, 1},
-    {EGL_BLUE_SIZE, 1},
-    {EGL_DEPTH_SIZE, 1},
-};
-
-std::map<wlr_renderer*, wlr_egl*> egl_for_renderer;
-
-/* Merge the default config and the config we need */
-static std::vector<EGLint> generate_config_attribs(EGLint *renderer_attribs)
-{
-    std::vector<EGLint> attribs;
-
-    /* See what we have in the default config */
-    for (auto i = renderer_attribs; i != NULL && *i != EGL_NONE; i++)
-    {
-        /* We will override this value later */
-        if (default_attribs.count(*i))
-        {
-            ++i;
-            continue;
-        }
-
-        attribs.push_back(*i);
-        i++;
-        attribs.push_back(*i);
-    }
-
-    /* Then pack all values we want */
-    for (auto & p : default_attribs)
-    {
-        attribs.push_back(p.first);
-        attribs.push_back(p.second);
-    }
-
-    attribs.push_back(EGL_NONE);
-
-    return attribs;
-}
-
-wlr_renderer *add_egl_depth_renderer(wlr_egl *egl, EGLenum platform,
-    void *remote, EGLint *_r_attr, EGLint visual)
-{
-    bool r;
-    auto attribs = generate_config_attribs(_r_attr);
-    r = wlr_egl_init(egl, platform, remote, attribs.data(), visual);
-
-    if (!r)
-    {
-        LOGE("Failed to initialize EGL");
-
-        return NULL;
-    }
-
-    auto renderer = wlr_gles2_renderer_create(egl);
-    if (!renderer)
-    {
-        LOGE("Failed to create GLES2 renderer");
-        wlr_egl_finish(egl);
-
-        return NULL;
-    }
-
-    egl_for_renderer[renderer] = egl;
-
-    return renderer;
-}
-
 namespace wf
 {
 namespace _safe_list_detail
@@ -333,9 +264,9 @@ int main(int argc, char *argv[])
     /** TODO: move this to core_impl constructor */
     core.display  = display;
     core.ev_loop  = wl_display_get_event_loop(core.display);
-    core.backend  = wlr_backend_autocreate(core.display, add_egl_depth_renderer);
+    core.backend  = wlr_backend_autocreate(core.display, NULL);
     core.renderer = wlr_backend_get_renderer(core.backend);
-    core.egl = egl_for_renderer[core.renderer];
+    core.egl = wlr_gles2_renderer_get_egl(core.renderer);
     assert(core.egl);
 
     if (!drop_permissions())
