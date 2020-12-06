@@ -59,7 +59,6 @@ class wayfire_scale : public wf::plugin_interface_t
 {
     std::vector<int> current_row_sizes;
     wf::point_t initial_workspace;
-    bool input_release_impending = false;
     bool active, hook_set;
     const std::string transformer_name = "scale";
     /* View that was active before scale began. */
@@ -390,17 +389,6 @@ class wayfire_scale : public wf::plugin_interface_t
         output->workspace->request_workspace(ws);
     }
 
-    /* To avoid sending key up events to clients on enter to select */
-    void finish_input()
-    {
-        input_release_impending = false;
-        grab_interface->ungrab();
-        if (!animation_running())
-        {
-            finalize();
-        }
-    }
-
     /* Updates current and initial view focus variables accordingly */
     void check_focus_view(wayfire_view view)
     {
@@ -534,13 +522,6 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Process key event */
     void process_key(uint32_t key, uint32_t state)
     {
-        if (!active)
-        {
-            finish_input();
-
-            return;
-        }
-
         auto view = output->get_active_view();
         if (!view)
         {
@@ -561,12 +542,6 @@ class wayfire_scale : public wf::plugin_interface_t
         int cur_col  = scale_data[view].col;
         int next_row = cur_row;
         int next_col = cur_col;
-
-        if ((state == WLR_KEY_RELEASED) &&
-            ((key == KEY_ENTER) || (key == KEY_ESC)))
-        {
-            input_release_impending = false;
-        }
 
         if ((state != WLR_KEY_PRESSED) ||
             wf::get_core().get_keyboard_modifiers())
@@ -593,14 +568,12 @@ class wayfire_scale : public wf::plugin_interface_t
             break;
 
           case KEY_ENTER:
-            input_release_impending = true;
             deactivate();
             select_view(current_focus_view);
 
             return;
 
           case KEY_ESC:
-            input_release_impending = true;
             deactivate();
             output->focus_view(initial_focus_view, true);
             initial_focus_view = nullptr;
@@ -1239,11 +1212,8 @@ class wayfire_scale : public wf::plugin_interface_t
         workspace_changed.disconnect();
         view_geometry_changed.disconnect();
 
-        if (!input_release_impending)
-        {
-            grab_interface->ungrab();
-            output->deactivate_plugin(grab_interface);
-        }
+        grab_interface->ungrab();
+        output->deactivate_plugin(grab_interface);
 
         for (auto& e : scale_data)
         {
@@ -1252,14 +1222,12 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         refocus();
-        grab_interface->capabilities = 0;
     }
 
     /* Completely end scale, including animation */
     void finalize()
     {
         active = false;
-        input_release_impending = false;
 
         unset_hook();
         remove_transformers();
