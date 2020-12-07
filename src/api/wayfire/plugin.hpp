@@ -178,8 +178,9 @@ constexpr uint32_t WAYFIRE_API_ABI_VERSION = 2020'12'16;
  */
 using wayfire_plugin_version_func = uint32_t (*)();
 
-/** A macro to declare the necessary functions, given the plugin class name */
-
+/**
+ * A macro to declare the necessary functions, given the plugin class name
+ */
 #define DECLARE_WAYFIRE_PLUGIN(PluginClass) \
     extern "C" \
     { \
