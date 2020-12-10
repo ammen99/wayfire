@@ -6,6 +6,7 @@
 #include <memory>
 #include <functional>
 
+#include <wayfire/config/types.hpp>
 #include <wayfire/nonstd/wlroots.hpp>
 #include "wayfire/object.hpp"
 #include "wayfire/util.hpp"
@@ -36,10 +37,8 @@ struct output_state_t
      * If source is mirror, then only mirror_from and mode have a meaning */
     output_image_source_t source = OUTPUT_IMAGE_SOURCE_INVALID;
 
-    /** Whether the output should be automatically positioned. */
-    bool automatic_positioning = true;
-    /** The position of the output in the global coordinate space.  */
-    wf::point_t position = {0, 0};
+    /** Position for the output */
+    wf::output_config::position_t position;
 
     /** Only width, height and refresh fields are used. */
     wlr_output_mode mode;

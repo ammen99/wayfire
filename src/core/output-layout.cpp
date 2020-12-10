@@ -52,50 +52,6 @@ static wl_output_transform get_transform_from_string(std::string transform)
     return WL_OUTPUT_TRANSFORM_NORMAL;
 }
 
-std::pair<wlr_output_mode, bool> parse_output_mode(std::string modeline)
-{
-    wlr_output_mode mode;
-    /* If mode refresh is invalid, then it will be autodetected */
-    mode.refresh = 0;
-    int read = std::sscanf(modeline.c_str(), "%d x %d @ %d",
-        &mode.width, &mode.height, &mode.refresh);
-
-    if (mode.refresh < 1000)
-    {
-        mode.refresh *= 1000;
-    }
-
-    if ((read < 2) || (mode.width <= 0) || (mode.height <= 0) || (mode.refresh < 0))
-    {
-        return {mode, false};
-    }
-
-    return {mode, true};
-}
-
-std::pair<wf::point_t, bool> parse_output_layout(std::string layout)
-{
-    wf::point_t pos;
-    int read;
-
-    if (layout.find("@") != layout.npos)
-    {
-        read = std::sscanf(layout.c_str(), "%d @ %d", &pos.x, &pos.y);
-    } else
-    {
-        read = std::sscanf(layout.c_str(), "%d , %d", &pos.x, &pos.y);
-    }
-
-    if (read < 2)
-    {
-        LOGE("Detected invalid layout in config: ", layout);
-
-        return {{0, 0}, false};
-    }
-
-    return {pos, true};
-}
-
 wlr_output_mode *find_matching_mode(wlr_output *output,
     const wlr_output_mode& reference)
 {
@@ -261,12 +217,7 @@ bool output_state_t::operator ==(const output_state_t& other) const
     bool eq = true;
 
     eq &= source == other.source;
-    eq &= automatic_positioning == other.automatic_positioning;
-    if (!automatic_positioning)
-    {
-        eq &= position == other.position;
-    }
-
+    eq &= position == other.position;
     eq &= (mode.width == other.mode.width);
     eq &= (mode.height == other.mode.height);
     eq &= (mode.refresh == other.mode.refresh);
@@ -284,40 +235,26 @@ struct output_layout_output_t
 
     std::unique_ptr<wf::output_impl_t> output;
     wl_listener_wrapper on_destroy, on_mode;
-    std::shared_ptr<wf::config::option_base_t>
-    mode_opt, position_opt, scale_opt, transform_opt;
-    const std::string default_value = "default";
 
+    wf::option_wrapper_t<wf::output_config::mode_t> mode_opt;
+    wf::option_wrapper_t<wf::output_config::position_t> position_opt;
+    wf::option_wrapper_t<double> scale_opt;
+    wf::option_wrapper_t<std::string> transform_opt;
 
     void initialize_config_options()
     {
-        std::string output_name = handle->name;
+        auto name    = get_section_name();
         auto& config = wf::get_core().config;
-        if (!config.get_section(output_name))
+        if (!config.get_section(name))
         {
             config.merge_section(
-                std::make_shared<wf::config::section_t>(output_name));
+                config.get_section("output")->clone_with_name(name));
         }
 
-        auto section = config.get_section(output_name);
-        auto add_if_missing = [&] (std::string name, std::string defval)
-        {
-            if (!section->get_option_or(name))
-            {
-                section->register_new_option(std::make_shared<
-                    wf::config::option_t<std::string>>(name, defval));
-            }
-
-            auto opt = section->get_option(name);
-            opt->set_default_value_str(defval);
-
-            return opt;
-        };
-
-        mode_opt     = add_if_missing("mode", default_value);
-        scale_opt    = add_if_missing("scale", "1.0");
-        position_opt = add_if_missing("layout", default_value);
-        transform_opt = add_if_missing("transform", "normal");
+        mode_opt.load_option(name + "/mode");
+        position_opt.load_option(name + "/position");
+        scale_opt.load_option(name + "/scale");
+        transform_opt.load_option(name + "/transform");
     }
 
     output_layout_output_t(wlr_output *handle)
@@ -400,7 +337,7 @@ struct output_layout_output_t
     }
 
     /* Returns true if mode setting for the given output can succeed */
-    bool is_mode_supported(wlr_output_mode query)
+    bool is_mode_supported(const wlr_output_mode& query)
     {
         /* DRM doesn't support setting a custom mode, so any supported mode
          * must be found in the mode list */
@@ -422,92 +359,49 @@ struct output_layout_output_t
         return true;
     }
 
-    wlr_output_mode load_mode_from_config()
-    {
-        wlr_output_mode mode;
-        mode.width = -1;
-
-        auto set_mode = mode_opt->get_value_str();
-        if ((set_mode != "default") && (set_mode != "auto"))
-        {
-            auto value = parse_output_mode(set_mode);
-            if (value.second)
-            {
-                if (is_mode_supported(value.first))
-                {
-                    mode = value.first;
-                } else
-                {
-                    LOGE("Output mode ", set_mode, " for output ",
-                        handle->name, " is not supported, ",
-                        " try adding a custom mode.");
-                }
-            }
-        }
-
-        /* Nothing usable in config, try to pick a default mode */
-        if (mode.width < 0)
-        {
-            mode = select_default_mode();
-        }
-
-        return mode;
-    }
-
     output_state_t load_state_from_config()
     {
         output_state_t state;
-        auto set_position = position_opt->get_value_str();
-        if (set_position != default_value)
-        {
-            auto value = parse_output_layout(set_position);
-            if (value.second)
-            {
-                state.automatic_positioning = false;
-                state.position = value.first;
-            }
-        }
+        state.position = position_opt;
 
         /* Make sure we can use custom modes that are
          * specified in the config */
         refresh_custom_modes();
 
-        std::string set_mode = mode_opt->get_value_str();
-        if (set_mode == "off")
-        {
-            state.source = OUTPUT_IMAGE_SOURCE_NONE;
+        wf::output_config::mode_t mode = mode_opt;
+        wlr_output_mode tmp;
 
-            return state;
-        } else if (set_mode.find("mirror") == 0)
-        {
-            state.source = OUTPUT_IMAGE_SOURCE_MIRROR;
+        LOGI("loaded mode ",
+            ((wf::option_sptr_t<wf::output_config::mode_t>)mode_opt)->get_value_str());
 
-            std::stringstream ss(set_mode);
-            ss >> state.mirror_from; // skip the mirror word
-            ss >> state.mirror_from;
-
-            state.mode = select_default_mode();
-        } else
+        switch (mode.get_type())
         {
+          case output_config::MODE_AUTO:
+            state.mode   = select_default_mode();
             state.source = OUTPUT_IMAGE_SOURCE_SELF;
-            state.mode   = load_mode_from_config();
+            break;
+
+          // fallthrough
+          case output_config::MODE_RESOLUTION:
+            tmp.width    = mode.get_width();
+            tmp.height   = mode.get_height();
+            tmp.refresh  = mode.get_refresh();
+            state.mode   = (is_mode_supported(tmp) ? tmp : select_default_mode());
+            state.source = OUTPUT_IMAGE_SOURCE_SELF;
+            break;
+
+          case output_config::MODE_OFF:
+            state.source = OUTPUT_IMAGE_SOURCE_NONE;
+            return state;
+
+          case output_config::MODE_MIRROR:
+            state.source = OUTPUT_IMAGE_SOURCE_MIRROR;
+            state.mode   = select_default_mode();
+            break;
         }
 
-        auto set_scale = wf::option_type::from_string<double>(
-            scale_opt->get_value_str());
-        if (set_scale.value_or(-1) <= 0)
-        {
-            LOGE("Invalid scale for ", handle->name, " in config: ",
-                scale_opt->get_value_str());
-            state.scale = 1;
-        } else
-        {
-            state.scale = set_scale.value();
-        }
-
-        state.transform = get_transform_from_string(
-            transform_opt->get_value_str());
-
+        state.scale     = scale_opt;
+        state.transform = get_transform_from_string(transform_opt);
         return state;
     }
 
@@ -606,15 +500,17 @@ struct output_layout_output_t
         }
     }
 
+    std::string get_section_name()
+    {
+        std::string name = handle->name;
+        name = "output:" + name;
+        return name;
+    }
+
     void refresh_custom_modes()
     {
         static const std::string custom_mode_prefix = "custom_mode";
-        auto section = get_core().config.get_section(handle->name);
-        if (!section)
-        {
-            return;
-        }
-
+        auto section = get_core().config.get_section(get_section_name());
         for (auto& opt : section->get_registered_options())
         {
             if (custom_mode_prefix ==
@@ -869,7 +765,7 @@ struct output_layout_output_t
             changed_fields |= wf::OUTPUT_TRANSFORM_CHANGE;
         }
 
-        if (this->current_state.position != state.position)
+        if (!(this->current_state.position == state.position))
         {
             changed_fields |= wf::OUTPUT_POSITION_CHANGE;
         }
@@ -1043,7 +939,6 @@ class output_layout_t::impl
             state.position  = {head->state.x, head->state.y};
             state.scale     = head->state.scale;
             state.transform = head->state.transform;
-            state.automatic_positioning = false;
         }
 
         return result;
@@ -1177,8 +1072,8 @@ class output_layout_t::impl
         const output_state_t& state) const
     {
         wf::geometry_t geometry = {
-            state.position.x,
-            state.position.y,
+            state.position.get_x(),
+            state.position.get_y(),
             (int32_t)(state.mode.width / state.scale),
             (int32_t)(state.mode.height / state.scale),
         };
@@ -1199,7 +1094,7 @@ class output_layout_t::impl
         for (auto& entry : config)
         {
             if (!(entry.second.source & OUTPUT_IMAGE_SOURCE_SELF) ||
-                entry.second.automatic_positioning)
+                entry.second.position.is_automatic_position())
             {
                 continue;
             }
@@ -1406,11 +1301,11 @@ class output_layout_t::impl
             auto& lo     = this->outputs[handle];
 
             if (state.source & OUTPUT_IMAGE_SOURCE_SELF &&
-                !entry.second.automatic_positioning)
+                !entry.second.position.is_automatic_position())
             {
                 ++count_enabled;
                 wlr_output_layout_add(output_layout, handle,
-                    state.position.x, state.position.y);
+                    state.position.get_x(), state.position.get_y());
                 lo->apply_state(state, shutdown_received);
             }
         }
@@ -1427,7 +1322,7 @@ class output_layout_t::impl
             auto& lo     = this->outputs[handle];
             auto state   = entry.second;
             if (state.source & OUTPUT_IMAGE_SOURCE_SELF &&
-                entry.second.automatic_positioning)
+                entry.second.position.is_automatic_position())
             {
                 ++count_enabled;
                 wlr_output_layout_add_auto(output_layout, handle);
@@ -1435,9 +1330,6 @@ class output_layout_t::impl
                 /* Get the correct position */
                 auto box = wlr_output_layout_get_box(output_layout, handle);
                 assert(box);
-                state.position.x = box->x;
-                state.position.y = box->y;
-
                 lo->apply_state(state, shutdown_received);
             }
         }
