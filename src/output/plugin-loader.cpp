@@ -12,21 +12,6 @@
 #include "wayfire/core.hpp"
 #include <wayfire/util/log.hpp>
 
-namespace
-{
-template<class A, class B>
-B union_cast(A object)
-{
-    union
-    {
-        A x;
-        B y;
-    } helper;
-    helper.x = object;
-
-    return helper.y;
-}
-}
 
 plugin_manager::plugin_manager(wf::output_t *o)
 {
@@ -96,15 +81,14 @@ void plugin_manager::destroy_plugin(wayfire_plugin& p)
     }
 }
 
-wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
+std::pair<void*, void*> wf::get_new_instance_handle(const std::string& path)
 {
     // RTLD_GLOBAL is required for RTTI/dynamic_cast across plugins
     void *handle = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
     if (handle == NULL)
     {
         LOGE("error loading plugin: ", dlerror());
-
-        return nullptr;
+        return {nullptr, nullptr};
     }
 
     /* Check plugin version */
@@ -113,8 +97,7 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
     {
         LOGE(path, ": missing getWayfireVersion()", path.c_str());
         dlclose(handle);
-
-        return nullptr;
+        return {nullptr, nullptr};
     }
 
     auto version_func =
@@ -126,26 +109,38 @@ wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
         LOGE(path, ": API/ABI version mismatch: Wayfire is ",
             WAYFIRE_API_ABI_VERSION, ",  plugin built with ", plugin_abi_version);
         dlclose(handle);
-
-        return nullptr;
+        return {nullptr, nullptr};
     }
 
     auto new_instance_func_ptr = dlsym(handle, "newInstance");
     if (new_instance_func_ptr == NULL)
     {
         LOGE(path, ": missing newInstance(). ", dlerror());
-
-        return nullptr;
+        dlclose(handle);
+        return {nullptr, nullptr};
     }
 
-    LOGD("Loading plugin ", path.c_str());
-    auto new_instance_func =
-        union_cast<void*, wayfire_plugin_load_func>(new_instance_func_ptr);
+    LOGD("Loaded plugin ", path.c_str());
 
-    auto ptr = wayfire_plugin(new_instance_func());
-    ptr->handle = handle;
+    return {handle, new_instance_func_ptr};
+}
 
-    return ptr;
+wayfire_plugin plugin_manager::load_plugin_from_file(std::string path)
+{
+    auto [handle, new_instance_func_ptr] = wf::get_new_instance_handle(path);
+
+    if (new_instance_func_ptr)
+    {
+        auto new_instance_func =
+            wf::union_cast<void*, wayfire_plugin_load_func>(new_instance_func_ptr);
+
+        auto ptr = wayfire_plugin(new_instance_func());
+        ptr->handle = handle;
+
+        return ptr;
+    }
+
+    return nullptr;
 }
 
 void plugin_manager::reload_dynamic_plugins()

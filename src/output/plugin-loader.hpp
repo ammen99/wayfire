@@ -38,4 +38,30 @@ struct plugin_manager
     void destroy_plugin(wayfire_plugin& plugin);
 };
 
+namespace wf
+{
+/** Helper functions */
+template<class A, class B>
+B union_cast(A object)
+{
+    union
+    {
+        A x;
+        B y;
+    } helper;
+    helper.x = object;
+    return helper.y;
+}
+
+/**
+ * Open a plugin file and check the file for version errors.
+ *
+ * On success, return the handle from dlopen() and the pointer to the
+ * newInstance of the plugin.
+ *
+ * @return (dlopen() handle, newInstance pointer)
+ */
+std::pair<void*, void*> get_new_instance_handle(const std::string& path);
+}
+
 #endif /* end of include guard: PLUGIN_LOADER_HPP */
