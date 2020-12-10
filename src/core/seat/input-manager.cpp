@@ -67,15 +67,19 @@ void wf::input_manager_t::refresh_device_mappings()
     for (auto& device : this->input_devices)
     {
         wlr_input_device *dev = device->get_wlr_handle();
+        auto section =
+            wf::get_core().config_backend->get_input_device_section(dev);
 
-        auto mapped_output_opt = wf::get_core().config.get_option(
-            nonull(dev->name) + std::string("/output"));
-        std::string mapped_output = mapped_output_opt ?
-            mapped_output_opt->get_value_str() : nonull(dev->output_name);
+        auto mapped_output = section->get_option("output")->get_value_str();
+        if (mapped_output.empty())
+        {
+            mapped_output = nonull(dev->output_name);
+        }
 
         auto wo = wf::get_core().output_layout->find_output(mapped_output);
         if (wo)
         {
+            LOGD("Mapping input ", dev->name, " to output ", wo->to_string(), ".");
             wlr_cursor_map_input_to_output(cursor, dev, wo->handle);
         }
     }

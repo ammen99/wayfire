@@ -4,6 +4,7 @@
 #include "wayfire/object.hpp"
 #include <wayfire/geometry.hpp>
 #include <wayfire/idle.hpp>
+#include <wayfire/config-backend.hpp>
 
 #include <sys/types.h>
 #include <limits>
@@ -79,6 +80,7 @@ class compositor_core_t : public wf::object_base_t
     wlr_backend *backend;
     wlr_renderer *renderer;
 
+    std::unique_ptr<wf::config_backend_t> config_backend;
     std::unique_ptr<wf::output_layout_t> output_layout;
 
     /**

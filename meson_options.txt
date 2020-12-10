@@ -2,3 +2,4 @@ option('enable_gles32', type: 'boolean', value: true, description: 'Enable usage
 option('use_system_wfconfig', type: 'feature', value: 'auto', description: 'Use the system-wide installation of wf-config')
 option('use_system_wlroots', type: 'feature', value: 'auto', description: 'Use the system-wide installation of wlroots')
 option('xwayland', type: 'feature', value: 'auto', description: 'Build with xwayland support. Requires wlroots also built with xwayland support')
+option('default_config_backend', type: 'string', value: 'default', description: 'Default configuration backend to use')

@@ -5,46 +5,20 @@
 #include <signal.h>
 #include <map>
 
-#include <sys/inotify.h>
 #include <unistd.h>
-
 #include "debug-func.hpp"
 #include "main.hpp"
 #include "wayfire/nonstd/safe-list.hpp"
-#include <wayfire/config/file.hpp>
 
 #include <wayland-server.h>
 
+#include "wayfire/config-backend.hpp"
+#include "output/plugin-loader.hpp"
 #include "core/core-impl.hpp"
 #include "wayfire/output.hpp"
 
 wf_runtime_config runtime_config;
 
-#define INOT_BUF_SIZE (1024 * sizeof(inotify_event))
-static char buf[INOT_BUF_SIZE];
-
-static std::string config_dir, config_file;
-
-static void reload_config(int fd)
-{
-    wf::config::load_configuration_options_from_file(
-        wf::get_core().config, config_file);
-    inotify_add_watch(fd, config_dir.c_str(), IN_CREATE);
-    inotify_add_watch(fd, config_file.c_str(), IN_MODIFY);
-}
-
-static int handle_config_updated(int fd, uint32_t mask, void *data)
-{
-    LOGD("Reloading configuration file");
-
-    /* read, but don't use */
-    read(fd, buf, INOT_BUF_SIZE);
-    reload_config(fd);
-
-    wf::get_core().emit_signal("reload-config", nullptr);
-
-    return 0;
-}
 
 static void print_version()
 {
@@ -57,6 +31,8 @@ static void print_help()
     std::cout << "Wayfire " << WAYFIRE_VERSION << std::endl;
     std::cout << "Usage: wayfire [OPTION]...\n" << std::endl;
     std::cout << " -c,  --config            specify config file to use" << std::endl;
+    std::cout << " -B,  --config-backend    specify config backend to use" <<
+        std::endl;
     std::cout << " -h,  --help              print this help" << std::endl;
     std::cout << " -d,  --debug             enable debug logging" << std::endl;
     std::cout <<
@@ -182,20 +158,29 @@ static std::optional<std::string> choose_socket(wl_display *display)
     return {};
 }
 
-int main(int argc, char *argv[])
+static wf::config_backend_t *load_backend(const std::string& backend)
 {
-    config_dir = nonull(getenv("XDG_CONFIG_HOME"));
-    if (!config_dir.compare("nil"))
+    auto [_, init_ptr] = wf::get_new_instance_handle(backend);
+
+    if (!init_ptr)
     {
-        config_dir = std::string(nonull(getenv("HOME"))) + "/.config";
+        return nullptr;
     }
 
-    config_file = config_dir + "/wayfire.ini";
+    using backend_init_t = wf::config_backend_t * (*)();
+    auto init = wf::union_cast<void*, backend_init_t>(init_ptr);
+    return init();
+}
 
+int main(int argc, char *argv[])
+{
     wf::log::log_level_t log_level = wf::log::LOG_LEVEL_INFO;
     struct option opts[] = {
         {
             "config", required_argument, NULL, 'c'
+        },
+        {
+            "config-backend", required_argument, NULL, 'B'
         },
         {"debug", no_argument, NULL, 'd'},
         {"damage-debug", no_argument, NULL, 'D'},
@@ -205,13 +190,20 @@ int main(int argc, char *argv[])
         {0, 0, NULL, 0}
     };
 
+    std::string config_file;
+    std::string config_backend = WF_DEFAULT_CONFIG_BACKEND;
+
     int c, i;
-    while ((c = getopt_long(argc, argv, "c:dDhRv", opts, &i)) != -1)
+    while ((c = getopt_long(argc, argv, "c:B:dDhRv", opts, &i)) != -1)
     {
         switch (c)
         {
           case 'c':
             config_file = optarg;
+            break;
+
+          case 'B':
+            config_backend = optarg;
             break;
 
           case 'D':
@@ -277,28 +269,18 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    std::vector<std::string> xmldirs;
-    if (char *plugin_xml_path = getenv("WAYFIRE_PLUGIN_XML_PATH"))
+    auto backend = load_backend(config_backend);
+    if (!backend)
     {
-        std::stringstream ss(plugin_xml_path);
-        std::string entry;
-        while (std::getline(ss, entry, ':'))
-        {
-            xmldirs.push_back(entry);
-        }
+        LOGE("Failed to load configuration backend!");
+        wl_display_destroy_clients(core.display);
+        wl_display_destroy(core.display);
+        return EXIT_FAILURE;
     }
 
-    xmldirs.push_back(PLUGIN_XML_DIR);
-
-    LOGI("using config file: ", config_file.c_str());
-    core.config = wf::config::build_configuration(
-        xmldirs, SYSCONFDIR "/wayfire/defaults.ini", config_file);
-
-    int inotify_fd = inotify_init1(IN_CLOEXEC);
-    reload_config(inotify_fd);
-
-    wl_event_loop_add_fd(core.ev_loop, inotify_fd, WL_EVENT_READABLE,
-        handle_config_updated, NULL);
+    LOGD("Using configuration backend: ", config_backend);
+    core.config_backend = std::unique_ptr<wf::config_backend_t>(backend);
+    core.config_backend->init(display, core.config, config_file);
     core.init();
 
     auto socket = choose_socket(core.display);
@@ -327,6 +309,5 @@ int main(int argc, char *argv[])
     /* Teardown */
     wl_display_destroy_clients(core.display);
     wl_display_destroy(core.display);
-
     return EXIT_SUCCESS;
 }

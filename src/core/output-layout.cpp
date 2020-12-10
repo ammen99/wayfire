@@ -236,6 +236,7 @@ struct output_layout_output_t
     std::unique_ptr<wf::output_impl_t> output;
     wl_listener_wrapper on_destroy, on_mode;
 
+    std::shared_ptr<wf::config::section_t> config_section;
     wf::option_wrapper_t<wf::output_config::mode_t> mode_opt;
     wf::option_wrapper_t<wf::output_config::position_t> position_opt;
     wf::option_wrapper_t<double> scale_opt;
@@ -243,14 +244,8 @@ struct output_layout_output_t
 
     void initialize_config_options()
     {
-        auto name    = get_section_name();
-        auto& config = wf::get_core().config;
-        if (!config.get_section(name))
-        {
-            config.merge_section(
-                config.get_section("output")->clone_with_name(name));
-        }
-
+        config_section = wf::get_core().config_backend->get_output_section(handle);
+        auto name = config_section->get_name();
         mode_opt.load_option(name + "/mode");
         position_opt.load_option(name + "/position");
         scale_opt.load_option(name + "/scale");
@@ -500,17 +495,11 @@ struct output_layout_output_t
         }
     }
 
-    std::string get_section_name()
-    {
-        std::string name = handle->name;
-        name = "output:" + name;
-        return name;
-    }
-
     void refresh_custom_modes()
     {
+        auto section =
+            wf::get_core().config_backend->get_output_section(handle);
         static const std::string custom_mode_prefix = "custom_mode";
-        auto section = get_core().config.get_section(get_section_name());
         for (auto& opt : section->get_registered_options())
         {
             if (custom_mode_prefix ==

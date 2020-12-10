@@ -22,12 +22,16 @@ class config_backend_t
   public:
     /**
      * Initialize the config backend and do the initial loading of config options.
+     * The config backend must follow the same option types as described in the XML
+     * files.
      *
      * @param display The wayland display used by Wayfire.
      * @param config  A reference to the config manager which needs to be
      *   populated.
+     * @param cmd_config_file The configuration file specified on the command line.
      */
-    virtual void init(wl_display *display, config::config_manager_t& config) = 0;
+    virtual void init(wl_display *display, config::config_manager_t& config,
+        const std::string& cmd_config_file) = 0;
 
     /**
      * Find the output section for a given output.
@@ -48,14 +52,17 @@ class config_backend_t
         wlr_input_device *device);
 
     virtual ~config_backend_t() = default;
+
+  protected:
+    /** A helper to read the XML directories that Wayfire looks at */
+    virtual std::vector<std::string> get_xml_dirs() const;
 };
 }
 
 /**
- * A macro to declare the necessary functions for loading the plugin,
- * given the plugin class name.
+ * A macro to declare the necessary functions, given the backend class name.
  */
-#define DECLARE_WAYFIRE_PLUGIN(PluginClass) \
+#define DECLARE_WAYFIRE_CONFIG_BACKEND(PluginClass) \
     extern "C" \
     { \
         wf::config_backend_t*newInstance() { return new PluginClass; } \

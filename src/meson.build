@@ -67,11 +67,19 @@ if get_option('b_sanitize').contains('address') or cxx_flags_asan.returncode() =
 endif
 
 executable('wayfire', wayfire_sources,
-        dependencies: wayfire_dependencies,
-        include_directories: [wayfire_conf_inc, wayfire_api_inc],
-        cpp_args: debug_arguments,
-        link_args: '-ldl',
-        install: true)
+    dependencies: wayfire_dependencies,
+    include_directories: [wayfire_conf_inc, wayfire_api_inc],
+    cpp_args: debug_arguments,
+    link_args: '-ldl',
+    install: true)
+
+shared_module('default-config-backend', 'default-config-backend.cpp',
+    dependencies: wayfire_dependencies,
+    include_directories: [wayfire_conf_inc, wayfire_api_inc],
+    cpp_args: debug_arguments,
+    install_dir: conf_data.get('PLUGIN_PATH'),
+    install: true)
+
 
 install_subdir('api/wayfire',
     install_dir: get_option('includedir'))
