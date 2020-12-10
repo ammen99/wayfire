@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<wayfire>
+  <object name="output">
+    <category>General</category>
+    <option name="mode" type="output::mode">
+      <default>auto</default>
+    </option>
+    <option name="position" type="output::position">
+      <default>auto</default>
+    </option>
+    <option name="scale" type="double">
+      <default>1.0</default>
+    </option>
+    <option name="transform" type="string">
+      <default>normal</default>
+    </option>
+  </object>
+</wayfire>
