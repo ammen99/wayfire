@@ -35,19 +35,5 @@ struct scale_filter_signal : public wf::signal_data_t
  * argument: unused
  */
 
-/**
- * name: scale-key
- * on: output
- * when: When non-interactive scale is active and the user presses a key that
- *   is not handled by scale itself. This can be used by a plugin to set up a
- *   filter based on the user's input.
- */
-struct scale_key_signal : public wf::signal_data_t
-{
-    uint32_t key;
-    explicit scale_key_signal(uint32_t key_) : key(key_)
-    {}
-};
-
 
 #endif

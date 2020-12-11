@@ -2,6 +2,7 @@
 #include <string>
 #include <wayfire/plugin.hpp>
 #include <wayfire/output.hpp>
+#include <wayfire/signal-definitions.hpp>
 #include <wayfire/util/log.hpp>
 #include <wayfire/plugins/common/scale-signal.hpp>
 #include "scale_keys.h"
@@ -11,6 +12,8 @@ struct scale_title_filter : public wf::plugin_interface_t
 {
     wf::option_wrapper_t<bool> case_sensitive{"scale_title_filter/case_sensitive"};
     std::string title_filter;
+    bool scale_running = false;
+
     bool should_show_view(wayfire_view view)
     {
         if (title_filter.empty())
@@ -43,19 +46,24 @@ struct scale_title_filter : public wf::plugin_interface_t
         grab_interface->capabilities = 0;
 
         output->connect_signal("scale-filter", &view_filter);
-        output->connect_signal("scale-key", &scale_key);
         output->connect_signal("scale-end", &scale_end);
     }
 
     void fini() override
     {
         output->disconnect_signal(&view_filter);
-        output->disconnect_signal(&scale_key);
+        wf::get_core().disconnect_signal(&scale_key);
         output->disconnect_signal(&scale_end);
     }
 
     wf::signal_connection_t view_filter{[this] (wf::signal_data_t *data)
         {
+            if (!scale_running)
+            {
+                wf::get_core().connect_signal("keyboard_key", &scale_key);
+                scale_running = true;
+            }
+
             auto v   = static_cast<scale_filter_signal*>(data);
             v->hide |= !should_show_view(v->view);
         }
@@ -63,8 +71,14 @@ struct scale_title_filter : public wf::plugin_interface_t
 
     wf::signal_connection_t scale_key{[this] (wf::signal_data_t *data)
         {
-            auto k = static_cast<scale_key_signal*>(data);
-            if (k->key == KEY_BACKSPACE)
+            auto k =
+                static_cast<wf::input_event_signal<wlr_event_keyboard_key>*>(data);
+            if (k->event->state != WL_KEYBOARD_KEY_STATE_PRESSED)
+            {
+                return;
+            }
+
+            if (k->event->keycode == KEY_BACKSPACE)
             {
                 if (!title_filter.empty())
                 {
@@ -75,7 +89,7 @@ struct scale_title_filter : public wf::plugin_interface_t
                 }
             } else
             {
-                char c = char_from_keycode(k->key);
+                char c = char_from_keycode(k->event->keycode);
                 if (c != (char)-1)
                 {
                     if ((c == '-') && wf::get_core().get_keyboard_modifiers() &
@@ -95,7 +109,9 @@ struct scale_title_filter : public wf::plugin_interface_t
 
     wf::signal_connection_t scale_end{[this] (wf::signal_data_t *data)
         {
+            wf::get_core().disconnect_signal(&scale_key);
             title_filter.clear();
+            scale_running = false;
         }
     };
 };
