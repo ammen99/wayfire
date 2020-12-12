@@ -2,7 +2,6 @@
  * Original code by: Scott Moreau, Daniel Kondor
  */
 #include <map>
-#include <set>
 #include <wayfire/plugin.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/util/duration.hpp>
@@ -58,9 +57,9 @@ struct view_scale_data
     wf_scale_animation_attribs animation;
     enum class hidden_t
     {
-        SHOWN,
-        HIDING,
-        HIDDEN,
+        SHOWN, /*  view is shown in position determined by layout_slots() */
+        HIDING, /* view is in the process of hiding (due to filters)      */
+        HIDDEN, /* view is hidden by a filter (with set_visible(false))   */
     };
 
     hidden_t hidden = hidden_t::SHOWN;
@@ -80,9 +79,6 @@ class wayfire_scale : public wf::plugin_interface_t
     // View over which the last input press happened, might become dangling
     wayfire_view last_selected_view;
     std::map<wayfire_view, view_scale_data> scale_data;
-    /* Views hidden by filters. For all of these, set_visible(false)
-     * has been set. */
-    // std::set<wayfire_view> hidden_views;
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
     /* If interact is true, no grab is acquired and input events are sent
      * to the scaled surfaces. If it is false, the hard coded bindings
