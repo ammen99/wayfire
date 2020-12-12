@@ -9,5 +9,26 @@
 			<_long>Match titles in a case sensitive way.</_long>
 			<default>false</default>
 		</option>
+		<option name="overlay" type="bool">
+			<_short>Show overlay</_short>
+			<_long>Whether the current filter value is shown as an overlay.</_long>
+			<default>true</default>
+		</option>
+		<option name="font_size" type="int">
+			<_short>Text font size</_short>
+			<_long>Size of the text used in the overlay.</_long>
+			<default>30</default>
+			<min>1</min>
+		</option>
+		<option name="bg_color" type="color">
+			<_short>Background color</_short>
+			<_long>Background color for overlay text.</_long>
+			<default>0.0 0.0 0.0 0.5</default>
+		</option>
+		<option name="text_color" type="color">
+			<_short>Text color</_short>
+			<_long>Text color for overlay.</_long>
+			<default>0.8 0.8 0.8 0.8</default>
+		</option>
 	</plugin>
 </wayfire>
