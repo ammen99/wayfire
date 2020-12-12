@@ -56,6 +56,14 @@ struct view_scale_data
     wf_scale *transformer = nullptr; /* avoid UB from uninitialized member */
     wf::animation::simple_animation_t fade_animation;
     wf_scale_animation_attribs animation;
+    enum class hidden_t
+    {
+        SHOWN,
+        HIDING,
+        HIDDEN,
+    };
+
+    hidden_t hidden = hidden_t::SHOWN;
 };
 
 class wayfire_scale : public wf::plugin_interface_t
@@ -74,7 +82,7 @@ class wayfire_scale : public wf::plugin_interface_t
     std::map<wayfire_view, view_scale_data> scale_data;
     /* Views hidden by filters. For all of these, set_visible(false)
      * has been set. */
-    std::set<wayfire_view> hidden_views;
+    // std::set<wayfire_view> hidden_views;
     wf::option_wrapper_t<int> spacing{"scale/spacing"};
     /* If interact is true, no grab is acquired and input events are sent
      * to the scaled surfaces. If it is false, the hard coded bindings
@@ -209,6 +217,13 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 pop_transformer(toplevel);
             }
+
+            if (e.second.hidden == view_scale_data::hidden_t::HIDDEN)
+            {
+                e.first->set_visible(true);
+            }
+
+            e.second.hidden = view_scale_data::hidden_t::SHOWN;
         }
     }
 
@@ -354,6 +369,11 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             auto v = e.first;
             if (get_top_parent(v) == get_top_parent(view))
+            {
+                continue;
+            }
+
+            if (e.second.hidden != view_scale_data::hidden_t::SHOWN)
             {
                 continue;
             }
@@ -695,6 +715,13 @@ class wayfire_scale : public wf::plugin_interface_t
                 view_data.animation.scale_animation.translation_y;
             view_data.transformer->alpha = view_data.fade_animation;
             view->damage();
+
+            if ((view_data.hidden == view_scale_data::hidden_t::HIDING) &&
+                !view_data.fade_animation.running())
+            {
+                view_data.hidden = view_scale_data::hidden_t::HIDDEN;
+                view->set_visible(false);
+            }
         }
 
         output->render->damage_whole();
@@ -880,24 +907,29 @@ class wayfire_scale : public wf::plugin_interface_t
         /* update hidden views */
         for (auto v : filtered_views)
         {
-            if (!hidden_views.count(v))
+            /* ensure that this view has a transformer and is in scale_data */
+            add_transformer(v);
+            auto& view_data = scale_data[v];
+            if (view_data.hidden == view_scale_data::hidden_t::SHOWN)
             {
-                v->set_visible(false);
-                /* note: ensure that this view does not have a transformer anymore */
-                pop_transformer(v);
-                scale_data.erase(v);
-                hidden_views.insert(v);
+                view_data.hidden = view_scale_data::hidden_t::HIDING;
+                setup_view_transform(view_data, 1, 1, 0, 0, 0);
             }
-        }
 
-        for (auto v : views)
-        {
-            auto it = hidden_views.find(v);
-            if (it != hidden_views.end())
+            for (auto& child : v->enumerate_views(false))
             {
-                hidden_views.erase(it);
-                v->set_visible(true);
-                /* TODO: nicer way to fade in / out hidden views */
+                if (child == v)
+                {
+                    continue;
+                }
+
+                add_transformer(child);
+                auto& child_data = scale_data[child];
+                if (child_data.hidden == view_scale_data::hidden_t::SHOWN)
+                {
+                    child_data.hidden = view_scale_data::hidden_t::HIDING;
+                    setup_view_transform(child_data, 1, 1, 0, 0, 0);
+                }
             }
         }
 
@@ -928,6 +960,13 @@ class wayfire_scale : public wf::plugin_interface_t
 
                 add_transformer(view);
                 auto& view_data = scale_data[view];
+
+                if (view_data.hidden == view_scale_data::hidden_t::HIDDEN)
+                {
+                    view->set_visible(true);
+                }
+
+                view_data.hidden = view_scale_data::hidden_t::SHOWN;
 
                 auto vg = view->get_wm_geometry();
                 double scale_x    = scaled_width / vg.width;
@@ -996,6 +1035,14 @@ class wayfire_scale : public wf::plugin_interface_t
                             view_data.transformer->translation_x;
                         child_data.transformer->translation_y =
                             view_data.transformer->translation_y;
+                    } else
+                    {
+                        if (child_data.hidden == view_scale_data::hidden_t::HIDDEN)
+                        {
+                            child->set_visible(true);
+                        }
+
+                        child_data.hidden = view_scale_data::hidden_t::SHOWN;
                     }
 
                     translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
@@ -1100,7 +1147,7 @@ class wayfire_scale : public wf::plugin_interface_t
         if (scale_data.count(get_top_parent(view)) != 0)
         {
             remove_view(view);
-            if (scale_data.empty() && hidden_views.empty())
+            if (scale_data.empty())
             {
                 finalize();
             }
@@ -1330,6 +1377,12 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             fade_in(e.first);
             setup_view_transform(e.second, 1, 1, 0, 0, 1);
+            if (e.second.hidden == view_scale_data::hidden_t::HIDDEN)
+            {
+                e.first->set_visible(true);
+            }
+
+            e.second.hidden = view_scale_data::hidden_t::SHOWN;
         }
 
         refocus();
@@ -1346,13 +1399,7 @@ class wayfire_scale : public wf::plugin_interface_t
         remove_transformers();
         scale_data.clear();
         grab_interface->ungrab();
-        /* show hidden views -- this could be transitioned as well */
-        for (auto v : hidden_views)
-        {
-            v->set_visible(true);
-        }
 
-        hidden_views.clear();
         disconnect_button_signal();
         view_focused.disconnect();
         view_unmapped.disconnect();
