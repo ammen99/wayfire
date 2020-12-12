@@ -24,7 +24,9 @@ struct cursor_t
     void set_cursor(wlr_seat_pointer_request_set_cursor_event *ev,
         bool validate_request);
     void set_cursor(std::string name);
+    void unhide_cursor();
     void hide_cursor();
+    int hide_ref_counter = 0;
 
     /**
      * Start/stop touchscreen mode, which means the cursor will be hidden.

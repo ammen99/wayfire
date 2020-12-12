@@ -349,8 +349,6 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
 
     void start_screensaver()
     {
-        wf::get_core().hide_cursor();
-
         cube_control_signal data;
         data.angle = 0.0;
         data.zoom  = CUBE_ZOOM_BASE;
@@ -385,8 +383,6 @@ class wayfire_idle_singleton : public wf::singleton_plugin_t<wayfire_idle>
 
     void stop_screensaver()
     {
-        wf::get_core().set_cursor("default");
-
         if (state == CUBE_SCREENSAVER_DISABLED)
         {
             uninhibit_output();

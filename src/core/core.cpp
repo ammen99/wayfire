@@ -376,6 +376,11 @@ void wf::compositor_core_impl_t::set_cursor(std::string name)
     seat->cursor->set_cursor(name);
 }
 
+void wf::compositor_core_impl_t::unhide_cursor()
+{
+    seat->cursor->unhide_cursor();
+}
+
 void wf::compositor_core_impl_t::hide_cursor()
 {
     seat->cursor->hide_cursor();

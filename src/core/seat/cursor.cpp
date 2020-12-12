@@ -145,6 +145,11 @@ void wf::cursor_t::load_xcursor_scale(float scale)
 
 void wf::cursor_t::set_cursor(std::string name)
 {
+    if (this->hide_ref_counter)
+    {
+        return;
+    }
+
     if (this->touchscreen_mode_active)
     {
         return;
@@ -158,9 +163,20 @@ void wf::cursor_t::set_cursor(std::string name)
     wlr_xcursor_manager_set_cursor_image(xcursor, name.c_str(), cursor);
 }
 
+void wf::cursor_t::unhide_cursor()
+{
+    if (this->hide_ref_counter && --this->hide_ref_counter)
+    {
+        return;
+    }
+
+    set_cursor("default");
+}
+
 void wf::cursor_t::hide_cursor()
 {
     wlr_cursor_set_surface(cursor, NULL, 0, 0);
+    this->hide_ref_counter++;
 }
 
 void wf::cursor_t::warp_cursor(wf::pointf_t point)
@@ -176,6 +192,11 @@ wf::pointf_t wf::cursor_t::get_cursor_position()
 void wf::cursor_t::set_cursor(
     wlr_seat_pointer_request_set_cursor_event *ev, bool validate_request)
 {
+    if (this->hide_ref_counter)
+    {
+        return;
+    }
+
     if (this->touchscreen_mode_active)
     {
         return;
@@ -210,7 +231,7 @@ void wf::cursor_t::set_touchscreen_mode(bool enabled)
         hide_cursor();
     } else
     {
-        set_cursor("default");
+        unhide_cursor();
     }
 }
 

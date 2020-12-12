@@ -275,6 +275,7 @@ class wayfire_cube : public wf::plugin_interface_t
 
         output->render->set_renderer(renderer);
         output->render->schedule_redraw();
+        wf::get_core().hide_cursor();
         grab_interface->grab();
 
         return true;
@@ -299,6 +300,7 @@ class wayfire_cube : public wf::plugin_interface_t
 
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
+        wf::get_core().unhide_cursor();
 
         /* Figure out how much we have rotated and switch workspace */
         int size = get_num_faces();
@@ -366,7 +368,6 @@ class wayfire_cube : public wf::plugin_interface_t
         }
 
         saved_pointer_position = wf::get_core().get_cursor_position();
-        wf::get_core().hide_cursor();
 
         /* Rotations, offset_y and zoom stay as they are now, as they have been
          * grabbed.
@@ -397,7 +398,6 @@ class wayfire_cube : public wf::plugin_interface_t
     /* Mouse grab was released */
     void input_ungrabbed()
     {
-        wf::get_core().set_cursor("default");
         wf::get_core().warp_cursor(saved_pointer_position);
 
         animation.in_exit = true;

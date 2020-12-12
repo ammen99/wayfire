@@ -129,7 +129,12 @@ class compositor_core_t : public wf::object_base_t
 
     /** Set the cursor to the given name from the cursor theme, if available */
     virtual void set_cursor(std::string name) = 0;
-    /** Hides the cursor, until something sets it up again, for ex. by set_cursor()
+    /**
+     * Decrements the hide ref counter and unhides the cursor if it becomes 0.
+     * */
+    virtual void unhide_cursor() = 0;
+    /**
+     * Hides the cursor and increments the hide ref counter.
      * */
     virtual void hide_cursor() = 0;
     /**
