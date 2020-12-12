@@ -78,14 +78,13 @@ struct scale_title_filter : public wf::plugin_interface_t
                 return;
             }
 
+            bool changed = false;
             if (k->event->keycode == KEY_BACKSPACE)
             {
                 if (!title_filter.empty())
                 {
                     title_filter.pop_back();
-                    LOGI("Title filter changed: ", title_filter);
-                    wf::activator_data_t data{wf::activator_source_t::PLUGIN, 0};
-                    output->call_plugin("scale/activate", data);
+                    changed = true;
                 }
             } else
             {
@@ -99,10 +98,15 @@ struct scale_title_filter : public wf::plugin_interface_t
                     }
 
                     title_filter.push_back(c);
-                    LOGI("Title filter changed: ", title_filter);
-                    wf::activator_data_t data{wf::activator_source_t::PLUGIN, 0};
-                    output->call_plugin("scale/activate", data);
+                    changed = true;
                 }
+            }
+
+            if (changed)
+            {
+                LOGI("Title filter changed: ", title_filter);
+                scale_activate_signal data;
+                output->emit_signal("scale-activate", &data);
             }
         }
     };

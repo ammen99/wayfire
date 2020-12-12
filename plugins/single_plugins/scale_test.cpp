@@ -57,9 +57,10 @@ class wayfire_scale_test : public wf::plugin_interface_t
     wf::activator_callback activate = [=] (auto)
     {
         active = true;
-        wf::activator_data_t data{wf::activator_source_t::PLUGIN_WITH_DATA,
-            all_workspaces};
-        return output->call_plugin("scale/activate", data);
+        scale_activate_signal data;
+        data.all_workspaces = all_workspaces;
+        output->emit_signal("scale-activate", &data);
+        return true;
     };
 
     wf::signal_connection_t view_filter{[this] (wf::signal_data_t *data)

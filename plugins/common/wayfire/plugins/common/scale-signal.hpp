@@ -35,5 +35,20 @@ struct scale_filter_signal : public wf::signal_data_t
  * argument: unused
  */
 
+/**
+ * name: scale-activate
+ * on: output
+ * when: A plugin can emit this signal to request scale to be activated. If
+ *   is already running, this causes it to refresh the list of views shown
+ *   (this can be used by a filter plugin to update the filter).
+ */
+struct scale_activate_signal : public wf::signal_data_t
+{
+    /* should scale include views from all workspaces */
+    bool all_workspaces = false;
+    /* should change if scale if already running (if false, all_workspaces is
+     * ignored if scale is already running) */
+    bool change_all_workspaces = false;
+};
 
 #endif

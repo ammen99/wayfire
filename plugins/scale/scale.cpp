@@ -126,9 +126,7 @@ class wayfire_scale : public wf::plugin_interface_t
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle_all"},
             &toggle_all_cb);
-        output->add_activator(
-            wf::option_wrapper_t<wf::activatorbinding_t>{"scale/activate"},
-            &activate_cb);
+        output->connect_signal("scale-activate", &activate_cb);
 
         grab_interface->callbacks.keyboard.key = [=] (uint32_t key, uint32_t state)
         {
@@ -270,18 +268,19 @@ class wayfire_scale : public wf::plugin_interface_t
         return false;
     };
 
-    wf::activator_callback activate_cb = [=] (const wf::activator_data_t& data)
-    {
-        bool want_all_workspaces =
-            (data.source == wf::activator_source_t::PLUGIN_WITH_DATA) ?
-            data.activation_data : false;
-        if (!active || (want_all_workspaces != all_workspaces))
+    wf::signal_connection_t activate_cb{[=] (wf::signal_data_t *data)
         {
-            return handle_toggle(want_all_workspaces);
-        } else
-        {
-            layout_slots(get_views());
-            return true;
+            auto signal = static_cast<scale_activate_signal*>(data);
+
+            if (active && (!signal->change_all_workspaces ||
+                           (signal->all_workspaces == all_workspaces)))
+            {
+                layout_slots(get_views());
+                output->render->schedule_redraw();
+            } else if (handle_toggle(signal->all_workspaces))
+            {
+                output->render->schedule_redraw();
+            }
         }
     };
 
@@ -1398,7 +1397,7 @@ class wayfire_scale : public wf::plugin_interface_t
         finalize();
         output->rem_binding(&toggle_cb);
         output->rem_binding(&toggle_all_cb);
-        output->rem_binding(&activate_cb);
+        output->disconnect_signal(&activate_cb);
     }
 };
 
