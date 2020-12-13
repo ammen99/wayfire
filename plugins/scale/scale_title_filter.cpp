@@ -6,6 +6,8 @@
 #include <wayfire/util/log.hpp>
 #include <wayfire/plugins/common/scale-signal.hpp>
 
+#include <linux/input-event-codes.h>
+
 #include <wayfire/render-manager.hpp>
 #include <wayfire/opengl.hpp>
 #include <wayfire/plugins/common/cairo-util.hpp>
