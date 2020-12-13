@@ -36,9 +36,6 @@ class wayfire_cube : public wf::plugin_interface_t
     wf::activator_callback rotate_left, rotate_right;
     wf::render_hook_t renderer;
 
-    /* Used to restore the pointer where the grab started */
-    wf::pointf_t saved_pointer_position;
-
     nonstd::observer_ptr<wf::workspace_stream_pool_t> streams;
 
     wf::option_wrapper_t<double> XVelocity{"cube/speed_spin_horiz"},
@@ -139,12 +136,6 @@ class wayfire_cube : public wf::plugin_interface_t
             {
                 input_ungrabbed();
             }
-        };
-
-        grab_interface->callbacks.pointer.relative_motion =
-            [=] (wlr_event_pointer_motion *ev)
-        {
-            pointer_moved(ev);
         };
 
         grab_interface->callbacks.pointer.axis = [=] (
@@ -273,6 +264,7 @@ class wayfire_cube : public wf::plugin_interface_t
             return false;
         }
 
+        wf::get_core().connect_signal("pointer_motion", &on_motion_event);
         output->render->set_renderer(renderer);
         output->render->schedule_redraw();
         wf::get_core().hide_cursor();
@@ -301,6 +293,7 @@ class wayfire_cube : public wf::plugin_interface_t
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
         wf::get_core().unhide_cursor();
+        wf::get_core().disconnect_signal("pointer_motion", &on_motion_event);
 
         /* Figure out how much we have rotated and switch workspace */
         int size = get_num_faces();
@@ -367,8 +360,6 @@ class wayfire_cube : public wf::plugin_interface_t
             return false;
         }
 
-        saved_pointer_position = wf::get_core().get_cursor_position();
-
         /* Rotations, offset_y and zoom stay as they are now, as they have been
          * grabbed.
          * offset_z changes to the default one.
@@ -398,8 +389,6 @@ class wayfire_cube : public wf::plugin_interface_t
     /* Mouse grab was released */
     void input_ungrabbed()
     {
-        wf::get_core().warp_cursor(saved_pointer_position);
-
         animation.in_exit = true;
 
         /* Rotate cube so that selected workspace aligns with the output */
@@ -565,6 +554,19 @@ class wayfire_cube : public wf::plugin_interface_t
             deactivate();
         }
     }
+
+    wf::signal_callback_t on_motion_event = [=] (wf::signal_data_t *data)
+    {
+        auto ev = static_cast<
+            wf::input_event_signal<wlr_event_pointer_motion>*>(data);
+
+        pointer_moved(ev->event);
+
+        ev->event->delta_x    = 0;
+        ev->event->delta_y    = 0;
+        ev->event->unaccel_dx = 0;
+        ev->event->unaccel_dy = 0;
+    };
 
     void pointer_moved(wlr_event_pointer_motion *ev)
     {
