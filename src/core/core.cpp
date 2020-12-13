@@ -371,11 +371,6 @@ uint32_t wf::compositor_core_impl_t::get_keyboard_modifiers()
     return seat->get_modifiers();
 }
 
-std::string wf::compositor_core_impl_t::convert_keycode(uint32_t keycode)
-{
-    return seat->convert_keycode(keycode);
-}
-
 void wf::compositor_core_impl_t::set_cursor(std::string name)
 {
     seat->cursor->set_cursor(name);

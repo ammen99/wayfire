@@ -5,6 +5,7 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util/log.hpp>
 #include <wayfire/plugins/common/scale-signal.hpp>
+#include <wayfire/nonstd/wlroots-full.hpp>
 
 #include <linux/input-event-codes.h>
 
@@ -92,7 +93,6 @@ struct scale_title_filter : public wf::plugin_interface_t
                 return;
             }
 
-            bool changed = false;
             if (k->event->keycode == KEY_BACKSPACE)
             {
                 if (!title_filter.empty())
@@ -103,28 +103,39 @@ struct scale_title_filter : public wf::plugin_interface_t
                     {
                         title_filter.pop_back();
                     }
-
-                    changed = true;
+                } else
+                {
+                    return;
                 }
             } else
             {
-                std::string tmp = wf::get_core().convert_keycode(
-                    k->event->keycode + 8);
-                if (!tmp.empty())
+                auto seat     = wf::get_core().get_current_seat();
+                auto keyboard = wlr_seat_get_keyboard(seat);
+                if (!keyboard)
                 {
-                    char_len.push_back(tmp.length());
-                    title_filter += tmp;
-                    changed = true;
+                    return; /* should not happen */
                 }
+
+                auto xkb_state = keyboard->xkb_state;
+
+                /* taken from libxkbcommon guide */
+                int keycode = k->event->keycode + 8;
+                int size    = xkb_state_key_get_utf8(xkb_state, keycode, nullptr, 0);
+                if (size <= 0)
+                {
+                    return;
+                }
+
+                std::string tmp(size, 0);
+                xkb_state_key_get_utf8(xkb_state, keycode, tmp.data(), size + 1);
+                char_len.push_back(size);
+                title_filter += tmp;
             }
 
-            if (changed)
-            {
-                LOGI("Title filter changed: ", title_filter);
-                scale_activate_signal data;
-                output->emit_signal("scale-activate", &data);
-                update_overlay();
-            }
+            LOGI("Title filter changed: ", title_filter);
+            scale_activate_signal signal;
+            output->emit_signal("scale-activate", &signal);
+            update_overlay();
         }
     };
 

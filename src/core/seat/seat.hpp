@@ -74,8 +74,6 @@ class seat_t
 
     uint32_t get_modifiers();
 
-    std::string convert_keycode(uint32_t keycode);
-
     void break_mod_bindings();
 
     void set_keyboard_focus(wayfire_view view);
