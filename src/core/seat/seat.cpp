@@ -289,6 +289,26 @@ uint32_t wf::seat_t::get_modifiers()
     return current_keyboard ? current_keyboard->get_modifiers() : 0;
 }
 
+std::string wf::seat_t::convert_keycode(uint32_t keycode)
+{
+    if (!current_keyboard)
+    {
+        return "";
+    }
+
+    auto xkb_state = current_keyboard->handle->xkb_state;
+    /* taken from libxkbcommon guide */
+    int size = xkb_state_key_get_utf8(xkb_state, keycode, nullptr, 0);
+    if (size <= 0)
+    {
+        return "";
+    }
+
+    std::string ret(size, 0);
+    xkb_state_key_get_utf8(xkb_state, keycode, ret.data(), size + 1);
+    return ret;
+}
+
 void wf::seat_t::set_keyboard_focus(wayfire_view view)
 {
     auto surface = view ? view->get_keyboard_focus_surface() : NULL;

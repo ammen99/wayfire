@@ -12,13 +12,13 @@
 #include <wayfire/plugins/common/simple-texture.hpp>
 #include <cairo.h>
 
-#include "scale_keys.h"
-
-
 struct scale_title_filter : public wf::plugin_interface_t
 {
     wf::option_wrapper_t<bool> case_sensitive{"scale_title_filter/case_sensitive"};
     std::string title_filter;
+    /* since title filter is utf-8, here we store the length of each
+     * character when adding them so backspace will work properly */
+    std::vector<int> char_len;
     bool scale_running = false;
 
     bool should_show_view(wayfire_view view)
@@ -28,11 +28,11 @@ struct scale_title_filter : public wf::plugin_interface_t
             return true;
         }
 
-        std::string title = view->get_title();
         if (!case_sensitive)
         {
-            std::transform(title.begin(), title.end(), title.begin(),
-                [] (unsigned char c)
+            std::string title = view->get_title();
+            std::string filter = title_filter;
+            auto transform = [] (unsigned char c)
             {
                 if (std::isspace(c))
                 {
@@ -40,10 +40,13 @@ struct scale_title_filter : public wf::plugin_interface_t
                 }
 
                 return (char)std::tolower(c);
-            });
+            };
+            std::transform(title.begin(), title.end(), title.begin(), transform);
+            std::transform(filter.begin(), filter.end(), filter.begin(), transform);
+            return title.find(filter) != std::string::npos;
         }
 
-        return title.find(title_filter) != std::string::npos;
+        return view->get_title().find(title_filter) != std::string::npos;
     }
 
   public:
@@ -81,7 +84,8 @@ struct scale_title_filter : public wf::plugin_interface_t
         {
             auto k =
                 static_cast<wf::input_event_signal<wlr_event_keyboard_key>*>(data);
-            if (k->event->state != WL_KEYBOARD_KEY_STATE_PRESSED)
+            if ((k->event->state != WL_KEYBOARD_KEY_STATE_PRESSED) ||
+                (k->event->keycode == KEY_ESC) || (k->event->keycode == KEY_ENTER))
             {
                 return;
             }
@@ -91,21 +95,23 @@ struct scale_title_filter : public wf::plugin_interface_t
             {
                 if (!title_filter.empty())
                 {
-                    title_filter.pop_back();
+                    int len = char_len.back();
+                    char_len.pop_back();
+                    for (int i = 0; i < len; i++)
+                    {
+                        title_filter.pop_back();
+                    }
+
                     changed = true;
                 }
             } else
             {
-                char c = char_from_keycode(k->event->keycode);
-                if (c != (char)-1)
+                std::string tmp = wf::get_core().convert_keycode(
+                    k->event->keycode + 8);
+                if (!tmp.empty())
                 {
-                    if ((c == '-') && wf::get_core().get_keyboard_modifiers() &
-                        WLR_MODIFIER_SHIFT)
-                    {
-                        c = '_';
-                    }
-
-                    title_filter.push_back(c);
+                    char_len.push_back(tmp.length());
+                    title_filter += tmp;
                     changed = true;
                 }
             }
@@ -124,6 +130,7 @@ struct scale_title_filter : public wf::plugin_interface_t
         {
             wf::get_core().disconnect_signal(&scale_key);
             title_filter.clear();
+            char_len.clear();
             clear_overlay();
             scale_running = false;
         }

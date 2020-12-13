@@ -127,6 +127,15 @@ class compositor_core_t : public wf::object_base_t
      */
     virtual uint32_t get_keyboard_modifiers() = 0;
 
+    /**
+     * Convert the given keycode.
+     * @param key the keycode to convert (note: this expects an XKB keycode;
+     * for an evdev keycode, add 8 to it when calling this function)
+     * @return a utf-8 string representation of the given keycode based on the
+     * current keyboard state, including pressed modifiers.
+     */
+    virtual std::string convert_keycode(uint32_t keycode) = 0;
+
     /** Set the cursor to the given name from the cursor theme, if available */
     virtual void set_cursor(std::string name) = 0;
     /** Hides the cursor, until something sets it up again, for ex. by set_cursor()

@@ -58,6 +58,7 @@ class compositor_core_impl_t : public compositor_core_t
 
     wlr_seat *get_current_seat() override;
     uint32_t get_keyboard_modifiers() override;
+    std::string convert_keycode(uint32_t keycode) override;
     void set_cursor(std::string name) override;
     void hide_cursor() override;
     void warp_cursor(wf::pointf_t pos) override;
