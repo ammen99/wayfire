@@ -793,6 +793,11 @@ class workspace_manager::impl
     {
         auto old_w = output_geometry.width, old_h = output_geometry.height;
         auto new_size = output->get_screen_size();
+        if ((old_w == new_size.width) && (old_h == new_size.height))
+        {
+            // No actual change, stop here
+            return;
+        }
 
         for (auto& view : layer_manager.get_views_in_layer(MIDDLE_LAYERS))
         {
