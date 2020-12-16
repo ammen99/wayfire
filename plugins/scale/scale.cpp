@@ -15,7 +15,6 @@
 
 #include <linux/input-event-codes.h>
 
-#include <algorithm>
 
 using namespace wf::animation;
 
@@ -1375,7 +1374,6 @@ class wayfire_scale : public wf::plugin_interface_t
         remove_transformers();
         scale_data.clear();
         grab_interface->ungrab();
-
         disconnect_button_signal();
         view_focused.disconnect();
         view_unmapped.disconnect();
