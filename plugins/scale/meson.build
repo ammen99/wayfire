@@ -7,7 +7,7 @@ shared_module('scale', 'scale.cpp',
         install: true,
         install_dir: conf_data.get('PLUGIN_PATH'))
 
-shared_module('scale_title_filter', 'scale_title_filter.cpp',
+shared_module('scale-title-filter', 'scale-title-filter.cpp',
         include_directories: all_include_dirs,
         dependencies: [wlroots, pixman, wfconfig, wftouch, cairo],
         install: true,

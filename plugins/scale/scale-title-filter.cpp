@@ -17,7 +17,7 @@
 
 struct scale_title_filter : public wf::plugin_interface_t
 {
-    wf::option_wrapper_t<bool> case_sensitive{"scale_title_filter/case_sensitive"};
+    wf::option_wrapper_t<bool> case_sensitive{"scale-title-filter/case_sensitive"};
     std::string title_filter;
     /* since title filter is utf-8, here we store the length of each
      * character when adding them so backspace will work properly */
@@ -55,7 +55,7 @@ struct scale_title_filter : public wf::plugin_interface_t
   public:
     void init() override
     {
-        grab_interface->name = "scale_title_filter";
+        grab_interface->name = "scale-title-filter";
         grab_interface->capabilities = 0;
 
         output->connect_signal("scale-filter", &view_filter);
@@ -162,10 +162,10 @@ struct scale_title_filter : public wf::plugin_interface_t
     wf::effect_hook_t render_hook = [=] () { render(); };
     /* flag to indicate if render_hook is active */
     bool render_active = false;
-    wf::option_wrapper_t<wf::color_t> bg_color{"scale_title_filter/bg_color"};
-    wf::option_wrapper_t<wf::color_t> text_color{"scale_title_filter/text_color"};
-    wf::option_wrapper_t<bool> show_overlay{"scale_title_filter/overlay"};
-    wf::option_wrapper_t<int> font_size{"scale_title_filter/font_size"};
+    wf::option_wrapper_t<wf::color_t> bg_color{"scale-title-filter/bg_color"};
+    wf::option_wrapper_t<wf::color_t> text_color{"scale-title-filter/text_color"};
+    wf::option_wrapper_t<bool> show_overlay{"scale-title-filter/overlay"};
+    wf::option_wrapper_t<int> font_size{"scale-title-filter/font_size"};
 
     void update_overlay()
     {
