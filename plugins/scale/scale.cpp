@@ -553,6 +553,8 @@ class wayfire_scale : public wf::plugin_interface_t
         for (auto& view : scale_data)
         {
             if ((view.first->parent == nullptr) &&
+                (view.second.visibility ==
+                 view_scale_data::view_visibility_t::VISIBLE) &&
                 ((view.second.row == row) &&
                  (view.second.col == col)))
             {
