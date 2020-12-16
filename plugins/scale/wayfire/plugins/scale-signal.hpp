@@ -25,9 +25,6 @@
  * expect views_hidden to be empty (and should not call clear() on it). It is OK
  * for a plugin to move a view from views_hidden to views_shown, but this will
  * likely not have predictable results.
- *
- * TODO: should there be a way for plugins to specify which order they want to
- * be notified?
  */
 struct scale_filter_signal : public wf::signal_data_t
 {
