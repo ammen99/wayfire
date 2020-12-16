@@ -260,7 +260,12 @@ struct scale_title_filter : public wf::plugin_interface_t
             render_active = true;
         }
 
-        output->render->damage_whole();
+        output->render->damage({
+            dim.width / 2 - (int)(surface_width / output_scale / 2),
+            dim.height / 2 - (int)(surface_height / output_scale / 2),
+            (int)(surface_width / output_scale),
+            (int)(surface_height / output_scale)
+        });
     }
 
     /* render the current content of the overlay texture */
@@ -304,7 +309,13 @@ struct scale_title_filter : public wf::plugin_interface_t
         if (render_active)
         {
             output->render->rem_effect(&render_hook);
-            output->render->damage_whole();
+            auto dim = output->get_screen_size();
+            output->render->damage({
+                dim.width / 2 - (int)(surface_width / output_scale / 2),
+                dim.height / 2 - (int)(surface_height / output_scale / 2),
+                (int)(surface_width / output_scale),
+                (int)(surface_height / output_scale)
+            });
             render_active = false;
         }
 
