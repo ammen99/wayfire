@@ -1,4 +1,4 @@
-all_include_dirs = [wayfire_api_inc, wayfire_conf_inc, plugins_common_inc, vswitch_inc, wobbly_inc]
+all_include_dirs = [wayfire_api_inc, wayfire_conf_inc, plugins_common_inc, vswitch_inc, wobbly_inc, include_directories('.')]
 all_deps = [wlroots, pixman, wfconfig, wftouch]
 
 shared_module('scale', 'scale.cpp',
@@ -12,3 +12,5 @@ shared_module('scale_title_filter', 'scale_title_filter.cpp',
         dependencies: [wlroots, pixman, wfconfig, wftouch, cairo],
         install: true,
         install_dir: conf_data.get('PLUGIN_PATH'))
+
+install_headers(['wayfire/plugins/scale-signal.hpp'], subdir: 'wayfire/plugins')

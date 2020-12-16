@@ -4,7 +4,7 @@
 #include <wayfire/output.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util/log.hpp>
-#include <wayfire/plugins/common/scale-signal.hpp>
+#include <wayfire/plugins/scale-signal.hpp>
 #include <wayfire/nonstd/wlroots-full.hpp>
 
 #include <linux/input-event-codes.h>
@@ -35,14 +35,14 @@ struct scale_title_filter : public wf::plugin_interface_t
         {
             std::string title = view->get_title();
             std::string filter = title_filter;
-            auto transform = [] (unsigned char c)
+            auto transform = [] (unsigned char c) -> unsigned char
             {
                 if (std::isspace(c))
                 {
                     return ' ';
                 }
 
-                return (char)std::tolower(c);
+                return (c <= 127) ? (unsigned char)std::tolower(c) : c;
             };
             std::transform(title.begin(), title.end(), title.begin(), transform);
             std::transform(filter.begin(), filter.end(), filter.begin(), transform);
@@ -78,8 +78,11 @@ struct scale_title_filter : public wf::plugin_interface_t
                 scale_running = true;
             }
 
-            auto v   = static_cast<scale_filter_signal*>(data);
-            v->hide |= !should_show_view(v->view);
+            auto signal = static_cast<scale_filter_signal*>(data);
+            scale_filter_views(signal, [this] (wayfire_view v)
+            {
+                return !should_show_view(v);
+            });
         }
     };
 
@@ -93,34 +96,31 @@ struct scale_title_filter : public wf::plugin_interface_t
                 return;
             }
 
-            if (k->event->keycode == KEY_BACKSPACE)
+            auto seat     = wf::get_core().get_current_seat();
+            auto keyboard = wlr_seat_get_keyboard(seat);
+            if (!keyboard)
+            {
+                return; /* should not happen */
+            }
+
+            auto xkb_state = keyboard->xkb_state;
+            xkb_keycode_t keycode = k->event->keycode + 8;
+            xkb_keysym_t keysym   = xkb_state_key_get_one_sym(xkb_state, keycode);
+            if (keysym == XKB_KEY_BackSpace)
             {
                 if (!title_filter.empty())
                 {
                     int len = char_len.back();
                     char_len.pop_back();
-                    for (int i = 0; i < len; i++)
-                    {
-                        title_filter.pop_back();
-                    }
+                    title_filter.resize(title_filter.length() - len);
                 } else
                 {
                     return;
                 }
             } else
             {
-                auto seat     = wf::get_core().get_current_seat();
-                auto keyboard = wlr_seat_get_keyboard(seat);
-                if (!keyboard)
-                {
-                    return; /* should not happen */
-                }
-
-                auto xkb_state = keyboard->xkb_state;
-
                 /* taken from libxkbcommon guide */
-                int keycode = k->event->keycode + 8;
-                int size    = xkb_state_key_get_utf8(xkb_state, keycode, nullptr, 0);
+                int size = xkb_state_key_get_utf8(xkb_state, keycode, nullptr, 0);
                 if (size <= 0)
                 {
                     return;
@@ -132,21 +132,18 @@ struct scale_title_filter : public wf::plugin_interface_t
                 title_filter += tmp;
             }
 
-            LOGI("Title filter changed: ", title_filter);
-            scale_activate_signal signal;
-            output->emit_signal("scale-activate", &signal);
+            output->emit_signal("scale-update", nullptr);
             update_overlay();
         }
     };
 
-    wf::signal_connection_t scale_end{[this] (wf::signal_data_t *data)
-        {
-            wf::get_core().disconnect_signal(&scale_key);
-            title_filter.clear();
-            char_len.clear();
-            clear_overlay();
-            scale_running = false;
-        }
+    wf::signal_connection_t scale_end = [this] (wf::signal_data_t*)
+    {
+        wf::get_core().disconnect_signal(&scale_key);
+        title_filter.clear();
+        char_len.clear();
+        clear_overlay();
+        scale_running = false;
     };
 
   protected:
@@ -160,6 +157,7 @@ struct scale_title_filter : public wf::plugin_interface_t
     /* current width and height of the above surface */
     unsigned int surface_width  = 400;
     unsigned int surface_height = 300;
+    float output_scale = 1.0f;
     /* render function */
     wf::effect_hook_t render_hook = [=] () { render(); };
     /* flag to indicate if render_hook is active */
@@ -182,24 +180,24 @@ struct scale_title_filter : public wf::plugin_interface_t
         if (!cr)
         {
             /* create with default size */
-            surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, surface_width,
-                surface_height);
-            cr = cairo_create(surface);
+            cairo_create_surface();
         }
+
+        output_scale = output->render->get_target_framebuffer().scale;
 
         cairo_text_extents_t extents;
         cairo_font_extents_t font_extents;
         cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL,
             CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, font_size);
+        cairo_set_font_size(cr, font_size * output_scale);
         cairo_text_extents(cr, title_filter.c_str(), &extents);
         cairo_font_extents(cr, &font_extents);
 
-        double xpad    = 10.0;
+        double xpad    = 10.0 * output_scale;
         double ypad    = 0.2 * (font_extents.ascent + font_extents.descent);
         unsigned int w = (unsigned int)(extents.width + 2 * xpad);
-        unsigned int h =
-            (unsigned int)(font_extents.ascent + font_extents.descent + 2 * ypad);
+        unsigned int h = (unsigned int)(font_extents.ascent +
+            font_extents.descent + 2 * ypad);
         auto dim = output->get_screen_size();
         if ((int)w > dim.width)
         {
@@ -213,20 +211,18 @@ struct scale_title_filter : public wf::plugin_interface_t
 
         if ((w > surface_width) || (h > surface_height))
         {
-            cairo_free();
             surface_width  = w;
             surface_height = h;
-            surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, surface_width,
-                surface_height);
-            cr = cairo_create(surface);
+            cairo_create_surface();
         }
 
         cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
         cairo_paint(cr);
 
-        unsigned int x = (surface_width - w) / 2;
-        unsigned int y = (surface_height - h) / 2;
-        unsigned int r = h > 20 ? 20 : (h - 2) / 2;
+        unsigned int x     = (surface_width - w) / 2;
+        unsigned int y     = (surface_height - h) / 2;
+        unsigned int min_r = (unsigned int)(20 * output_scale);
+        unsigned int r     = h > min_r ? min_r : (h - 2) / 2;
         const wf::color_t& bg   = bg_color;
         const wf::color_t& text = text_color;
 
@@ -248,7 +244,7 @@ struct scale_title_filter : public wf::plugin_interface_t
         y += ypad + font_extents.ascent;
         cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL,
             CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, font_size);
+        cairo_set_font_size(cr, font_size * output_scale);
         cairo_move_to(cr, x - extents.x_bearing, y);
         cairo_set_source_rgba(cr, text.r, text.g, text.b, text.a);
         cairo_show_text(cr, title_filter.c_str());
@@ -277,15 +273,28 @@ struct scale_title_filter : public wf::plugin_interface_t
 
         auto out_fb = output->render->get_target_framebuffer();
         auto dim    = output->get_screen_size();
-        wf::geometry_t geometry{(dim.width - tex.width) / 2,
-            (dim.height - tex.height) / 2, tex.width, tex.height};
-        auto ortho = out_fb.get_orthographic_projection();
+        if (output_scale != out_fb.scale)
+        {
+            update_overlay();
+        }
+
+        wf::geometry_t geometry{
+            dim.width / 2 - (int)(tex.width / output_scale / 2),
+            dim.height / 2 - (int)(tex.height / output_scale / 2),
+            (int)(tex.width / output_scale),
+            (int)(tex.height / output_scale)
+        };
+        auto damage = output->render->get_swap_damage() & geometry;
+        auto ortho  = out_fb.get_orthographic_projection();
 
         OpenGL::render_begin(out_fb);
-        GL_CALL(glEnable(GL_BLEND));
-        OpenGL::render_transformed_texture(tex.tex, geometry, ortho,
-            glm::vec4(1.f), OpenGL::TEXTURE_TRANSFORM_INVERT_Y);
-        GL_CALL(glDisable(GL_BLEND));
+        for (auto& box : damage)
+        {
+            out_fb.logic_scissor(wlr_box_from_pixman_box(box));
+            OpenGL::render_transformed_texture(tex.tex, geometry, ortho,
+                glm::vec4(1.f), OpenGL::TEXTURE_TRANSFORM_INVERT_Y);
+        }
+
         OpenGL::render_end();
     }
 
@@ -316,6 +325,14 @@ struct scale_title_filter : public wf::plugin_interface_t
 
         cr = nullptr;
         surface = nullptr;
+    }
+
+    void cairo_create_surface()
+    {
+        cairo_free();
+        surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, surface_width,
+            surface_height);
+        cr = cairo_create(surface);
     }
 };
 

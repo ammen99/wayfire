@@ -11,7 +11,7 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/plugins/vswitch.hpp>
 #include <wayfire/touch/touch.hpp>
-#include <wayfire/plugins/common/scale-signal.hpp>
+#include <wayfire/plugins/scale-signal.hpp>
 
 #include <linux/input-event-codes.h>
 
@@ -55,14 +55,14 @@ struct view_scale_data
     wf_scale *transformer = nullptr; /* avoid UB from uninitialized member */
     wf::animation::simple_animation_t fade_animation;
     wf_scale_animation_attribs animation;
-    enum class hidden_t
+    enum class view_visibility_t
     {
-        SHOWN, /*  view is shown in position determined by layout_slots() */
+        VISIBLE, /*  view is shown in position determined by layout_slots() */
         HIDING, /* view is in the process of hiding (due to filters)      */
         HIDDEN, /* view is hidden by a filter (with set_visible(false))   */
     };
 
-    hidden_t hidden = hidden_t::SHOWN;
+    view_visibility_t visibility = view_visibility_t::VISIBLE;
 };
 
 class wayfire_scale : public wf::plugin_interface_t
@@ -130,7 +130,7 @@ class wayfire_scale : public wf::plugin_interface_t
         output->add_activator(
             wf::option_wrapper_t<wf::activatorbinding_t>{"scale/toggle_all"},
             &toggle_all_cb);
-        output->connect_signal("scale-activate", &activate_cb);
+        output->connect_signal("scale-update", &update_cb);
 
         grab_interface->callbacks.keyboard.key = [=] (uint32_t key, uint32_t state)
         {
@@ -214,12 +214,12 @@ class wayfire_scale : public wf::plugin_interface_t
                 pop_transformer(toplevel);
             }
 
-            if (e.second.hidden == view_scale_data::hidden_t::HIDDEN)
+            if (e.second.visibility == view_scale_data::view_visibility_t::HIDDEN)
             {
                 e.first->set_visible(true);
             }
 
-            e.second.hidden = view_scale_data::hidden_t::SHOWN;
+            e.second.visibility = view_scale_data::view_visibility_t::VISIBLE;
         }
     }
 
@@ -279,17 +279,11 @@ class wayfire_scale : public wf::plugin_interface_t
         return false;
     };
 
-    wf::signal_connection_t activate_cb{[=] (wf::signal_data_t *data)
+    wf::signal_connection_t update_cb{[=] (wf::signal_data_t*)
         {
-            auto signal = static_cast<scale_activate_signal*>(data);
-
-            if (active && (!signal->change_all_workspaces ||
-                           (signal->all_workspaces == all_workspaces)))
+            if (active)
             {
                 layout_slots(get_views());
-                output->render->schedule_redraw();
-            } else if (handle_toggle(signal->all_workspaces))
-            {
                 output->render->schedule_redraw();
             }
         }
@@ -369,7 +363,7 @@ class wayfire_scale : public wf::plugin_interface_t
                 continue;
             }
 
-            if (e.second.hidden != view_scale_data::hidden_t::SHOWN)
+            if (e.second.visibility != view_scale_data::view_visibility_t::VISIBLE)
             {
                 continue;
             }
@@ -712,10 +706,11 @@ class wayfire_scale : public wf::plugin_interface_t
             view_data.transformer->alpha = view_data.fade_animation;
             view->damage();
 
-            if ((view_data.hidden == view_scale_data::hidden_t::HIDING) &&
+            if ((view_data.visibility ==
+                 view_scale_data::view_visibility_t::HIDING) &&
                 !view_data.fade_animation.running())
             {
-                view_data.hidden = view_scale_data::hidden_t::HIDDEN;
+                view_data.visibility = view_scale_data::view_visibility_t::HIDDEN;
                 view->set_visible(false);
             }
         }
@@ -857,6 +852,43 @@ class wayfire_scale : public wf::plugin_interface_t
         return view_grid;
     }
 
+    /* Filter the views to be arranged by layout_slots() */
+    void filter_views(std::vector<wayfire_view>& views)
+    {
+        std::vector<wayfire_view> filtered_views;
+        scale_filter_signal signal(views, filtered_views);
+        output->emit_signal("scale-filter", &signal);
+
+        /* update hidden views -- ensure that they and their children have a
+         * transformer and are in scale_data */
+        for (auto view : filtered_views)
+        {
+            for (auto v : view->enumerate_views(false))
+            {
+                add_transformer(v);
+                auto& view_data = scale_data[v];
+                if (view_data.visibility ==
+                    view_scale_data::view_visibility_t::VISIBLE)
+                {
+                    view_data.visibility =
+                        view_scale_data::view_visibility_t::HIDING;
+                    setup_view_transform(view_data, 1, 1, 0, 0, 0);
+                }
+
+                if (v == current_focus_view)
+                {
+                    current_focus_view = nullptr;
+                }
+            }
+        }
+
+        if (!current_focus_view)
+        {
+            current_focus_view = views.empty() ? nullptr : views.front();
+            output->focus_view(current_focus_view, true);
+        }
+    }
+
     /* Compute target scale layout geometry for all the view transformers
      * and start animating. Initial code borrowed from the compiz scale
      * plugin algorithm */
@@ -872,62 +904,7 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
-        std::vector<wayfire_view> filtered_views;
-        bool need_new_focus = false;
-        auto it = std::remove_if(views.begin(), views.end(),
-            [&filtered_views, &need_new_focus, this] (wayfire_view v)
-        {
-            scale_filter_signal signal{v, false};
-            output->emit_signal("scale-filter", &signal);
-            if (signal.hide)
-            {
-                filtered_views.push_back(v);
-                if (v == current_focus_view)
-                {
-                    need_new_focus = true;
-                }
-
-                return true;
-            }
-
-            return false;
-        });
-        views.erase(it, views.end());
-
-        if (need_new_focus || !current_focus_view)
-        {
-            current_focus_view = views.empty() ? nullptr : views.front();
-            output->focus_view(current_focus_view, true);
-        }
-
-        /* update hidden views */
-        for (auto v : filtered_views)
-        {
-            /* ensure that this view has a transformer and is in scale_data */
-            add_transformer(v);
-            auto& view_data = scale_data[v];
-            if (view_data.hidden == view_scale_data::hidden_t::SHOWN)
-            {
-                view_data.hidden = view_scale_data::hidden_t::HIDING;
-                setup_view_transform(view_data, 1, 1, 0, 0, 0);
-            }
-
-            for (auto& child : v->enumerate_views(false))
-            {
-                if (child == v)
-                {
-                    continue;
-                }
-
-                add_transformer(child);
-                auto& child_data = scale_data[child];
-                if (child_data.hidden == view_scale_data::hidden_t::SHOWN)
-                {
-                    child_data.hidden = view_scale_data::hidden_t::HIDING;
-                    setup_view_transform(child_data, 1, 1, 0, 0, 0);
-                }
-            }
-        }
+        filter_views(views);
 
         auto workarea = output->workspace->get_workarea();
 
@@ -957,12 +934,13 @@ class wayfire_scale : public wf::plugin_interface_t
                 add_transformer(view);
                 auto& view_data = scale_data[view];
 
-                if (view_data.hidden == view_scale_data::hidden_t::HIDDEN)
+                if (view_data.visibility ==
+                    view_scale_data::view_visibility_t::HIDDEN)
                 {
                     view->set_visible(true);
                 }
 
-                view_data.hidden = view_scale_data::hidden_t::SHOWN;
+                view_data.visibility = view_scale_data::view_visibility_t::VISIBLE;
 
                 auto vg = view->get_wm_geometry();
                 double scale_x    = scaled_width / vg.width;
@@ -1033,12 +1011,14 @@ class wayfire_scale : public wf::plugin_interface_t
                             view_data.transformer->translation_y;
                     } else
                     {
-                        if (child_data.hidden == view_scale_data::hidden_t::HIDDEN)
+                        if (child_data.visibility ==
+                            view_scale_data::view_visibility_t::HIDDEN)
                         {
                             child->set_visible(true);
                         }
 
-                        child_data.hidden = view_scale_data::hidden_t::SHOWN;
+                        child_data.visibility =
+                            view_scale_data::view_visibility_t::VISIBLE;
                     }
 
                     translation_x = x - vg.x + ((scaled_width - vg.width) / 2.0);
@@ -1373,12 +1353,12 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             fade_in(e.first);
             setup_view_transform(e.second, 1, 1, 0, 0, 1);
-            if (e.second.hidden == view_scale_data::hidden_t::HIDDEN)
+            if (e.second.visibility == view_scale_data::view_visibility_t::HIDDEN)
             {
                 e.first->set_visible(true);
             }
 
-            e.second.hidden = view_scale_data::hidden_t::SHOWN;
+            e.second.visibility = view_scale_data::view_visibility_t::VISIBLE;
         }
 
         refocus();
@@ -1402,10 +1382,10 @@ class wayfire_scale : public wf::plugin_interface_t
         view_attached.disconnect();
         view_detached.disconnect();
         view_minimized.disconnect();
-        output->emit_signal("scale-end", nullptr);
         workspace_changed.disconnect();
         view_geometry_changed.disconnect();
         output->deactivate_plugin(grab_interface);
+        output->emit_signal("scale-end", nullptr);
     }
 
     /* Utility hook setter */
@@ -1440,7 +1420,6 @@ class wayfire_scale : public wf::plugin_interface_t
         finalize();
         output->rem_binding(&toggle_cb);
         output->rem_binding(&toggle_all_cb);
-        output->disconnect_signal(&activate_cb);
     }
 };
 
