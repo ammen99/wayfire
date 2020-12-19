@@ -113,8 +113,8 @@ class FireTransformer : public wf::view_transformer_t
         gl_geometry src_geometry = {x, y, x + w, y + h * progress_line};
 
         gl_geometry tex_geometry = {
-            0, 1,
-            1, 1 - progress_line,
+            0, 1 - progress_line,
+            1, 1,
         };
 
         OpenGL::render_transformed_texture(src_tex, src_geometry, tex_geometry,

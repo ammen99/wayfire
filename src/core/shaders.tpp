@@ -42,11 +42,11 @@ void main()
 static const char *builtin_rgba_source =
 R"(
 uniform sampler2D _wayfire_texture;
-uniform mediump float _wayfire_y_base;
-uniform mediump float _wayfire_y_mult;
+uniform mediump vec2 _wayfire_uv_base;
+uniform mediump vec2 _wayfire_uv_scale;
 
 mediump vec4 get_pixel(highp vec2 uv) {
-    uv = vec2(uv.x, _wayfire_y_base + _wayfire_y_mult * uv.y);
+    uv = _wayfire_uv_base + _wayfire_uv_scale * uv;
     return texture2D(_wayfire_texture, uv);
 }
 )";
@@ -54,11 +54,11 @@ mediump vec4 get_pixel(highp vec2 uv) {
 static const char *builtin_rgbx_source =
 R"(
 uniform sampler2D _wayfire_texture;
-uniform mediump float _wayfire_y_base;
-uniform mediump float _wayfire_y_mult;
+uniform mediump vec2 _wayfire_uv_base;
+uniform mediump vec2 _wayfire_uv_scale;
 
 mediump vec4 get_pixel(highp vec2 uv) {
-    uv = vec2(uv.x, _wayfire_y_base + _wayfire_y_mult * uv.y);
+    uv = _wayfire_uv_base + _wayfire_uv_scale * uv;
     return vec4(texture2D(_wayfire_texture, uv).rgb, 1.0);
 }
 )";
@@ -66,12 +66,12 @@ mediump vec4 get_pixel(highp vec2 uv) {
 static const char *builtin_external_source =
 R"(
 uniform samplerExternalOES _wayfire_texture;
-uniform mediump float _wayfire_y_base;
-uniform mediump float _wayfire_y_mult;
+uniform mediump vec2 _wayfire_uv_base;
+uniform mediump vec2 _wayfire_uv_scale;
 
 mediump vec4 get_pixel(highp vec2 uv) {
-   uv = vec2(uv.x, _wayfire_y_base + _wayfire_y_mult * uv.y);
-   return texture2D(_wayfire_texture, uv);
+    uv = _wayfire_uv_base + _wayfire_uv_scale * uv;
+    return texture2D(_wayfire_texture, uv);
 }
 )";
 

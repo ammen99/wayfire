@@ -136,42 +136,34 @@ void render_transformed_texture(wf::texture_t tex,
 {
     program.use(tex.type);
 
-    gl_geometry final_g = g;
+    GLfloat vertexData[] = {
+        g.x1, g.y2,
+        g.x2, g.y2,
+        g.x2, g.y1,
+        g.x1, g.y1,
+    };
+
+    gl_geometry final_texg = (bits & TEXTURE_USE_TEX_GEOMETRY) ?
+        texg : gl_geometry{0.0f, 0.0f, 1.0f, 1.0f};
+
     if (bits & TEXTURE_TRANSFORM_INVERT_Y)
     {
-        std::swap(final_g.y1, final_g.y2);
+        final_texg.y1 = 1.0 - final_texg.y1;
+        final_texg.y2 = 1.0 - final_texg.y2;
     }
 
     if (bits & TEXTURE_TRANSFORM_INVERT_X)
     {
-        std::swap(final_g.x1, final_g.x2);
+        final_texg.x1 = 1.0 - final_texg.x1;
+        final_texg.x2 = 1.0 - final_texg.x2;
     }
-
-    GLfloat vertexData[] = {
-        final_g.x1, final_g.y2,
-        final_g.x2, final_g.y2,
-        final_g.x2, final_g.y1,
-        final_g.x1, final_g.y1,
-    };
 
     GLfloat coordData[] = {
-        0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
+        final_texg.x1, final_texg.y1,
+        final_texg.x2, final_texg.y1,
+        final_texg.x2, final_texg.y2,
+        final_texg.x1, final_texg.y2,
     };
-
-    if (bits & TEXTURE_USE_TEX_GEOMETRY)
-    {
-        coordData[0] = texg.x1;
-        coordData[1] = texg.y2;
-        coordData[2] = texg.x2;
-        coordData[3] = texg.y2;
-        coordData[4] = texg.x2;
-        coordData[5] = texg.y1;
-        coordData[6] = texg.x1;
-        coordData[7] = texg.y1;
-    }
 
     program.set_active_texture(tex);
     program.attrib_pointer("position", 2, 0, vertexData);
@@ -532,6 +524,25 @@ wf::texture_t::texture_t(wlr_texture *texture)
         this->type = wf::TEXTURE_TYPE_EXTERNAL;
     }
 }
+
+wf::texture_t::texture_t(wlr_surface *surface) :
+    texture_t(surface->buffer->texture)
+{
+    if (surface->current.viewport.has_src)
+    {
+        this->has_viewport = true;
+
+        auto width  = surface->buffer->texture->width;
+        auto height = surface->buffer->texture->height;
+
+        wlr_fbox fbox;
+        wlr_surface_get_buffer_source_box(surface, &fbox);
+        viewport_box.x1 = fbox.x / width;
+        viewport_box.x2 = (fbox.x + fbox.width) / width;
+        viewport_box.y1 = 1.0 - (fbox.y + fbox.height) / height;
+        viewport_box.y2 = 1.0 - (fbox.y) / height;
+    }
+}
 }
 
 namespace OpenGL
@@ -729,8 +740,25 @@ void program_t::set_active_texture(const wf::texture_t& texture)
     GL_CALL(glBindTexture(texture.target, texture.tex_id));
     GL_CALL(glTexParameteri(texture.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 
-    uniform1f("_wayfire_y_base", texture.invert_y ? 1 : 0);
-    uniform1f("_wayfire_y_mult", texture.invert_y ? -1 : 1);
+    glm::vec2 base{0.0f, 0.0f};
+    glm::vec2 scale{1.0f, 1.0f};
+
+    if (texture.has_viewport)
+    {
+        scale.x = texture.viewport_box.x2 - texture.viewport_box.x1;
+        scale.y = texture.viewport_box.y2 - texture.viewport_box.y1;
+        base.x  = texture.viewport_box.x1;
+        base.y  = texture.viewport_box.y1;
+    }
+
+    if (texture.invert_y)
+    {
+        scale.y *= -1;
+        base.y   = 1.0 - base.y;
+    }
+
+    uniform2f("_wayfire_uv_base", base.x, base.y);
+    uniform2f("_wayfire_uv_scale", scale.x, scale.y);
 }
 
 void program_t::deactivate()

@@ -142,11 +142,19 @@ struct texture_t
     texture_type_t type = TEXTURE_TYPE_RGBA;
     /* Texture target */
     GLenum target = GL_TEXTURE_2D;
-    /* Invert Y? */
-    bool invert_y = false;
-
     /* Actual texture ID */
     GLuint tex_id;
+
+    /** Invert Y? */
+    bool invert_y = false;
+    /** Has viewport? */
+    bool has_viewport = false;
+
+    /**
+     * Part of the texture which is used for rendering.
+     * Valid only if has_viewport is true.
+     */
+    gl_geometry viewport_box;
 
     /* tex_id will be initialized later */
     texture_t();
@@ -154,6 +162,8 @@ struct texture_t
     texture_t(GLuint tex);
     /** Initialize a texture with the attributes of the wlr texture */
     explicit texture_t(wlr_texture*);
+    /** Initialize a texture with the attributes of a mapped surface */
+    explicit texture_t(wlr_surface*);
 };
 }
 
@@ -196,7 +206,9 @@ enum texture_rendering_flags_t
  * @param g         The initial coordinates of the quad.
  * @param texg      A rectangle containing the subtexture of @texture to render.
  *                    To enable rendering a subtexture, use
- *                    TEXTURE_USE_TEX_GEOMETRY.
+ *                    TEXTURE_USE_TEX_GEOMETRY. Texture coordinates are in the
+ *                    usual coordinate system [0,1]x[0,1]. x1/y1 describe the
+ *                    lower-left corner, and x2/y2 - the upper-right corner.
  * @param transform The matrix transformation to apply to the quad.
  * @param color     A color multiplier for each channel of the texture.
  * @param bits      A bitwise OR of texture_rendering_flags_t.
@@ -288,7 +300,7 @@ class program_t : public noncopyable_t
      * restrictions about where to place `@builtin@`.
      *
      * The following identifiers should not be defined in the user source:
-     *   _wayfire_texture, _wayfire_y_mult, _wayfire_y_base, get_pixel
+     *   _wayfire_texture, _wayfire_uv_scale, _wayfire_y_base, get_pixel
      */
     void compile(const std::string& vertex_source,
         const std::string& fragment_source);

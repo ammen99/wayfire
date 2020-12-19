@@ -29,6 +29,7 @@ extern "C"
 #include <wlr/types/wlr_matrix.h>
 #undef static
 #include <wlr/types/wlr_buffer.h>
+#include <wlr/types/wlr_viewporter.h>
 
 #include <wlr/types/wlr_output_damage.h>
 #include <wlr/types/wlr_presentation_time.h>

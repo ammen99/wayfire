@@ -40,6 +40,7 @@ extern "C"
     struct wlr_output_layout;
     struct wlr_surface;
     struct wlr_texture;
+    struct wlr_viewporter;
 
 #include <wlr/types/wlr_input_device.h>
 #include <wlr/types/wlr_pointer.h>

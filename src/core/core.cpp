@@ -294,6 +294,7 @@ void wf::compositor_core_impl_t::init()
     im_relay = std::make_unique<input_method_relay>();
 
     protocols.presentation = wlr_presentation_create(display, backend);
+    protocols.viewporter   = wlr_viewporter_create(display);
 
     wf_shell  = wayfire_shell_create(display);
     gtk_shell = wf_gtk_shell_create(display);

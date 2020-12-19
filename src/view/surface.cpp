@@ -383,7 +383,7 @@ void wf::wlr_surface_base_t::_simple_render(const wf::framebuffer_t& fb,
 
     auto size = this->_get_size();
     wf::geometry_t geometry = {x, y, size.width, size.height};
-    wf::texture_t texture{surface->buffer->texture};
+    wf::texture_t texture{surface};
 
     OpenGL::render_begin(fb);
     for (const auto& rect : damage)
