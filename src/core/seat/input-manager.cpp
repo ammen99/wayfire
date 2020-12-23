@@ -253,7 +253,8 @@ wf::surface_interface_t*wf::input_manager_t::input_surface_at(
     {
         for (auto& view : v->enumerate_views())
         {
-            if (!view->minimized && can_focus_surface(view.get()))
+            if (!view->minimized && view->is_visible() &&
+                can_focus_surface(view.get()))
             {
                 auto surface = view->map_input_coordinates(global, local);
                 if (surface)
