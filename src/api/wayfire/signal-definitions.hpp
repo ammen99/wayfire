@@ -505,7 +505,7 @@ using app_id_changed_signal = _view_signal;
 
 /**
  * name: view-show-window-menu
- * on: output
+ * on: output, core
  * when: To show a menu with window related actions.
  */
 struct view_show_window_menu_signal : public _view_signal

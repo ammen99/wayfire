@@ -235,6 +235,7 @@ void wayfire_xdg_view::initialize()
         d.relative_position.x = event->x;
         d.relative_position.y = event->y;
         output->emit_signal("view-show-window-menu", &d);
+        wf::get_core().emit_signal("view-show-window-menu", &d);
     });
     on_set_parent.set_callback([&] (void*)
     {
