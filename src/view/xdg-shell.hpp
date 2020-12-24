@@ -47,6 +47,7 @@ class wayfire_xdg_view : public wf::wlr_view_t
 
     wf::point_t xdg_surface_offset = {0, 0};
     wlr_xdg_toplevel *xdg_toplevel;
+    uint32_t last_configure_serial = 0;
 
   protected:
     void initialize() override final;
