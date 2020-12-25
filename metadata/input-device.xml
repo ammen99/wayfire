@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<wayfire>
+  <object name="input-device">
+    <category>General</category>
+    <option name="output" type="string">
+      <default></default>
+    </option>
+  </object>
+</wayfire>
