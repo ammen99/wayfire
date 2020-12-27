@@ -84,6 +84,7 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
             this->tiled_edges = view->tiled_edges;
         } else
         {
+            this->view->set_fullscreen(0);
             this->tiled_edges = target_edges;
         }
 
