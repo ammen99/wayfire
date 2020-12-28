@@ -7,6 +7,8 @@
 class wayfire_autostart
 {
     wf::option_wrapper_t<bool> autostart_wf_shell{"autostart/autostart_wf_shell"};
+    wf::option_wrapper_t<wf::config::compound_list_t<std::string>>
+    autostart_entries{"autostart/autostart"};
 
   public:
     wayfire_autostart()
@@ -17,17 +19,22 @@ class wayfire_autostart
         bool panel_manually_started = false;
         bool background_manually_started = false;
 
-        for (const auto& command : section->get_registered_options())
+        for (const auto& [name, command] : autostart_entries.value())
         {
-            auto cmd = command->get_value_str();
-            wf::get_core().run(cmd);
+            // Because we accept any option names, we should ignore regular
+            // options
+            if (name == "autostart_wf_shell")
+            {
+                continue;
+            }
 
-            if (cmd.find("wf-panel") != std::string::npos)
+            wf::get_core().run(command);
+            if (command.find("wf-panel") != std::string::npos)
             {
                 panel_manually_started = true;
             }
 
-            if (cmd.find("wf-background") != std::string::npos)
+            if (command.find("wf-background") != std::string::npos)
             {
                 background_manually_started = true;
             }

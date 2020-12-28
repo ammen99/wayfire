@@ -7,11 +7,25 @@
 		<group>
 			<_short>Commands</_short>
 			<_long>Sets the command bindings.</_long>
-			<option name="command" type="dynamic_list">
+			<option name="bindings" type="dynamic-list">
 				<_short>Command</_short>
-				<_long>Sets the command binding.</_long>
-				<type>string</type>
-				<hint>file</hint>
+				<_long>Sets the command bindings.</_long>
+				<entry prefix="command_" type="string"/>
+				<entry prefix="binding_" type="activator"/>
+			</option>
+
+			<option name="repeatable_bindings" type="dynamic-list">
+				<_short>Command</_short>
+				<_long>Sets the repeatable bindings.</_long>
+				<entry prefix="command_" type="string"/>
+				<entry prefix="repeatable_binding_" type="activator"/>
+			</option>
+
+			<option name="always_bindings" type="dynamic-list">
+				<_short>Command</_short>
+				<_long>Sets the bindings which are always available, even when screen is locked.</_long>
+				<entry prefix="command_" type="string"/>
+				<entry prefix="always_binding_" type="activator"/>
 			</option>
 		</group>
 	</plugin>

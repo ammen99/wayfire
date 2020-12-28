@@ -6,16 +6,6 @@
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util/log.hpp>
 
-static bool begins_with(std::string word, std::string prefix)
-{
-    if (word.length() < prefix.length())
-    {
-        return false;
-    }
-
-    return word.substr(0, prefix.length()) == prefix;
-}
-
 /* Initial repeat delay passed */
 static int repeat_delay_timeout_handler(void *callback)
 {
@@ -182,73 +172,48 @@ class wayfire_command : public wf::plugin_interface_t
     };
 
   public:
+    wf::option_wrapper_t<wf::config::compound_list_t<
+        std::string, wf::activatorbinding_t>> regular_bindings{"command/bindings"};
 
-    void setup_bindings_from_config()
+    wf::option_wrapper_t<wf::config::compound_list_t<
+        std::string, wf::activatorbinding_t>> repeat_bindings{
+        "command/repeatable_bindings"
+    };
+
+    wf::option_wrapper_t<wf::config::compound_list_t<
+        std::string, wf::activatorbinding_t>> always_bindings{
+        "command/always_bindings"
+    };
+
+    std::function<void()> setup_bindings_from_config = [=] ()
     {
-        auto section = wf::get_core().config.get_section("command");
+        clear_bindings();
+        using namespace std::placeholders;
 
-        std::vector<std::string> command_names;
-        const std::string exec_prefix = "command_";
-        for (auto command : section->get_registered_options())
+        auto regular    = regular_bindings.value();
+        auto repeatable = repeat_bindings.value();
+        auto always     = always_bindings.value();
+        bindings.resize(regular.size() + repeatable.size() + always.size());
+        size_t i = 0;
+
+        const auto& push_bindings = [&] (
+            wf::config::compound_list_t<std::string, wf::activatorbinding_t>& list,
+            binding_mode mode)
         {
-            if (begins_with(command->get_name(), exec_prefix))
+            for (const auto& [_, cmd, activator] : list)
             {
-                command_names.push_back(
-                    command->get_name().substr(exec_prefix.length()));
+                bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
+                    this, cmd, mode, _1);
+                output->add_activator(
+                    wf::create_option(activator), &bindings[i]);
+                ++i;
             }
-        }
+        };
 
-        bindings.resize(command_names.size());
-        const std::string norepeat = "...norepeat...";
-        const std::string noalways = "...noalways...";
-
-        for (size_t i = 0; i < command_names.size(); i++)
-        {
-            auto command = exec_prefix + command_names[i];
-            auto regular_binding_name = "binding_" + command_names[i];
-            auto repeat_binding_name  = "repeatable_binding_" + command_names[i];
-            auto always_binding_name  = "always_binding_" + command_names[i];
-
-            auto check_activator = [&] (const std::string& name)
-            {
-                auto opt = section->get_option_or(name);
-                if (opt)
-                {
-                    auto value = wf::option_type::from_string<
-                        wf::activatorbinding_t>(opt->get_value_str());
-                    if (value)
-                    {
-                        return wf::create_option(value.value());
-                    }
-                }
-
-                return wf::option_sptr_t<wf::activatorbinding_t>{};
-            };
-
-            auto executable = section->get_option(command)->get_value_str();
-            auto repeatable_opt = check_activator(repeat_binding_name);
-            auto regular_opt    = check_activator(regular_binding_name);
-            auto always_opt = check_activator(always_binding_name);
-
-            using namespace std::placeholders;
-            if (repeatable_opt)
-            {
-                bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
-                    this, executable, BINDING_REPEAT, _1);
-                output->add_activator(repeatable_opt, &bindings[i]);
-            } else if (always_opt)
-            {
-                bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
-                    this, executable, BINDING_ALWAYS, _1);
-                output->add_activator(always_opt, &bindings[i]);
-            } else if (regular_opt)
-            {
-                bindings[i] = std::bind(std::mem_fn(&wayfire_command::on_binding),
-                    this, executable, BINDING_NORMAL, _1);
-                output->add_activator(regular_opt, &bindings[i]);
-            }
-        }
-    }
+        push_bindings(regular, BINDING_NORMAL);
+        push_bindings(repeatable, BINDING_REPEAT);
+        push_bindings(always, BINDING_ALWAYS);
+    };
 
     void clear_bindings()
     {
@@ -272,7 +237,6 @@ class wayfire_command : public wf::plugin_interface_t
         setup_bindings_from_config();
         reload_config = [=] (wf::signal_data_t*)
         {
-            clear_bindings();
             setup_bindings_from_config();
         };
 
