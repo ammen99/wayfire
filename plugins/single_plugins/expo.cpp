@@ -14,16 +14,6 @@
 /* TODO: this file should be included in some header maybe(plugin.hpp) */
 #include <linux/input-event-codes.h>
 
-static bool begins_with(std::string word, std::string prefix)
-{
-    if (word.length() < prefix.length())
-    {
-        return false;
-    }
-
-    return word.substr(0, prefix.length()) == prefix;
-}
-
 class wayfire_expo : public wf::plugin_interface_t
 {
   private:
@@ -67,6 +57,9 @@ class wayfire_expo : public wf::plugin_interface_t
 
     wf::shared_data::ref_ptr_t<wf::move_drag::core_drag_t> drag_helper;
 
+    wf::option_wrapper_t<wf::config::compound_list_t<wf::activatorbinding_t>>
+    workspace_bindings{"expo/workspace_bindings"};
+
     std::vector<wf::activator_callback> keyboard_select_cbs;
     std::vector<wf::option_sptr_t<wf::activatorbinding_t>> keyboard_select_options;
 
@@ -83,24 +76,9 @@ class wayfire_expo : public wf::plugin_interface_t
   public:
     void setup_workspace_bindings_from_config()
     {
-        auto section = wf::get_core().config.get_section("expo");
-
-        std::vector<std::string> workspace_numbers;
-        const std::string select_prefix = "select_workspace_";
-        for (auto binding : section->get_registered_options())
+        for (const auto& [workspace, binding] : workspace_bindings.value())
         {
-            if (begins_with(binding->get_name(), select_prefix))
-            {
-                workspace_numbers.push_back(
-                    binding->get_name().substr(select_prefix.length()));
-            }
-        }
-
-        for (size_t i = 0; i < workspace_numbers.size(); i++)
-        {
-            auto binding = select_prefix + workspace_numbers[i];
-            int workspace_index = atoi(workspace_numbers[i].c_str());
-
+            int workspace_index = atoi(workspace.c_str());
             auto wsize = output->workspace->get_workspace_grid_size();
             if ((workspace_index > (wsize.width * wsize.height)) ||
                 (workspace_index < 1))
@@ -110,11 +88,7 @@ class wayfire_expo : public wf::plugin_interface_t
 
             wf::point_t target = convert_workspace_index_to_coords(workspace_index);
 
-            auto opt   = section->get_option(binding);
-            auto value = wf::option_type::from_string<wf::activatorbinding_t>(
-                opt->get_value_str());
-            keyboard_select_options.push_back(wf::create_option(value.value()));
-
+            keyboard_select_options.push_back(wf::create_option(binding));
             keyboard_select_cbs.push_back([=] (auto)
             {
                 if (!state.active)

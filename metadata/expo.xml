@@ -24,5 +24,9 @@
 			<_long>Sets the delimiter offset (in pixels) between workspaces.</_long>
 			<default>10</default>
 		</option>
+		<option name="workspace_bindings" type="dynamic-list">
+			<_short>Select workspace</_short>
+			<entry prefix="select_workspace_" type="activator"/>
+		</option>
 	</plugin>
 </wayfire>
