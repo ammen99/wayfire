@@ -26,7 +26,8 @@
 		</option>
 		<option name="workspace_bindings" type="dynamic-list">
 			<_short>Select workspace</_short>
-			<entry prefix="select_workspace_" type="activator"/>
+			<_long>When the binding is triggered while expo is active, the corresponding workspace will be focused and Expo will exit.</_long>
+      <entry prefix="select_workspace_" type="activator"/>
 		</option>
 	</plugin>
 </wayfire>
