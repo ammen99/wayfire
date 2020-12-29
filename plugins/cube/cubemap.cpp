@@ -17,6 +17,9 @@ wf_cube_background_cubemap::~wf_cube_background_cubemap()
 {
     OpenGL::render_begin();
     program.free_resources();
+    GL_CALL(glDeleteTextures(1, &tex));
+    GL_CALL(glDeleteBuffers(1, &vbo_cube_vertices));
+    GL_CALL(glDeleteBuffers(1, &ibo_cube_indices));
     OpenGL::render_end();
 }
 
@@ -41,21 +44,20 @@ void wf_cube_background_cubemap::reload_texture()
     if (tex == (uint32_t)-1)
     {
         GL_CALL(glGenTextures(1, &tex));
+        GL_CALL(glGenBuffers(1, &vbo_cube_vertices));
+        GL_CALL(glGenBuffers(1, &ibo_cube_indices));
     }
 
     GL_CALL(glBindTexture(GL_TEXTURE_CUBE_MAP, tex));
-    for (int i = 0; i < 6; i++)
+    if (!image_io::load_from_file(last_background_image, GL_TEXTURE_CUBE_MAP))
     {
-        if (!image_io::load_from_file(last_background_image,
-            GL_TEXTURE_CUBE_MAP_POSITIVE_X + i))
-        {
-            LOGE("Failed to load cubemap background image from \"%s\".",
-                last_background_image.c_str());
+        LOGE("Failed to load cubemap background image from \"%s\".",
+            last_background_image.c_str());
 
-            GL_CALL(glDeleteTextures(1, &tex));
-            tex = -1;
-            break;
-        }
+        GL_CALL(glDeleteTextures(1, &tex));
+        GL_CALL(glDeleteBuffers(1, &vbo_cube_vertices));
+        GL_CALL(glDeleteBuffers(1, &ibo_cube_indices));
+        tex = -1;
     }
 
     if (tex != (uint32_t)-1)
@@ -76,8 +78,6 @@ void wf_cube_background_cubemap::reload_texture()
     OpenGL::render_end();
 }
 
-#include "cubemap-vertex-data.hpp"
-
 void wf_cube_background_cubemap::render_frame(const wf::framebuffer_t& fb,
     wf_cube_animation_attribs& attribs)
 {
@@ -97,10 +97,47 @@ void wf_cube_background_cubemap::render_frame(const wf::framebuffer_t& fb,
     GL_CALL(glDepthMask(GL_FALSE));
 
     GL_CALL(glBindTexture(GL_TEXTURE_CUBE_MAP, tex));
-    program.attrib_pointer("position", 3, 0, skyboxVertices);
+
+    GLfloat cube_vertices[] = {
+        -1.0, 1.0, 1.0,
+        -1.0, -1.0, 1.0,
+        1.0, -1.0, 1.0,
+        1.0, 1.0, 1.0,
+        -1.0, 1.0, -1.0,
+        -1.0, -1.0, -1.0,
+        1.0, -1.0, -1.0,
+        1.0, 1.0, -1.0,
+    };
+
+    GLushort cube_indices[] = {
+        3, 7, 6, // right
+        3, 6, 2, // right
+        4, 0, 1, // left
+        4, 1, 5, // left
+        4, 7, 3, // top
+        4, 3, 0, // top
+        1, 2, 6, // bottom
+        1, 6, 5, // bottom
+        0, 3, 2, // front
+        0, 2, 1, // front
+        7, 4, 5, // back
+        7, 5, 6, // back
+    };
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_vertices);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices,
+        GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo_cube_indices);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(cube_indices), cube_indices,
+        GL_STATIC_DRAW);
+
+    GLint vertex = glGetAttribLocation(program.get_program_id(
+        wf::TEXTURE_TYPE_RGBA), "position");
+    glEnableVertexAttribArray(vertex);
+    glVertexAttribPointer(vertex, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
     auto model = glm::rotate(glm::mat4(1.0),
-        float(attribs.cube_animation.rotation * 0.7f),
+        float(attribs.cube_animation.rotation),
         glm::vec3(0, 1, 0));
 
     glm::vec3 look_at{0.,
@@ -113,9 +150,11 @@ void wf_cube_background_cubemap::render_frame(const wf::framebuffer_t& fb,
     model = vp * model;
     program.uniformMatrix4f("cubeMapMatrix", model);
 
-    GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6 * 6));
+    glDrawElements(GL_TRIANGLES, 12 * 3, GL_UNSIGNED_SHORT, 0);
 
     program.deactivate();
     GL_CALL(glDepthMask(GL_TRUE));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     OpenGL::render_end();
 }
