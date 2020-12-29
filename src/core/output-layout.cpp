@@ -816,6 +816,8 @@ class output_layout_t::impl
     wl_listener_wrapper on_output_manager_apply;
     wl_listener_wrapper on_output_power_mode_set;
 
+    wl_listener_wrapper on_backend_destroy;
+
     wl_idle_call idle_update_configuration;
     wl_timer timer_remove_noop;
 
@@ -827,7 +829,7 @@ class output_layout_t::impl
     std::unique_ptr<output_layout_output_t> noop_output;
 
     bool shutdown_received = false;
-    signal_callback_t on_config_reload, on_shutdown;
+    signal_callback_t on_config_reload;
     signal_connection_t on_backend_started = [=] (wf::signal_data_t*)
     {
         // We need to ensure that at any given time we have at least one
@@ -841,6 +843,19 @@ class output_layout_t::impl
         }
     };
 
+    void deinit_noop()
+    {
+        /* Disconnect timer, since otherwise it will be destroyed
+         * after the wayland display is. */
+        this->timer_remove_noop.disconnect();
+        shutdown_received = true;
+        if (noop_output)
+        {
+            noop_output->destroy_wayfire_output(true);
+            noop_output.reset();
+        }
+    }
+
   public:
     impl(wlr_backend *backend)
     {
@@ -850,27 +865,20 @@ class output_layout_t::impl
         });
         on_new_output.connect(&backend->events.new_output);
 
+        // We destroy the noop output when the renderer is destroyed.
+        // This is needed because the noop output uses the same wlr_egl
+        // as the real outputs.
+        on_backend_destroy.set_callback([=] (auto) { deinit_noop(); });
+        on_backend_destroy.connect(&wf::get_core().renderer->events.destroy);
+
         output_layout = wlr_output_layout_create();
 
         on_config_reload = [=] (void*) { reconfigure_from_config(); };
         get_core().connect_signal("reload-config", &on_config_reload);
-        on_shutdown = [=] (void*)
-        {
-            /* Disconnect timer, since otherwise it will be destroyed
-             * after the wayland display is. */
-            this->timer_remove_noop.disconnect();
-            shutdown_received = true;
-            if (noop_output)
-            {
-                noop_output->destroy_wayfire_output(true);
-            }
-
-            wlr_backend_destroy(noop_backend);
-        };
-        get_core().connect_signal("shutdown", &on_shutdown);
 
         noop_backend = wlr_noop_backend_create(get_core().display);
         wlr_backend_start(noop_backend);
+
         get_core().connect_signal("_backend_started", &on_backend_started);
 
         output_manager = wlr_output_manager_v1_create(get_core().display);
