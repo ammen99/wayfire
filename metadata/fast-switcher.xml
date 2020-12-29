@@ -5,9 +5,14 @@
 		<_long>A plugin to switch active window.</_long>
 		<category>Window Management</category>
 		<option name="activate" type="key">
-			<_short>Activate</_short>
-			<_long>Activates fast switcher with the specified key.</_long>
+			<_short>Next view</_short>
+			<_long>Activates fast switcher with the specified key, moving to the next view.</_long>
 			<default>&lt;alt&gt; KEY_ESC</default>
+		</option>
+		<option name="activate_backward" type="key">
+			<_short>Previous view</_short>
+			<_long>Activates fast switcher with the specified key, moving to the previous view.</_long>
+			<default>&lt;alt&gt; &lt;shift&gt; KEY_ESC</default>
 		</option>
 	</plugin>
 </wayfire>

@@ -3,6 +3,7 @@
 #include <wayfire/view-transform.hpp>
 #include <wayfire/view.hpp>
 #include <wayfire/workspace-manager.hpp>
+#include <wayfire/util/log.hpp>
 
 /*
  * This plugin provides abilities to switch between views.
@@ -12,8 +13,12 @@
 class wayfire_fast_switcher : public wf::plugin_interface_t
 {
     wf::option_wrapper_t<wf::keybinding_t> activate_key{"fast-switcher/activate"};
+    wf::option_wrapper_t<wf::keybinding_t> activate_key_backward{
+        "fast-switcher/activate_backward"};
     std::vector<wayfire_view> views; // all views on current viewport
     size_t current_view_index = 0;
+    // the modifiers which were used to activate switcher
+    uint32_t activating_modifiers = 0;
     bool active = false;
 
   public:
@@ -23,25 +28,17 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         grab_interface->capabilities = wf::CAPABILITY_MANAGE_COMPOSITOR;
 
         output->add_key(activate_key, &fast_switch);
+        output->add_key(activate_key_backward, &fast_switch_backward);
 
-        using namespace std::placeholders;
-        grab_interface->callbacks.keyboard.mod =
-            std::bind(std::mem_fn(&wayfire_fast_switcher::handle_mod),
-                this, _1, _2);
+        grab_interface->callbacks.keyboard.mod = [=] (uint32_t mod, uint32_t st)
+        {
+            if ((st == WLR_KEY_RELEASED) && (mod & activating_modifiers))
+            {
+                switch_terminate();
+            }
+        };
 
         grab_interface->callbacks.cancel = [=] () { switch_terminate(); };
-    }
-
-    void handle_mod(uint32_t mod, uint32_t st)
-    {
-        bool mod_released =
-            (mod == ((wf::keybinding_t)activate_key).get_modifiers() &&
-                st == WLR_KEY_RELEASED);
-
-        if (mod_released)
-        {
-            switch_terminate();
-        }
     }
 
     void view_chosen(int i, bool reorder_only)
@@ -124,11 +121,11 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         });
     }
 
-    wf::key_callback fast_switch = [=] (auto)
+    bool do_switch(bool forward)
     {
         if (active)
         {
-            switch_next();
+            switch_next(forward);
 
             return true;
         }
@@ -157,11 +154,22 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         }
 
         grab_interface->grab();
-        switch_next();
+        activating_modifiers = wf::get_core().get_keyboard_modifiers();
+        switch_next(forward);
 
         output->connect_signal("view-disappeared", &cleanup_view);
 
         return true;
+    }
+
+    wf::key_callback fast_switch = [=] (auto)
+    {
+        return do_switch(true);
+    };
+
+    wf::key_callback fast_switch_backward = [=] (auto)
+    {
+        return do_switch(false);
     };
 
     void switch_terminate()
@@ -179,11 +187,18 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         output->disconnect_signal("view-disappeared", &cleanup_view);
     }
 
-    void switch_next()
+    void switch_next(bool forward)
     {
 #define index current_view_index
         set_view_alpha(views[index], 0.7);
-        index = (index + 1) % views.size();
+        if (forward)
+        {
+            index = (index + 1) % views.size();
+        } else
+        {
+            index = index ? index - 1 : views.size() - 1;
+        }
+
 #undef index
         view_chosen(current_view_index, true);
     }
@@ -196,6 +211,7 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
         }
 
         output->rem_binding(&fast_switch);
+        output->rem_binding(&fast_switch_backward);
     }
 };
 
