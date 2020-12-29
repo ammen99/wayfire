@@ -192,6 +192,7 @@ class scale_title_filter : public wf::plugin_interface_t
         wf::get_core().disconnect_signal(&scale_key);
         title_filter.clear();
         char_len.clear();
+        keys.clear();
         clear_overlay();
         scale_running = false;
     };
