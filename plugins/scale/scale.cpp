@@ -1308,11 +1308,18 @@ class wayfire_scale : public wf::plugin_interface_t
         }
 
         refocus();
+        output->emit_signal("scale-end", nullptr);
     }
 
     /* Completely end scale, including animation */
     void finalize()
     {
+        if (active)
+        {
+            /* only emit the signal if deactivate() was not called before */
+            output->emit_signal("scale-end", nullptr);
+        }
+
         active = false;
 
         unset_hook();
@@ -1328,7 +1335,6 @@ class wayfire_scale : public wf::plugin_interface_t
         workspace_changed.disconnect();
         view_geometry_changed.disconnect();
         output->deactivate_plugin(grab_interface);
-        output->emit_signal("scale-end", nullptr);
     }
 
     /* Utility hook setter */
