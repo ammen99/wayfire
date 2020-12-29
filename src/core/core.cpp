@@ -347,6 +347,8 @@ void wf::compositor_core_impl_t::post_init()
 
     // Start processing cursor events
     seat->cursor->setup_listeners();
+
+    this->emit_signal("startup-finished", nullptr);
 }
 
 void wf::compositor_core_impl_t::shutdown()
@@ -869,6 +871,7 @@ wf::compositor_core_impl_t::~compositor_core_impl_t()
      * then we destroy the input manager, and finally the rest is auto-freed */
     views.clear();
     input.reset();
+    output_layout.reset();
 }
 
 wf::compositor_core_impl_t& wf::compositor_core_impl_t::get()

@@ -22,6 +22,13 @@ namespace wf
 /* ----------------------------------------------------------------------------/
  * Core signals
  * -------------------------------------------------------------------------- */
+/**
+ * name: startup-finished
+ * on: core
+ * when: Emitted when the Wayfire initialization has been completed and the main
+ *   loop is about to start.
+ * argument: unused
+ */
 
 /**
  * name: shutdown
