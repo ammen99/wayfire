@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <unistd.h>
+#include <string.h>
 #include <cstdio>
 #include <unordered_map>
 #include <functional>
@@ -27,6 +28,93 @@ namespace
 {
 std::unordered_map<std::string, Loader> loaders;
 std::unordered_map<std::string, Writer> writers;
+}
+
+bool load_data_as_cubemap(unsigned char *data, int width, int height, int channels)
+{
+    width  /= 4;
+    height /= 3;
+    int x, y, t;
+
+    if (width != height)
+    {
+        LOGE("cubemap width / 4(", width, ") != height / 3(", height, ")");
+        return false;
+    }
+
+    /*
+     *  CUBEMAP IMAGE FORMAT
+     *
+     *    0    1    2    3
+     *    _____________________
+     *  0 | X  | T  | X  | X  |
+     *    |____|____|____|____|
+     *  1 | R  | F  | L  | BA |
+     *    |____|____|____|____|
+     *  2 | X  | BO | X  | X  |
+     *    |____|____|____|____|
+     *
+     *  WIDTH / 4 == HEIGHT / 3
+     *
+     *  X : UNUSED
+     *  T:  TOP
+     *  R:  RIGHT
+     *  F:  FRONT
+     *  L:  LEFT
+     *  BA: BACK
+     *  BO: BOTTOM
+     *
+     */
+
+    for (t = GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+         t < GL_TEXTURE_CUBE_MAP_POSITIVE_X + 6;
+         t++)
+    {
+        switch (t)
+        {
+          case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+            x = 2, y = 1;
+            break;
+
+          case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+            x = 0, y = 1;
+            break;
+
+          case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+            x = 1, y = 0;
+            break;
+
+          case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+            x = 1, y = 2;
+            break;
+
+          case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+            x = 1, y = 1;
+            break;
+
+          case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+            x = 3, y = 1;
+            break;
+
+          default:
+            return false;
+            break;
+        }
+
+        auto format = (channels == 4 ? GL_RGBA : GL_RGB);
+        GL_CALL(glPixelStorei(GL_UNPACK_ROW_LENGTH, width * 4));
+        GL_CALL(glPixelStorei(GL_UNPACK_SKIP_ROWS, y * height));
+        GL_CALL(glPixelStorei(GL_UNPACK_SKIP_PIXELS, x * width));
+
+        GL_CALL(glTexImage2D(t, 0, format, width, height, 0,
+            format, GL_UNSIGNED_BYTE, data));
+    }
+
+    GL_CALL(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+    GL_CALL(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
+    GL_CALL(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
+
+    return true;
 }
 
 #ifdef BUILD_WITH_IMAGEIO
@@ -112,8 +200,23 @@ bool texture_from_png(const char *filename, GLuint target)
     }
 
     png_read_image(png, row_pointers);
-    GL_CALL(glTexImage2D(target, 0, GL_RGBA, width, height, 0,
-        GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)data));
+
+    if (target == GL_TEXTURE_CUBE_MAP)
+    {
+        if (!load_data_as_cubemap(data, width, height,
+            png_get_channels(png, infos)))
+        {
+            png_destroy_read_struct(&png, &infos, NULL);
+            delete[] row_pointers;
+            delete[] data;
+            fclose(fp);
+            return false;
+        }
+    } else if (target == GL_TEXTURE_2D)
+    {
+        GL_CALL(glTexImage2D(target, 0, GL_RGBA, width, height, 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, (GLvoid*)data));
+    }
 
     png_destroy_read_struct(&png, &infos, NULL);
     delete[] row_pointers;
@@ -217,9 +320,22 @@ bool texture_from_jpeg(const char *FileName, GLuint target)
 
     jpeg_finish_decompress(&infot);
 
-    GL_CALL(glTexImage2D(target, 0, GL_RGB,
-        infot.output_width, infot.output_height,
-        0, GL_RGB, GL_UNSIGNED_BYTE, jdata));
+    GLint width  = infot.output_width;
+    GLint height = infot.output_height;
+
+    if (target == GL_TEXTURE_CUBE_MAP)
+    {
+        if (!load_data_as_cubemap(jdata, width, height, 3))
+        {
+            fclose(file);
+            delete[] jdata;
+            return false;
+        }
+    } else if (target == GL_TEXTURE_2D)
+    {
+        GL_CALL(glTexImage2D(target, 0, GL_RGBA, width, height, 0,
+            GL_RGBA, GL_UNSIGNED_BYTE, jdata));
+    }
 
     fclose(file);
     delete[] jdata;
