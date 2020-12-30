@@ -37,6 +37,8 @@ static int handle_config_updated(int fd, uint32_t mask, void *data)
     return 0;
 }
 
+static const char *CONFIG_FILE_ENV = "WAYFIRE_CONFIG_FILE";
+
 namespace wf
 {
 class dynamic_ini_config_t : public wf::config_backend_t
@@ -47,21 +49,10 @@ class dynamic_ini_config_t : public wf::config_backend_t
     {
         cfg_manager = &config;
 
-        if (cfg_file.empty())
-        {
-            config_dir = nonull(getenv("XDG_CONFIG_HOME"));
-            if (!config_dir.compare("nil"))
-            {
-                config_dir = std::string(nonull(getenv("HOME"))) + "/.config";
-            }
-
-            config_file = config_dir + "/wayfire.ini";
-        } else
-        {
-            config_file = cfg_file;
-        }
-
+        auto config_file = choose_cfg_file(cfg_file);
         LOGI("Using config file: ", config_file.c_str());
+        setenv(CONFIG_FILE_ENV, config_file.c_str(), 1);
+
         config = wf::config::build_configuration(
             get_xml_dirs(), SYSCONFDIR "/wayfire/defaults.ini", config_file);
 
@@ -70,6 +61,36 @@ class dynamic_ini_config_t : public wf::config_backend_t
 
         wl_event_loop_add_fd(wl_display_get_event_loop(display),
             inotify_fd, WL_EVENT_READABLE, handle_config_updated, NULL);
+    }
+
+    std::string choose_cfg_file(const std::string& cmdline_cfg_file)
+    {
+        std::string env_cfg_file = nonull(getenv(CONFIG_FILE_ENV));
+        if (!cmdline_cfg_file.empty())
+        {
+            if ((env_cfg_file != nonull(NULL)) &&
+                (cmdline_cfg_file != env_cfg_file))
+            {
+                LOGW("Wayfire config file specified in the environment is ",
+                    "overridden by the command line arguments!");
+            }
+
+            return cmdline_cfg_file;
+        }
+
+        if (env_cfg_file != nonull(NULL))
+        {
+            return env_cfg_file;
+        }
+
+        // Fallback, default config file
+        config_dir = nonull(getenv("XDG_CONFIG_HOME"));
+        if (!config_dir.compare("nil"))
+        {
+            config_dir = std::string(nonull(getenv("HOME"))) + "/.config";
+        }
+
+        return config_dir + "/wayfire.ini";
     }
 };
 }
