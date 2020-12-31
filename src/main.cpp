@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
     /** TODO: move this to core_impl constructor */
     core.display  = display;
     core.ev_loop  = wl_display_get_event_loop(core.display);
-    core.backend  = wlr_backend_autocreate(core.display, NULL);
+    core.backend  = wlr_backend_autocreate(core.display);
     core.renderer = wlr_backend_get_renderer(core.backend);
     core.egl = wlr_gles2_renderer_get_egl(core.renderer);
     assert(core.egl);
