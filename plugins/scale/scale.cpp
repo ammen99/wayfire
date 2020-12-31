@@ -688,8 +688,6 @@ class wayfire_scale : public wf::plugin_interface_t
                 view->set_visible(false);
             }
         }
-
-        output->render->damage_whole();
     }
 
     /* Returns a list of views for all workspaces */
