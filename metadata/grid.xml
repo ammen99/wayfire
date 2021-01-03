@@ -12,14 +12,14 @@
 		<option name="type" type="string">
 			<_short>Type</_short>
 			<_long>Sets the type of the animation.</_long>
-			<default>simple</default>
+			<default>crossfade</default>
 			<desc>
 				<value>none</value>
 				<_name>None</_name>
 			</desc>
 			<desc>
-				<value>simple</value>
-				<_name>Simple</_name>
+				<value>crossfade</value>
+				<_name>Crossfade</_name>
 			</desc>
 			<desc>
 				<value>wobbly</value>

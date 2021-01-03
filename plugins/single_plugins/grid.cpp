@@ -12,58 +12,119 @@
 
 #include "snap_signal.hpp"
 #include <wayfire/plugins/wobbly/wobbly-signal.hpp>
+#include <wayfire/view-transform.hpp>
 
 const std::string grid_view_id = "grid-view";
 
+/**
+ * A transformer used for a simple crossfade + scale animation.
+ *
+ * It fades out the scaled contents from original_buffer, and fades in the
+ * current contents of the view, based on the alpha value in the transformer.
+ */
+class grid_crossfade_transformer : public wf::view_2D
+{
+  public:
+    grid_crossfade_transformer(wayfire_view view) :
+        wf::view_2D(view)
+    {
+        // Create a copy of the view contents
+        original_buffer.geometry = view->get_wm_geometry();
+        original_buffer.scale    = view->get_output()->handle->scale;
+
+        auto w = original_buffer.scale * original_buffer.geometry.width;
+        auto h = original_buffer.scale * original_buffer.geometry.height;
+
+        OpenGL::render_begin();
+        original_buffer.allocate(w, h);
+        original_buffer.bind();
+        OpenGL::clear({0, 0, 0, 0});
+        OpenGL::render_end();
+
+        auto og = view->get_output_geometry();
+        for (auto& surface : view->enumerate_surfaces(wf::origin(og)))
+        {
+            wf::region_t damage = wf::geometry_t{
+                surface.position.x,
+                surface.position.y,
+                surface.surface->get_size().width,
+                surface.surface->get_size().height
+            };
+
+            damage &= original_buffer.geometry;
+            surface.surface->simple_render(original_buffer,
+                surface.position.x, surface.position.y, damage);
+        }
+    }
+
+    void render_box(wf::texture_t src_tex, wlr_box src_box,
+        wlr_box scissor_box, const wf::framebuffer_t& fb) override
+    {
+        // See the current target geometry
+        auto bbox = view->get_wm_geometry();
+        bbox = this->get_bounding_box(bbox, bbox);
+
+        double saved = this->alpha;
+        this->alpha = 1.0;
+        // Now render the real view
+        view_2D::render_box(src_tex, src_box, scissor_box, fb);
+        this->alpha = saved;
+
+        double ra;
+        const double N = 2;
+        if (alpha < 0.5)
+        {
+            ra = std::pow(alpha * 2, 1.0 / N) / 2.0;
+        } else
+        {
+            ra = std::pow((alpha - 0.5) * 2, N) / 2.0 + 0.5;
+        }
+
+        // First render the original buffer with corresponding alpha
+        OpenGL::render_begin(fb);
+        fb.logic_scissor(scissor_box);
+        OpenGL::render_texture({original_buffer.tex}, fb, bbox,
+            glm::vec4{1.0f, 1.0f, 1.0f, 1.0 - ra});
+        OpenGL::render_end();
+    }
+
+    ~grid_crossfade_transformer()
+    {
+        OpenGL::render_begin();
+        original_buffer.release();
+        OpenGL::render_end();
+    }
+
+    // The contents of the view before the change.
+    wf::framebuffer_t original_buffer;
+};
+
 class wayfire_grid_view_cdata : public wf::custom_data_t
 {
-    bool is_active = true;
-
+    wf::geometry_t original;
     wayfire_view view;
     wf::output_t *output;
-    wf::effect_hook_t pre_hook;
-    wf::signal_callback_t unmapped;
-
-    int32_t tiled_edges = -1;
-    const wf::plugin_grab_interface_uptr& iface;
+    wf::signal_connection_t unmapped = [=] (auto data)
+    {
+        if (get_signaled_view(data) == view)
+        {
+            destroy();
+        }
+    };
 
     wf::option_wrapper_t<std::string> animation_type{"grid/type"};
     wf::option_wrapper_t<int> animation_duration{"grid/duration"};
-    wf::geometry_animation_t animation{animation_duration};
+    wf::geometry_animation_t animation{animation_duration,
+        wf::animation::smoothing::circle};
 
   public:
-
-    wayfire_grid_view_cdata(wayfire_view view,
-        const wf::plugin_grab_interface_uptr& _iface) :
-        iface(_iface)
+    wayfire_grid_view_cdata(wayfire_view view)
     {
         this->view   = view;
         this->output = view->get_output();
         this->animation = wf::geometry_animation_t{animation_duration};
 
-        if (!view->get_output()->activate_plugin(iface,
-            wf::PLUGIN_ACTIVATE_ALLOW_MULTIPLE))
-        {
-            is_active = false;
-
-            return;
-        }
-
-        pre_hook = [=] ()
-        {
-            adjust_geometry();
-        };
         output->render->add_effect(&pre_hook, wf::OUTPUT_EFFECT_PRE);
-
-        unmapped = [=] (wf::signal_data_t *data)
-        {
-            if (get_signaled_view(data) == view)
-            {
-                destroy();
-            }
-        };
-
-        output->render->set_redraw_always(true);
         output->connect_signal("view-disappeared", &unmapped);
     }
 
@@ -74,85 +135,86 @@ class wayfire_grid_view_cdata : public wf::custom_data_t
 
     void adjust_target_geometry(wf::geometry_t geometry, int32_t target_edges)
     {
-        animation.set_start(view->get_wm_geometry());
-        animation.set_end(geometry);
-
-        /* Restore tiled edges if we don't need to set something special when
-         * grid is ready */
-        if (target_edges < 0)
+        // Apply the desired attributes to the view
+        const auto& set_state = [=] ()
         {
-            this->tiled_edges = view->tiled_edges;
-        } else
-        {
-            this->view->set_fullscreen(0);
-            this->tiled_edges = target_edges;
-        }
+            if (target_edges >= 0)
+            {
+                view->set_fullscreen(false);
+                view->set_tiled(target_edges);
+            }
 
-        std::string type = animation_type;
-        if (view->get_transformer("wobbly") || !is_active)
-        {
-            type = "wobbly";
-        }
+            view->set_geometry(geometry);
+        };
 
-        if (type == "none")
-        {
-            set_end_state(geometry, tiled_edges);
-
-            return destroy();
-        }
-
-        if (type == "wobbly")
+        if (animation_type.value() != "crossfade")
         {
             /* Order is important here: first we set the view geometry, and
              * after that we set the snap request. Otherwise the wobbly plugin
              * will think the view actually moved */
-            set_end_state(geometry, tiled_edges);
-            activate_wobbly(view);
+            set_state();
+            if (animation_type.value() == "wobbly")
+            {
+                activate_wobbly(view);
+            }
 
             return destroy();
         }
 
-        view->set_tiled(wf::TILED_EDGES_ALL);
-        view->set_moving(1);
-        view->set_resizing(1);
+        // Crossfade animation
+        original = view->get_wm_geometry();
+        animation.set_start(original);
+        animation.set_end(geometry);
         animation.start();
-    }
 
-    void set_end_state(wf::geometry_t geometry, int32_t edges)
-    {
-        if (edges >= 0)
+        // Add crossfade transformer
+        if (!view->get_transformer("grid-crossfade"))
         {
-            view->set_tiled(edges);
+            view->add_transformer(
+                std::make_unique<grid_crossfade_transformer>(view),
+                "grid-crossfade");
         }
 
-        view->set_geometry(geometry);
+        // Start the transition
+        set_state();
     }
 
-    void adjust_geometry()
+    wf::effect_hook_t pre_hook = [=] ()
     {
         if (!animation.running())
         {
-            set_end_state(animation, tiled_edges);
-            view->set_moving(0);
-            view->set_resizing(0);
-
             return destroy();
         }
 
-        view->set_geometry((wf::geometry_t)animation);
-    }
+        if (view->get_wm_geometry() != original)
+        {
+            original = view->get_wm_geometry();
+            animation.set_end(original);
+        }
+
+        view->damage();
+
+        auto tr_untyped = view->get_transformer("grid-crossfade").get();
+        auto tr = dynamic_cast<grid_crossfade_transformer*>(tr_untyped);
+
+        auto geometry = view->get_wm_geometry();
+
+        tr->scale_x = animation.width / geometry.width;
+        tr->scale_y = animation.height / geometry.height;
+
+        tr->translation_x = (animation.x + animation.width / 2) -
+            (geometry.x + geometry.width / 2.0);
+        tr->translation_y = (animation.y + animation.height / 2) -
+            (geometry.y + geometry.height / 2.0);
+
+        tr->alpha = animation.progress();
+        view->damage();
+    };
 
     ~wayfire_grid_view_cdata()
     {
-        if (!is_active)
-        {
-            return;
-        }
-
+        view->pop_transformer("grid-crossfade");
         output->render->rem_effect(&pre_hook);
-        output->deactivate_plugin(iface);
-        output->render->set_redraw_always(false);
-        output->disconnect_signal("view-disappeared", &unmapped);
     }
 };
 
@@ -162,24 +224,16 @@ class wf_grid_slot_data : public wf::custom_data_t
     int slot;
 };
 
-nonstd::observer_ptr<wayfire_grid_view_cdata> ensure_grid_view(wayfire_view view,
-    const wf::plugin_grab_interface_uptr& iface)
+nonstd::observer_ptr<wayfire_grid_view_cdata> ensure_grid_view(wayfire_view view)
 {
     if (!view->has_data<wayfire_grid_view_cdata>())
     {
         view->store_data(
-            std::make_unique<wayfire_grid_view_cdata>(view, iface));
+            std::make_unique<wayfire_grid_view_cdata>(view));
     }
 
     return view->get_data<wayfire_grid_view_cdata>();
 }
-
-class wf_grid_saved_view_geometry : public wf::custom_data_t
-{
-  public:
-    wf::geometry_t geometry;
-    uint32_t tiled_edges;
-};
 
 /*
  * 7 8 9
@@ -256,11 +310,6 @@ class wayfire_grid : public wf::plugin_interface_t
         return true;
     };
 
-    nonstd::observer_ptr<wayfire_grid_view_cdata> ensure_grid_view(wayfire_view view)
-    {
-        return ::ensure_grid_view(view, grab_interface);
-    }
-
   public:
     void init() override
     {
@@ -278,8 +327,12 @@ class wayfire_grid : public wf::plugin_interface_t
                     return false;
                 }
 
-                handle_slot(view, i);
+                if (!output->can_activate_plugin(wf::CAPABILITY_MANAGE_DESKTOP))
+                {
+                    return false;
+                }
 
+                handle_slot(view, i);
                 return true;
             };
 
