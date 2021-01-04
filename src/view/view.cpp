@@ -1257,8 +1257,23 @@ void wf::view_interface_t::deinitialize()
     }
 
     set_decoration(nullptr);
-    this->priv->surface_children_below.clear();
-    this->priv->surface_children_above.clear();
+
+    subsurface_removed_signal ev;
+    ev.main_surface = this;
+    const auto& finish_subsurfaces = [&] (auto& container)
+    {
+        for (auto& surface : container)
+        {
+            ev.subsurface = {surface};
+            this->emit_signal("subsurface-removed", &ev);
+        }
+
+        container.clear();
+    };
+
+    finish_subsurfaces(priv->surface_children_above);
+    finish_subsurfaces(priv->surface_children_below);
+
     this->view_impl->transforms.clear();
     this->_clear_data();
 

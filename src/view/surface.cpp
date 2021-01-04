@@ -26,7 +26,13 @@ void wf::surface_interface_t::add_subsurface(
     subsurface->set_output(get_output());
     auto& container = is_below_parent ?
         priv->surface_children_below : priv->surface_children_above;
+
+    wf::subsurface_added_signal ev;
+    ev.main_surface = this;
+    ev.subsurface   = {subsurface};
+
     container.insert(container.begin(), std::move(subsurface));
+    this->emit_signal("subsurface-added", &ev);
 }
 
 void wf::surface_interface_t::remove_subsurface(
@@ -38,6 +44,11 @@ void wf::surface_interface_t::remove_subsurface(
             [=] (const auto& ptr) { return ptr.get() == subsurface.get(); });
         container.erase(it, container.end());
     };
+
+    wf::subsurface_removed_signal ev;
+    ev.main_surface = this;
+    ev.subsurface   = subsurface;
+    this->emit_signal("subsurface-removed", &ev);
 
     remove_from(priv->surface_children_above);
     remove_from(priv->surface_children_below);

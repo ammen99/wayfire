@@ -4,7 +4,6 @@
 #include <vector>
 #include <wayfire/nonstd/observer_ptr.h>
 
-#include "wayfire/object.hpp"
 #include "wayfire/surface.hpp"
 #include "wayfire/geometry.hpp"
 #include <wayfire/nonstd/wlroots.hpp>
@@ -48,7 +47,7 @@ constexpr uint32_t TILED_EDGES_ALL =
  * view_interface_t is the base class for all "toplevel windows", i.e surfaces
  * which have no parent.
  */
-class view_interface_t : public surface_interface_t, public wf::object_base_t
+class view_interface_t : public surface_interface_t
 {
   public:
     /**

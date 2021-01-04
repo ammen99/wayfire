@@ -9,6 +9,7 @@
 #include <wayfire/nonstd/wlroots.hpp>
 #include <wayfire/nonstd/observer_ptr.h>
 #include <wayfire/geometry.hpp>
+#include <wayfire/object.hpp>
 
 namespace wf
 {
@@ -35,7 +36,7 @@ struct surface_iterator_t
  * surface_interface_t is the base class for everything that can be displayed
  * on the screen. It is the closest thing there is in Wayfire to a Window in X11.
  */
-class surface_interface_t
+class surface_interface_t : public wf::object_base_t
 {
   public:
     virtual ~surface_interface_t();

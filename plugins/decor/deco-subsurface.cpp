@@ -73,7 +73,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
     {
         this->view = view;
         view->connect_signal("title-changed", &title_set);
-        view->connect_signal("unmapped", &on_base_view_unmap);
+        view->connect_signal("subsurface-removed", &on_subsurface_removed);
 
         // make sure to hide frame if the view is fullscreen
         update_decoration_size();
@@ -249,11 +249,13 @@ class simple_decoration_surface : public wf::surface_interface_t,
         target_height = std::max(target_height, 1);
     }
 
-    wf::signal_connection_t on_base_view_unmap = [&] (wf::signal_data_t *data)
+    wf::signal_connection_t on_subsurface_removed = [&] (auto data)
     {
-        unmap();
-        // remove self
-        view->set_decoration(nullptr);
+        auto ev = static_cast<wf::subsurface_removed_signal*>(data);
+        if (ev->subsurface.get() == this)
+        {
+            unmap();
+        }
     };
 
     void unmap()
