@@ -185,6 +185,14 @@ class wayfire_resize : public wf::plugin_interface_t
             return false;
         }
 
+        this->edges = forced_edges ?: calculate_edges(grabbed_geometry,
+            grab_start.x, grab_start.y);
+
+        if (edges == 0)
+        {
+            return false;
+        }
+
         auto current_ws_impl =
             output->workspace->get_workspace_implementation();
         if (!current_ws_impl->view_resizable(view))
@@ -207,9 +215,6 @@ class wayfire_resize : public wf::plugin_interface_t
         grab_start = get_input_coords();
         grabbed_geometry = view->get_wm_geometry();
 
-        this->edges = forced_edges ?: calculate_edges(grabbed_geometry,
-            grab_start.x, grab_start.y);
-
         if ((edges & WLR_EDGE_LEFT) || (edges & WLR_EDGE_TOP))
         {
             view->set_moving(true);
@@ -220,11 +225,6 @@ class wayfire_resize : public wf::plugin_interface_t
         if (view->tiled_edges)
         {
             view->set_tiled(0);
-        }
-
-        if (edges == 0) /* simply deactivate */
-        {
-            input_pressed(WL_POINTER_BUTTON_STATE_RELEASED);
         }
 
         this->view = view;
