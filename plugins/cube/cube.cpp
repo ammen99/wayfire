@@ -444,13 +444,22 @@ class wayfire_cube : public wf::plugin_interface_t
     /* Calculate the base model matrix for the i-th side of the cube */
     glm::mat4 calculate_model_matrix(int i, glm::mat4 fb_transform)
     {
-        auto rotation = glm::rotate(glm::mat4(
-            1.0),
-            float(i) * animation.side_angle + float(animation.cube_animation.rotation),
-            glm::vec3(0, 1, 0));
+        const float angle =
+            i * animation.side_angle + animation.cube_animation.rotation;
+        auto rotation = glm::rotate(glm::mat4(1.0), angle, glm::vec3(0, 1, 0));
 
-        auto translation =
-            glm::translate(glm::mat4(1.0), glm::vec3(0, 0, identity_z_offset));
+        double additional_z = 0.0;
+        // Special case: 2 faces
+        // In this case, we need to make sure that the two faces are just
+        // slightly moved away from each other, to avoid artifacts which can
+        // happen if both sides are touching.
+        if (get_num_faces() == 2)
+        {
+            additional_z = 1e-3;
+        }
+
+        auto translation = glm::translate(glm::mat4(1.0),
+            glm::vec3(0, 0, identity_z_offset + additional_z));
 
         return rotation * translation * glm::inverse(fb_transform);
     }
