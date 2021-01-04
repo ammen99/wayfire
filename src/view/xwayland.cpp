@@ -508,7 +508,11 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
         wayfire_xwayland_view_base::initialize();
 
         on_request_move.set_callback([&] (void*) { move_request(); });
-        on_request_resize.set_callback([&] (void*) { resize_request(); });
+        on_request_resize.set_callback([&] (auto data)
+        {
+            auto ev = static_cast<wlr_xwayland_resize_event*>(data);
+            resize_request(ev->edges);
+        });
         on_request_activate.set_callback([&] (void*)
         {
             if (!this->activated)

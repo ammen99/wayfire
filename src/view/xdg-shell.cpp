@@ -249,7 +249,11 @@ void wayfire_xdg_view::initialize()
     });
 
     on_request_move.set_callback([&] (void*) { move_request(); });
-    on_request_resize.set_callback([&] (void*) { resize_request(); });
+    on_request_resize.set_callback([&] (auto data)
+    {
+        auto ev = static_cast<wlr_xdg_toplevel_resize_event*>(data);
+        resize_request(ev->edges);
+    });
     on_request_minimize.set_callback([&] (void*) { minimize_request(true); });
     on_request_maximize.set_callback([&] (void *data)
     {
