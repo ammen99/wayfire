@@ -67,6 +67,12 @@ class compositor_core_t : public wf::object_base_t
     wf::config::config_manager_t config;
 
     /**
+     * Command line arguments.
+     */
+    int argc;
+    char **argv;
+
+    /**
      * The wayland display and its event loop
      */
     wl_display *display;

@@ -254,6 +254,9 @@ int main(int argc, char *argv[])
 
     auto& core = wf::get_core_impl();
 
+    core.argc = argc;
+    core.argv = argv;
+
     /** TODO: move this to core_impl constructor */
     core.display  = display;
     core.ev_loop  = wl_display_get_event_loop(core.display);
