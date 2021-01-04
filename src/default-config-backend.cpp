@@ -16,7 +16,6 @@ static char buf[INOT_BUF_SIZE];
 static std::string config_dir, config_file;
 wf::config::config_manager_t *cfg_manager;
 
-
 static void reload_config(int fd)
 {
     wf::config::load_configuration_options_from_file(*cfg_manager, config_file);
@@ -49,7 +48,7 @@ class dynamic_ini_config_t : public wf::config_backend_t
     {
         cfg_manager = &config;
 
-        auto config_file = choose_cfg_file(cfg_file);
+        config_file = choose_cfg_file(cfg_file);
         LOGI("Using config file: ", config_file.c_str());
         setenv(CONFIG_FILE_ENV, config_file.c_str(), 1);
 
