@@ -12,13 +12,13 @@
 #include <wayfire/plugins/vswitch.hpp>
 #include <wayfire/touch/touch.hpp>
 #include <wayfire/plugins/scale-signal.hpp>
+#include <wayfire/plugins/scale-transform.hpp>
 #include <wayfire/plugins/wobbly/wobbly-signal.hpp>
 
 #include <wayfire/plugins/common/move-drag-interface.hpp>
 #include <wayfire/plugins/common/shared-core-data.hpp>
 
 #include <linux/input-event-codes.h>
-
 
 using namespace wf::animation;
 
@@ -38,24 +38,10 @@ struct wf_scale_animation_attribs
     scale_animation_t scale_animation{duration};
 };
 
-class wf_scale : public wf::view_2D
-{
-  public:
-    wf_scale(wayfire_view view) : wf::view_2D(view)
-    {}
-    ~wf_scale()
-    {}
-
-    uint32_t get_z_order() override
-    {
-        return wf::TRANSFORMER_HIGHLEVEL - 10;
-    }
-};
-
 struct view_scale_data
 {
     int row, col;
-    wf_scale *transformer = nullptr; /* avoid UB from uninitialized member */
+    wf::scale_transformer_t *transformer = nullptr;
     wf::animation::simple_animation_t fade_animation;
     wf_scale_animation_attribs animation;
     enum class view_visibility_t
@@ -73,7 +59,6 @@ class wayfire_scale : public wf::plugin_interface_t
     std::vector<int> current_row_sizes;
     wf::point_t initial_workspace;
     bool active, hook_set;
-    const std::string transformer_name = "scale";
     /* View that was active before scale began. */
     wayfire_view initial_focus_view;
     /* View that has active focus. */
@@ -196,26 +181,33 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Add a transformer that will be used to scale the view */
     bool add_transformer(wayfire_view view)
     {
-        if (view->get_transformer(transformer_name))
+        if (view->get_transformer(wf::scale_transformer_t::transformer_name()))
         {
             return false;
         }
 
-        wf_scale *tr = new wf_scale(view);
+        wf::scale_transformer_t *tr = new wf::scale_transformer_t(view);
         scale_data[view].transformer = tr;
-        view->add_transformer(std::unique_ptr<wf_scale>(tr), transformer_name);
+        view->add_transformer(std::unique_ptr<wf::scale_transformer_t>(tr),
+            wf::scale_transformer_t::transformer_name());
         /* Transformers are added only once when scale is activated so
          * this is a good place to connect the geometry-changed handler */
         view->connect_signal("geometry-changed", &view_geometry_changed);
 
         set_tiled_wobbly(view, true);
+
+        /* signal that a transformer was added to this view */
+        scale_transformer_added_signal data;
+        data.transformer = tr;
+        output->emit_signal("scale-transformer-added", &data);
+
         return true;
     }
 
     /* Remove the scale transformer from the view */
     void pop_transformer(wayfire_view view)
     {
-        view->pop_transformer(transformer_name);
+        view->pop_transformer(wf::scale_transformer_t::transformer_name());
         set_tiled_wobbly(view, false);
     }
 
@@ -710,25 +702,34 @@ class wayfire_scale : public wf::plugin_interface_t
                 continue;
             }
 
-            view->damage();
-            view_data.transformer->scale_x =
-                view_data.animation.scale_animation.scale_x;
-            view_data.transformer->scale_y =
-                view_data.animation.scale_animation.scale_y;
-            view_data.transformer->translation_x =
-                view_data.animation.scale_animation.translation_x;
-            view_data.transformer->translation_y =
-                view_data.animation.scale_animation.translation_y;
-            view_data.transformer->alpha = view_data.fade_animation;
-            view->damage();
+            bool needs_damage = false;
 
-            if ((view_data.visibility ==
-                 view_scale_data::view_visibility_t::HIDING) &&
-                !view_data.fade_animation.running())
+            if (view_data.fade_animation.running() ||
+                view_data.animation.scale_animation.running())
             {
-                view_data.visibility = view_scale_data::view_visibility_t::HIDDEN;
-                view->set_visible(false);
+                view->damage();
+                view_data.transformer->scale_x =
+                    view_data.animation.scale_animation.scale_x;
+                view_data.transformer->scale_y =
+                    view_data.animation.scale_animation.scale_y;
+                view_data.transformer->translation_x =
+                    view_data.animation.scale_animation.translation_x;
+                view_data.transformer->translation_y =
+                    view_data.animation.scale_animation.translation_y;
+                view_data.transformer->alpha = view_data.fade_animation;
+                needs_damage = true;
+
+                if ((view_data.visibility ==
+                     view_scale_data::view_visibility_t::HIDING) &&
+                    !view_data.fade_animation.running())
+                {
+                    view_data.visibility =
+                        view_scale_data::view_visibility_t::HIDDEN;
+                    view->set_visible(false);
+                }
             }
+
+            view_data.transformer->call_pre_hooks(needs_damage);
         }
     }
 
@@ -925,16 +926,16 @@ class wayfire_scale : public wf::plugin_interface_t
         auto sorted_rows = view_sort(views);
         size_t cnt_rows  = sorted_rows.size();
 
-        const double scaled_height = (double)
-            (workarea.height - (cnt_rows + 1) * spacing) / cnt_rows;
+        const double scaled_height = std::max((double)
+            (workarea.height - (cnt_rows + 1) * spacing) / cnt_rows, 1.0);
         current_row_sizes.clear();
 
         for (size_t i = 0; i < cnt_rows; i++)
         {
             size_t cnt_cols = sorted_rows[i].size();
             current_row_sizes.push_back(cnt_cols);
-            const double scaled_width = (double)
-                (workarea.width - (cnt_cols + 1) * spacing) / cnt_cols;
+            const double scaled_width = std::max((double)
+                (workarea.width - (cnt_cols + 1) * spacing) / cnt_cols, 1.0);
 
             for (size_t j = 0; j < cnt_cols; j++)
             {
@@ -961,10 +962,14 @@ class wayfire_scale : public wf::plugin_interface_t
                     (view == current_focus_view) ? 1 : (double)inactive_alpha;
 
                 // Helper function to calculate the desired scale for a view
-                const auto& calculate_scale = [&] (wf::geometry_t vg)
+                const auto& calculate_scale = [=] (wf::geometry_t vg,
+                                                   const wf::scale_transformer_t::
+                                                   padding_t& pad)
                 {
-                    const double scale = std::min(
-                        scaled_width / vg.width, scaled_height / vg.height);
+                    double w = std::max(1.0, scaled_width - pad.left - pad.right);
+                    double h = std::max(1.0, scaled_height - pad.top - pad.bottom);
+
+                    const double scale = std::min(w / vg.width, h / vg.height);
                     if (!allow_scale_zoom)
                     {
                         return std::min(scale, max_scale_factor);
@@ -973,7 +978,9 @@ class wayfire_scale : public wf::plugin_interface_t
                     return scale;
                 };
 
-                double view_scale = calculate_scale(view->get_wm_geometry());
+                add_transformer(view);
+                double view_scale = calculate_scale(view->get_wm_geometry(),
+                    scale_data[view].transformer->get_scale_padding());
                 for (auto& child : view->enumerate_views(false))
                 {
                     // Ensure a transformer for the view, and make sure that
@@ -1010,8 +1017,10 @@ class wayfire_scale : public wf::plugin_interface_t
 
                     auto vg = child->get_wm_geometry();
 
+                    // Take padding into account
+                    auto pad     = child_data.transformer->get_scale_padding();
+                    double scale = calculate_scale(vg, pad);
                     // Ensure child is not scaled more than parent
-                    double scale = calculate_scale(vg);
                     if (!allow_scale_zoom &&
                         (child != view) &&
                         (max_scale_child > 0.0))
@@ -1020,8 +1029,10 @@ class wayfire_scale : public wf::plugin_interface_t
                     }
 
                     // Target geometry is centered around the center slot
-                    const double dx = x - vg.x + ((scaled_width - vg.width) / 2.0);
-                    const double dy = y - vg.y + ((scaled_height - vg.height) / 2.0);
+                    const double dx = x + pad.left - vg.x +
+                        ((scaled_width - vg.width) / 2.0);
+                    const double dy = y + pad.top - vg.y +
+                        ((scaled_height - vg.height) / 2.0);
                     setup_view_transform(child_data, scale, scale,
                         dx, dy, target_alpha);
                 }
@@ -1240,16 +1251,14 @@ class wayfire_scale : public wf::plugin_interface_t
     /* Keep rendering until all animation has finished */
     wf::effect_hook_t post_hook = [=] ()
     {
-        output->render->schedule_redraw();
+        bool running = animation_running();
 
-        if (animation_running())
+        if (running)
         {
-            return;
+            output->render->schedule_redraw();
         }
 
-        unset_hook();
-
-        if (active)
+        if (active || running)
         {
             return;
         }
