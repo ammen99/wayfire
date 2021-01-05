@@ -14,7 +14,6 @@
 #include <wayfire/opengl.hpp>
 #include <wayfire/plugins/common/cairo-util.hpp>
 #include <wayfire/plugins/common/simple-texture.hpp>
-#include <cairo.h>
 
 struct scale_key_repeat_t
 {
@@ -201,13 +200,7 @@ class scale_title_filter : public wf::plugin_interface_t
     /*
      * Text overlay with the current filter
      */
-    wf::simple_texture_t tex;
-    /* cairo context and surface for the text */
-    cairo_t *cr = nullptr;
-    cairo_surface_t *surface = nullptr;
-    /* current width and height of the above surface */
-    unsigned int surface_width = 400;
-    unsigned int surface_height = 300;
+    wf::cairo_text_t filter_overlay;
     float output_scale = 1.0f;
     /* render function */
     wf::effect_hook_t render_hook = [=] () { render(); };
@@ -227,89 +220,20 @@ class scale_title_filter : public wf::plugin_interface_t
             return;
         }
 
-        /* update overlay with the current text */
-        if (!cr)
-        {
-            /* create with default size */
-            cairo_create_surface();
-        }
-
-        output_scale = output->render->get_target_framebuffer().scale;
-
-        cairo_text_extents_t extents;
-        cairo_font_extents_t font_extents;
-        cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL,
-            CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, font_size * output_scale);
-        cairo_text_extents(cr, title_filter.c_str(), &extents);
-        cairo_font_extents(cr, &font_extents);
-
-        double xpad    = 10.0 * output_scale;
-        double ypad    = 0.2 * (font_extents.ascent + font_extents.descent);
-        unsigned int w = (unsigned int)(extents.width + 2 * xpad);
-        unsigned int h = (unsigned int)(font_extents.ascent +
-            font_extents.descent + 2 * ypad);
         auto dim = output->get_screen_size();
-        if ((int)w > dim.width)
-        {
-            w = dim.width;
-        }
-
-        if ((int)h > dim.height)
-        {
-            h = dim.height;
-        }
-
-        if ((w > surface_width) || (h > surface_height))
-        {
-            surface_width  = w;
-            surface_height = h;
-            cairo_create_surface();
-        }
-
-        cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
-        cairo_paint(cr);
-
-        unsigned int x     = (surface_width - w) / 2;
-        unsigned int y     = (surface_height - h) / 2;
-        unsigned int min_r = (unsigned int)(20 * output_scale);
-        unsigned int r     = h > min_r ? min_r : (h - 2) / 2;
-        const wf::color_t& bg   = bg_color;
-        const wf::color_t& text = text_color;
-
-        cairo_move_to(cr, x + r, y);
-        cairo_line_to(cr, x + w - r, y);
-        cairo_curve_to(cr, x + w, y, x + w, y, x + w, y + r);
-        cairo_line_to(cr, x + w, y + h - r);
-        cairo_curve_to(cr, x + w, y + h, x + w, y + h, x + w - r, y + h);
-        cairo_line_to(cr, x + r, y + h);
-        cairo_curve_to(cr, x, y + h, x, y + h, x, y + h - r);
-        cairo_line_to(cr, x, y + r);
-        cairo_curve_to(cr, x, y, x, y, x + r, y);
-
-        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-        cairo_set_source_rgba(cr, bg.r, bg.g, bg.b, bg.a);
-        cairo_fill(cr);
-
-        x += xpad;
-        y += ypad + font_extents.ascent;
-        cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL,
-            CAIRO_FONT_WEIGHT_BOLD);
-        cairo_set_font_size(cr, font_size * output_scale);
-        cairo_move_to(cr, x - extents.x_bearing, y);
-        cairo_set_source_rgba(cr, text.r, text.g, text.b, text.a);
-        cairo_show_text(cr, title_filter.c_str());
-
-        cairo_surface_flush(surface);
-        OpenGL::render_begin();
-        cairo_surface_upload_to_texture(surface, tex);
-        OpenGL::render_end();
+        filter_overlay.render_text(
+            title_filter,
+            wf::cairo_text_t::params(font_size, bg_color, text_color, output_scale,
+                dim));
 
         if (!render_active)
         {
             output->render->add_effect(&render_hook, wf::OUTPUT_EFFECT_OVERLAY);
             render_active = true;
         }
+
+        int surface_width  = filter_overlay.tex.width;
+        int surface_height = filter_overlay.tex.height;
 
         output->render->damage({
             dim.width / 2 - (int)(surface_width / output_scale / 2),
@@ -322,16 +246,18 @@ class scale_title_filter : public wf::plugin_interface_t
     /* render the current content of the overlay texture */
     void render()
     {
-        if (tex.tex == (GLuint) - 1)
-        {
-            return;
-        }
-
         auto out_fb = output->render->get_target_framebuffer();
         auto dim    = output->get_screen_size();
         if (output_scale != out_fb.scale)
         {
+            output_scale = out_fb.scale;
             update_overlay();
+        }
+
+        const wf::simple_texture_t& tex = filter_overlay.tex;
+        if (tex.tex == (GLuint) - 1)
+        {
+            return;
         }
 
         wf::geometry_t geometry{
@@ -361,6 +287,9 @@ class scale_title_filter : public wf::plugin_interface_t
         {
             output->render->rem_effect(&render_hook);
             auto dim = output->get_screen_size();
+            int surface_width  = filter_overlay.tex.width;
+            int surface_height = filter_overlay.tex.height;
+
             output->render->damage({
                 dim.width / 2 - (int)(surface_width / output_scale / 2),
                 dim.height / 2 - (int)(surface_height / output_scale / 2),
@@ -369,32 +298,6 @@ class scale_title_filter : public wf::plugin_interface_t
             });
             render_active = false;
         }
-
-        cairo_free();
-    }
-
-    void cairo_free()
-    {
-        if (cr)
-        {
-            cairo_destroy(cr);
-        }
-
-        if (surface)
-        {
-            cairo_surface_destroy(surface);
-        }
-
-        cr = nullptr;
-        surface = nullptr;
-    }
-
-    void cairo_create_surface()
-    {
-        cairo_free();
-        surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, surface_width,
-            surface_height);
-        cr = cairo_create(surface);
     }
 };
 
