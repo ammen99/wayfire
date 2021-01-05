@@ -201,6 +201,7 @@ class scale_title_filter : public wf::plugin_interface_t
      * Text overlay with the current filter
      */
     wf::cairo_text_t filter_overlay;
+    wf::dimensions_t overlay_size;
     float output_scale = 1.0f;
     /* render function */
     wf::effect_hook_t render_hook = [=] () { render(); };
@@ -210,6 +211,16 @@ class scale_title_filter : public wf::plugin_interface_t
     wf::option_wrapper_t<wf::color_t> text_color{"scale-title-filter/text_color"};
     wf::option_wrapper_t<bool> show_overlay{"scale-title-filter/overlay"};
     wf::option_wrapper_t<int> font_size{"scale-title-filter/font_size"};
+
+    static wf::dimensions_t min(const wf::dimensions_t& x, const wf::dimensions_t& y)
+    {
+        return {std::min(x.width, y.width), std::min(x.height, y.height)};
+    }
+
+    static wf::dimensions_t max(const wf::dimensions_t& x, const wf::dimensions_t& y)
+    {
+        return {std::max(x.width, y.width), std::max(x.height, y.height)};
+    }
 
     void update_overlay()
     {
@@ -221,8 +232,7 @@ class scale_title_filter : public wf::plugin_interface_t
         }
 
         auto dim = output->get_screen_size();
-        filter_overlay.render_text(
-            title_filter,
+        auto new_size = filter_overlay.render_text(title_filter,
             wf::cairo_text_t::params(font_size, bg_color, text_color, output_scale,
                 dim));
 
@@ -232,15 +242,18 @@ class scale_title_filter : public wf::plugin_interface_t
             render_active = true;
         }
 
-        int surface_width  = filter_overlay.tex.width;
-        int surface_height = filter_overlay.tex.height;
+        auto surface_size = min(new_size, {filter_overlay.tex.width,
+            filter_overlay.tex.height});
+        auto damage = max(surface_size, overlay_size);
 
         output->render->damage({
-            dim.width / 2 - (int)(surface_width / output_scale / 2),
-            dim.height / 2 - (int)(surface_height / output_scale / 2),
-            (int)(surface_width / output_scale),
-            (int)(surface_height / output_scale)
+            dim.width / 2 - (int)(damage.width / output_scale / 2),
+            dim.height / 2 - (int)(damage.height / output_scale / 2),
+            (int)(damage.width / output_scale),
+            (int)(damage.height / output_scale)
         });
+
+        overlay_size = surface_size;
     }
 
     /* render the current content of the overlay texture */
@@ -261,11 +274,19 @@ class scale_title_filter : public wf::plugin_interface_t
         }
 
         wf::geometry_t geometry{
-            dim.width / 2 - (int)(tex.width / output_scale / 2),
-            dim.height / 2 - (int)(tex.height / output_scale / 2),
-            (int)(tex.width / output_scale),
-            (int)(tex.height / output_scale)
+            dim.width / 2 - (int)(overlay_size.width / output_scale / 2),
+            dim.height / 2 - (int)(overlay_size.height / output_scale / 2),
+            (int)(overlay_size.width / output_scale),
+            (int)(overlay_size.height / output_scale)
         };
+        gl_geometry gl_geom{(float)geometry.x, (float)geometry.y,
+            (float)(geometry.x + geometry.width),
+            (float)(geometry.y + geometry.height)};
+        float tex_wr = (float)overlay_size.width / (float)tex.width;
+        float tex_hr = (float)overlay_size.height / (float)tex.height;
+        gl_geometry tex_geom{0.5f - tex_wr / 2.f, 0.5f - tex_hr / 2.f,
+            0.5f + tex_wr / 2.f, 0.5f + tex_hr / 2.f};
+
         auto damage = output->render->get_scheduled_damage() & geometry;
         auto ortho  = out_fb.get_orthographic_projection();
 
@@ -273,8 +294,10 @@ class scale_title_filter : public wf::plugin_interface_t
         for (auto& box : damage)
         {
             out_fb.logic_scissor(wlr_box_from_pixman_box(box));
-            OpenGL::render_transformed_texture(tex.tex, geometry, ortho,
-                glm::vec4(1.f), OpenGL::TEXTURE_TRANSFORM_INVERT_Y);
+            OpenGL::render_transformed_texture(tex.tex, gl_geom, tex_geom, ortho,
+                glm::vec4(1.f),
+                OpenGL::TEXTURE_TRANSFORM_INVERT_Y |
+                OpenGL::TEXTURE_USE_TEX_GEOMETRY);
         }
 
         OpenGL::render_end();
