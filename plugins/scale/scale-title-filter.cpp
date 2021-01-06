@@ -340,7 +340,7 @@ class scale_title_filter : public wf::plugin_interface_t
             (int)(tex.width / output_scale),
             (int)(tex.height / output_scale)
         };
-        auto damage = output->render->get_swap_damage() & geometry;
+        auto damage = output->render->get_scheduled_damage() & geometry;
         auto ortho  = out_fb.get_orthographic_projection();
 
         OpenGL::render_begin(out_fb);
