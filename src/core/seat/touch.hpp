@@ -5,6 +5,7 @@
 #include <wayfire/touch/touch.hpp>
 #include "wayfire/util.hpp"
 #include "wayfire/view.hpp"
+#include <wayfire/signal-definitions.hpp>
 
 #include "surface-map-state.hpp"
 
@@ -56,10 +57,12 @@ class touch_interface_t : public noncopyable_t
     wf::plugin_grab_interface_t *grab = nullptr;
 
     wf::wl_listener_wrapper on_down, on_up, on_motion;
-    void handle_touch_down(int32_t id, uint32_t time, wf::pointf_t current);
+    void handle_touch_down(int32_t id, uint32_t time, wf::pointf_t current,
+        input_event_processing_mode_t mode);
     void handle_touch_motion(int32_t id, uint32_t time, wf::pointf_t current,
-        bool real_event);
-    void handle_touch_up(int32_t id, uint32_t time);
+        bool real_event, input_event_processing_mode_t mode);
+    void handle_touch_up(int32_t id, uint32_t time,
+        input_event_processing_mode_t mode);
 
     void set_touch_focus(wf::surface_interface_t *surface,
         int32_t id, uint32_t time, wf::pointf_t current);

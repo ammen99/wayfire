@@ -284,7 +284,8 @@ wf::tablet_tool_t*wf::tablet_t::ensure_tool(wlr_tablet_tool *tool)
     return (wf::tablet_tool_t*)tool->data;
 }
 
-void wf::tablet_t::handle_tip(wlr_event_tablet_tool_tip *ev)
+void wf::tablet_t::handle_tip(wlr_event_tablet_tool_tip *ev,
+    input_event_processing_mode_t mode)
 {
     auto& input = wf::get_core_impl().input;
     auto& seat  = wf::get_core_impl().seat;
@@ -322,7 +323,8 @@ void wf::tablet_t::handle_tip(wlr_event_tablet_tool_tip *ev)
     }
 }
 
-void wf::tablet_t::handle_axis(wlr_event_tablet_tool_axis *ev)
+void wf::tablet_t::handle_axis(wlr_event_tablet_tool_axis *ev,
+    input_event_processing_mode_t mode)
 {
     auto& input = wf::get_core_impl().input;
 
@@ -357,13 +359,15 @@ void wf::tablet_t::handle_axis(wlr_event_tablet_tool_axis *ev)
     tool->passthrough_axis(ev);
 }
 
-void wf::tablet_t::handle_button(wlr_event_tablet_tool_button *ev)
+void wf::tablet_t::handle_button(wlr_event_tablet_tool_button *ev,
+    input_event_processing_mode_t mode)
 {
     /* Pass to the tool */
     ensure_tool(ev->tool)->handle_button(ev);
 }
 
-void wf::tablet_t::handle_proximity(wlr_event_tablet_tool_proximity *ev)
+void wf::tablet_t::handle_proximity(wlr_event_tablet_tool_proximity *ev,
+    input_event_processing_mode_t mode)
 {
     ensure_tool(ev->tool)->handle_proximity(ev);
 

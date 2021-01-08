@@ -62,6 +62,23 @@ struct switch_signal : public wf::signal_data_t
 };
 
 /**
+ * Describes the various ways in which core should handle an input event.
+ */
+enum class input_event_processing_mode_t
+{
+    /**
+     * Core should process this event for input grabs, bindings and eventually
+     * forward it to a client surface.
+     */
+    FULL,
+    /**
+     * Core should process this event for input grabs and bindings, but not send
+     * the event to the client.
+     */
+    NO_CLIENT,
+};
+
+/**
  * name:
  *   pointer_motion, pointer_motion_absolute, pointer_button, pointer_axis,
  *   pointer_swipe_begin, pointer_swipe_update, pointer_swipe_end,
@@ -91,6 +108,15 @@ struct input_event_signal : public wf::signal_data_t
 {
     /* The event as it has arrived from wlroots */
     wlr_event_t *event;
+
+    /**
+     * Describes how core should handle this event.
+     *
+     * This is currently supported for only a subset of signals, namely:
+     *
+     * pointer_button, keyboard_key, touch_down
+     */
+    input_event_processing_mode_t mode = input_event_processing_mode_t::FULL;
 };
 
 /**

@@ -59,9 +59,9 @@ void wf::cursor_t::setup_listeners()
 #define setup_passthrough_callback(evname) \
     on_ ## evname.set_callback([&] (void *data) { \
         set_touchscreen_mode(false); \
-        auto ev = static_cast<wlr_event_pointer_ ## evname*>(data); \
-        emit_device_event_signal("pointer_" #evname, ev); \
-        seat->lpointer->handle_pointer_ ## evname(ev); \
+        auto ev   = static_cast<wlr_event_pointer_ ## evname*>(data); \
+        auto mode = emit_device_event_signal("pointer_" #evname, ev); \
+        seat->lpointer->handle_pointer_ ## evname(ev, mode); \
         wlr_idle_notify_activity(core.protocols.idle, core.get_current_seat()); \
         emit_device_event_signal("pointer_" #evname "_post", ev); \
     }); \
@@ -87,11 +87,11 @@ void wf::cursor_t::setup_listeners()
     on_tablet_ ## evname.set_callback([&] (void *data) { \
         set_touchscreen_mode(false); \
         auto ev = static_cast<wlr_event_tablet_tool_ ## evname*>(data); \
-        emit_device_event_signal("tablet_" #evname, ev); \
+        auto handling_mode = emit_device_event_signal("tablet_" #evname, ev); \
         if (ev->device->tablet->data) { \
             auto tablet = \
                 static_cast<wf::tablet_t*>(ev->device->tablet->data); \
-            tablet->handle_ ## evname(ev); \
+            tablet->handle_ ## evname(ev, handling_mode); \
         } \
         wlr_idle_notify_activity(wf::get_core().protocols.idle, seat->seat); \
         emit_device_event_signal("tablet_" #evname "_post", ev); \

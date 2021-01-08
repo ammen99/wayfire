@@ -315,10 +315,11 @@ void wf::pointer_t::grab_surface(wf::surface_interface_t *surface)
 }
 
 /* ----------------------- Input event processing --------------------------- */
-void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev)
+void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev,
+    input_event_processing_mode_t mode)
 {
     seat->break_mod_bindings();
-    bool handled_in_binding = false;
+    bool handled_in_binding = (mode == input_event_processing_mode_t::FULL);
 
     if (ev->state == WLR_BUTTON_PRESSED)
     {
@@ -416,7 +417,8 @@ void wf::pointer_t::send_motion(uint32_t time_msec, wf::pointf_t local)
     }
 }
 
-void wf::pointer_t::handle_pointer_motion(wlr_event_pointer_motion *ev)
+void wf::pointer_t::handle_pointer_motion(wlr_event_pointer_motion *ev,
+    input_event_processing_mode_t mode)
 {
     if (input->input_grabbed() &&
         input->active_grab->callbacks.pointer.relative_motion)
@@ -457,7 +459,7 @@ void wf::pointer_t::handle_pointer_motion(wlr_event_pointer_motion *ev)
 }
 
 void wf::pointer_t::handle_pointer_motion_absolute(
-    wlr_event_pointer_motion_absolute *ev)
+    wlr_event_pointer_motion_absolute *ev, input_event_processing_mode_t mode)
 {
     // next coordinates
     double cx, cy;
@@ -486,7 +488,8 @@ void wf::pointer_t::handle_pointer_motion_absolute(
     update_cursor_position(ev->time_msec);
 }
 
-void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev)
+void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev,
+    input_event_processing_mode_t mode)
 {
     bool handled_in_binding = input->get_active_bindings().handle_axis(
         seat->get_modifiers(), ev);
@@ -518,7 +521,8 @@ void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev)
         mult * ev->delta, mult * ev->delta_discrete, ev->source);
 }
 
-void wf::pointer_t::handle_pointer_swipe_begin(wlr_event_pointer_swipe_begin *ev)
+void wf::pointer_t::handle_pointer_swipe_begin(wlr_event_pointer_swipe_begin *ev,
+    input_event_processing_mode_t mode)
 {
     wlr_pointer_gestures_v1_send_swipe_begin(
         wf::get_core().protocols.pointer_gestures, seat->seat,
@@ -526,21 +530,23 @@ void wf::pointer_t::handle_pointer_swipe_begin(wlr_event_pointer_swipe_begin *ev
 }
 
 void wf::pointer_t::handle_pointer_swipe_update(
-    wlr_event_pointer_swipe_update *ev)
+    wlr_event_pointer_swipe_update *ev, input_event_processing_mode_t mode)
 {
     wlr_pointer_gestures_v1_send_swipe_update(
         wf::get_core().protocols.pointer_gestures, seat->seat,
         ev->time_msec, ev->dx, ev->dy);
 }
 
-void wf::pointer_t::handle_pointer_swipe_end(wlr_event_pointer_swipe_end *ev)
+void wf::pointer_t::handle_pointer_swipe_end(wlr_event_pointer_swipe_end *ev,
+    input_event_processing_mode_t mode)
 {
     wlr_pointer_gestures_v1_send_swipe_end(
         wf::get_core().protocols.pointer_gestures, seat->seat,
         ev->time_msec, ev->cancelled);
 }
 
-void wf::pointer_t::handle_pointer_pinch_begin(wlr_event_pointer_pinch_begin *ev)
+void wf::pointer_t::handle_pointer_pinch_begin(wlr_event_pointer_pinch_begin *ev,
+    input_event_processing_mode_t mode)
 {
     wlr_pointer_gestures_v1_send_pinch_begin(
         wf::get_core().protocols.pointer_gestures, seat->seat,
@@ -548,14 +554,15 @@ void wf::pointer_t::handle_pointer_pinch_begin(wlr_event_pointer_pinch_begin *ev
 }
 
 void wf::pointer_t::handle_pointer_pinch_update(
-    wlr_event_pointer_pinch_update *ev)
+    wlr_event_pointer_pinch_update *ev, input_event_processing_mode_t mode)
 {
     wlr_pointer_gestures_v1_send_pinch_update(
         wf::get_core().protocols.pointer_gestures, seat->seat,
         ev->time_msec, ev->dx, ev->dy, ev->scale, ev->rotation);
 }
 
-void wf::pointer_t::handle_pointer_pinch_end(wlr_event_pointer_pinch_end *ev)
+void wf::pointer_t::handle_pointer_pinch_end(wlr_event_pointer_pinch_end *ev,
+    input_event_processing_mode_t mode)
 {
     wlr_pointer_gestures_v1_send_pinch_end(
         wf::get_core().protocols.pointer_gestures, seat->seat,

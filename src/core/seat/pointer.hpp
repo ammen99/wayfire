@@ -7,6 +7,7 @@
 #include <wayfire/util.hpp>
 #include <wayfire/option-wrapper.hpp>
 #include "surface-map-state.hpp"
+#include "wayfire/signal-definitions.hpp"
 #include <wayfire/nonstd/wlroots-full.hpp>
 
 namespace wf
@@ -63,18 +64,28 @@ class pointer_t
     wlr_pointer_constraint_v1 *get_active_pointer_constraint();
 
     /** Handle events coming from the input devices */
-    void handle_pointer_axis(wlr_event_pointer_axis *ev);
-    void handle_pointer_motion(wlr_event_pointer_motion *ev);
-    void handle_pointer_motion_absolute(wlr_event_pointer_motion_absolute *ev);
-    void handle_pointer_button(wlr_event_pointer_button *ev);
+    void handle_pointer_axis(wlr_event_pointer_axis *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_motion(wlr_event_pointer_motion *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_motion_absolute(wlr_event_pointer_motion_absolute *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_button(wlr_event_pointer_button *ev,
+        input_event_processing_mode_t mode);
 
     /** Handle touchpad gestures detected by libinput */
-    void handle_pointer_swipe_begin(wlr_event_pointer_swipe_begin *ev);
-    void handle_pointer_swipe_update(wlr_event_pointer_swipe_update *ev);
-    void handle_pointer_swipe_end(wlr_event_pointer_swipe_end *ev);
-    void handle_pointer_pinch_begin(wlr_event_pointer_pinch_begin *ev);
-    void handle_pointer_pinch_update(wlr_event_pointer_pinch_update *ev);
-    void handle_pointer_pinch_end(wlr_event_pointer_pinch_end *ev);
+    void handle_pointer_swipe_begin(wlr_event_pointer_swipe_begin *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_swipe_update(wlr_event_pointer_swipe_update *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_swipe_end(wlr_event_pointer_swipe_end *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_pinch_begin(wlr_event_pointer_pinch_begin *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_pinch_update(wlr_event_pointer_pinch_update *ev,
+        input_event_processing_mode_t mode);
+    void handle_pointer_pinch_end(wlr_event_pointer_pinch_end *ev,
+        input_event_processing_mode_t mode);
     void handle_pointer_frame();
 
     /** Whether there are pressed buttons currently */

@@ -1,6 +1,7 @@
 #ifndef SEAT_HPP
 #define SEAT_HPP
 
+#include <wayfire/signal-definitions.hpp>
 #include <wayfire/nonstd/wlroots-full.hpp>
 
 #include "../../view/surface-impl.hpp"

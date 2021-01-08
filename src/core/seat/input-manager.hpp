@@ -90,11 +90,14 @@ class input_manager_t
  * Emit a signal for device events.
  */
 template<class EventType>
-void emit_device_event_signal(std::string event_name, EventType *event)
+wf::input_event_processing_mode_t emit_device_event_signal(
+    std::string event_name, EventType *event)
 {
     wf::input_event_signal<EventType> data;
     data.event = event;
     wf::get_core().emit_signal(event_name, &data);
+
+    return data.mode;
 }
 
 #endif /* end of include guard: INPUT_MANAGER_HPP */

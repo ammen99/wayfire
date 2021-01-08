@@ -21,8 +21,8 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
     // connect handlers
     on_down.set_callback([=] (void *data)
     {
-        auto ev = static_cast<wlr_event_touch_down*>(data);
-        emit_device_event_signal("touch_down", ev);
+        auto ev   = static_cast<wlr_event_touch_down*>(data);
+        auto mode = emit_device_event_signal("touch_down", ev);
 
         double lx, ly;
         wlr_cursor_absolute_to_layout_coords(cursor, ev->device,
@@ -30,7 +30,7 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
 
         wf::pointf_t point;
         wf::get_core().output_layout->get_output_coords_at({lx, ly}, point);
-        handle_touch_down(ev->touch_id, ev->time_msec, point);
+        handle_touch_down(ev->touch_id, ev->time_msec, point, mode);
         wlr_idle_notify_activity(wf::get_core().protocols.idle,
             wf::get_core().get_current_seat());
         emit_device_event_signal("touch_down_post", ev);
@@ -38,9 +38,9 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
 
     on_up.set_callback([=] (void *data)
     {
-        auto ev = static_cast<wlr_event_touch_up*>(data);
-        emit_device_event_signal("touch_up", ev);
-        handle_touch_up(ev->touch_id, ev->time_msec);
+        auto ev   = static_cast<wlr_event_touch_up*>(data);
+        auto mode = emit_device_event_signal("touch_up", ev);
+        handle_touch_up(ev->touch_id, ev->time_msec, mode);
         wlr_idle_notify_activity(wf::get_core().protocols.idle,
             wf::get_core().get_current_seat());
         emit_device_event_signal("touch_up_post", ev);
@@ -48,8 +48,8 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
 
     on_motion.set_callback([=] (void *data)
     {
-        auto ev = static_cast<wlr_event_touch_motion*>(data);
-        emit_device_event_signal("touch_motion", ev);
+        auto ev   = static_cast<wlr_event_touch_motion*>(data);
+        auto mode = emit_device_event_signal("touch_motion", ev);
 
         double lx, ly;
         wlr_cursor_absolute_to_layout_coords(
@@ -58,7 +58,7 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
 
         wf::pointf_t point;
         wf::get_core().output_layout->get_output_coords_at({lx, ly}, point);
-        handle_touch_motion(ev->touch_id, ev->time_msec, point, true);
+        handle_touch_motion(ev->touch_id, ev->time_msec, point, true, mode);
         wlr_idle_notify_activity(wf::get_core().protocols.idle,
             wf::get_core().get_current_seat());
         emit_device_event_signal("touch_motion_post", ev);
@@ -83,7 +83,8 @@ wf::touch_interface_t::touch_interface_t(wlr_cursor *cursor, wlr_seat *seat,
         for (auto f : this->get_state().fingers)
         {
             this->handle_touch_motion(f.first, get_current_time(),
-                {f.second.current.x, f.second.current.y}, false);
+                {f.second.current.x, f.second.current.y}, false,
+                input_event_processing_mode_t::FULL);
         }
     });
 
@@ -123,7 +124,8 @@ void wf::touch_interface_t::set_grab(wf::plugin_grab_interface_t *grab)
         for (auto& f : this->get_state().fingers)
         {
             handle_touch_motion(f.first, get_current_time(),
-                {f.second.current.x, f.second.current.y}, false);
+                {f.second.current.x, f.second.current.y}, false,
+                input_event_processing_mode_t::FULL);
         }
     }
 }
@@ -207,7 +209,7 @@ void wf::touch_interface_t::update_gestures(const wf::touch::gesture_event_t& ev
 }
 
 void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
-    wf::pointf_t point)
+    wf::pointf_t point, input_event_processing_mode_t mode)
 {
     auto& seat = wf::get_core_impl().seat;
     seat->break_mod_bindings();
@@ -231,7 +233,7 @@ void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
     };
     finger_state.update(gesture_event);
 
-    if (this->grab)
+    if (this->grab || (mode != input_event_processing_mode_t::FULL))
     {
         update_gestures(gesture_event);
         update_cursor_state();
@@ -257,13 +259,14 @@ void wf::touch_interface_t::handle_touch_down(int32_t id, uint32_t time,
     }
 
     set_touch_focus(focus, id, time, local);
+
     seat->update_drag_icon();
     update_gestures(gesture_event);
     update_cursor_state();
 }
 
 void wf::touch_interface_t::handle_touch_motion(int32_t id, uint32_t time,
-    wf::pointf_t point, bool is_real_event)
+    wf::pointf_t point, bool is_real_event, input_event_processing_mode_t mode)
 {
     // handle_touch_motion is called on both real motion events and when
     // touch focus should be updated.
@@ -320,7 +323,8 @@ void wf::touch_interface_t::handle_touch_motion(int32_t id, uint32_t time,
     }
 }
 
-void wf::touch_interface_t::handle_touch_up(int32_t id, uint32_t time)
+void wf::touch_interface_t::handle_touch_up(int32_t id, uint32_t time,
+    input_event_processing_mode_t mode)
 {
     const wf::touch::gesture_event_t gesture_event = {
         .type   = wf::touch::EVENT_TYPE_TOUCH_UP,
@@ -364,7 +368,8 @@ void wf::touch_interface_t::end_touch_down_grab()
         for (auto& f : finger_state.fingers)
         {
             handle_touch_motion(f.first, wf::get_current_time(),
-                {f.second.current.x, f.second.current.y}, false);
+                {f.second.current.x, f.second.current.y}, false,
+                input_event_processing_mode_t::FULL);
         }
     }
 }
