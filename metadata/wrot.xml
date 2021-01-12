@@ -5,15 +5,40 @@
 		<_long>A plugin to rotate windows with the mouse.</_long>
 		<category>Effects</category>
 		<option name="activate" type="button">
-			<_short>Activate</_short>
-			<_long>Rotates the window with the specified button.</_long>
+			<_short>Rotate 2D</_short>
+			<_long>Rotates the window around its z-axis.</_long>
 			<default>&lt;super&gt; &lt;ctrl&gt; BTN_RIGHT</default>
+		</option>
+		<option name="activate-3d" type="button">
+			<_short>Rotate 3D</_short>
+			<_long>Rotates the window around its x and y axes..</_long>
+			<default>&lt;super&gt; &lt;shift&gt; BTN_RIGHT</default>
 		</option>
 		<option name="reset_radius" type="double">
 			<_short>Reset Radius</_short>
-			<_long>The radius of the reset area. The reset area is located at the center of the view and resets the rotation.</_long>
+			<_long>The radius of the reset area for 2D rotations. The reset area is located at the center of the view and resets the rotation.</_long>
 			<default>25.0</default>
 			<min>1.0</min>
+		</option>
+		<option name="reset-one" type="key">
+			<_short>Reset Current</_short>
+			<_long>Remove rotation from the currently focused view.</_long>
+			<default>&lt;super&gt; KEY_R</default>
+		</option>
+		<option name="reset" type="key">
+			<_short>Reset All</_short>
+			<_long>Remove rotation from all views.</_long>
+			<default>&lt;super&gt; &lt;ctrl&gt; KEY_R</default>
+		</option>
+		<option name="sensitivity" type="int">
+			<_short>Sensitivity (3D)</_short>
+			<_long>How quickly 3D rotations happen with mouse movements (in arminutes per pixel).</_long>
+			<default>24</default>
+		</option>
+		<option name="invert" type="bool">
+			<_short>Invert 3D rotation directions</_short>
+			<_long>Invert the direction of movement for 3D rotations.</_long>
+			<default>false</default>
 		</option>
 	</plugin>
 </wayfire>
