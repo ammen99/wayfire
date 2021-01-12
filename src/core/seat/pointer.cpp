@@ -16,7 +16,10 @@ wf::pointer_t::pointer_t(nonstd::observer_ptr<wf::input_manager_t> input,
     this->seat  = seat;
     on_surface_map_state_change.set_callback([=] (auto surface)
     {
-        if (surface && (grabbed_surface == surface) && !surface->is_mapped())
+        if (surface && !surface->is_mapped() &&
+            ((grabbed_surface == surface) ||
+             (grabbed_surface &&
+              (grabbed_surface->get_main_surface() == surface->get_main_surface()))))
         {
             grab_surface(nullptr);
         } else
