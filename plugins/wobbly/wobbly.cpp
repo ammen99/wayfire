@@ -265,6 +265,9 @@ class iwobbly_state_t
         wm_geometry.y  += dy;
         bounding_box.x += dx;
         bounding_box.y += dy;
+
+        model->x += dx;
+        model->y += dy;
     }
 
     virtual void update_base_geometry(wf::geometry_t base)
