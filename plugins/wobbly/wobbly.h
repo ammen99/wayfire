@@ -44,6 +44,7 @@ void wobbly_grab_notify(struct wobbly_surface *surface, int x, int y);
 void wobbly_slight_wobble(struct wobbly_surface *surface);
 void wobbly_ungrab_notify(struct wobbly_surface *surface);
 
+void wobbly_scale(struct wobbly_surface *surface, double dx, double dy);
 void wobbly_resize(struct wobbly_surface *surface, int width, int height);
 void wobbly_move_notify(struct wobbly_surface *surface, int x, int y);
 void wobbly_prepare_paint(struct wobbly_surface *surface, int msSinceLastPaint);

@@ -823,6 +823,29 @@ void wobbly_translate(struct wobbly_surface *surface, int dx, int dy)
     }
 }
 
+static void scale(float origin, float *x, double scale)
+{
+    *x = (*x - origin) * scale + origin;
+}
+
+void wobbly_scale(struct wobbly_surface *surface, double dx, double dy)
+{
+    WobblyWindow *ww = surface->ww;
+    if (wobblyEnsureModel(surface))
+    {
+        for (int i = 0; i < ww->model->numObjects; i++)
+        {
+            scale(surface->x, &ww->model->objects[i].position.x, dx);
+            scale(surface->y, &ww->model->objects[i].position.y, dy);
+        }
+
+        scale(surface->x, &ww->model->topLeft.x, dx);
+        scale(surface->y, &ww->model->topLeft.y, dy);
+        scale(surface->x, &ww->model->bottomRight.x, dx);
+        scale(surface->y, &ww->model->bottomRight.y, dy);
+    }
+}
+
 struct wobbly_rect wobbly_boundingbox(struct wobbly_surface *surface)
 {
     WobblyWindow *ww = surface->ww;

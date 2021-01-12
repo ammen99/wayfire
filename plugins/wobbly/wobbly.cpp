@@ -259,6 +259,26 @@ class iwobbly_state_t
         bounding_box.y += dy;
     }
 
+    virtual void update_base_geometry(wf::geometry_t base)
+    {
+        wobbly_scale(model.get(),
+            1.0 * base.width / bounding_box.width,
+            1.0 * base.height / bounding_box.height);
+        wobbly_translate(model.get(),
+            base.x - bounding_box.x,
+            base.y - bounding_box.y);
+        wobbly_resize(model.get(),
+            base.width,
+            base.height);
+
+        this->bounding_box = base;
+
+        model->x     = base.x;
+        model->y     = base.y;
+        model->width = base.width;
+        model->height = base.height;
+    }
+
   protected:
     wayfire_view view;
     const wobbly_model_t& model;
@@ -788,6 +808,11 @@ class wf_wobbly : public wf::view_transformer_t
         model->synced = 0;
     }
 
+    void update_base_geometry(wf::geometry_t g)
+    {
+        state->update_base_geometry(g);
+    }
+
     void destroy_self()
     {
         view->pop_transformer("wobbly");
@@ -886,6 +911,11 @@ class wayfire_wobbly : public wf::plugin_interface_t
         if (data->events & WOBBLY_EVENT_UNTILE)
         {
             wobbly->set_force_tile(false);
+        }
+
+        if (data->events & WOBBLY_EVENT_SCALE)
+        {
+            wobbly->update_base_geometry(data->geometry);
         }
     }
 

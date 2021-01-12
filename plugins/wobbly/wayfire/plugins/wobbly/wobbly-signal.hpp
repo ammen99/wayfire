@@ -10,6 +10,7 @@ enum wobbly_event
     WOBBLY_EVENT_TRANSLATE  = (1 << 4),
     WOBBLY_EVENT_FORCE_TILE = (1 << 5),
     WOBBLY_EVENT_UNTILE     = (1 << 6),
+    WOBBLY_EVENT_SCALE      = (1 << 7),
 };
 
 /**
@@ -28,6 +29,11 @@ struct wobbly_signal : public wf::_view_signal
      * For EVENT_TRANSLATE: the amount of translation
      */
     wf::point_t pos;
+
+    /**
+     * For EVENT_SCALE: the new size of the base surface.
+     */
+    wf::geometry_t geometry;
 };
 
 /**
@@ -103,5 +109,17 @@ inline void set_tiled_wobbly(wayfire_view view, bool tiled)
     wobbly_signal sig;
     sig.view   = view;
     sig.events = tiled ? WOBBLY_EVENT_FORCE_TILE : WOBBLY_EVENT_UNTILE;
+    view->get_output()->emit_signal("wobbly-event", &sig);
+}
+
+/**
+ * Change the wobbly model geometry, without re-activating the springs.
+ */
+inline void modify_wobbly(wayfire_view view, wf::geometry_t target)
+{
+    wobbly_signal sig;
+    sig.view     = view;
+    sig.events   = WOBBLY_EVENT_SCALE;
+    sig.geometry = target;
     view->get_output()->emit_signal("wobbly-event", &sig);
 }
