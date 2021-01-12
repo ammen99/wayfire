@@ -250,7 +250,7 @@ class iwobbly_state_t
         view(v), model(m)
     {
         wm_geometry  = v->get_wm_geometry();
-        bounding_box = {0, 0, 1, 1};
+        bounding_box = {model->x, model->y, model->width, model->height};
     }
 
     /**
@@ -342,7 +342,7 @@ class wobbly_state_grabbed_t : public iwobbly_state_t
         auto old_bbox = bounding_box;
         iwobbly_state_t::handle_frame();
 
-        if (old_bbox != bounding_box)
+        if (wf::dimensions(old_bbox) != wf::dimensions(bounding_box))
         {
             /* Directly accept new size, but keep position,
              * because it is managed by the grab. */
@@ -468,8 +468,7 @@ class wobbly_state_floating_t : public iwobbly_state_t
             view->move(model->x + wm.x - new_bbox.x, model->y + wm.y - new_bbox.y);
         }
 
-        if ((new_bbox.width != this->bounding_box.width) ||
-            (new_bbox.height != this->bounding_box.height))
+        if (wf::dimensions(new_bbox) != wf::dimensions(this->bounding_box))
         {
             wobbly_resize(model.get(), new_bbox.width, new_bbox.height);
         }
@@ -514,7 +513,7 @@ class wobbly_state_free_t : public iwobbly_state_t
         auto old_bbox = bounding_box;
         iwobbly_state_t::handle_frame();
 
-        if (old_bbox != bounding_box)
+        if (wf::dimensions(old_bbox) != wf::dimensions(bounding_box))
         {
             wobbly_set_top_anchor(model.get(), bounding_box.x, bounding_box.y,
                 bounding_box.width, bounding_box.height);
