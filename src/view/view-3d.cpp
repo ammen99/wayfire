@@ -226,12 +226,39 @@ wf::pointf_t wf::view_3D::transform_point(
     return get_absolute_coords_from_relative(geometry, {v.x, v.y});
 }
 
-/* TODO: is there a way to realiably reverse projective transformations? */
 wf::pointf_t wf::view_3D::untransform_point(wf::geometry_t geometry,
     wf::pointf_t point)
 {
-    return {wf::compositor_core_t::invalid_coordinate,
-        wf::compositor_core_t::invalid_coordinate};
+    auto p  = get_center_relative_coords(geometry, point);
+    auto tr = calculate_total_transform();
+
+    /* Since we know that our original z coordinates were zero, we can write a
+     * system of linear equations for the original (x,y) coordinates by writing
+     * out the (x,y,w) components of the transformed coordinate.
+     *
+     * This results in the following matrix equation:
+     * A x = b, where A and b are defined below and x is the vector
+     * of untransformed coordinates that we want to compute. */
+    glm::dmat2 A{p.x * tr[0][3] - tr[0][0], p.y * tr[0][3] - tr[0][1],
+        p.x * tr[1][3] - tr[1][0], p.y * tr[1][3] - tr[1][1]};
+
+    if (std::abs(glm::determinant(A)) < 1e-6)
+    {
+        /* This will happen if the transformed view is in rotated in a plane
+         * perpendicular to the screen (i.e. it is displayed as a thin line).
+         * We might want to add special casing for this so that the view can
+         * still be "selected" in this case. */
+        return {wf::compositor_core_t::invalid_coordinate,
+            wf::compositor_core_t::invalid_coordinate};
+    }
+
+    glm::dvec2 b{tr[3][0] - p.x * tr[3][3], tr[3][1] - p.y * tr[3][3]};
+    /* TODO: use a better solution formula instead of explicitly calculating the
+     * inverse to have better numerical stability. For a 2x2 matrix, the
+     * difference will be small though. */
+    glm::dvec2 res = glm::inverse(A) * b;
+
+    return get_absolute_coords_from_relative(geometry, {res.x, res.y});
 }
 
 void wf::view_3D::render_box(wf::texture_t src_tex, wlr_box src_box,
