@@ -14,6 +14,11 @@ class surface_interface_t::impl
     std::vector<std::unique_ptr<surface_interface_t>> surface_children_above;
     std::vector<std::unique_ptr<surface_interface_t>> surface_children_below;
 
+    /**
+     * Remove all subsurfaces and emit signals for them.
+     */
+    void clear_subsurfaces(surface_interface_t *self);
+
     wf::output_t *output = nullptr;
     static int active_shrink_constraint;
 

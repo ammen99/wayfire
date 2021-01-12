@@ -216,6 +216,25 @@ void wf::surface_interface_t::damage_surface_box(const wlr_box& box)
     }
 }
 
+void wf::surface_interface_t::clear_subsurfaces()
+{
+    subsurface_removed_signal ev;
+    ev.main_surface = this;
+    const auto& finish_subsurfaces = [&] (auto& container)
+    {
+        for (auto& surface : container)
+        {
+            ev.subsurface = {surface};
+            this->emit_signal("subsurface-removed", &ev);
+        }
+
+        container.clear();
+    };
+
+    finish_subsurfaces(priv->surface_children_above);
+    finish_subsurfaces(priv->surface_children_below);
+}
+
 wf::wlr_surface_base_t::wlr_surface_base_t(surface_interface_t *self)
 {
     _as_si = self;
@@ -327,6 +346,10 @@ void wf::wlr_surface_base_t::unmap()
     on_new_subsurface.disconnect();
     on_destroy.disconnect();
     on_commit.disconnect();
+
+    // Clear all subsurfaces we have.
+    // This might remove subsurfaces that will be re-created again on map.
+    this->_as_si->clear_subsurfaces();
 }
 
 wlr_buffer*wf::wlr_surface_base_t::get_buffer()

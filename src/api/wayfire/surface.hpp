@@ -197,6 +197,9 @@ class surface_interface_t : public wf::object_base_t
     /** Damage the given region, in surface-local coordinates */
     virtual void damage_surface_region(const wf::region_t& region);
 
+    /** Remove all subsurfaces that we have. Should to be called after unmapping! */
+    virtual void clear_subsurfaces();
+
     /* Allow wlr surface implementation to access surface internals */
     friend class wlr_surface_base_t;
 };
