@@ -50,6 +50,23 @@ inline void start_wobbly(wayfire_view view, int grab_x, int grab_y)
 }
 
 /**
+ * Start wobblying when the view is being grabbed, for ex. when moving it.
+ * The position is relative to the view, i.e [0.5, 0.5] is the midpoint.
+ */
+inline void start_wobbly_rel(wayfire_view view, wf::pointf_t rel_grab)
+{
+    wobbly_signal sig;
+    sig.view   = view;
+    sig.events = WOBBLY_EVENT_GRAB;
+
+    auto bbox = view->get_bounding_box();
+    sig.pos.x = bbox.x + rel_grab.x * bbox.width;
+    sig.pos.y = bbox.y + rel_grab.y * bbox.height;
+
+    view->get_output()->emit_signal("wobbly-event", &sig);
+}
+
+/**
  * Release the wobbly grab
  */
 inline void end_wobbly(wayfire_view view)
