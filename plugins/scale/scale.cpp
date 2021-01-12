@@ -12,6 +12,10 @@
 #include <wayfire/plugins/vswitch.hpp>
 #include <wayfire/touch/touch.hpp>
 #include <wayfire/plugins/scale-signal.hpp>
+#include <wayfire/plugins/wobbly/wobbly-signal.hpp>
+
+#include <wayfire/plugins/common/move-drag-interface.hpp>
+#include <wayfire/plugins/common/shared-core-data.hpp>
 
 #include <linux/input-event-codes.h>
 
@@ -44,7 +48,7 @@ class wf_scale : public wf::view_2D
 
     uint32_t get_z_order() override
     {
-        return wf::TRANSFORMER_HIGHLEVEL + 1;
+        return wf::TRANSFORMER_HIGHLEVEL - 10;
     }
 };
 
@@ -114,6 +118,8 @@ class wayfire_scale : public wf::plugin_interface_t
     bool all_workspaces;
     std::unique_ptr<wf::vswitch::control_bindings_t> workspace_bindings;
 
+    wf::shared_data::ref_ptr_t<wf::move_drag::core_drag_t> drag_helper;
+
   public:
     void init() override
     {
@@ -140,10 +146,19 @@ class wayfire_scale : public wf::plugin_interface_t
             finalize();
         };
 
+        grab_interface->callbacks.pointer.motion = [=] (int32_t x, int32_t y)
+        {
+            auto offset = wf::origin(output->get_layout_geometry());
+            process_motion(offset + wf::point_t{x, y});
+        };
+
         interact.set_callback(interact_option_changed);
         allow_scale_zoom.set_callback(allow_scale_zoom_option_changed);
 
         setup_workspace_switching();
+
+        drag_helper->connect_signal("focus-output", &on_drag_output_focus);
+        drag_helper->connect_signal("done", &on_drag_done);
     }
 
     void setup_workspace_switching()
@@ -193,6 +208,7 @@ class wayfire_scale : public wf::plugin_interface_t
          * this is a good place to connect the geometry-changed handler */
         view->connect_signal("geometry-changed", &view_geometry_changed);
 
+        set_tiled_wobbly(view, true);
         return true;
     }
 
@@ -200,6 +216,7 @@ class wayfire_scale : public wf::plugin_interface_t
     void pop_transformer(wayfire_view view)
     {
         view->pop_transformer(transformer_name);
+        set_tiled_wobbly(view, false);
     }
 
     /* Remove scale transformers from all views */
@@ -475,13 +492,21 @@ class wayfire_scale : public wf::plugin_interface_t
             return;
         }
 
+        if (drag_helper->view)
+        {
+            drag_helper->handle_input_released();
+        }
+
         auto view = wf::get_core().get_view_at(input_position);
         if (!view || (last_selected_view != view))
         {
+            last_selected_view = nullptr;
             // Operation was cancelled, for ex. dragged outside of the view
             return;
         }
 
+        // Reset last_selected_view, because it is no longer held
+        last_selected_view = nullptr;
         switch (button)
         {
           case BTN_LEFT:
@@ -511,6 +536,23 @@ class wayfire_scale : public wf::plugin_interface_t
 
           default:
             break;
+        }
+    }
+
+    void process_motion(wf::point_t to)
+    {
+        if (last_selected_view)
+        {
+            wf::move_drag::drag_options_t opts;
+            opts.join_views = true;
+            opts.enable_snap_off    = true;
+            opts.snap_off_threshold = 200;
+
+            drag_helper->start_drag(last_selected_view, to, opts);
+            last_selected_view = nullptr;
+        } else if (drag_helper->view)
+        {
+            drag_helper->handle_motion(to);
         }
     }
 
@@ -1215,6 +1257,37 @@ class wayfire_scale : public wf::plugin_interface_t
         finalize();
     };
 
+    bool can_handle_drag()
+    {
+        return output->is_plugin_active(this->grab_interface->name);
+    }
+
+    wf::signal_connection_t on_drag_output_focus = [=] (auto data)
+    {
+        auto ev = static_cast<wf::move_drag::drag_focus_output_signal*>(data);
+        if ((ev->focus_output == output) && can_handle_drag())
+        {
+            drag_helper->set_scale(1.0);
+        }
+    };
+
+    wf::signal_connection_t on_drag_done = [=] (auto data)
+    {
+        auto ev = static_cast<wf::move_drag::drag_done_signal*>(data);
+        if ((ev->focused_output == output) && can_handle_drag())
+        {
+            if (ev->view->get_output() == ev->focused_output)
+            {
+                // View left on the same output, don't do anything
+                set_tiled_wobbly(ev->view, true);
+                layout_slots(get_views());
+                return;
+            }
+
+            wf::move_drag::adjust_view_on_output(ev);
+        }
+    };
+
     /* Activate and start scale animation */
     bool activate()
     {
@@ -1316,6 +1389,11 @@ class wayfire_scale : public wf::plugin_interface_t
         {
             /* only emit the signal if deactivate() was not called before */
             output->emit_signal("scale-end", nullptr);
+
+            if (drag_helper->view)
+            {
+                drag_helper->handle_input_released();
+            }
         }
 
         active = false;
