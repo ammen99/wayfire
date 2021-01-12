@@ -649,6 +649,13 @@ class wf_wobbly : public wf::view_transformer_t
         OpenGL::render_end();
     }
 
+    bool force_tile = false;
+    void set_force_tile(bool force_tile)
+    {
+        this->force_tile = force_tile;
+        update_wobbly_state(false, {0, 0}, false);
+    }
+
     /**
      * Update the current wobbly state based on:
      * 1. View state (tiled & fullscreen)
@@ -661,11 +668,21 @@ class wf_wobbly : public wf::view_transformer_t
      */
     void update_wobbly_state(bool start_grab, wf::point_t grab, bool end_grab)
     {
-        bool tiled = view->tiled_edges || view->fullscreen;
         bool was_grabbed =
             (state->get_wobbly_state() == wf::WOBBLY_STATE_GRABBED ||
                 state->get_wobbly_state() == wf::WOBBLY_STATE_TILED_GRABBED);
         bool grabbed = (start_grab || was_grabbed) && !end_grab;
+
+        bool tiled = false;
+        if (grabbed)
+        {
+            // If the view is grabbed, the grabbing plugin says whether to tile
+            // or not
+            tiled = force_tile;
+        } else
+        {
+            tiled = (force_tile || view->tiled_edges) || view->fullscreen;
+        }
 
         uint32_t next_state_mask = 0;
         if (tiled && grabbed)
@@ -859,6 +876,16 @@ class wayfire_wobbly : public wf::plugin_interface_t
         if (data->events & WOBBLY_EVENT_END)
         {
             wobbly->end_grab();
+        }
+
+        if (data->events & WOBBLY_EVENT_FORCE_TILE)
+        {
+            wobbly->set_force_tile(true);
+        }
+
+        if (data->events & WOBBLY_EVENT_UNTILE)
+        {
+            wobbly->set_force_tile(false);
         }
     }
 

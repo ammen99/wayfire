@@ -3,11 +3,13 @@
 
 enum wobbly_event
 {
-    WOBBLY_EVENT_GRAB      = (1 << 0),
-    WOBBLY_EVENT_MOVE      = (1 << 1),
-    WOBBLY_EVENT_END       = (1 << 2),
-    WOBBLY_EVENT_ACTIVATE  = (1 << 3),
-    WOBBLY_EVENT_TRANSLATE = (1 << 4),
+    WOBBLY_EVENT_GRAB       = (1 << 0),
+    WOBBLY_EVENT_MOVE       = (1 << 1),
+    WOBBLY_EVENT_END        = (1 << 2),
+    WOBBLY_EVENT_ACTIVATE   = (1 << 3),
+    WOBBLY_EVENT_TRANSLATE  = (1 << 4),
+    WOBBLY_EVENT_FORCE_TILE = (1 << 5),
+    WOBBLY_EVENT_UNTILE     = (1 << 6),
 };
 
 /**
@@ -88,5 +90,18 @@ inline void translate_wobbly(wayfire_view view, wf::point_t delta)
     sig.view   = view;
     sig.events = WOBBLY_EVENT_TRANSLATE;
     sig.pos    = delta;
+    view->get_output()->emit_signal("wobbly-event", &sig);
+}
+
+/**
+ * Set the wobbly model forcibly (un)tiled.
+ * This means that its four corners will be held in place, until the model is
+ * untiled.
+ */
+inline void set_tiled_wobbly(wayfire_view view, bool tiled)
+{
+    wobbly_signal sig;
+    sig.view   = view;
+    sig.events = tiled ? WOBBLY_EVENT_FORCE_TILE : WOBBLY_EVENT_UNTILE;
     view->get_output()->emit_signal("wobbly-event", &sig);
 }
