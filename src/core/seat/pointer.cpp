@@ -19,6 +19,7 @@ wf::pointer_t::pointer_t(nonstd::observer_ptr<wf::input_manager_t> input,
         if (surface && !surface->is_mapped() &&
             ((grabbed_surface == surface) ||
              (grabbed_surface &&
+              wlr_surface_is_subsurface(grabbed_surface->get_wlr_surface()) &&
               (grabbed_surface->get_main_surface() == surface->get_main_surface()))))
         {
             grab_surface(nullptr);
