@@ -240,7 +240,7 @@ void render_begin(int32_t viewport_width, int32_t viewport_height, uint32_t fb)
 {
     if (!wlr_egl_is_current(wf::get_core_impl().egl))
     {
-        wlr_egl_make_current(wf::get_core_impl().egl, EGL_NO_SURFACE, NULL);
+        wlr_egl_make_current(wf::get_core_impl().egl);
     }
 
     wlr_renderer_begin(wf::get_core_impl().renderer,
