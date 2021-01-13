@@ -44,6 +44,8 @@ class wayfire_layer_shell_view : public wf::wlr_view_t
 
     void configure(wf::geometry_t geometry);
 
+    void set_output(wf::output_t *output) override;
+
     /** Calculate the target layer for this layer surface */
     wf::layer_t get_layer();
 };
@@ -487,6 +489,19 @@ void wayfire_layer_shell_view::commit()
 
         prev_state = *state;
     }
+}
+
+void wayfire_layer_shell_view::set_output(wf::output_t *output)
+{
+    if (this->get_output() != output)
+    {
+        // Happens in two cases:
+        // View's output is being destroyed, no point in reflowing
+        // View is about to be mapped, no anchored area at all.
+        this->remove_anchored(false);
+    }
+
+    wf::wlr_view_t::set_output(output);
 }
 
 void wayfire_layer_shell_view::close()
