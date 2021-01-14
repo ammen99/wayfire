@@ -319,7 +319,7 @@ void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev,
     input_event_processing_mode_t mode)
 {
     seat->break_mod_bindings();
-    bool handled_in_binding = (mode == input_event_processing_mode_t::FULL);
+    bool handled_in_binding = (mode != input_event_processing_mode_t::FULL);
 
     if (ev->state == WLR_BUTTON_PRESSED)
     {
@@ -334,7 +334,7 @@ void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev,
             wf::get_core().focus_output(output);
         }
 
-        handled_in_binding = input->get_active_bindings().handle_button(
+        handled_in_binding |= input->get_active_bindings().handle_button(
             wf::buttonbinding_t{seat->get_modifiers(), ev->button});
     } else
     {

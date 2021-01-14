@@ -63,5 +63,10 @@
 			<_long>Clicking on a view with any of the mouse buttons of these will focus it.</_long>
 			<default>BTN_LEFT | BTN_MIDDLE | BTN_RIGHT</default>
 		</option>
+		<option name="focus_buttons_passthrough" type="bool">
+			<_short>Pass through buttons to client</_short>
+			<_long>Whether to pass buttons through to the client when switching the focus via clicking</_long>
+			<default>true</default>
+		</option>
 	</plugin>
 </wayfire>

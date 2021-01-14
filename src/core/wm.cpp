@@ -129,7 +129,12 @@ void wayfire_focus::init()
             return;
         }
 
-        this->check_focus_surface(wf::get_core().get_cursor_focus());
+        bool changed_focus =
+            this->check_focus_surface(wf::get_core().get_cursor_focus());
+
+        bool pass_through = (pass_btns || !changed_focus);
+        ev->mode = pass_through ? wf::input_event_processing_mode_t::FULL :
+            wf::input_event_processing_mode_t::NO_CLIENT;
     });
     wf::get_core().connect_signal("pointer_button", &on_button);
 
@@ -150,7 +155,7 @@ void wayfire_focus::init()
     wf::get_core().add_touch_gesture(tap_gesture);
 }
 
-void wayfire_focus::check_focus_surface(wf::surface_interface_t *focus)
+bool wayfire_focus::check_focus_surface(wf::surface_interface_t *focus)
 {
     /* Find the main view */
     auto main_surface = focus ? focus->get_main_surface() : nullptr;
@@ -159,10 +164,11 @@ void wayfire_focus::check_focus_surface(wf::surface_interface_t *focus)
     if (!view || !view->is_mapped() ||
         !output->can_activate_plugin(grab_interface->capabilities))
     {
-        return;
+        return false;
     }
 
     auto target_wo = view->get_output();
+    auto old_focus = target_wo->get_active_view();
     if (view->get_keyboard_focus_surface())
     {
         target_wo->focus_view(view->self(), true);
@@ -170,6 +176,8 @@ void wayfire_focus::check_focus_surface(wf::surface_interface_t *focus)
     {
         target_wo->workspace->bring_to_front(view);
     }
+
+    return target_wo->get_active_view() != old_focus;
 }
 
 void wayfire_focus::fini()
