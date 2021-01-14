@@ -389,7 +389,7 @@ class core_drag_t : public signal_provider_t
         this->view   = grab_view;
         this->params = options;
 
-        auto bbox = grab_view->get_bounding_box();
+        auto bbox = grab_view->get_bounding_box("wobbly");
         wf::point_t rel_grab_pos = {
             int(bbox.x + relative.x * bbox.width),
             int(bbox.y + relative.y * bbox.height),

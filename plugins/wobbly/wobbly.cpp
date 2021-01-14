@@ -222,7 +222,6 @@ class iwobbly_state_t
     virtual void handle_frame()
     {
         this->bounding_box = view->get_bounding_box("wobbly");
-        this->wm_geometry  = view->get_wm_geometry();
     }
 
     /** Called when the view wm geometry changes */
@@ -249,7 +248,6 @@ class iwobbly_state_t
     iwobbly_state_t(const wobbly_model_t& m, wayfire_view v) :
         view(v), model(m)
     {
-        wm_geometry  = v->get_wm_geometry();
         bounding_box = {model->x, model->y, model->width, model->height};
     }
 
@@ -260,12 +258,8 @@ class iwobbly_state_t
     {
         wobbly_translate(model.get(), dx, dy);
         wobbly_add_geometry(model.get());
-
-        wm_geometry.x  += dx;
-        wm_geometry.y  += dy;
         bounding_box.x += dx;
         bounding_box.y += dy;
-
         model->x += dx;
         model->y += dy;
     }
@@ -293,7 +287,6 @@ class iwobbly_state_t
   protected:
     wayfire_view view;
     const wobbly_model_t& model;
-    wf::geometry_t wm_geometry;
     wf::geometry_t bounding_box;
 };
 
@@ -458,8 +451,13 @@ class wobbly_state_floating_t : public iwobbly_state_t
     using iwobbly_state_t::iwobbly_state_t;
 
   protected:
-    void handle_frame() override
+    bool is_wobbly_done() const override
     {
+        if (!model->synced)
+        {
+            return false;
+        }
+
         /* Synchronize view position with the model */
         auto new_bbox = view->get_bounding_box(wobbly_transformer_name);
         auto wm = view->get_wm_geometry();
@@ -471,20 +469,19 @@ class wobbly_state_floating_t : public iwobbly_state_t
             view->move(model->x + wm.x - new_bbox.x, model->y + wm.y - new_bbox.y);
         }
 
-        if (wf::dimensions(new_bbox) != wf::dimensions(this->bounding_box))
-        {
-            wobbly_resize(model.get(), new_bbox.width, new_bbox.height);
-        }
+        return true;
+    }
 
-        this->bounding_box = new_bbox;
-        this->wm_geometry  = wm;
+    void handle_frame() override
+    {
+        auto new_bbox = view->get_bounding_box(wobbly_transformer_name);
+        update_base_geometry(new_bbox);
     }
 
     void handle_wm_geometry(const wf::geometry_t& old_wm) override
     {
         auto bbox = view->get_bounding_box("wobbly");
-        wobbly_set_top_anchor(model.get(),
-            bbox.x, bbox.y, bbox.width, bbox.height);
+        update_base_geometry(view->get_bounding_box("wobbly"));
     }
 
     void handle_workspace_change(wf::point_t old, wf::point_t cur) override
@@ -492,7 +489,6 @@ class wobbly_state_floating_t : public iwobbly_state_t
         auto size  = view->get_output()->get_screen_size();
         auto delta = old - cur;
         translate_model(delta.x * size.width, delta.y * size.height);
-        handle_wm_geometry(view->get_wm_geometry());
     }
 
     ewobbly_state_t get_wobbly_state() const override

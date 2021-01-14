@@ -405,7 +405,7 @@ class wayfire_expo : public wf::plugin_interface_t
             if (view)
             {
                 auto ws_coords = input_coordinates_to_output_local_coordinates(to);
-                auto bbox = view->get_bounding_box();
+                auto bbox = view->get_bounding_box("wobbly");
 
                 view->damage();
                 // Make sure that the view is in output-local coordinates!
