@@ -2,6 +2,7 @@
 #define WF_SEAT_POINTER_HPP
 
 #include <cmath>
+#include <set>
 #include <wayfire/nonstd/observer_ptr.h>
 #include <wayfire/surface.hpp>
 #include <wayfire/util.hpp>
@@ -94,6 +95,11 @@ class pointer_t
   private:
     nonstd::observer_ptr<wf::input_manager_t> input;
     nonstd::observer_ptr<seat_t> seat;
+
+    // Buttons sent to the client currently
+    // Note that count_pressed_buttons also contains buttons not sent to the
+    // client
+    std::multiset<uint32_t> currently_sent_buttons;
 
     SurfaceMapStateListener on_surface_map_state_change;
 

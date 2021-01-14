@@ -128,6 +128,20 @@ void wf::pointer_t::update_cursor_focus(
         compositor_surface->on_pointer_leave();
     }
 
+    // Clear currently sent buttons when switching focus
+    // However, if we are in drag-and-drop mode, do not release
+    // buttons since otherwise we'll cancel DnD
+    if (cursor_focus && focus_change && !seat->drag_active)
+    {
+        for (auto button : this->currently_sent_buttons)
+        {
+            wlr_seat_pointer_notify_button(seat->seat,
+                get_current_time(), button, WLR_BUTTON_RELEASED);
+        }
+
+        currently_sent_buttons.clear();
+    }
+
     cursor_focus = focus;
     seat->ensure_input_surface(focus);
 
@@ -382,6 +396,22 @@ void wf::pointer_t::send_button(wlr_event_pointer_button *ev, bool has_binding)
     if (has_binding || !cursor_focus)
     {
         return;
+    }
+
+    if (ev->state == WLR_BUTTON_PRESSED)
+    {
+        this->currently_sent_buttons.insert(ev->button);
+    } else
+    {
+        if (!this->currently_sent_buttons.count(ev->button))
+        {
+            // Ignore buttons which the client has not received.
+            // These are potentially buttons which were grabbed.
+            return;
+        }
+
+        this->currently_sent_buttons.erase(
+            currently_sent_buttons.find(ev->button));
     }
 
     auto custom = compositor_surface_from_surface(cursor_focus);
