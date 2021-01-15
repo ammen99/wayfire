@@ -651,6 +651,9 @@ class wayfire_xwayland_view : public wayfire_xwayland_view_base
 
     void map(wlr_surface *surface) override
     {
+        view_impl->keyboard_focus_enabled =
+            wlr_xwayland_or_surface_wants_focus(xw);
+
         if (xw->maximized_horz && xw->maximized_vert)
         {
             if ((xw->width > 0) && (xw->height > 0))

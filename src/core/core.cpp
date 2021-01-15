@@ -677,10 +677,18 @@ void wf::compositor_core_impl_t::set_active_view(wayfire_view new_focus)
         new_focus = nullptr;
     }
 
-    if (all_dialogs_modal)
+    if (all_dialogs_modal && new_focus)
     {
-        /* Descend into frontmost child view */
-        new_focus = new_focus ? new_focus->enumerate_views().front() : nullptr;
+        // Choose the frontmost view which has focus enabled.
+        auto all_views = new_focus->enumerate_views();
+        for (auto& view : all_views)
+        {
+            if (view->get_keyboard_focus_surface())
+            {
+                new_focus = view;
+                break;
+            }
+        }
     }
 
     bool refocus = (last_active_view == new_focus);
