@@ -74,17 +74,26 @@ struct drag_done_signal : public signal_data_t
     /** The output where the view was dropped. */
     wf::output_t *focused_output;
 
-    /** The view itself. */
-    wayfire_view view;
-
     /** Whether join-views was enabled for this drag. */
     bool join_views;
 
-    /**
-     * The position relative to the view where the grab was.
-     * See scale_around_grab_t::relative_grab
-     */
-    wf::pointf_t relative_grab;
+    struct view_t
+    {
+        /** Dragged view. */
+        wayfire_view view;
+
+        /**
+         * The position relative to the view where the grab was.
+         * See scale_around_grab_t::relative_grab
+         */
+        wf::pointf_t relative_grab;
+    };
+
+    /** All views which were dragged. */
+    std::vector<view_t> all_views;
+
+    /** The main view which was dragged. */
+    wayfire_view main_view;
 
     /**
      * The position of the input when the view was dropped.
@@ -381,6 +390,12 @@ class core_drag_t : public signal_provider_t
         wf::pointf_t relative,
         const drag_options_t& options)
     {
+        auto bbox = grab_view->get_bounding_box("wobbly");
+        wf::point_t rel_grab_pos = {
+            int(bbox.x + relative.x * bbox.width),
+            int(bbox.y + relative.y * bbox.height),
+        };
+
         if (options.join_views)
         {
             grab_view = get_toplevel(grab_view);
@@ -388,12 +403,6 @@ class core_drag_t : public signal_provider_t
 
         this->view   = grab_view;
         this->params = options;
-
-        auto bbox = grab_view->get_bounding_box("wobbly");
-        wf::point_t rel_grab_pos = {
-            int(bbox.x + relative.x * bbox.width),
-            int(bbox.y + relative.y * bbox.height),
-        };
 
         auto target_views = get_target_views(grab_view, options.join_views);
         for (auto& v : target_views)
@@ -417,10 +426,10 @@ class core_drag_t : public signal_provider_t
             v->damage();
 
             // Make sure that wobbly has the correct geometry from the start!
-            rebuild_wobbly(v, grab_position, relative);
+            rebuild_wobbly(v, grab_position, dragged.transformer->relative_grab);
 
             // TODO: make this configurable!
-            start_wobbly_rel(v, relative);
+            start_wobbly_rel(v, dragged.transformer->relative_grab);
 
             this->all_views.push_back(dragged);
             v->connect_signal("unmapped", &on_view_unmap);
@@ -506,8 +515,13 @@ class core_drag_t : public signal_provider_t
         // Store data for the drag done signal
         drag_done_signal data;
         data.grab_position = all_views.front().transformer->grab_position;
-        data.relative_grab = all_views.front().transformer->relative_grab;
-        data.view = view;
+        for (auto& v : all_views)
+        {
+            data.all_views.push_back(
+                {v.view, v.transformer->relative_grab});
+        }
+
+        data.main_view = this->view;
         data.focused_output = current_output;
         data.join_views     = params.join_views;
 
@@ -520,6 +534,9 @@ class core_drag_t : public signal_provider_t
 
         for (auto& v : all_views)
         {
+            auto grab_position = v.transformer->grab_position;
+            auto rel_pos = v.transformer->relative_grab;
+
             // Restore view to where it was before
             v.view->set_visible(true);
             v.view->pop_transformer(move_drag_transformer);
@@ -530,7 +547,7 @@ class core_drag_t : public signal_provider_t
             // Important! If the view scale was not 1.0, the wobbly model needs to be
             // updated with the new size. Since this is an artificial resize, we need
             // to make sure that the resize happens smoothly.
-            rebuild_wobbly(v.view, data.grab_position, data.relative_grab);
+            rebuild_wobbly(v.view, grab_position, rel_pos);
 
             // Put wobbly back in output-local space, the plugins will take it from
             // here.
@@ -614,13 +631,15 @@ class core_drag_t : public signal_provider_t
  */
 inline void adjust_view_on_output(drag_done_signal *ev)
 {
-    if (!ev->view->is_mapped())
+    // Any one of the views that are being dragged.
+    // They are all part of the same view tree.
+    auto parent = get_toplevel(ev->main_view);
+    if (!parent->is_mapped())
     {
         return;
     }
 
-    auto parent = get_toplevel(ev->view);
-    if (ev->view->get_output() != ev->focused_output)
+    if (parent->get_output() != ev->focused_output)
     {
         wf::get_core().move_view_to_output(parent, ev->focused_output, false);
     }
@@ -641,24 +660,29 @@ inline void adjust_view_on_output(drag_done_signal *ev)
     target_ws.x = wf::clamp(target_ws.x, 0, gsize.width - 1);
     target_ws.y = wf::clamp(target_ws.y, 0, gsize.height - 1);
 
-    auto views = get_target_views(ev->view, ev->join_views);
-    for (auto& v : views)
+    for (auto& v : ev->all_views)
     {
-        auto bbox = v->get_bounding_box("wobbly");
-        auto wm   = v->get_wm_geometry();
+        if (!v.view->is_mapped())
+        {
+            // Maybe some dialog got unmapped
+            continue;
+        }
+
+        auto bbox = v.view->get_bounding_box("wobbly");
+        auto wm   = v.view->get_wm_geometry();
 
         wf::point_t wm_offset = wf::origin(wm) + -wf::origin(bbox);
         bbox = wf::move_drag::find_geometry_around(
-            wf::dimensions(bbox), grab, ev->relative_grab);
+            wf::dimensions(bbox), grab, v.relative_grab);
 
         wf::point_t target = wf::origin(bbox) + wm_offset;
-        v->move(target.x, target.y);
-        if (v->fullscreen)
+        v.view->move(target.x, target.y);
+        if (v.view->fullscreen)
         {
-            v->fullscreen_request(ev->focused_output, true, target_ws);
-        } else if (v->tiled_edges)
+            v.view->fullscreen_request(ev->focused_output, true, target_ws);
+        } else if (v.view->tiled_edges)
         {
-            v->tile_request(v->tiled_edges, target_ws);
+            v.view->tile_request(v.view->tiled_edges, target_ws);
         }
     }
 
@@ -668,7 +692,7 @@ inline void adjust_view_on_output(drag_done_signal *ev)
         ev->focused_output->workspace->move_to_workspace(v, target_ws);
     }
 
-    ev->focused_output->focus_view(ev->view, true);
+    ev->focused_output->focus_view(parent, true);
 }
 
 /**

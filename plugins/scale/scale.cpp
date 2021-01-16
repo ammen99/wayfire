@@ -1276,10 +1276,14 @@ class wayfire_scale : public wf::plugin_interface_t
         auto ev = static_cast<wf::move_drag::drag_done_signal*>(data);
         if ((ev->focused_output == output) && can_handle_drag())
         {
-            if (ev->view->get_output() == ev->focused_output)
+            if (ev->main_view->get_output() == ev->focused_output)
             {
                 // View left on the same output, don't do anything
-                set_tiled_wobbly(ev->view, true);
+                for (auto& v : ev->all_views)
+                {
+                    set_tiled_wobbly(v.view, true);
+                }
+
                 layout_slots(get_views());
                 return;
             }

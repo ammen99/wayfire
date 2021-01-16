@@ -233,13 +233,14 @@ class wayfire_expo : public wf::plugin_interface_t
         auto ev = static_cast<wf::move_drag::drag_done_signal*>(data);
         if ((ev->focused_output == output) && can_handle_drag())
         {
-            bool same_output = ev->view->get_output() == output;
+            bool same_output = ev->main_view->get_output() == output;
 
             auto offset = wf::origin(output->get_layout_geometry());
             auto local  = input_coordinates_to_output_local_coordinates(
                 ev->grab_position + -offset);
 
-            for (auto& v : wf::move_drag::get_target_views(ev->view, ev->join_views))
+            for (auto& v :
+                 wf::move_drag::get_target_views(ev->main_view, ev->join_views))
             {
                 translate_wobbly(v, local - (ev->grab_position - offset));
             }
@@ -250,7 +251,7 @@ class wayfire_expo : public wf::plugin_interface_t
             if (same_output && (move_started_ws != offscreen_point))
             {
                 view_change_viewport_signal data;
-                data.view = ev->view;
+                data.view = ev->main_view;
                 data.from = move_started_ws;
                 data.to   = {target_vx, target_vy};
                 output->emit_signal("view-change-viewport", &data);

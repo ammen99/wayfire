@@ -93,7 +93,7 @@ class wayfire_move : public wf::plugin_interface_t
             if (enable_snap && (slot.slot_id != 0))
             {
                 snap_signal data;
-                data.view = ev->view;
+                data.view = ev->main_view;
                 data.slot = (slot_type)slot.slot_id;
                 output->emit_signal("view-snap", &data);
 
@@ -102,7 +102,7 @@ class wayfire_move : public wf::plugin_interface_t
             }
 
             view_change_viewport_signal data;
-            data.view = ev->view;
+            data.view = ev->main_view;
             data.to   = output->workspace->get_current_workspace();
             data.old_viewport_invalid = false;
             output->emit_signal("view-change-viewport", &data);
