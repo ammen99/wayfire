@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #include <wayfire/plugin.hpp>
+#include <wayfire/singleton-plugin.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util/log.hpp>
@@ -40,14 +41,56 @@ struct scale_key_repeat_t
     }
 };
 
-class scale_title_filter : public wf::plugin_interface_t
+class scale_title_filter;
+
+/**
+ * Class storing the filter text, shared among all outputs
+ */
+struct scale_title_filter_text
 {
-    wf::option_wrapper_t<bool> case_sensitive{"scale-title-filter/case_sensitive"};
     std::string title_filter;
     /* since title filter is utf-8, here we store the length of each
      * character when adding them so backspace will work properly */
     std::vector<int> char_len;
-    bool scale_running = false;
+    /* Individual plugins running on each output -- this is used to update them
+     * when the shared filter text changes. */
+    std::vector<scale_title_filter*> output_instances;
+
+    void add_instance(scale_title_filter *ptr)
+    {
+        output_instances.push_back(ptr);
+    }
+
+    void rem_instance(scale_title_filter *ptr)
+    {
+        auto it = std::remove(output_instances.begin(), output_instances.end(),
+            ptr);
+        output_instances.erase(it, output_instances.end());
+    }
+
+    /**
+     * Add any character corresponding to the given keycode to the filter.
+     *
+     * Updates the overlays and filter on all outputs if necessary.
+     */
+    void add_key(struct xkb_state *xkb_state, xkb_keycode_t keycode);
+
+    /**
+     * Remove the last character from the overlay.
+     *
+     * Updates the overlays and filter on all outputs if necessary.
+     */
+    void rem_char();
+
+    /**
+     * Check if scale has ended on all outputs and clears the filter in this case.
+     */
+    void check_scale_end();
+};
+
+class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text>
+{
+    wf::option_wrapper_t<bool> case_sensitive{"scale-title-filter/case_sensitive"};
 
     inline void fix_case(std::string& string)
     {
@@ -70,14 +113,16 @@ class scale_title_filter : public wf::plugin_interface_t
 
     bool should_show_view(wayfire_view view)
     {
-        if (title_filter.empty())
+        auto& global = get_instance();
+
+        if (global.title_filter.empty())
         {
             return true;
         }
 
         auto title  = view->get_title();
         auto app_id = view->get_app_id();
-        auto filter = title_filter;
+        auto filter = global.title_filter;
 
         fix_case(title);
         fix_case(app_id);
@@ -88,8 +133,15 @@ class scale_title_filter : public wf::plugin_interface_t
     }
 
   public:
+    bool scale_running = false;
+
     void init() override
     {
+        wf::singleton_plugin_t<scale_title_filter_text>::init();
+
+        auto& global = get_instance();
+        global.add_instance(this);
+
         grab_interface->name = "scale-title-filter";
         grab_interface->capabilities = 0;
 
@@ -99,10 +151,12 @@ class scale_title_filter : public wf::plugin_interface_t
 
     void fini() override
     {
-        clear_overlay();
-        output->disconnect_signal(&view_filter);
-        wf::get_core().disconnect_signal(&scale_key);
-        output->disconnect_signal(&scale_end);
+        do_end_scale();
+
+        auto& global = get_instance();
+        global.rem_instance(this);
+
+        wf::singleton_plugin_t<scale_title_filter_text>::fini();
     }
 
     wf::signal_connection_t view_filter{[this] (wf::signal_data_t *data)
@@ -111,6 +165,7 @@ class scale_title_filter : public wf::plugin_interface_t
             {
                 wf::get_core().connect_signal("keyboard_key", &scale_key);
                 scale_running = true;
+                update_overlay();
             }
 
             auto signal = static_cast<scale_filter_signal*>(data);
@@ -134,35 +189,21 @@ class scale_title_filter : public wf::plugin_interface_t
         auto xkb_state = keyboard->xkb_state;
         xkb_keycode_t keycode = raw_keycode + 8;
         xkb_keysym_t keysym   = xkb_state_key_get_one_sym(xkb_state, keycode);
+        auto& global = get_instance();
         if (keysym == XKB_KEY_BackSpace)
         {
-            if (!title_filter.empty())
-            {
-                int len = char_len.back();
-                char_len.pop_back();
-                title_filter.resize(title_filter.length() - len);
-            } else
-            {
-                return;
-            }
+            global.rem_char();
         } else
         {
-            /* taken from libxkbcommon guide */
-            int size = xkb_state_key_get_utf8(xkb_state, keycode, nullptr, 0);
-            if (size <= 0)
-            {
-                return;
-            }
-
-            std::string tmp(size, 0);
-            xkb_state_key_get_utf8(xkb_state, keycode, tmp.data(), size + 1);
-            char_len.push_back(size);
-            title_filter += tmp;
+            global.add_key(xkb_state, keycode);
         }
+    };
 
+    void update_filter()
+    {
         output->emit_signal("scale-update", nullptr);
         update_overlay();
-    };
+    }
 
     wf::signal_connection_t scale_key = [this] (wf::signal_data_t *data)
     {
@@ -179,6 +220,11 @@ class scale_title_filter : public wf::plugin_interface_t
             return;
         }
 
+        if (output != wf::get_core().get_active_output())
+        {
+            return;
+        }
+
         keys[k->event->keycode] =
             std::make_unique<scale_key_repeat_t>(k->event->keycode,
                 handle_key_repeat);
@@ -188,13 +234,18 @@ class scale_title_filter : public wf::plugin_interface_t
 
     wf::signal_connection_t scale_end = [this] (wf::signal_data_t*)
     {
+        do_end_scale();
+    };
+
+    void do_end_scale()
+    {
         wf::get_core().disconnect_signal(&scale_key);
-        title_filter.clear();
-        char_len.clear();
         keys.clear();
         clear_overlay();
         scale_running = false;
-    };
+        auto& global = get_instance();
+        global.check_scale_end();
+    }
 
   protected:
     /*
@@ -224,7 +275,9 @@ class scale_title_filter : public wf::plugin_interface_t
 
     void update_overlay()
     {
-        if (!show_overlay || title_filter.empty())
+        auto& global = get_instance();
+
+        if (!show_overlay || global.title_filter.empty())
         {
             /* remove any overlay */
             clear_overlay();
@@ -232,7 +285,7 @@ class scale_title_filter : public wf::plugin_interface_t
         }
 
         auto dim = output->get_screen_size();
-        auto new_size = filter_overlay.render_text(title_filter,
+        auto new_size = filter_overlay.render_text(global.title_filter,
             wf::cairo_text_t::params(font_size, bg_color, text_color, output_scale,
                 dim));
 
@@ -323,5 +376,63 @@ class scale_title_filter : public wf::plugin_interface_t
         }
     }
 };
+
+void scale_title_filter_text::add_key(struct xkb_state *xkb_state,
+    xkb_keycode_t keycode)
+{
+    /* taken from libxkbcommon guide */
+    int size = xkb_state_key_get_utf8(xkb_state, keycode, nullptr, 0);
+    if (size <= 0)
+    {
+        return;
+    }
+
+    std::string tmp(size, 0);
+    xkb_state_key_get_utf8(xkb_state, keycode, tmp.data(), size + 1);
+    char_len.push_back(size);
+    title_filter += tmp;
+
+    for (auto p : output_instances)
+    {
+        p->update_filter();
+    }
+}
+
+void scale_title_filter_text::rem_char()
+{
+    if (!title_filter.empty())
+    {
+        int len = char_len.back();
+        char_len.pop_back();
+        title_filter.resize(title_filter.length() - len);
+    } else
+    {
+        return;
+    }
+
+    for (auto p : output_instances)
+    {
+        p->update_filter();
+    }
+}
+
+void scale_title_filter_text::check_scale_end()
+{
+    bool scale_running = false;
+    for (auto p : output_instances)
+    {
+        if (p->scale_running)
+        {
+            scale_running = true;
+            break;
+        }
+    }
+
+    if (!scale_running)
+    {
+        title_filter.clear();
+        char_len.clear();
+    }
+}
 
 DECLARE_WAYFIRE_PLUGIN(scale_title_filter);
