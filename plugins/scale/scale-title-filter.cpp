@@ -86,11 +86,22 @@ struct scale_title_filter_text
      * Check if scale has ended on all outputs and clears the filter in this case.
      */
     void check_scale_end();
+
+    /**
+     * Clear the current filter text. Does not update output-specific instances.
+     */
+    void clear()
+    {
+        title_filter.clear();
+        char_len.clear();
+    }
 };
 
 class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text>
 {
     wf::option_wrapper_t<bool> case_sensitive{"scale-title-filter/case_sensitive"};
+    wf::option_wrapper_t<bool> share_filter{"scale-title-filter/share_filter"};
+    scale_title_filter_text local_filter;
 
     inline void fix_case(std::string& string)
     {
@@ -113,16 +124,16 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
 
     bool should_show_view(wayfire_view view)
     {
-        auto& global = get_instance();
+        auto& filt = share_filter ? get_instance() : local_filter;
 
-        if (global.title_filter.empty())
+        if (filt.title_filter.empty())
         {
             return true;
         }
 
         auto title  = view->get_title();
         auto app_id = view->get_app_id();
-        auto filter = global.title_filter;
+        auto filter = filt.title_filter;
 
         fix_case(title);
         fix_case(app_id);
@@ -135,6 +146,11 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
   public:
     bool scale_running = false;
 
+    scale_title_filter()
+    {
+        local_filter.add_instance(this);
+    }
+
     void init() override
     {
         wf::singleton_plugin_t<scale_title_filter_text>::init();
@@ -145,6 +161,7 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         grab_interface->name = "scale-title-filter";
         grab_interface->capabilities = 0;
 
+        share_filter.set_callback(shared_option_changed);
         output->connect_signal("scale-filter", &view_filter);
         output->connect_signal("scale-end", &scale_end);
     }
@@ -189,20 +206,23 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         auto xkb_state = keyboard->xkb_state;
         xkb_keycode_t keycode = raw_keycode + 8;
         xkb_keysym_t keysym   = xkb_state_key_get_one_sym(xkb_state, keycode);
-        auto& global = get_instance();
+        auto& filter = share_filter ? get_instance() : local_filter;
         if (keysym == XKB_KEY_BackSpace)
         {
-            global.rem_char();
+            filter.rem_char();
         } else
         {
-            global.add_key(xkb_state, keycode);
+            filter.add_key(xkb_state, keycode);
         }
     };
 
     void update_filter()
     {
-        output->emit_signal("scale-update", nullptr);
-        update_overlay();
+        if (scale_running)
+        {
+            output->emit_signal("scale-update", nullptr);
+            update_overlay();
+        }
     }
 
     wf::signal_connection_t scale_key = [this] (wf::signal_data_t *data)
@@ -243,9 +263,21 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         keys.clear();
         clear_overlay();
         scale_running = false;
-        auto& global = get_instance();
-        global.check_scale_end();
+        auto& filter = share_filter ? get_instance() : local_filter;
+        filter.check_scale_end();
     }
+
+    wf::config::option_base_t::updated_callback_t shared_option_changed = [this] ()
+    {
+        if (scale_running)
+        {
+            /* clear the filter that is not used anymore */
+            auto& filter = share_filter ? local_filter : get_instance();
+            filter.clear();
+            output->emit_signal("scale-update", nullptr);
+            update_overlay();
+        }
+    };
 
   protected:
     /*
@@ -275,9 +307,9 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
 
     void update_overlay()
     {
-        auto& global = get_instance();
+        auto& filter = share_filter ? get_instance() : local_filter;
 
-        if (!show_overlay || global.title_filter.empty())
+        if (!show_overlay || filter.title_filter.empty())
         {
             /* remove any overlay */
             clear_overlay();
@@ -285,7 +317,7 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         }
 
         auto dim = output->get_screen_size();
-        auto new_size = filter_overlay.render_text(global.title_filter,
+        auto new_size = filter_overlay.render_text(filter.title_filter,
             wf::cairo_text_t::params(font_size, bg_color, text_color, output_scale,
                 dim));
 
@@ -430,8 +462,7 @@ void scale_title_filter_text::check_scale_end()
 
     if (!scale_running)
     {
-        title_filter.clear();
-        char_len.clear();
+        clear();
     }
 }
 

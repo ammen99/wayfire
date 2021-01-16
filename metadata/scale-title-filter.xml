@@ -5,9 +5,14 @@
 		<_long>Filter the views shown by scale by typing.</_long>
 		<category>Utility</category>
 		<option name="case_sensitive" type="bool">
-			<_short>Case Sensitive</_short>
+			<_short>Case sensitive</_short>
 			<_long>Match titles in a case sensitive way.</_long>
 			<default>false</default>
+		</option>
+		<option name="share_filter" type="bool">
+			<_short>Share filter among outputs</_short>
+			<_long>Whether the active filter is shared among all outputs. Set to false to filter independently on each output.</_long>
+			<default>true</default>
 		</option>
 		<option name="overlay" type="bool">
 			<_short>Show overlay</_short>
