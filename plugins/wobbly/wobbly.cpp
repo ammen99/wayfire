@@ -480,7 +480,6 @@ class wobbly_state_floating_t : public iwobbly_state_t
 
     void handle_wm_geometry(const wf::geometry_t& old_wm) override
     {
-        auto bbox = view->get_bounding_box("wobbly");
         update_base_geometry(view->get_bounding_box("wobbly"));
     }
 
