@@ -124,16 +124,15 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
 
     bool should_show_view(wayfire_view view)
     {
-        auto& filt = share_filter ? get_instance() : local_filter;
+        auto filter = get_active_filter().title_filter;
 
-        if (filt.title_filter.empty())
+        if (filter.empty())
         {
             return true;
         }
 
         auto title  = view->get_title();
         auto app_id = view->get_app_id();
-        auto filter = filt.title_filter;
 
         fix_case(title);
         fix_case(app_id);
@@ -141,6 +140,11 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
 
         return (title.find(filter) != std::string::npos) ||
                (app_id.find(filter) != std::string::npos);
+    }
+
+    scale_title_filter_text& get_active_filter()
+    {
+        return share_filter ? get_instance() : local_filter;
     }
 
   public:
@@ -206,7 +210,7 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         auto xkb_state = keyboard->xkb_state;
         xkb_keycode_t keycode = raw_keycode + 8;
         xkb_keysym_t keysym   = xkb_state_key_get_one_sym(xkb_state, keycode);
-        auto& filter = share_filter ? get_instance() : local_filter;
+        auto& filter = get_active_filter();
         if (keysym == XKB_KEY_BackSpace)
         {
             filter.rem_char();
@@ -263,8 +267,7 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         keys.clear();
         clear_overlay();
         scale_running = false;
-        auto& filter = share_filter ? get_instance() : local_filter;
-        filter.check_scale_end();
+        get_active_filter().check_scale_end();
     }
 
     wf::config::option_base_t::updated_callback_t shared_option_changed = [this] ()
@@ -307,9 +310,9 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
 
     void update_overlay()
     {
-        auto& filter = share_filter ? get_instance() : local_filter;
+        const auto& filter = get_active_filter().title_filter;
 
-        if (!show_overlay || filter.title_filter.empty())
+        if (!show_overlay || filter.empty())
         {
             /* remove any overlay */
             clear_overlay();
@@ -317,7 +320,7 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         }
 
         auto dim = output->get_screen_size();
-        auto new_size = filter_overlay.render_text(filter.title_filter,
+        auto new_size = filter_overlay.render_text(filter,
             wf::cairo_text_t::params(font_size, bg_color, text_color, output_scale,
                 dim));
 

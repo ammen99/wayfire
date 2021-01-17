@@ -12,7 +12,7 @@
 		<option name="share_filter" type="bool">
 			<_short>Share filter among outputs</_short>
 			<_long>Whether the active filter is shared among all outputs. Set to false to filter independently on each output.</_long>
-			<default>true</default>
+			<default>false</default>
 		</option>
 		<option name="overlay" type="bool">
 			<_short>Show overlay</_short>
