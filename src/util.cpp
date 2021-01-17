@@ -131,9 +131,13 @@ bool operator &(const wf::geometry_t& rect, const wf::pointf_t& point)
 
 bool operator &(const wf::geometry_t& r1, const wf::geometry_t& r2)
 {
-    wlr_box result;
+    if ((r1.x + r1.width <= r2.x) || (r2.x + r2.width <= r1.x) ||
+        (r1.y + r1.height <= r2.y) || (r2.y + r2.height <= r1.y))
+    {
+        return false;
+    }
 
-    return wlr_box_intersection(&result, &r1, &r2);
+    return true;
 }
 
 wf::geometry_t wf::geometry_intersection(const wf::geometry_t& r1,
