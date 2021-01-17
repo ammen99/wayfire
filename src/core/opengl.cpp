@@ -557,7 +557,7 @@ class program_t::impl
     int active_program_idx = 0;
 
     int id[wf::TEXTURE_TYPE_ALL];
-    std::map<std::string, int> uniforms[wf::TEXTURE_TYPE_ALL];
+    std::unordered_map<std::string, int> uniforms[wf::TEXTURE_TYPE_ALL];
 
     /** Find the uniform location for the currently bound program */
     int find_uniform_loc(const std::string& name)
