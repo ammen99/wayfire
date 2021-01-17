@@ -39,6 +39,8 @@ class view_interface_t::view_priv_impl
     /** Reference count to the view */
     int ref_cnt = 0;
 
+    size_t last_view_cnt = 0;
+
     bool keyboard_focus_enabled = true;
 
     /**

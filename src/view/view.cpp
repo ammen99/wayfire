@@ -155,6 +155,7 @@ std::vector<wayfire_view> wf::view_interface_t::enumerate_views(
     }
 
     std::vector<wayfire_view> result;
+    result.reserve(view_impl->last_view_cnt);
     for (auto& v : this->children)
     {
         auto cdr = v->enumerate_views(mapped_only);
@@ -162,6 +163,7 @@ std::vector<wayfire_view> wf::view_interface_t::enumerate_views(
     }
 
     result.push_back(self());
+    view_impl->last_view_cnt = result.size();
 
     return result;
 }
