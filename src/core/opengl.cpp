@@ -30,10 +30,11 @@ const char *gl_error_string(const GLenum err)
     return "UNKNOWN GL ERROR";
 }
 
+static bool disable_gl_call = false;
 void gl_call(const char *func, uint32_t line, const char *glfunc)
 {
     GLenum err;
-    if ((err = glGetError()) == GL_NO_ERROR)
+    if (disable_gl_call || ((err = glGetError()) == GL_NO_ERROR))
     {
         return;
     }
@@ -137,6 +138,9 @@ void render_transformed_texture(wf::texture_t tex,
     const gl_geometry& g, const gl_geometry& texg,
     glm::mat4 model, glm::vec4 color, uint32_t bits)
 {
+    // We don't expect any errors from us!
+    disable_gl_call = true;
+
     program.use(tex.type);
 
     vertexData = {
@@ -193,6 +197,7 @@ void draw_cached()
 
 void clear_cached()
 {
+    disable_gl_call = false;
     program.deactivate();
 }
 
