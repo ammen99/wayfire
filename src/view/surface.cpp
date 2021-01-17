@@ -420,12 +420,15 @@ void wf::wlr_surface_base_t::_simple_render(const wf::framebuffer_t& fb,
     wf::texture_t texture{surface};
 
     OpenGL::render_begin(fb);
+    OpenGL::render_texture(texture, fb, geometry, glm::vec4(1.f),
+        OpenGL::RENDER_FLAG_CACHED);
     for (const auto& rect : damage)
     {
         fb.logic_scissor(wlr_box_from_pixman_box(rect));
-        OpenGL::render_texture(texture, fb, geometry);
+        OpenGL::draw_cached();
     }
 
+    OpenGL::clear_cached();
     OpenGL::render_end();
 }
 

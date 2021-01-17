@@ -189,7 +189,7 @@ void render_end();
 void clear(wf::color_t color, uint32_t mask = GL_COLOR_BUFFER_BIT);
 
 
-enum texture_rendering_flags_t
+enum rendering_flags_t
 {
     /* Invert the texture's X axis when sampling */
     TEXTURE_TRANSFORM_INVERT_X = (1 << 0),
@@ -197,6 +197,17 @@ enum texture_rendering_flags_t
     TEXTURE_TRANSFORM_INVERT_Y = (1 << 1),
     /* Use a subrectangle of the texture to render */
     TEXTURE_USE_TEX_GEOMETRY   = (1 << 2),
+    /*
+     * Enable an optimized, "cached" mode.
+     *
+     * The user first calls a render_texture variant with this bit set.
+     * The default GL program will be called, uniforms uploaded, etc.
+     * After that, draw_cached() may be used for each damaged rectangle.
+     * In the end, clear_cache() is called.
+     *
+     * This allows re-use of uniform values for different damage rectangles.
+     */
+    RENDER_FLAG_CACHED         = (1 << 3),
 };
 
 /**
@@ -253,6 +264,20 @@ void render_texture(wf::texture_t texture,
     const wf::geometry_t& geometry,
     glm::vec4 color = glm::vec4(1.f),
     uint32_t bits   = 0);
+
+/**
+ * Render the textured rectangle again.
+ *
+ * See RENDER_FLAG_CACHED for detailed explanation.
+ */
+void draw_cached();
+
+/**
+ * Clear the cached state.
+ *
+ * See RENDER_FLAG_CACHED for detailed explanation.
+ */
+void clear_cached();
 
 /* Compiles the given shader source */
 GLuint compile_shader(std::string source, GLuint type);

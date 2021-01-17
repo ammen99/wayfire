@@ -130,13 +130,16 @@ void unbind_output(wf::output_t *output)
     current_output_fb = 0;
 }
 
+std::vector<GLfloat> vertexData;
+std::vector<GLfloat> coordData;
+
 void render_transformed_texture(wf::texture_t tex,
     const gl_geometry& g, const gl_geometry& texg,
     glm::mat4 model, glm::vec4 color, uint32_t bits)
 {
     program.use(tex.type);
 
-    GLfloat vertexData[] = {
+    vertexData = {
         g.x1, g.y2,
         g.x2, g.y2,
         g.x2, g.y1,
@@ -158,7 +161,7 @@ void render_transformed_texture(wf::texture_t tex,
         final_texg.x2 = 1.0 - final_texg.x2;
     }
 
-    GLfloat coordData[] = {
+    coordData = {
         final_texg.x1, final_texg.y1,
         final_texg.x2, final_texg.y1,
         final_texg.x2, final_texg.y2,
@@ -166,15 +169,30 @@ void render_transformed_texture(wf::texture_t tex,
     };
 
     program.set_active_texture(tex);
-    program.attrib_pointer("position", 2, 0, vertexData);
-    program.attrib_pointer("uvPosition", 2, 0, coordData);
+    program.attrib_pointer("position", 2, 0, vertexData.data());
+    program.attrib_pointer("uvPosition", 2, 0, coordData.data());
     program.uniformMatrix4f("MVP", model);
     program.uniform4f("color", color);
 
     GL_CALL(glEnable(GL_BLEND));
     GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
-    GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
 
+    if (bits & RENDER_FLAG_CACHED)
+    {
+        return;
+    }
+
+    draw_cached();
+    clear_cached();
+}
+
+void draw_cached()
+{
+    GL_CALL(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
+}
+
+void clear_cached()
+{
     program.deactivate();
 }
 
