@@ -13,6 +13,7 @@ class surface_interface_t::impl
     surface_interface_t *parent_surface;
     std::vector<std::unique_ptr<surface_interface_t>> surface_children_above;
     std::vector<std::unique_ptr<surface_interface_t>> surface_children_below;
+    size_t last_cnt_surfaces = 0;
 
     /**
      * Remove all subsurfaces and emit signals for them.

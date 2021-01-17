@@ -71,6 +71,7 @@ std::vector<wf::surface_iterator_t> wf::surface_interface_t::enumerate_surfaces(
     wf::point_t surface_origin)
 {
     std::vector<wf::surface_iterator_t> result;
+    result.reserve(priv->last_cnt_surfaces);
     auto add_surfaces_recursive = [&] (surface_interface_t *child)
     {
         if (!child->is_mapped())
@@ -99,6 +100,7 @@ std::vector<wf::surface_iterator_t> wf::surface_interface_t::enumerate_surfaces(
         add_surfaces_recursive(child.get());
     }
 
+    priv->last_cnt_surfaces = result.size();
     return result;
 }
 
