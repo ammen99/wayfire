@@ -176,7 +176,7 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
         {
             // Most operations for transferring an unmapped view to another
             // output don't make any sense, so we handle them separately.
-            view->surface_interface_t::set_output(to);
+            view->set_output(to);
         }
 
         for (auto& view : views)
@@ -185,8 +185,8 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
         }
     }
 
-    /* just remove all other views - backgrounds, panels, etc.
-    * desktop views have been removed by the previous cycle */
+    // Find all leftover views
+    std::vector<wayfire_view> reffed;
     for (auto& view : wf::get_core().get_all_views())
     {
         if (view->get_output() != from)
@@ -194,11 +194,25 @@ void transfer_views(wf::output_t *from, wf::output_t *to)
             continue;
         }
 
+        // Ensure that no view is destroyed before we're finished with it!
+        // This is necessary in case we have for ex. a popup on a layer-shell
+        // surface. We don't know in which order they will be closed/destroyed.
+        reffed.push_back(view);
+        view->take_ref();
+    }
+
+    // Close the leftover views, typically layer-shell ones
+    for (auto& view : reffed)
+    {
         view->close();
         view->set_output(nullptr);
     }
 
-    /* A note: at this point, some views might already have been deleted */
+    // Drop refs we have taken
+    for (auto& view : reffed)
+    {
+        view->unref();
+    }
 }
 
 bool output_state_t::operator ==(const output_state_t& other) const
