@@ -968,7 +968,7 @@ class wayfire_scale : public wf::plugin_interface_t
                     (view == current_focus_view) ? 1 : (double)inactive_alpha;
 
                 // Helper function to calculate the desired scale for a view
-                const auto& calculate_scale = [=] (wf::geometry_t vg,
+                const auto& calculate_scale = [=] (wf::dimensions_t vg,
                                                    const wf::scale_transformer_t::
                                                    padding_t& pad)
                 {
@@ -985,7 +985,9 @@ class wayfire_scale : public wf::plugin_interface_t
                 };
 
                 add_transformer(view);
-                double view_scale = calculate_scale(view->get_wm_geometry(),
+                auto geom = view->transform_region(view->get_wm_geometry(),
+                    scale_data[view].transformer);
+                double view_scale = calculate_scale({geom.width, geom.height},
                     scale_data[view].transformer->get_scale_padding());
                 for (auto& child : view->enumerate_views(false))
                 {
@@ -1021,11 +1023,14 @@ class wayfire_scale : public wf::plugin_interface_t
                         continue;
                     }
 
-                    auto vg = child->get_wm_geometry();
+                    auto vg = child->transform_region(child->get_wm_geometry(),
+                        child_data.transformer);
+                    wf::pointf_t center = {vg.x + vg.width / 2.0,
+                        vg.y + vg.height / 2.0};
 
                     // Take padding into account
                     auto pad     = child_data.transformer->get_scale_padding();
-                    double scale = calculate_scale(vg, pad);
+                    double scale = calculate_scale({vg.width, vg.height}, pad);
                     // Ensure child is not scaled more than parent
                     if (!allow_scale_zoom &&
                         (child != view) &&
@@ -1035,10 +1040,8 @@ class wayfire_scale : public wf::plugin_interface_t
                     }
 
                     // Target geometry is centered around the center slot
-                    const double dx = x + pad.left - vg.x +
-                        ((scaled_width - vg.width) / 2.0);
-                    const double dy = y + pad.top - vg.y +
-                        ((scaled_height - vg.height) / 2.0);
+                    const double dx = x + pad.left - center.x + scaled_width / 2.0;
+                    const double dy = y + pad.top - center.y + scaled_height / 2.0;
                     setup_view_transform(child_data, scale, scale,
                         dx, dy, target_alpha);
                 }
