@@ -58,16 +58,16 @@ class grid_crossfade_transformer : public wf::view_2D
     }
 
     void render_box(wf::texture_t src_tex, wlr_box src_box,
-        wlr_box scissor_box, const wf::framebuffer_t& fb) override
+        wlr_box scissor_box, wlr_box wm_geom, const wf::framebuffer_t& fb) override
     {
         // See the current target geometry
-        auto bbox = view->get_wm_geometry();
+        auto bbox = wm_geom;
         bbox = this->get_bounding_box(bbox, bbox);
 
         double saved = this->alpha;
         this->alpha = 1.0;
         // Now render the real view
-        view_2D::render_box(src_tex, src_box, scissor_box, fb);
+        view_2D::render_box(src_tex, src_box, wm_geom, scissor_box, fb);
         this->alpha = saved;
 
         double ra;

@@ -299,7 +299,7 @@ wf::pointf_t wf::view_interface_t::global_to_local_point(const wf::pointf_t& arg
     {
         std::vector<wf::geometry_t> bb;
         bb.reserve(view_impl->transforms.size());
-        auto box = get_untransformed_bounding_box();
+        auto box = get_wm_geometry();
         bb.push_back(box);
         view_impl->transforms.for_each([&] (auto& tr)
         {
@@ -964,7 +964,7 @@ wlr_box wf::view_interface_t::transform_region(const wlr_box& region,
     nonstd::observer_ptr<wf::view_transformer_t> upto)
 {
     auto box  = region;
-    auto view = get_untransformed_bounding_box();
+    auto view = get_wm_geometry();
 
     bool computed_region = false;
     view_impl->transforms.for_each([&] (auto& tr)
@@ -998,7 +998,7 @@ wlr_box wf::view_interface_t::transform_region(const wlr_box& region)
 wf::pointf_t wf::view_interface_t::transform_point(const wf::pointf_t& point)
 {
     auto result = point;
-    auto view   = get_untransformed_bounding_box();
+    auto view   = get_wm_geometry();
 
     view_impl->transforms.for_each([&] (auto& tr)
     {
@@ -1040,7 +1040,7 @@ wf::region_t wf::view_interface_t::get_transformed_opaque_region()
         return {};
     }
 
-    auto obox = get_untransformed_bounding_box();
+    auto bbox = get_wm_geometry();
     auto og   = get_output_geometry();
 
     wf::region_t opaque;
@@ -1049,7 +1049,7 @@ wf::region_t wf::view_interface_t::get_transformed_opaque_region()
         opaque |= surf.surface->get_opaque_region(surf.position);
     }
 
-    auto bbox = obox;
+    // auto bbox = obox;
     this->view_impl->transforms.for_each(
         [&] (const std::shared_ptr<view_transform_block_t> tr)
     {
@@ -1068,7 +1068,8 @@ bool wf::view_interface_t::render_transformed(const wf::framebuffer_t& framebuff
         return false;
     }
 
-    wf::geometry_t obox = get_untransformed_bounding_box();
+    wf::geometry_t obox    = get_untransformed_bounding_box();
+    wf::geometry_t wm_geom = get_wm_geometry();
     wf::texture_t previous_texture;
     float texture_scale;
 
@@ -1112,7 +1113,7 @@ bool wf::view_interface_t::render_transformed(const wf::framebuffer_t& framebuff
 
         /* Calculate size after this transform */
         auto transformed_box =
-            transform->transform->get_bounding_box(obox, obox);
+            transform->transform->get_bounding_box(wm_geom, obox);
         int scaled_width  = transformed_box.width * texture_scale;
         int scaled_height = transformed_box.height * texture_scale;
 
@@ -1126,12 +1127,13 @@ bool wf::view_interface_t::render_transformed(const wf::framebuffer_t& framebuff
         OpenGL::render_end();
 
         /* Actually render the transform to the next framebuffer */
-        transform->transform->render_with_damage(previous_texture, obox,
+        transform->transform->render_with_damage(previous_texture, obox, wm_geom,
             wf::region_t{transformed_box}, transform->fb);
 
         previous_transform = transform;
         previous_texture   = previous_transform->fb.tex;
-        obox = transformed_box;
+        obox    = transformed_box;
+        wm_geom = transform->transform->get_bounding_box(wm_geom, wm_geom);
     });
 
     /* This can happen in two ways:
@@ -1164,7 +1166,7 @@ bool wf::view_interface_t::render_transformed(const wf::framebuffer_t& framebuff
         /* Regular case, just call the last transformer, but render directly
          * to the target framebuffer */
         final_transform->transform->render_with_damage(previous_texture, obox,
-            damage, framebuffer);
+            wm_geom, damage, framebuffer);
     }
 
     return true;

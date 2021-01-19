@@ -102,7 +102,7 @@ class FireTransformer : public wf::view_transformer_t
         p.base_radius = p.radius = random(size * 0.8, size * 1.2);
     }
 
-    void render_box(wf::texture_t src_tex, wlr_box src_box,
+    void render_box(wf::texture_t src_tex, wlr_box src_box, wlr_box wm_geom,
         wlr_box scissor_box, const wf::framebuffer_t& target_fb) override
     {
         OpenGL::render_begin(target_fb);

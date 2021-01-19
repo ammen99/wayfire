@@ -108,11 +108,12 @@ class scale_transformer_t : public wf::view_2D
     };
 
     /* render the transformed view and then add all overlays */
-    void render_with_damage(wf::texture_t src_tex, wlr_box src_box,
+    void render_with_damage(wf::texture_t src_tex, wlr_box src_box, wlr_box wm_geom,
         const wf::region_t& damage, const wf::framebuffer_t& target_fb) override
     {
         /* render the transformed view first */
-        view_transformer_t::render_with_damage(src_tex, src_box, damage, target_fb);
+        view_transformer_t::render_with_damage(src_tex, src_box, wm_geom, damage,
+            target_fb);
 
         /* call all overlays */
         for (auto& p : overlays)
@@ -199,10 +200,11 @@ class scale_transformer_t : public wf::view_2D
      * Transform the view's bounding box, including the current transform, but not
      * the padding.
      */
-    wlr_box transform_bounding_box_without_padding()
+    wlr_box transform_wm_geom_without_padding()
     {
-        auto box = view->get_bounding_box(this);
-        return view_transformer_t::get_bounding_box(box, box);
+        auto wm_geom = view->get_wm_geometry();
+        wm_geom = view->transform_region(wm_geom, this);
+        return view_transformer_t::get_bounding_box(wm_geom, wm_geom);
     }
 
     /**

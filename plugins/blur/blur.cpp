@@ -67,7 +67,7 @@ class wf_blur_transformer : public wf::view_transformer_t
         OpenGL::render_end();
     }
 
-    void render_with_damage(wf::texture_t src_tex, wlr_box src_box,
+    void render_with_damage(wf::texture_t src_tex, wlr_box src_box, wlr_box wm_geom,
         const wf::region_t& damage, const wf::framebuffer_t& target_fb) override
     {
         wf::region_t clip_damage = damage & src_box;
@@ -99,15 +99,15 @@ class wf_blur_transformer : public wf::view_transformer_t
         wf::region_t blurred_region = clip_damage ^ opaque_region;
 
         provider()->pre_render(src_tex, src_box, blurred_region, target_fb);
-        wf::view_transformer_t::render_with_damage(src_tex, src_box, blurred_region,
-            target_fb);
+        wf::view_transformer_t::render_with_damage(src_tex, src_box, wm_geom,
+            blurred_region, target_fb);
 
         /* Opaque non-blurred regions can be rendered directly without blending */
         direct_render(src_tex, src_box, opaque_region & clip_damage, target_fb);
     }
 
-    void render_box(wf::texture_t src_tex, wlr_box src_box, wlr_box scissor_box,
-        const wf::framebuffer_t& target_fb) override
+    void render_box(wf::texture_t src_tex, wlr_box src_box, wlr_box wm_geom,
+        wlr_box scissor_box, const wf::framebuffer_t& target_fb) override
     {
         provider()->render(src_tex, src_box, scissor_box, target_fb);
     }

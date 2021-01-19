@@ -99,8 +99,7 @@ class view_title_overlay_t : public wf::scale_transformer_t::overlay_t
      */
     wlr_box get_transformed_wm_geometry(wf::scale_transformer_t& tr)
     {
-        wlr_box box = tr.get_transformed_view()->get_wm_geometry();
-        return tr.trasform_box_without_padding(box);
+        return tr.transform_wm_geom_without_padding();
     }
 
     wlr_box get_transformed_wm_geometry()

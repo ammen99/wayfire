@@ -37,7 +37,8 @@ class view_transformer_t
      * It must be guaranteed that the pixels part of the returned region are
      * opaque. The default implementation simply returns an empty region.
      *
-     * @param box The bounding box of the view up to this transformer.
+     * @param box The bounding box of the WM geometry of the view up to this
+     *   transformer.
      * @param region The opaque region to transform.
      *
      * @return The transformed opaque region.
@@ -48,8 +49,8 @@ class view_transformer_t
     /**
      * Transform a single point.
      *
-     * @param view The bounding box of the view, in output-local
-     *   coordinates.
+     * @param view The bounding box of the WM geometry of the view up to this
+     *   transformer, in output-local coordinates.
      * @param point The point to transform, in output-local coordinates.
      *
      * @return The point after transforming it, in output-local coordinates.
@@ -60,8 +61,8 @@ class view_transformer_t
     /**
      * Reverse the transformation of the point.
      *
-     * @param view The bounding box of the view, in output-local
-     *   coordinates.
+     * @param view The bounding box of the WM geometry of the view up to this
+     *   transformer, in output-local coordinates.
      * @param point The point to untransform, in output-local coordinates.
      *
      * @return The point before after transforming it, in output-local
@@ -74,8 +75,8 @@ class view_transformer_t
     /**
      * Compute the bounding box of the given region after transforming it.
      *
-     * @param view The bounding box of the view, in output-local
-     *   coordinates.
+     * @param view The bounding box of the WM geometry of the view up to this
+     *   transformer, in output-local coordinates.
      * @param region The region whose bounding box should be computed, in
      *   output-local coordinates.
      *
@@ -89,6 +90,8 @@ class view_transformer_t
      *
      * @param src_tex The texture of the view.
      * @param src_box The bounding box of the view in output-local coordinates.
+     * @param wm_geom The bounding box of the WM geometry of the view up to this
+     *   transformer, in output-local coordinates.
      * @param damage The region to repaint, clipped to the view's bounds.
      *   It is in output-local coordinates.
      * @param target_fb The framebuffer to draw the view to. It's geometry
@@ -100,11 +103,12 @@ class view_transformer_t
      * either of the functions.
      */
     virtual void render_with_damage(wf::texture_t src_tex, wlr_box src_box,
-        const wf::region_t& damage, const wf::framebuffer_t& target_fb);
+        wlr_box wm_geom, const wf::region_t& damage,
+        const wf::framebuffer_t& target_fb);
 
     /** Same as render_with_damage(), but for a single rectangle of damage */
     virtual void render_box(wf::texture_t src_tex, wlr_box src_box,
-        wlr_box scissor_box, const wf::framebuffer_t& target_fb)
+        wlr_box wm_geom, wlr_box scissor_box, const wf::framebuffer_t& target_fb)
     {}
 
     virtual ~view_transformer_t()
@@ -137,10 +141,12 @@ class view_2D : public view_transformer_t
     wf::pointf_t untransform_point(
         wf::geometry_t view, wf::pointf_t point) override;
     void render_box(wf::texture_t src_tex, wlr_box src_box,
-        wlr_box scissor_box, const wf::framebuffer_t& target_fb) override;
+        wlr_box wm_geom, wlr_box scissor_box,
+        const wf::framebuffer_t& target_fb) override;
 };
 
-/* Those are centered relative to the view's bounding box */
+/* Those are centered relative to the view's WM geometry (i.e. the view's main
+ * surface). */
 class view_3D : public view_transformer_t
 {
   protected:
@@ -165,7 +171,8 @@ class view_3D : public view_transformer_t
     wf::pointf_t untransform_point(
         wf::geometry_t view, wf::pointf_t point) override;
     void render_box(wf::texture_t src_tex, wlr_box src_box,
-        wlr_box scissor_box, const wf::framebuffer_t& target_fb) override;
+        wlr_box wm_geom, wlr_box scissor_box,
+        const wf::framebuffer_t& target_fb) override;
 
     static const float fov; // PI / 8
     static glm::mat4 default_view_matrix();

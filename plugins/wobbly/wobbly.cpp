@@ -695,7 +695,7 @@ class wf_wobbly : public wf::view_transformer_t
         }
     }
 
-    void render_box(wf::texture_t src_tex, wlr_box src_box,
+    void render_box(wf::texture_t src_tex, wlr_box src_box, wlr_box wm_geom,
         wlr_box scissor_box, const wf::framebuffer_t& target_fb) override
     {
         OpenGL::render_begin(target_fb);

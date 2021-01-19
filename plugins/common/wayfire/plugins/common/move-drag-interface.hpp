@@ -198,18 +198,18 @@ class scale_around_grab_t : public wf::view_transformer_t
     wf::geometry_t get_bounding_box(wf::geometry_t view,
         wf::geometry_t region) override
     {
-        int w = std::floor(view.width / scale_factor);
-        int h = std::floor(view.height / scale_factor);
+        int w = std::floor(region.width / scale_factor);
+        int h = std::floor(region.height / scale_factor);
 
         auto bb = find_geometry_around({w, h}, grab_position, relative_grab);
         return bb;
     }
 
-    void render_with_damage(wf::texture_t src_tex, wlr_box src_box,
+    void render_with_damage(wf::texture_t src_tex, wlr_box src_box, wlr_box wm_geom,
         const wf::region_t& damage, const wf::framebuffer_t& target_fb) override
     {
         // Get target size
-        auto bbox = get_bounding_box(src_box, src_box);
+        auto bbox = get_bounding_box(wm_geom, src_box);
 
         OpenGL::render_begin(target_fb);
         for (auto& rect : damage)
