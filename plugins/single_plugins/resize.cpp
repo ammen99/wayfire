@@ -185,8 +185,8 @@ class wayfire_resize : public wf::plugin_interface_t
             return false;
         }
 
-        this->edges = forced_edges ?: calculate_edges(grabbed_geometry,
-            grab_start.x, grab_start.y);
+        this->edges = forced_edges ?: calculate_edges(view->get_bounding_box(),
+            get_input_coords().x, get_input_coords().y);
 
         if (edges == 0)
         {
@@ -229,7 +229,7 @@ class wayfire_resize : public wf::plugin_interface_t
 
         this->view = view;
 
-        auto og = view->get_output_geometry();
+        auto og = view->get_bounding_box();
         int anchor_x = og.x;
         int anchor_y = og.y;
 
