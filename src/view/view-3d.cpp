@@ -116,7 +116,8 @@ static void rotate_xy(float& x, float& y, float angle)
 wf::pointf_t wf::view_2D::transform_point(
     wf::geometry_t geometry, wf::pointf_t point)
 {
-    auto p2 = get_center_relative_coords(view->get_wm_geometry(), point);
+    auto wm_geom = view->transform_region(view->get_wm_geometry(), this);
+    auto p2 = get_center_relative_coords(wm_geom, point);
     float x = p2.x, y = p2.y;
 
     x *= scale_x;
@@ -125,7 +126,7 @@ wf::pointf_t wf::view_2D::transform_point(
     x += translation_x;
     y -= translation_y;
 
-    auto r = get_absolute_coords_from_relative(view->get_wm_geometry(), {x, y});
+    auto r = get_absolute_coords_from_relative(wm_geom, {x, y});
 
     return r;
 }
@@ -133,7 +134,8 @@ wf::pointf_t wf::view_2D::transform_point(
 wf::pointf_t wf::view_2D::untransform_point(
     wf::geometry_t geometry, wf::pointf_t point)
 {
-    point = get_center_relative_coords(view->get_wm_geometry(), point);
+    auto wm_geom = view->transform_region(view->get_wm_geometry(), this);
+    point = get_center_relative_coords(wm_geom, point);
     float x = point.x, y = point.y;
 
     x -= translation_x;
@@ -142,14 +144,14 @@ wf::pointf_t wf::view_2D::untransform_point(
     x /= scale_x;
     y /= scale_y;
 
-    return get_absolute_coords_from_relative(view->get_wm_geometry(), {x, y});
+    return get_absolute_coords_from_relative(wm_geom, {x, y});
 }
 
 void wf::view_2D::render_box(wf::texture_t src_tex, wlr_box src_box,
     wlr_box scissor_box, const wf::framebuffer_t& fb)
 {
-    auto quad =
-        center_geometry(fb.geometry, src_box, get_center(view->get_wm_geometry()));
+    auto wm_geom = view->transform_region(view->get_wm_geometry(), this);
+    auto quad    = center_geometry(fb.geometry, src_box, get_center(wm_geom));
 
     quad.geometry.x1 *= scale_x;
     quad.geometry.x2 *= scale_x;
@@ -206,7 +208,8 @@ glm::mat4 wf::view_3D::calculate_total_transform()
 wf::pointf_t wf::view_3D::transform_point(
     wf::geometry_t geometry, wf::pointf_t point)
 {
-    auto p = get_center_relative_coords(geometry, point);
+    auto wm_geom = view->transform_region(view->get_wm_geometry(), this);
+    auto p = get_center_relative_coords(wm_geom, point);
     glm::vec4 v(1.0f * p.x, 1.0f * p.y, 0, 1);
     v = calculate_total_transform() * v;
 
@@ -223,13 +226,14 @@ wf::pointf_t wf::view_3D::transform_point(
         v.y /= v.w;
     }
 
-    return get_absolute_coords_from_relative(geometry, {v.x, v.y});
+    return get_absolute_coords_from_relative(wm_geom, {v.x, v.y});
 }
 
 wf::pointf_t wf::view_3D::untransform_point(wf::geometry_t geometry,
     wf::pointf_t point)
 {
-    auto p  = get_center_relative_coords(geometry, point);
+    auto wm_geom = view->transform_region(view->get_wm_geometry(), this);
+    auto p  = get_center_relative_coords(wm_geom, point);
     auto tr = calculate_total_transform();
 
     /* Since we know that our original z coordinates were zero, we can write a
@@ -258,13 +262,14 @@ wf::pointf_t wf::view_3D::untransform_point(wf::geometry_t geometry,
      * difference will be small though. */
     glm::dvec2 res = glm::inverse(A) * b;
 
-    return get_absolute_coords_from_relative(geometry, {res.x, res.y});
+    return get_absolute_coords_from_relative(wm_geom, {res.x, res.y});
 }
 
 void wf::view_3D::render_box(wf::texture_t src_tex, wlr_box src_box,
     wlr_box scissor_box, const wf::framebuffer_t& fb)
 {
-    auto quad = center_geometry(fb.geometry, src_box, get_center(src_box));
+    auto wm_geom = view->transform_region(view->get_wm_geometry(), this);
+    auto quad    = center_geometry(fb.geometry, src_box, get_center(wm_geom));
 
     auto transform = calculate_total_transform();
     auto translate = glm::translate(glm::mat4(1.0), {quad.off_x, quad.off_y, 0});
