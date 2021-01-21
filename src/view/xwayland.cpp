@@ -351,9 +351,9 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
         auto o = get_output();
         if (o)
         {
-            auto wsg = o->workspace->get_workarea();
-            auto og  = o->get_layout_geometry();
-
+            auto view_workarea = (fullscreen ?
+                o->get_relative_geometry() : o->workspace->get_workarea());
+            auto og = o->get_layout_geometry();
             configure_geometry.x -= og.x;
             configure_geometry.y -= og.y;
 
@@ -364,26 +364,23 @@ class wayfire_xwayland_view_base : public wf::wlr_view_t
             }
 
             auto vg = view->get_wm_geometry();
-            auto current_workspace = o->workspace->get_current_workspace();
-            auto ws_offset = wf::point_t{0, 0};
-            if (vg.width && vg.height)
+
+            // View workspace relative to current workspace
+            wf::point_t view_ws = {0, 0};
+            if (view->is_mapped())
             {
-                vg.x += current_workspace.x * og.width;
-                vg.y += current_workspace.y * og.height;
-                auto center =
-                    wf::point_t{vg.x + vg.width / 2, vg.y + vg.height / 2};
-                auto view_ws =
-                    wf::point_t{int(center.x / og.width), int(center.y / og.height)};
-                ws_offset.x = view_ws.x - current_workspace.x;
-                ws_offset.y = view_ws.y - current_workspace.y;
-                wsg.x += ws_offset.x * og.width;
-                wsg.y += ws_offset.y * og.height;
+                view_ws = {
+                    (int)std::floor((vg.x + vg.width / 2.0) / og.width),
+                    (int)std::floor((vg.y + vg.height / 2.0) / og.height),
+                };
+
+                view_workarea.x += og.width * view_ws.x;
+                view_workarea.y += og.height * view_ws.y;
             }
 
-            configure_geometry = translate_geometry_to_output(o, ws_offset,
-                configure_geometry);
-
-            configure_geometry = wf::clamp(configure_geometry, wsg);
+            configure_geometry = translate_geometry_to_output(
+                o, view_ws, configure_geometry);
+            configure_geometry = wf::clamp(configure_geometry, view_workarea);
         }
 
         if (view_impl->frame)
