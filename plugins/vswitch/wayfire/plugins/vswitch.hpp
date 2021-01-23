@@ -306,19 +306,19 @@ class control_bindings_t
 
         callback_win_left = [=] (const wf::activator_data_t&)
         {
-            return handle_dir({-1, 0}, get_top_view(), callback);
+            return handle_dir({-1, 0}, get_target_view(), callback);
         };
         callback_win_right = [=] (const wf::activator_data_t&)
         {
-            return handle_dir({1, 0}, get_top_view(), callback);
+            return handle_dir({1, 0}, get_target_view(), callback);
         };
         callback_win_up = [=] (const wf::activator_data_t&)
         {
-            return handle_dir({0, -1}, get_top_view(), callback);
+            return handle_dir({0, -1}, get_target_view(), callback);
         };
         callback_win_down = [=] (const wf::activator_data_t&)
         {
-            return handle_dir({0, 1}, get_top_view(), callback);
+            return handle_dir({0, 1}, get_target_view(), callback);
         };
 
         wf::option_wrapper_t<wf::activatorbinding_t> binding_left{
@@ -375,14 +375,16 @@ class control_bindings_t
 
     wf::output_t *output;
 
-    /** Find the topmost view to switch workspace with */
-    virtual wayfire_view get_top_view()
+    /** Find the view to switch workspace with */
+    virtual wayfire_view get_target_view()
     {
-        auto ws    = output->workspace->get_current_workspace();
-        auto views = output->workspace->get_views_on_workspace(ws,
-            wf::LAYER_WORKSPACE);
+        auto view = output->get_active_view();
+        if (!view || (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        {
+            return nullptr;
+        }
 
-        return views.empty() ? nullptr : views[0];
+        return view;
     }
 
     /**
