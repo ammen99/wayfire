@@ -63,9 +63,25 @@ class tile_plugin_t : public wf::plugin_interface_t
 
     const wf::tile::split_direction_t default_split = wf::tile::SPLIT_VERTICAL;
 
-    void initialize_roots()
+    wf::signal_connection_t on_workspace_grid_changed = [=] (auto)
     {
-        auto wsize = output->workspace->get_workspace_grid_size();
+        resize_roots(output->workspace->get_workspace_grid_size());
+    };
+
+    void resize_roots(wf::dimensions_t wsize)
+    {
+        for (size_t i = 0; i < tiled_sublayer.size(); i++)
+        {
+            for (size_t j = 0; j < tiled_sublayer[i].size(); j++)
+            {
+                if (!output->workspace->is_workspace_valid({(int)i, (int)j}))
+                {
+                    output->workspace->destroy_sublayer(tiled_sublayer[i][j]);
+                    roots[i][j].reset();
+                }
+            }
+        }
+
         roots.resize(wsize.width);
         tiled_sublayer.resize(wsize.width);
         for (int i = 0; i < wsize.width; i++)
@@ -549,7 +565,7 @@ class tile_plugin_t : public wf::plugin_interface_t
          * their own, and should be able to have more than one */
         this->grab_interface->capabilities = CAPABILITY_MANAGE_COMPOSITOR;
 
-        initialize_roots();
+        resize_roots(output->workspace->get_workspace_grid_size());
         // TODO: check whether this was successful
         output->workspace->set_workspace_implementation(
             std::make_unique<tile_workspace_implementation_t>(), true);
@@ -564,8 +580,11 @@ class tile_plugin_t : public wf::plugin_interface_t
         output->connect_signal("view-focused", &on_focus_changed);
         output->connect_signal("view-change-viewport", &on_view_change_viewport);
         output->connect_signal("view-minimize-request", &on_view_minimized);
+        output->connect_signal("workspace-grid-changed",
+            &on_workspace_grid_changed);
         wf::get_core().connect_signal("view-pre-moved-to-output",
             &on_view_pre_moved_to_output);
+
         setup_callbacks();
     }
 

@@ -411,25 +411,82 @@ struct default_workspace_implementation_t : public workspace_implementation_t
 class output_viewport_manager_t
 {
   private:
-    int vwidth;
-    int vheight;
-    int current_vx;
-    int current_vy;
+    wf::option_wrapper_t<int> vwidth_opt{"core/vwidth"};
+    wf::option_wrapper_t<int> vheight_opt{"core/vheight"};
+
+    int current_vx = 0;
+    int current_vy = 0;
 
     output_t *output;
+
+    // Grid size was set by a plugin?
+    bool has_custom_grid_size = false;
+
+    // Current dimensions of the grid
+    wf::dimensions_t grid = {0, 0};
+
+    std::function<void()> update_cfg_grid_size = [=] ()
+    {
+        if (has_custom_grid_size)
+        {
+            return;
+        }
+
+        auto old_grid = grid;
+        grid = {vwidth_opt, vheight_opt};
+        handle_grid_changed(old_grid);
+    };
+
+    wf::point_t closest_valid_ws(wf::point_t workspace)
+    {
+        workspace.x = wf::clamp(workspace.x, 0, grid.width - 1);
+        workspace.y = wf::clamp(workspace.y, 0, grid.height - 1);
+        return workspace;
+    }
+
+    /**
+     * Handle a change in the workspace grid size.
+     *
+     * When it happens, we need to ensure that each view is at least partly
+     * visible on the remaining workspaces.
+     */
+    void handle_grid_changed(wf::dimensions_t old_size)
+    {
+        if (!is_workspace_valid({current_vx, current_vy}))
+        {
+            set_workspace(closest_valid_ws({current_vx, current_vy}), {});
+        }
+
+        for (auto view : output->workspace->get_views_in_layer(
+            wf::WM_LAYERS | wf::LAYER_MINIMIZED))
+        {
+            // XXX: we use the magic value 0.333, maybe something else would be
+            // better?
+            auto workspaces = get_view_workspaces(view, 0.333);
+
+            bool is_visible = std::any_of(workspaces.begin(), workspaces.end(),
+                [=] (auto ws) { return is_workspace_valid(ws); });
+
+            if (!is_visible)
+            {
+                move_to_workspace(view, get_view_main_workspace(view));
+            }
+        }
+
+        wf::workspace_grid_changed_signal data;
+        data.old_grid_size = old_size;
+        data.new_grid_size = grid;
+        output->emit_signal("workspace-grid-changed", &data);
+    }
 
   public:
     output_viewport_manager_t(output_t *output)
     {
         this->output = output;
-        vwidth  = wf::option_wrapper_t<int>("core/vwidth");
-        vheight = wf::option_wrapper_t<int>("core/vheight");
 
-        vwidth  = clamp(vwidth, 1, 20);
-        vheight = clamp(vheight, 1, 20);
-
-        current_vx = 0;
-        current_vy = 0;
+        vwidth_opt.set_callback(update_cfg_grid_size);
+        vheight_opt.set_callback(update_cfg_grid_size);
+        this->grid = {vwidth_opt, vheight_opt};
     }
 
     /**
@@ -445,9 +502,9 @@ class output_viewport_manager_t
         wf::geometry_t workspace_relative_geometry;
         wlr_box view_bbox = view->get_bounding_box();
 
-        for (int horizontal = 0; horizontal < this->vwidth; horizontal++)
+        for (int horizontal = 0; horizontal < grid.width; horizontal++)
         {
-            for (int vertical = 0; vertical < this->vheight; vertical++)
+            for (int vertical = 0; vertical < grid.height; vertical++)
             {
                 wf::point_t ws = {horizontal, vertical};
                 if (output->workspace->view_visible_on(view, ws))
@@ -469,6 +526,19 @@ class output_viewport_manager_t
         }
 
         return view_workspaces;
+    }
+
+    wf::point_t get_view_main_workspace(wayfire_view view)
+    {
+        auto og = output->get_screen_size();
+
+        auto wm = view->transform_region(view->get_wm_geometry());
+        wf::point_t workspace = {
+            (int)std::floor((wm.x + wm.width / 2.0) / og.width),
+            (int)std::floor((wm.y + wm.height / 2.0) / og.height)
+        };
+
+        return closest_valid_ws(workspace);
     }
 
     /**
@@ -595,12 +665,21 @@ class output_viewport_manager_t
 
     wf::dimensions_t get_workspace_grid_size()
     {
-        return {vwidth, vheight};
+        return grid;
+    }
+
+    void set_workspace_grid_size(wf::dimensions_t new_grid)
+    {
+        auto old = this->grid;
+        this->grid = new_grid;
+        this->has_custom_grid_size = true;
+        handle_grid_changed(old);
     }
 
     bool is_workspace_valid(wf::point_t ws)
     {
-        if ((ws.x >= vwidth) || (ws.y >= vheight) || (ws.x < 0) || (ws.y < 0))
+        if ((ws.x >= grid.width) || (ws.y >= grid.height) || (ws.x < 0) ||
+            (ws.y < 0))
         {
             return false;
         } else
@@ -615,7 +694,7 @@ class output_viewport_manager_t
         if (!is_workspace_valid(nws))
         {
             LOGE("Attempt to set invalid workspace: ", nws,
-                " workspace grid size is ", vwidth, "x", vheight);
+                " workspace grid size is ", grid.width, "x", grid.height);
 
             return;
         }
@@ -1086,6 +1165,11 @@ std::vector<wf::point_t> workspace_manager::get_view_workspaces(wayfire_view vie
     return pimpl->viewport_manager.get_view_workspaces(view, threshold);
 }
 
+wf::point_t workspace_manager::get_view_main_workspace(wayfire_view view)
+{
+    return pimpl->viewport_manager.get_view_main_workspace(view);
+}
+
 bool workspace_manager::view_visible_on(wayfire_view view, wf::point_t ws)
 {
     return pimpl->viewport_manager.view_visible_on(view, ws);
@@ -1208,6 +1292,11 @@ wf::point_t workspace_manager::get_current_workspace()
 wf::dimensions_t workspace_manager::get_workspace_grid_size()
 {
     return pimpl->viewport_manager.get_workspace_grid_size();
+}
+
+void workspace_manager::set_workspace_grid_size(wf::dimensions_t dim)
+{
+    return pimpl->viewport_manager.set_workspace_grid_size(dim);
 }
 
 bool workspace_manager::is_workspace_valid(wf::point_t ws)

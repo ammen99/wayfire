@@ -53,16 +53,7 @@ class workspace_stream_pool_t : public noncopyable_t, public wf::custom_data_t
 
     ~workspace_stream_pool_t()
     {
-        OpenGL::render_begin();
-        for (auto& row : this->streams)
-        {
-            for (auto& stream : row)
-            {
-                stream.buffer.release();
-            }
-        }
-
-        OpenGL::render_end();
+        resize_pool({0, 0});
     }
 
     /**
@@ -106,13 +97,34 @@ class workspace_stream_pool_t : public noncopyable_t, public wf::custom_data_t
     workspace_stream_pool_t(wf::output_t *output)
     {
         this->output = output;
+        output->connect_signal("workspace-grid-changed", &on_workspace_grid_changed);
+        resize_pool(this->output->workspace->get_workspace_grid_size());
+    }
 
-        auto wsize = this->output->workspace->get_workspace_grid_size();
-        this->streams.resize(wsize.width);
-        for (int i = 0; i < wsize.width; i++)
+    void resize_pool(wf::dimensions_t size)
+    {
+        for (auto& column : this->streams)
         {
-            this->streams[i].resize(wsize.height);
-            for (int j = 0; j < wsize.height; j++)
+            for (auto& stream : column)
+            {
+                if (stream.running)
+                {
+                    output->render->workspace_stream_stop(stream);
+                }
+
+                OpenGL::render_begin();
+                stream.buffer.release();
+                OpenGL::render_end();
+            }
+        }
+
+        this->streams.clear();
+
+        this->streams.resize(size.width);
+        for (int i = 0; i < size.width; i++)
+        {
+            this->streams[i].resize(size.height);
+            for (int j = 0; j < size.height; j++)
             {
                 this->streams[i][j].ws = {i, j};
             }
@@ -124,5 +136,10 @@ class workspace_stream_pool_t : public noncopyable_t, public wf::custom_data_t
 
     wf::output_t *output;
     std::vector<std::vector<wf::workspace_stream_t>> streams;
+
+    wf::signal_connection_t on_workspace_grid_changed = [=] (auto)
+    {
+        resize_pool(this->output->workspace->get_workspace_grid_size());
+    };
 };
 }

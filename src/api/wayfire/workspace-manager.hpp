@@ -113,14 +113,23 @@ class workspace_manager
   public:
     /**
      * Calculate a list of workspaces the view is visible on.
+     *
      * @param threshold How much of the view's area needs to overlap a workspace to
-     * be counted as visible on it.
-     *    1.0 for 100% visible, 0.1 for 10%.
+     *   be counted as visible on it. 1.0 for 100% visible, 0.1 for 10%.
      *
      * @return a vector of all the workspaces
      */
     std::vector<wf::point_t> get_view_workspaces(wayfire_view view,
         double threshold);
+
+    /**
+     * Get the main workspace for a view.
+     * The main workspace is the one which contains the view's center.
+     *
+     * If the center is on an invalid workspace, the closest workspace will
+     * be returned.
+     */
+    wf::point_t get_view_main_workspace(wayfire_view view);
 
     /**
      * Check if the given view is visible on the given workspace
@@ -319,6 +328,14 @@ class workspace_manager
      * @return The number of workspace columns and rows
      */
     wf::dimensions_t get_workspace_grid_size();
+
+    /**
+     * Set the workspace grid size for this output.
+     *
+     * Once a plugin calls this, the number of workspaces will no longer be
+     * updated according to the config file.
+     */
+    void set_workspace_grid_size(wf::dimensions_t grid_size);
 
     /**
      * @return Whether the given workspace is valid

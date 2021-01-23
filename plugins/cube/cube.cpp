@@ -152,18 +152,6 @@ class wayfire_cube : public wf::plugin_interface_t
             deactivate();
         };
 
-        auto wsize = output->workspace->get_workspace_grid_size();
-        animation.side_angle = 2 * M_PI / float(wsize.width);
-        identity_z_offset    = 0.5 / std::tan(animation.side_angle / 2);
-        if (wsize.width == 1)
-        {
-            // tan(M_PI) is 0, so identity_z_offset is invalid
-            identity_z_offset = 0.0f;
-        }
-
-        animation.cube_animation.offset_z.set(identity_z_offset + Z_OFFSET_NEAR,
-            identity_z_offset + Z_OFFSET_NEAR);
-
         renderer = [=] (const wf::framebuffer_t& dest) {render(dest);};
 
         OpenGL::render_begin(output->render->get_target_framebuffer());
@@ -275,6 +263,18 @@ class wayfire_cube : public wf::plugin_interface_t
         output->render->schedule_redraw();
         wf::get_core().hide_cursor();
         grab_interface->grab();
+
+        auto wsize = output->workspace->get_workspace_grid_size();
+        animation.side_angle = 2 * M_PI / float(wsize.width);
+        identity_z_offset    = 0.5 / std::tan(animation.side_angle / 2);
+        if (wsize.width == 1)
+        {
+            // tan(M_PI) is 0, so identity_z_offset is invalid
+            identity_z_offset = 0.0f;
+        }
+
+        animation.cube_animation.offset_z.set(identity_z_offset + Z_OFFSET_NEAR,
+            identity_z_offset + Z_OFFSET_NEAR);
 
         return true;
     }

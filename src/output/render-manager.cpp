@@ -714,7 +714,8 @@ class wf::render_manager::impl
         });
         on_frame.connect(&output_damage->damage_manager->events.frame);
 
-        init_default_streams();
+        default_stream.scale_x    = default_stream.scale_y = 1;
+        default_stream.buffer.tex = 0;
 
         background_color_opt.load_option("core/background_color");
         background_color_opt.set_callback([=] ()
@@ -725,25 +726,8 @@ class wf::render_manager::impl
         output_damage->schedule_repaint();
     }
 
-    /* A stream for each workspace */
-    std::vector<std::vector<workspace_stream_t>> default_streams;
-    /* The stream pointing to the current workspace */
-    nonstd::observer_ptr<workspace_stream_t> current_ws_stream;
-    void init_default_streams()
-    {
-        auto wsize = output->workspace->get_workspace_grid_size();
-        default_streams.resize(wsize.width);
-        for (int i = 0; i < wsize.width; i++)
-        {
-            default_streams[i].resize(wsize.height);
-            for (int j = 0; j < wsize.height; j++)
-            {
-                default_streams[i][j].buffer.fb  = 0;
-                default_streams[i][j].buffer.tex = 0;
-                default_streams[i][j].ws = {i, j};
-            }
-        }
-    }
+    // Workspace stream for the current workspace, drawn on the output's buffer
+    workspace_stream_t default_stream;
 
     render_hook_t renderer;
     void set_renderer(render_hook_t rh)
@@ -817,21 +801,8 @@ class wf::render_manager::impl
             OpenGL::render_end();
         }
 
-        auto cws = output->workspace->get_current_workspace();
-        auto target_stream = &default_streams[cws.x][cws.y];
-        if (current_ws_stream.get() != target_stream)
-        {
-            if (current_ws_stream)
-            {
-                workspace_stream_stop(*current_ws_stream);
-            }
-
-            current_ws_stream = nonstd::make_observer(target_stream);
-            workspace_stream_start(*current_ws_stream);
-        } else
-        {
-            workspace_stream_update(*current_ws_stream);
-        }
+        default_stream.ws = output->workspace->get_current_workspace();
+        workspace_stream_update(default_stream);
     }
 
     wayfire_view last_scanout;
@@ -954,13 +925,7 @@ class wf::render_manager::impl
         depth_buffer_manager->ensure_depth_buffer(
             default_fb.fb, default_fb.viewport_width, default_fb.viewport_height);
 
-        for (auto& row : this->default_streams)
-        {
-            for (auto& ws : row)
-            {
-                ws.buffer.fb = current_fb;
-            }
-        }
+        default_stream.buffer.fb = current_fb;
     }
 
     /**

@@ -297,6 +297,20 @@ struct workspace_change_request_signal : public workspace_changed_signal
 };
 
 /**
+ * name: workspace-grid-changed
+ * on: output
+ * when: Whenever the workspace grid size changes.
+ */
+struct workspace_grid_changed_signal : public wf::signal_data_t
+{
+    /** The grid size before the change. */
+    wf::dimensions_t old_grid_size;
+
+    /** The grid size after the change. */
+    wf::dimensions_t new_grid_size;
+};
+
+/**
  * name: workarea-changed
  * on: output
  * when: Whenever the available workarea changes.
