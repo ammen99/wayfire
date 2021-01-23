@@ -1019,11 +1019,11 @@ class workspace_manager::impl
         auto views = viewport_manager.get_views_on_workspace(
             vp, LAYER_WORKSPACE);
 
-        /* Do not consider unmapped views or views which are not visible */
+        /* Do not consider unmapped views */
         auto it = std::remove_if(views.begin(), views.end(),
             [] (wayfire_view view) -> bool
         {
-            return !view->is_mapped() || !view->is_visible();
+            return !view->is_mapped();
         });
         views.erase(it, views.end());
 
