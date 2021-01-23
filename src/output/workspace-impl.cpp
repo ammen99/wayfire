@@ -11,6 +11,7 @@
 #include <wayfire/util/log.hpp>
 
 #include "../view/view-impl.hpp"
+#include "output-impl.hpp"
 
 namespace wf
 {
@@ -699,13 +700,6 @@ class output_viewport_manager_t
             return;
         }
 
-        if ((nws.x == current_vx) && (nws.y == current_vy))
-        {
-            output->refocus();
-
-            return;
-        }
-
         wf::workspace_changed_signal data;
         data.old_viewport = {current_vx, current_vy};
         data.new_viewport = {nws.x, nws.y};
@@ -738,15 +732,22 @@ class output_viewport_manager_t
             }
         }
 
-        // Bring views from the new workspace to the top
-        auto views = get_views_on_workspace(get_current_workspace(),
-            MIDDLE_LAYERS);
-
-        for (auto& view : wf::reverse(views))
+        // Update the last-focused order to be the same as the stacking order.
+        // This ensures we don't run into problems where a view on the old
+        // workspace is below a view on the current workspace, but gets focus
+        // because it has a newer timestamp from the old workspace.
+        auto views = get_views_on_workspace(get_current_workspace(), wf::WM_LAYERS);
+        for (auto v : wf::reverse(views))
         {
-            output->workspace->bring_to_front(view);
+            update_focus_timestamp(v);
         }
 
+        for (auto& v : fixed_views)
+        {
+            output->focus_view(v, true);
+        }
+
+        // Finally, do a refocus to update the keyboard focus
         output->refocus(nullptr, wf::MIDDLE_LAYERS);
         output->emit_signal("workspace-changed", &data);
     }

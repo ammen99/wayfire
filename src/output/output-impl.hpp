@@ -107,4 +107,9 @@ class output_impl_t : public output_t
     /** Set the effective resolution of the output */
     void set_effective_size(const wf::dimensions_t& size);
 };
+
+/**
+ * Set the last focused timestamp of the view to now.
+ */
+void update_focus_timestamp(wayfire_view view);
 }

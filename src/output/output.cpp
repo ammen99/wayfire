@@ -237,7 +237,7 @@ void wf::output_impl_t::update_active_view(wayfire_view v, uint32_t flags)
     }
 }
 
-static void update_focus_timestamp(wayfire_view view)
+void wf::update_focus_timestamp(wayfire_view view)
 {
     if (view)
     {
