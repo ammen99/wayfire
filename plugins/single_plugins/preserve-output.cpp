@@ -84,6 +84,8 @@ class preserve_output_t : public wf::custom_data_t
     int instances = 0;
     std::string last_focused_output_identifier = "";
     std::chrono::time_point<std::chrono::steady_clock> last_focused_output_timestamp;
+
+    std::map<std::string, wf::point_t> output_saved_workspace;
 };
 
 nonstd::observer_ptr<preserve_output_t> get_preserve_output_data()
@@ -158,6 +160,9 @@ class wayfire_preserve_output : public wf::plugin_interface_t
             core_store_focused_output(output);
         }
 
+        get_preserve_output_data()->output_saved_workspace[identifier] =
+            output->workspace->get_current_workspace();
+
         auto views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
         for (size_t i = 0; i < views.size(); i++)
         {
@@ -185,6 +190,16 @@ class wayfire_preserve_output : public wf::plugin_interface_t
     void restore_views_to_output()
     {
         std::string identifier = make_output_identifier(output);
+
+        // Restore active workspace on the output
+        // We do this first so that when restoring view's geometries, they land
+        // directly on the correct workspace.
+        auto core_data = get_preserve_output_data();
+        if (core_data->output_saved_workspace.count(identifier))
+        {
+            output->workspace->set_workspace(
+                core_data->output_saved_workspace[identifier]);
+        }
 
         // Focus this output if it was the last one focused
         if (core_get_focused_output() == identifier)
