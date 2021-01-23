@@ -14,6 +14,8 @@
 #include <wayfire/util/log.hpp>
 #include <wlr/util/edges.h>
 
+#include <wayfire/plugins/common/shared-core-data.hpp>
+
 /**
  * View last output info
  */
@@ -78,7 +80,7 @@ void view_erase_data(wayfire_view view)
 wf::option_wrapper_t<int> last_output_focus_timeout{
     "preserve-output/last_output_focus_timeout"};
 
-class preserve_output_t : public wf::custom_data_t
+class preserve_output_t : public noncopyable_t
 {
   public:
     int instances = 0;
@@ -86,50 +88,17 @@ class preserve_output_t : public wf::custom_data_t
     std::chrono::time_point<std::chrono::steady_clock> last_focused_output_timestamp;
 
     std::map<std::string, wf::point_t> output_saved_workspace;
-};
 
-nonstd::observer_ptr<preserve_output_t> get_preserve_output_data()
-{
-    return wf::get_core().get_data_safe<preserve_output_t>();
-}
-
-bool core_focused_output_expired()
-{
-    using namespace std::chrono;
-    const auto now = steady_clock::now();
-    const auto last_focus_ts =
-        get_preserve_output_data()->last_focused_output_timestamp;
-    const auto elapsed_since_focus =
-        duration_cast<milliseconds>(now - last_focus_ts).count();
-
-    return elapsed_since_focus > last_output_focus_timeout;
-}
-
-void core_store_focused_output(wf::output_t *output)
-{
-    auto& last_focused_output =
-        get_preserve_output_data()->last_focused_output_identifier;
-    // Store the output as last focused if no other output has been stored as last
-    // focused in the last 10 seconds
-    if ((last_focused_output == "") || core_focused_output_expired())
+    ~preserve_output_t()
     {
-        LOGD("Setting last focused output to: ", output->to_string());
-        last_focused_output = make_output_identifier(output);
-        get_preserve_output_data()->last_focused_output_timestamp =
-            std::chrono::steady_clock::now();
+        LOGD("This is last instance - deleting all data");
+        // Delete data from all views
+        for (auto& view : wf::get_core().get_all_views())
+        {
+            view_erase_data(view);
+        }
     }
-}
-
-std::string core_get_focused_output()
-{
-    return wf::get_core().get_data_safe<preserve_output_t>()->
-           last_focused_output_identifier;
-}
-
-void core_erase_focused_output()
-{
-    wf::get_core().erase_data<preserve_output_t>();
-}
+};
 
 /**
  * preserve-output plugin
@@ -138,6 +107,33 @@ void core_erase_focused_output()
 class wayfire_preserve_output : public wf::plugin_interface_t
 {
     bool outputs_being_removed = false;
+    wf::shared_data::ref_ptr_t<preserve_output_t> core_data;
+
+    bool focused_output_expired()
+    {
+        using namespace std::chrono;
+        const auto now = steady_clock::now();
+        const auto last_focus_ts = core_data->last_focused_output_timestamp;
+        const auto elapsed_since_focus =
+            duration_cast<milliseconds>(now - last_focus_ts).count();
+
+        return elapsed_since_focus > last_output_focus_timeout;
+    }
+
+    void store_focused_output(wf::output_t *output)
+    {
+        auto& last_focused_output = core_data->last_focused_output_identifier;
+        // Store the output as last focused if no other output has been stored as
+        // last
+        // focused in the last 10 seconds
+        if ((last_focused_output == "") || focused_output_expired())
+        {
+            LOGD("Setting last focused output to: ", output->to_string());
+            last_focused_output = make_output_identifier(output);
+            core_data->last_focused_output_timestamp =
+                std::chrono::steady_clock::now();
+        }
+    }
 
     wf::signal_connection_t output_pre_remove = [=] (wf::signal_data_t *data)
     {
@@ -157,10 +153,10 @@ class wayfire_preserve_output : public wf::plugin_interface_t
         // Store this output as the focused one
         if (wf::get_core().get_active_output() == output)
         {
-            core_store_focused_output(output);
+            store_focused_output(output);
         }
 
-        get_preserve_output_data()->output_saved_workspace[identifier] =
+        core_data->output_saved_workspace[identifier] =
             output->workspace->get_current_workspace();
 
         auto views = output->workspace->get_views_in_layer(wf::LAYER_WORKSPACE);
@@ -194,7 +190,6 @@ class wayfire_preserve_output : public wf::plugin_interface_t
         // Restore active workspace on the output
         // We do this first so that when restoring view's geometries, they land
         // directly on the correct workspace.
-        auto core_data = get_preserve_output_data();
         if (core_data->output_saved_workspace.count(identifier))
         {
             output->workspace->set_workspace(
@@ -202,11 +197,11 @@ class wayfire_preserve_output : public wf::plugin_interface_t
         }
 
         // Focus this output if it was the last one focused
-        if (core_get_focused_output() == identifier)
+        if (core_data->last_focused_output_identifier == identifier)
         {
             LOGD("This is last focused output, refocusing: ", output->to_string());
             wf::get_core().focus_output(output);
-            core_erase_focused_output();
+            core_data->last_focused_output_identifier.clear();
         }
 
         // Make a list of views to move to this output
@@ -302,9 +297,6 @@ class wayfire_preserve_output : public wf::plugin_interface_t
   public:
     void init() override
     {
-        // Increment number of instances of this plugin
-        wf::get_core().get_data_safe<preserve_output_t>()->instances++;
-
         if (wlr_output_is_noop(output->handle))
         {
             // Don't do anything for NO-OP outputs
@@ -325,25 +317,7 @@ class wayfire_preserve_output : public wf::plugin_interface_t
 
     void fini() override
     {
-        // Decrement number of instances of this plugin
-        wf::get_core().get_data_safe<preserve_output_t>()->instances--;
-        LOGD("Destroying instance, ",
-            wf::get_core().get_data_safe<preserve_output_t>()->instances,
-            " remaining");
-
-        // If this is the last instance, delete all data related to this plugin
-        if (wf::get_core().get_data_safe<preserve_output_t>()->instances == 0)
-        {
-            LOGD("This is last instance - deleting all data");
-            // Delete data from all views
-            for (auto& view : wf::get_core().get_all_views())
-            {
-                view_erase_data(view);
-            }
-
-            // Delete data from core
-            core_erase_focused_output();
-        }
+        // Nothing to do
     }
 };
 
