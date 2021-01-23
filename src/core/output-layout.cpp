@@ -241,6 +241,11 @@ bool output_state_t::operator ==(const output_state_t& other) const
     return eq;
 }
 
+inline bool is_shutting_down()
+{
+    return wf::get_core().get_current_state() == compositor_state_t::SHUTDOWN;
+}
+
 /** Represents a single output in the output layout */
 struct output_layout_output_t
 {
@@ -451,7 +456,7 @@ struct output_layout_output_t
         get_core().output_layout->emit_signal("output-added", &data);
     }
 
-    void destroy_wayfire_output(bool shutdown)
+    void destroy_wayfire_output()
     {
         if (!this->output)
         {
@@ -468,6 +473,7 @@ struct output_layout_output_t
         get_core().output_layout->emit_signal("output-pre-remove", &data);
         wo->cancel_active_plugins();
 
+        bool shutdown = is_shutting_down();
         if ((get_core().get_active_output() == wo) && !shutdown)
         {
             get_core().focus_output(
@@ -738,7 +744,7 @@ struct output_layout_output_t
      *
      * This won't have any effect if the output state can't be applied,
      * i.e if test_state(state) == false */
-    void apply_state(const output_state_t& state, bool is_shutdown = false)
+    void apply_state(const output_state_t& state)
     {
         if (!test_state(state))
         {
@@ -782,7 +788,7 @@ struct output_layout_output_t
         if (state.source == OUTPUT_IMAGE_SOURCE_NONE)
         {
             /* output is OFF */
-            destroy_wayfire_output(is_shutdown);
+            destroy_wayfire_output();
             set_enabled(false);
 
             return;
@@ -811,7 +817,7 @@ struct output_layout_output_t
             emit_configuration_changed(changed_fields);
         } else /* state.source == OUTPUT_IMAGE_SOURCE_MIRROR */
         {
-            destroy_wayfire_output(is_shutdown);
+            destroy_wayfire_output();
             setup_mirror();
         }
     }
@@ -842,7 +848,6 @@ class output_layout_t::impl
      * virtual output with the noop backend. */
     std::unique_ptr<output_layout_output_t> noop_output;
 
-    bool shutdown_received = false;
     signal_callback_t on_config_reload;
     signal_connection_t on_backend_started = [=] (wf::signal_data_t*)
     {
@@ -862,10 +867,9 @@ class output_layout_t::impl
         /* Disconnect timer, since otherwise it will be destroyed
          * after the wayland display is. */
         this->timer_remove_noop.disconnect();
-        shutdown_received = true;
         if (noop_output)
         {
-            noop_output->destroy_wayfire_output(true);
+            noop_output->destroy_wayfire_output();
             noop_output.reset();
         }
     }
@@ -1036,7 +1040,7 @@ class output_layout_t::impl
         outputs.erase(to_remove);
 
         /* If no physical outputs, then at least the noop output */
-        assert(get_outputs().size() || shutdown_received);
+        assert(get_outputs().size() || is_shutting_down());
     }
 
     /* Get the current configuration of all outputs */
@@ -1275,7 +1279,7 @@ class output_layout_t::impl
             !active_outputs.empty() && count_remaining_enabled == 0;
         bool is_noop_active = noop_output && noop_output->output;
 
-        if (turning_off_all_active && !shutdown_received && !is_noop_active)
+        if (turning_off_all_active && !is_shutting_down() && !is_noop_active)
         {
             /* If we aren't shutting down, and we will turn off all the
              * currently enabled outputs, we'll need the noop output, as a
@@ -1298,7 +1302,7 @@ class output_layout_t::impl
                  *
                  * This is needed so that clients can receive
                  * wl_surface.leave events for the to be destroyed output */
-                lo->apply_state(state, shutdown_received);
+                lo->apply_state(state);
                 wlr_output_layout_remove(output_layout, handle);
             }
         }
@@ -1317,7 +1321,7 @@ class output_layout_t::impl
                 ++count_enabled;
                 wlr_output_layout_add(output_layout, handle,
                     state.position.get_x(), state.position.get_y());
-                lo->apply_state(state, shutdown_received);
+                lo->apply_state(state);
             }
         }
 
@@ -1341,7 +1345,7 @@ class output_layout_t::impl
                 /* Get the correct position */
                 auto box = wlr_output_layout_get_box(output_layout, handle);
                 assert(box);
-                lo->apply_state(state, shutdown_received);
+                lo->apply_state(state);
             }
         }
 
@@ -1354,7 +1358,7 @@ class output_layout_t::impl
 
             if (state.source == OUTPUT_IMAGE_SOURCE_MIRROR)
             {
-                lo->apply_state(state, shutdown_received);
+                lo->apply_state(state);
                 wlr_output_layout_remove(output_layout, handle);
             }
         }
@@ -1501,7 +1505,7 @@ class output_layout_t::impl
 
         auto handle =
             wlr_output_layout_output_at(output_layout, closest.x, closest.y);
-        assert(handle || shutdown_received);
+        assert(handle || is_shutting_down());
         if (!handle)
         {
             return nullptr;
