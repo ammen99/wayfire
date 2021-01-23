@@ -117,6 +117,7 @@ class view_2D : public view_transformer_t
 {
   protected:
     wayfire_view view;
+    const uint32_t z_order;
 
   public:
     float angle = 0.0f;
@@ -125,11 +126,11 @@ class view_2D : public view_transformer_t
     float alpha = 1.0f;
 
   public:
-    view_2D(wayfire_view view);
+    view_2D(wayfire_view view, uint32_t z_order_ = TRANSFORMER_2D);
 
     virtual uint32_t get_z_order() override
     {
-        return TRANSFORMER_2D;
+        return z_order;
     }
 
     wf::pointf_t transform_point(
@@ -145,6 +146,7 @@ class view_3D : public view_transformer_t
 {
   protected:
     wayfire_view view;
+    const uint32_t z_order;
 
   public:
     glm::mat4 view_proj{1.0}, translation{1.0}, rotation{1.0}, scaling{1.0};
@@ -153,11 +155,11 @@ class view_3D : public view_transformer_t
     glm::mat4 calculate_total_transform();
 
   public:
-    view_3D(wayfire_view view);
+    view_3D(wayfire_view view, uint32_t z_order_ = TRANSFORMER_3D);
 
     virtual uint32_t get_z_order() override
     {
-        return TRANSFORMER_3D;
+        return z_order;
     }
 
     wf::pointf_t transform_point(

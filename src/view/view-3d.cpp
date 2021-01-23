@@ -99,7 +99,7 @@ static transformable_quad center_geometry(wf::geometry_t output_geometry,
     return quad;
 }
 
-wf::view_2D::view_2D(wayfire_view view)
+wf::view_2D::view_2D(wayfire_view view, uint32_t z_order_) : z_order(z_order_)
 {
     this->view = view;
 }
@@ -189,7 +189,7 @@ glm::mat4 wf::view_3D::default_proj_matrix()
     return glm::perspective(fov, 1.0f, .1f, 100.f);
 }
 
-wf::view_3D::view_3D(wayfire_view view)
+wf::view_3D::view_3D(wayfire_view view, uint32_t z_order_) : z_order(z_order_)
 {
     this->view = view;
     view_proj  = default_proj_matrix() * default_view_matrix();
