@@ -28,7 +28,8 @@ class fade_animation : public animation_base
         }
 
         name = "animation-fade-" + std::to_string(type);
-        view->add_transformer(std::make_unique<wf::view_2D>(view), name);
+        view->add_transformer(
+            std::make_unique<wf::view_2D>(view, wf::TRANSFORMER_HIGHLEVEL), name);
     }
 
     bool step() override
@@ -114,7 +115,7 @@ class zoom_animation : public animation_base
         }
 
         name = "animation-zoom-" + std::to_string(type);
-        our_transform = new wf::view_2D(view);
+        our_transform = new wf::view_2D(view, wf::TRANSFORMER_HIGHLEVEL);
         view->add_transformer(std::unique_ptr<wf::view_2D>(our_transform), name);
     }
 
