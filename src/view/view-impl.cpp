@@ -339,6 +339,10 @@ void wf::wlr_view_t::unmap()
 
     destroy_toplevel();
 
+    // Unset decoration when unmapping, since the policy is to always remove
+    // all subsurfaces when a view is unmapped.
+    set_decoration(nullptr);
+
     wlr_surface_base_t::unmap();
     emit_view_unmap();
 }
