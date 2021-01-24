@@ -44,11 +44,27 @@ std::string wf::output_t::to_string() const
     return handle->name;
 }
 
+/**
+ * Minimal percentage of the view which needs to be visible on a workspace
+ * for it to count to be on that workspace.
+ */
+static constexpr double MIN_VISIBILITY_PC = 0.1;
+
 void wf::output_impl_t::refocus(wayfire_view skip_view, uint32_t layers)
 {
-    wayfire_view next_focus = nullptr;
-    auto views = workspace->get_views_on_workspace(
-        workspace->get_current_workspace(), layers);
+    wf::point_t cur_ws = workspace->get_current_workspace();
+    const auto& view_on_current_ws = [&] (wayfire_view view)
+    {
+        // Make sure the view is at least 10% visible on the
+        // current workspace, to focus it
+        auto ws_geometry = render->get_ws_box(cur_ws);
+        auto bbox = view->transform_region(view->get_wm_geometry());
+        auto intersection = wf::geometry_intersection(bbox, ws_geometry);
+        double area = 1.0 * intersection.width * intersection.height;
+        area /= 1.0 * bbox.width * bbox.height;
+
+        return area >= MIN_VISIBILITY_PC;
+    };
 
     const auto& suitable_for_focus = [&] (wayfire_view view)
     {
@@ -56,24 +72,37 @@ void wf::output_impl_t::refocus(wayfire_view skip_view, uint32_t layers)
                view->get_keyboard_focus_surface() && !view->minimized;
     };
 
-    const auto& newer_than_candidate = [&] (wayfire_view view)
-    {
-        return (!next_focus ||
-            (next_focus->last_focus_timestamp < view->last_focus_timestamp));
-    };
+    auto views = workspace->get_views_on_workspace(cur_ws, layers);
 
+    // All views which might be focused
+    std::vector<wayfire_view> candidates;
     for (auto toplevel : views)
     {
-        for (auto& v : toplevel->enumerate_views())
-        {
-            if (suitable_for_focus(v) && newer_than_candidate(v))
-            {
-                next_focus = v;
-            }
-        }
+        auto vs = toplevel->enumerate_views();
+        std::copy_if(vs.begin(), vs.end(), std::back_inserter(candidates),
+            suitable_for_focus);
     }
 
-    focus_view(next_focus, 0u);
+    // Choose the best view.
+    // All views which are mostly visible on the current workspace are preferred.
+    // In case of ties, views with the latest focus timestamp are preferred.
+    auto it = std::max_element(candidates.begin(), candidates.end(),
+        [&] (wayfire_view view1, wayfire_view view2)
+    {
+        bool visible_1 = view_on_current_ws(view1);
+        bool visible_2 = view_on_current_ws(view2);
+
+        return std::make_tuple(visible_1, view1->last_focus_timestamp) <
+        std::make_tuple(visible_2, view2->last_focus_timestamp);
+    });
+
+    if (it == candidates.end())
+    {
+        focus_view(nullptr, 0u);
+    } else
+    {
+        focus_view(*it, 0u);
+    }
 }
 
 void wf::output_t::refocus(wayfire_view skip_view)
