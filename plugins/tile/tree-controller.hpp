@@ -28,6 +28,8 @@ enum split_insertion_t
     INSERT_LEFT  = 3,
     /** Insert to the right of the view */
     INSERT_RIGHT = 4,
+    /** Insert by swapping with the source view */
+    INSERT_SWAP  = 5,
 };
 
 /**

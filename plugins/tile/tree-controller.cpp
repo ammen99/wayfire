@@ -97,7 +97,7 @@ static split_insertion_t calculate_insert_type(
 
     if (edges.empty())
     {
-        return INSERT_NONE;
+        return INSERT_SWAP;
     }
 
     /* Return the closest edge */
@@ -299,6 +299,27 @@ void move_view_controller_t::input_released()
     auto split = calculate_insert_type(dropped_at, current_input);
     if (split == INSERT_NONE)
     {
+        return;
+    }
+
+    if (split == INSERT_SWAP)
+    {
+        std::swap(grabbed_view->geometry, dropped_at->geometry);
+
+        auto p1 = grabbed_view->parent;
+        auto p2 = dropped_at->parent;
+        grabbed_view->parent = p2;
+        dropped_at->parent   = p1;
+
+        auto it1 = std::find_if(p1->children.begin(), p1->children.end(),
+            [&] (const auto& ptr) { return ptr.get() == grabbed_view.get(); });
+        auto it2 = std::find_if(p2->children.begin(), p2->children.end(),
+            [&] (const auto& ptr) { return ptr.get() == dropped_at.get(); });
+
+        std::swap(*it1, *it2);
+
+        p1->set_geometry(p1->geometry);
+        p2->set_geometry(p2->geometry);
         return;
     }
 
