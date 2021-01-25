@@ -2,7 +2,7 @@ project(
 	'wayfire',
 	'c',
 	'cpp',
-	version: '0.6.0',
+	version: '0.7.0',
 	license: 'MIT',
 	meson_version: '>=0.53.0',
 	default_options: [
@@ -29,7 +29,7 @@ pixman         = dependency('pixman-1')
 threads        = dependency('threads')
 xkbcommon      = dependency('xkbcommon')
 wlroots        = dependency('wlroots', version: ['>=0.12.0', '<0.13.0'], required: get_option('use_system_wlroots'))
-wfconfig       = dependency('wf-config', version: ['>=0.6.0', '<0.7.0'], required: get_option('use_system_wfconfig'))
+wfconfig       = dependency('wf-config', version: ['>=0.7.0', '<0.8.0'], required: get_option('use_system_wfconfig'))
 
 use_system_wlroots = not get_option('use_system_wlroots').disabled() and wlroots.found()
 if not use_system_wlroots
