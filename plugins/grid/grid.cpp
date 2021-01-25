@@ -9,8 +9,8 @@
 #include <linux/input-event-codes.h>
 #include "wayfire/signal-definitions.hpp"
 #include <wayfire/plugins/common/geometry-animation.hpp>
+#include "wayfire/plugins/grid.hpp"
 
-#include "snap_signal.hpp"
 #include <wayfire/plugins/wobbly/wobbly-signal.hpp>
 #include <wayfire/view-transform.hpp>
 
@@ -342,8 +342,8 @@ class wayfire_grid : public wf::plugin_interface_t
         output->add_activator(restore_opt, &restore);
 
         output->connect_signal("workarea-changed", &on_workarea_changed);
-        output->connect_signal("view-snap", &on_snap_signal);
-        output->connect_signal("query-snap-geometry", &on_snap_query);
+        output->connect_signal("grid-snap-view", &on_snap_signal);
+        output->connect_signal("grid-query-geometry", &on_snap_query);
         output->connect_signal("view-tile-request", &on_maximize_signal);
         output->connect_signal("view-fullscreen-request", &on_fullscreen_signal);
     }
@@ -419,7 +419,7 @@ class wayfire_grid : public wf::plugin_interface_t
             if (view->tiled_edges && (wm.width == ev->old_workarea.width) &&
                 (wm.height == ev->old_workarea.height))
             {
-                data->slot = SLOT_CENTER;
+                data->slot = wf::grid::SLOT_CENTER;
             }
 
             if (!data->slot)
@@ -442,14 +442,14 @@ class wayfire_grid : public wf::plugin_interface_t
 
     wf::signal_callback_t on_snap_query = [=] (wf::signal_data_t *data)
     {
-        auto query = dynamic_cast<snap_query_signal*>(data);
+        auto query = dynamic_cast<wf::grid::grid_query_geometry_signal*>(data);
         assert(query);
         query->out_geometry = get_slot_dimensions(query->slot);
     };
 
     wf::signal_callback_t on_snap_signal = [=] (wf::signal_data_t *ddata)
     {
-        snap_signal *data = dynamic_cast<snap_signal*>(ddata);
+        auto data = dynamic_cast<wf::grid::grid_snap_view_signal*>(ddata);
         handle_slot(data->view, data->slot);
     };
 

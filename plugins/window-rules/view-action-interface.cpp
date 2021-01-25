@@ -3,8 +3,7 @@
 #include "wayfire/output.hpp"
 #include "wayfire/view.hpp"
 #include "wayfire/workspace-manager.hpp"
-#include "../single_plugins/snap_signal.hpp" // TODO: Should snap_signal be in
-                                             // wayfire/plugins/common ?
+#include "wayfire/plugins/grid.hpp"
 #include "wayfire/util/log.hpp"
 #include "wayfire/view-transform.hpp"
 
@@ -98,36 +97,36 @@ bool view_action_interface_t::execute(const std::string & name,
 
         auto location = wf::get_string(args.at(0));
 
-        snap_signal data;
+        wf::grid::grid_snap_view_signal data;
         data.view = _view;
 
         if (location == "top")
         {
-            data.slot = SLOT_TOP;
+            data.slot = grid::SLOT_TOP;
         } else if (location == "top_right")
         {
-            data.slot = SLOT_TR;
+            data.slot = grid::SLOT_TR;
         } else if (location == "right")
         {
-            data.slot = SLOT_RIGHT;
+            data.slot = grid::SLOT_RIGHT;
         } else if (location == "bottom_right")
         {
-            data.slot = SLOT_BR;
+            data.slot = grid::SLOT_BR;
         } else if (location == "bottom")
         {
-            data.slot = SLOT_BOTTOM;
+            data.slot = grid::SLOT_BOTTOM;
         } else if (location == "bottom_left")
         {
-            data.slot = SLOT_BL;
+            data.slot = grid::SLOT_BL;
         } else if (location == "left")
         {
-            data.slot = SLOT_LEFT;
+            data.slot = grid::SLOT_LEFT;
         } else if (location == "top_left")
         {
-            data.slot = SLOT_TL;
+            data.slot = grid::SLOT_TL;
         } else if (location == "center")
         {
-            data.slot = SLOT_CENTER;
+            data.slot = grid::SLOT_CENTER;
         } else
         {
             LOGE(

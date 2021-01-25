@@ -17,10 +17,8 @@
 
 #include <wayfire/plugins/common/shared-core-data.hpp>
 #include <wayfire/plugins/common/move-drag-interface.hpp>
-
-
-#include "snap_signal.hpp"
 #include <wayfire/plugins/common/view-change-viewport-signal.hpp>
+#include <wayfire/plugins/grid.hpp>
 
 class wayfire_move : public wf::plugin_interface_t
 {
@@ -42,7 +40,7 @@ class wayfire_move : public wf::plugin_interface_t
     struct
     {
         nonstd::observer_ptr<wf::preview_indication_view_t> preview;
-        int slot_id = 0;
+        wf::grid::slot_t slot_id = wf::grid::SLOT_NONE;
     } slot;
 
 
@@ -70,7 +68,7 @@ class wayfire_move : public wf::plugin_interface_t
             }
         } else
         {
-            update_slot(0);
+            update_slot(wf::grid::SLOT_NONE);
         }
     };
 
@@ -90,15 +88,15 @@ class wayfire_move : public wf::plugin_interface_t
         {
             wf::move_drag::adjust_view_on_output(ev);
 
-            if (enable_snap && (slot.slot_id != 0))
+            if (enable_snap && (slot.slot_id != wf::grid::SLOT_NONE))
             {
-                snap_signal data;
+                wf::grid::grid_snap_view_signal data;
                 data.view = ev->main_view;
-                data.slot = (slot_type)slot.slot_id;
-                output->emit_signal("view-snap", &data);
+                data.slot = slot.slot_id;
+                output->emit_signal("grid-snap-view", &data);
 
                 /* Update slot, will hide the preview as well */
-                update_slot(0);
+                update_slot(wf::grid::SLOT_NONE);
             }
 
             view_change_viewport_signal data;
@@ -270,7 +268,7 @@ class wayfire_move : public wf::plugin_interface_t
         auto touch = wf::get_core().get_touch_state();
         is_using_touch = !touch.fingers.empty();
 
-        slot.slot_id = 0;
+        slot.slot_id = wf::grid::SLOT_NONE;
         return true;
     }
 
@@ -301,7 +299,7 @@ class wayfire_move : public wf::plugin_interface_t
         }
 
         drag_helper->start_drag(view, get_global_input_coords(), opts);
-        slot.slot_id = 0;
+        slot.slot_id = wf::grid::SLOT_NONE;
         return true;
     }
 
@@ -323,12 +321,12 @@ class wayfire_move : public wf::plugin_interface_t
 
     /* Calculate the slot to which the view would be snapped if the input
      * is released at output-local coordinates (x, y) */
-    int calc_slot(wf::point_t point)
+    wf::grid::slot_t calc_slot(wf::point_t point)
     {
         auto g = output->workspace->get_workarea();
         if (!(output->get_relative_geometry() & point))
         {
-            return 0;
+            return wf::grid::SLOT_NONE;
         }
 
         int threshold = snap_threshold;
@@ -343,40 +341,40 @@ class wayfire_move : public wf::plugin_interface_t
         bool is_far_top    = point.y - g.y < quarter_snap_threshold;
         bool is_far_bottom = g.x + g.height - point.y < quarter_snap_threshold;
 
-        int slot = 0;
+        wf::grid::slot_t slot = wf::grid::SLOT_NONE;
         if ((is_left && is_far_top) || (is_far_left && is_top))
         {
-            slot = SLOT_TL;
+            slot = wf::grid::SLOT_TL;
         } else if ((is_right && is_far_top) || (is_far_right && is_top))
         {
-            slot = SLOT_TR;
+            slot = wf::grid::SLOT_TR;
         } else if ((is_right && is_far_bottom) || (is_far_right && is_bottom))
         {
-            slot = SLOT_BR;
+            slot = wf::grid::SLOT_BR;
         } else if ((is_left && is_far_bottom) || (is_far_left && is_bottom))
         {
-            slot = SLOT_BL;
+            slot = wf::grid::SLOT_BL;
         } else if (is_right)
         {
-            slot = SLOT_RIGHT;
+            slot = wf::grid::SLOT_RIGHT;
         } else if (is_left)
         {
-            slot = SLOT_LEFT;
+            slot = wf::grid::SLOT_LEFT;
         } else if (is_top)
         {
             // Maximize when dragging to the top
-            slot = SLOT_CENTER;
+            slot = wf::grid::SLOT_CENTER;
         } else if (is_bottom)
         {
-            slot = SLOT_BOTTOM;
+            slot = wf::grid::SLOT_BOTTOM;
         }
 
         return slot;
     }
 
-    void update_workspace_switch_timeout(int slot_id)
+    void update_workspace_switch_timeout(wf::grid::slot_t slot_id)
     {
-        if ((workspace_switch_after == -1) || (slot_id == 0))
+        if ((workspace_switch_after == -1) || (slot_id == wf::grid::SLOT_NONE))
         {
             workspace_switch_timer.disconnect();
 
@@ -433,7 +431,7 @@ class wayfire_move : public wf::plugin_interface_t
         });
     }
 
-    void update_slot(int new_slot_id)
+    void update_slot(wf::grid::slot_t new_slot_id)
     {
         /* No changes in the slot, just return */
         if (slot.slot_id == new_slot_id)
@@ -455,10 +453,10 @@ class wayfire_move : public wf::plugin_interface_t
         /* Show a preview overlay */
         if (new_slot_id)
         {
-            snap_query_signal query;
-            query.slot = (slot_type)new_slot_id;
+            wf::grid::grid_query_geometry_signal query;
+            query.slot = new_slot_id;
             query.out_geometry = {0, 0, -1, -1};
-            output->emit_signal("query-snap-geometry", &query);
+            output->emit_signal("grid-query-geometry", &query);
 
             /* Unknown slot geometry, can't show a preview */
             if ((query.out_geometry.width <= 0) || (query.out_geometry.height <= 0))
