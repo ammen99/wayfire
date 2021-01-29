@@ -411,6 +411,7 @@ struct output_layout_output_t
           case output_config::MODE_MIRROR:
             state.source = OUTPUT_IMAGE_SOURCE_MIRROR;
             state.mode   = select_default_mode();
+            state.mirror_from = mode.get_mirror_from();
             break;
         }
 
