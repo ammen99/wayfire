@@ -231,9 +231,11 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
         auto area = find_area_at(current_input);
         if (area && (area->get_type() & DECORATION_AREA_MOVE_BIT))
         {
-            if (timer.is_connected())  // we have a double-click (on press, not release)
+            if (timer.is_connected()) /* we have a double-click (before release) */
+            {
                 return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
-            else{
+            } else
+            {
                 timer.set_timeout(300, [=] ()
                 {
                     timer.disconnect();
