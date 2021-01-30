@@ -239,6 +239,7 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
                 timer.set_timeout(300, [=] ()
                 {
                     timer.disconnect();
+                    return false;
                 });
                 // hardcoded 300ms, to be replaced by option in config:
                 // wf::option_wrapper_t<int> delay{"input/double_click_timeout"};
