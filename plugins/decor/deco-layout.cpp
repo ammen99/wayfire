@@ -3,6 +3,7 @@
 #include <wayfire/core.hpp>
 #include <wayfire/nonstd/reverse.hpp>
 #include <wayfire/nonstd/wlroots-full.hpp>
+#include <wayfire/util.hpp>
 
 #define BUTTON_ASPECT_RATIO (25.0 / 16.0)
 #define BUTTON_HEIGHT_PC 0.8
@@ -230,7 +231,14 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
         auto area = find_area_at(current_input);
         if (area && (area->get_type() & DECORATION_AREA_MOVE_BIT))
         {
-            return {DECORATION_ACTION_MOVE, 0};
+            if (timer.is_connected())  // we have a double-click (on press, not release)
+                return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
+            else{
+                timer.set_timeout(300, &(this->timer.disconnect))
+                // hardcoded 300ms, to be replaced by option in config:
+                // wf::option_wrapper_t<int> delay{"input/double_click_timeout"};
+                return {DECORATION_ACTION_MOVE, 0};
+            }
         }
 
         if (area && (area->get_type() & DECORATION_AREA_RESIZE_BIT))
