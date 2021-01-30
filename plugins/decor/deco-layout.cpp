@@ -234,7 +234,7 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
             if (timer.is_connected())  // we have a double-click (on press, not release)
                 return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
             else{
-                timer.set_timeout(300, &(this->timer.disconnect))
+                timer.set_timeout(300, [=] () {timer.disconnect();});
                 // hardcoded 300ms, to be replaced by option in config:
                 // wf::option_wrapper_t<int> delay{"input/double_click_timeout"};
                 return {DECORATION_ACTION_MOVE, 0};
