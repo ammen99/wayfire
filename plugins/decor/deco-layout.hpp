@@ -154,6 +154,8 @@ class decoration_layout_t
     wf::point_t grab_origin;
     /* Last position of the input */
     wf::point_t current_input;
+    /* double-click timer */
+    wf::wl_timer timer;
 
     /** Create buttons in the layout, and return their total geometry */
     wf::geometry_t create_buttons(int width, int height);
