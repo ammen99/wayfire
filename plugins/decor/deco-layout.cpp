@@ -236,13 +236,7 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
                 return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
             } else
             {
-                timer.set_timeout(300, [=] ()
-                {
-                    timer.disconnect();
-                    return false;
-                });
-                // hardcoded 300ms, to be replaced by option in config:
-                // wf::option_wrapper_t<int> delay{"input/double_click_timeout"};
+                timer.set_timeout(300, [] () { return false; });
                 return {DECORATION_ACTION_MOVE, 0};
             }
         }
