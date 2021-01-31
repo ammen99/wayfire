@@ -236,7 +236,11 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
                 return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
             } else
             {
-                timer.set_timeout(300, [] () { return false; });
+                timer.set_timeout(300, [=] ()
+                {
+                    timer.disconnect();
+                    return false;
+                });
                 return {DECORATION_ACTION_MOVE, 0};
             }
         }
