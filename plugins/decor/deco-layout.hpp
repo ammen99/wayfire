@@ -113,15 +113,15 @@ class decoration_layout_t
     /** @return The combined region of all layout areas */
     wf::region_t calculate_region() const;
 
-    /** Handle motion event to (x, y) relative to the decoration */
-    void handle_motion(int x, int y);
-
     struct action_response_t
     {
         decoration_layout_action_t action;
         /* For resizing action, determine the edges for resize request */
         uint32_t edges;
     };
+
+    /** Handle motion event to (x, y) relative to the decoration */
+    action_response_t handle_motion(int x, int y);
 
     /**
      * Handle press or release event.
@@ -154,6 +154,9 @@ class decoration_layout_t
     wf::point_t grab_origin;
     /* Last position of the input */
     wf::point_t current_input;
+    /* double-click timer */
+    wf::wl_timer timer;
+    bool double_click_at_release = false;
 
     /** Create buttons in the layout, and return their total geometry */
     wf::geometry_t create_buttons(int width, int height);
