@@ -3,6 +3,7 @@
 #include <wayfire/core.hpp>
 #include <wayfire/nonstd/reverse.hpp>
 #include <wayfire/nonstd/wlroots-full.hpp>
+#include <wayfire/util.hpp>
 
 #define BUTTON_ASPECT_RATIO (25.0 / 16.0)
 #define BUTTON_HEIGHT_PC 0.8
@@ -198,11 +199,21 @@ void decoration_layout_t::unset_hover(wf::point_t position)
 }
 
 /** Handle motion event to (x, y) relative to the decoration */
-void decoration_layout_t::handle_motion(int x, int y)
+decoration_layout_t::action_response_t decoration_layout_t::handle_motion(
+    int x, int y)
 {
     auto previous_area = find_area_at(current_input);
     auto current_area  = find_area_at({x, y});
-    if (previous_area != current_area)
+
+    if (previous_area == current_area)
+    {
+        if (is_grabbed && current_area &&
+            (current_area->get_type() & DECORATION_AREA_MOVE_BIT))
+        {
+            is_grabbed = false;
+            return {DECORATION_ACTION_MOVE, 0};
+        }
+    } else
     {
         unset_hover(current_input);
         if (current_area && (current_area->get_type() == DECORATION_AREA_BUTTON))
@@ -213,6 +224,8 @@ void decoration_layout_t::handle_motion(int x, int y)
 
     this->current_input = {x, y};
     update_cursor();
+
+    return {DECORATION_ACTION_NONE, 0};
 }
 
 /**
@@ -230,7 +243,17 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
         auto area = find_area_at(current_input);
         if (area && (area->get_type() & DECORATION_AREA_MOVE_BIT))
         {
-            return {DECORATION_ACTION_MOVE, 0};
+            if (timer.is_connected())
+            {
+                double_click_at_release = true;
+            } else
+            {
+                timer.set_timeout(300, [=] ()
+                {
+                    timer.disconnect();
+                    return false;
+                });
+            }
         }
 
         if (area && (area->get_type() & DECORATION_AREA_RESIZE_BIT))
@@ -247,8 +270,13 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
         grab_origin = current_input;
     }
 
-    if (!pressed && is_grabbed)
+    if (!pressed && double_click_at_release)
     {
+        double_click_at_release = false;
+        return {DECORATION_ACTION_TOGGLE_MAXIMIZE, 0};
+    } else if (!pressed && is_grabbed)
+    {
+        is_grabbed = false;
         auto begin_area = find_area_at(grab_origin);
         auto end_area   = find_area_at(current_input);
 
