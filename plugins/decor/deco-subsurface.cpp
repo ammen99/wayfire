@@ -164,7 +164,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
     virtual void on_pointer_motion(int x, int y) override
     {
-        layout.handle_motion(x, y);
+        handle_action(layout.handle_motion(x, y));
     }
 
     virtual void on_pointer_button(uint32_t button, uint32_t state) override
@@ -218,7 +218,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
     virtual void on_touch_motion(int x, int y) override
     {
-        layout.handle_motion(x, y);
+        handle_action(layout.handle_motion(x, y));
     }
 
     virtual void on_touch_up() override
