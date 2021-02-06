@@ -174,16 +174,19 @@ class wayfire_fast_switcher : public wf::plugin_interface_t
 
     void switch_terminate()
     {
+        grab_interface->ungrab();
+        output->deactivate_plugin(grab_interface);
+
+        // May modify alpha
+        view_chosen(current_view_index, false);
+
+        // Remove transformers after modifying alpha
         for (auto view : views)
         {
             view->pop_transformer(transformer_name);
         }
 
-        grab_interface->ungrab();
-        output->deactivate_plugin(grab_interface);
-        view_chosen(current_view_index, false);
         active = false;
-
         output->disconnect_signal("view-disappeared", &cleanup_view);
     }
 
