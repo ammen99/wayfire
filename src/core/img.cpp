@@ -333,8 +333,8 @@ bool texture_from_jpeg(const char *FileName, GLuint target)
         }
     } else if (target == GL_TEXTURE_2D)
     {
-        GL_CALL(glTexImage2D(target, 0, GL_RGBA, width, height, 0,
-            GL_RGBA, GL_UNSIGNED_BYTE, jdata));
+        GL_CALL(glTexImage2D(target, 0, GL_RGB, width, height, 0,
+            GL_RGB, GL_UNSIGNED_BYTE, jdata));
     }
 
     fclose(file);
