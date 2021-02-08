@@ -633,6 +633,9 @@ void wl_timer::execute()
         if (repeat)
         {
             wl_event_source_timer_update(source, this->timeout);
+        } else
+        {
+            disconnect();
         }
     }
 }
