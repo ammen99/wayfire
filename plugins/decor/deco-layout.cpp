@@ -248,11 +248,7 @@ decoration_layout_t::action_response_t decoration_layout_t::handle_press_event(
                 double_click_at_release = true;
             } else
             {
-                timer.set_timeout(300, [=] ()
-                {
-                    timer.disconnect();
-                    return false;
-                });
+                timer.set_timeout(300, [] () { return false; });
             }
         }
 
