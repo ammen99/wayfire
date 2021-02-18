@@ -132,17 +132,20 @@ bool texture_from_png(const char *filename, GLuint target)
         png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
     if (!png)
     {
+        fclose(fp);
         return false;
     }
 
     png_infop infos = png_create_info_struct(png);
     if (!infos)
     {
+        fclose(fp);
         return false;
     }
 
     if (setjmp(png_jmpbuf(png)))
     {
+        fclose(fp);
         return false;
     }
 
