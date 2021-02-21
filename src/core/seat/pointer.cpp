@@ -547,6 +547,13 @@ void wf::pointer_t::handle_pointer_axis(wlr_event_pointer_axis *ev,
         wf::pointing_device_t::config.touchpad_scroll_speed :
         wf::pointing_device_t::config.mouse_scroll_speed;
 
+    auto custom = compositor_surface_from_surface(cursor_focus);
+    if (custom)
+    {
+        custom->on_pointer_axis(ev->orientation, mult * ev->delta,
+            mult * ev->delta_discrete);
+    }
+
     wlr_seat_pointer_notify_axis(seat->seat, ev->time_msec, ev->orientation,
         mult * ev->delta, mult * ev->delta_discrete, ev->source);
 }

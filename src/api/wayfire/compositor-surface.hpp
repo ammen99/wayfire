@@ -25,6 +25,9 @@ class compositor_surface_t
     {}
     virtual void on_pointer_motion(int x, int y)
     {}
+    virtual void on_pointer_axis(enum wlr_axis_orientation orientation, double delta,
+        int32_t delta_discrete)
+    {}
     virtual void on_pointer_button(uint32_t button, uint32_t state)
     {}
 
