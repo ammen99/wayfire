@@ -227,25 +227,27 @@ void render_rectangle(wf::geometry_t geometry, wf::color_t color,
 
 void render_begin()
 {
-    /* No real reason for 10, 10, 0 but it doesn't matter */
-    render_begin(10, 10, 0);
-}
-
-void render_begin(const wf::framebuffer_base_t& fb)
-{
-    render_begin(fb.viewport_width, fb.viewport_height, fb.fb);
-}
-
-void render_begin(int32_t viewport_width, int32_t viewport_height, uint32_t fb)
-{
     if (!wlr_egl_is_current(wf::get_core_impl().egl))
     {
         wlr_egl_make_current(wf::get_core_impl().egl);
     }
 
-    wlr_renderer_begin(wf::get_core_impl().renderer,
-        viewport_width, viewport_height);
-    GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, fb));
+    GL_CALL(glEnable(GL_BLEND));
+    GL_CALL(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
+}
+
+void render_begin(const wf::framebuffer_base_t& fb)
+{
+    render_begin();
+    fb.bind();
+}
+
+void render_begin(int32_t width, int32_t height, uint32_t fb)
+{
+    render_begin();
+
+    GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb));
+    GL_CALL(glViewport(0, 0, width, height));
 }
 
 void clear(wf::color_t col, uint32_t mask)
@@ -257,8 +259,7 @@ void clear(wf::color_t col, uint32_t mask)
 void render_end()
 {
     GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, current_output_fb));
-    wlr_renderer_scissor(wf::get_core().renderer, NULL);
-    wlr_renderer_end(wf::get_core().renderer);
+    GL_CALL(glDisable(GL_SCISSOR_TEST));
 }
 }
 
