@@ -984,9 +984,11 @@ class wf::render_manager::impl
             swap_damage |= output_damage->get_wlr_damage_box();
         }
 
-        OpenGL::render_begin(postprocessing->get_target_framebuffer());
-        wlr_output_render_software_cursors(output->handle, swap_damage.to_pixman());
-        OpenGL::render_end();
+        wlr_renderer_begin(wf::get_core().renderer,
+            output->handle->width, output->handle->height);
+        wlr_output_render_software_cursors(output->handle,
+            swap_damage.to_pixman());
+        wlr_renderer_end(wf::get_core().renderer);
 
         /* Part 4: postprocessing effects */
         postprocessing->run_post_effects();
