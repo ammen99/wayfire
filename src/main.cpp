@@ -116,7 +116,7 @@ static void wlr_log_handler(wlr_log_importance level,
     wf::log::log_plain(wlevel, buffer);
 }
 
-#ifndef ASAN_ENABLED
+#ifndef ASAN_ENABLED || COREDUMP_ENABLED
 static void signal_handler(int signal)
 {
     std::string error;
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     wlr_log_init(wlr_log_level, wlr_log_handler);
     wf::log::initialize_logging(std::cout, log_level, detect_color_mode());
 
-#ifndef ASAN_ENABLED
+#ifndef ASAN_ENABLED || COREDUMP_ENABLED
     /* In case of crash, print the stacktrace for debugging.
      * However, if ASAN is enabled, we'll get better stacktrace from there. */
     signal(SIGSEGV, signal_handler);

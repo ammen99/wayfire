@@ -52,6 +52,10 @@ endif
 
 debug_arguments = []
 
+if not get_option('print_trace')
+   debug_arguments += ['-DCOREDUMP_ENABLED']
+endif
+
 addr2line = find_program('addr2line', required: false)
 if addr2line.found()
   debug_arguments += ['-DHAS_ADDR2LINE=1']

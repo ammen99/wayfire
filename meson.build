@@ -146,6 +146,12 @@ else
   conf_data.set('WF_HAS_XWAYLAND', 0)
 endif
 
+if get_option('print_trace')
+  print_trace = true
+else
+  print_trace = false
+endif
+
 add_project_arguments(['-DWF_USE_CONFIG_H'], language: ['cpp', 'c'])
 configure_file(input: 'config.h.in',
                output: 'config.h',
@@ -169,6 +175,7 @@ summary = [
     '    x11-backend: @0@'.format(have_x11_backend),
     '        imageio: @0@'.format(conf_data.get('BUILD_WITH_IMAGEIO')),
     '         gles32: @0@'.format(conf_data.get('USE_GLES32')),
+    '    print trace: @0@'.format(print_trace),
     '----------------',
     ''
 ]
