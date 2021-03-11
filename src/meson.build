@@ -52,10 +52,6 @@ endif
 
 debug_arguments = []
 
-if not get_option('print_trace')
-   debug_arguments += ['-DCOREDUMP_ENABLED']
-endif
-
 addr2line = find_program('addr2line', required: false)
 if addr2line.found()
   debug_arguments += ['-DHAS_ADDR2LINE=1']
@@ -66,8 +62,13 @@ endif
 
 cxx_flags_asan = run_command('/bin/sh', '-c', 'echo $CXXFLAGS $CPPFLAGS | grep fsanitize')
 if get_option('b_sanitize').contains('address') or cxx_flags_asan.returncode() == 0
+  print_trace = false
   message('Address sanitizer enabled, disabling internal backtrace')
-  debug_arguments += ['-DASAN_ENABLED']
+  message('Overriding print_trace build option!')
+endif
+
+if get_option('print_trace')
+  debug_arguments += ['-DPRINT_TRACE']
 endif
 
 executable('wayfire', wayfire_sources,
