@@ -65,6 +65,8 @@ void wayfire_xdg_popup::initialize()
         &this->parent_app_id_changed);
     popup_parent->connect_signal("title-changed",
         &this->parent_title_changed);
+
+    unconstrain();
 }
 
 void wayfire_xdg_popup::map(wlr_surface *surface)
@@ -82,7 +84,6 @@ void wayfire_xdg_popup::map(wlr_surface *surface)
 
     wlr_view_t::map(surface);
     update_position();
-    unconstrain();
 }
 
 void wayfire_xdg_popup::commit()
