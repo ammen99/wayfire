@@ -3,6 +3,7 @@
 
 #include "seat.hpp"
 #include "wayfire/plugin.hpp"
+#include "wayfire/util.hpp"
 
 namespace wf
 {
@@ -27,6 +28,13 @@ struct cursor_t
     void unhide_cursor();
     void hide_cursor();
     int hide_ref_counter = 0;
+
+    /**
+     * Delay setting the cursor, in order to avoid setting the cursor
+     * multiple times in a single frame and to avoid setting it in the middle
+     * of the repaint loop (not allowed by wlroots).
+     */
+    wf::wl_idle_call idle_set_cursor;
 
     /**
      * Start/stop touchscreen mode, which means the cursor will be hidden.

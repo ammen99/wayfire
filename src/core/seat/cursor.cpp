@@ -160,7 +160,10 @@ void wf::cursor_t::set_cursor(std::string name)
         name = "left_ptr";
     }
 
-    wlr_xcursor_manager_set_cursor_image(xcursor, name.c_str(), cursor);
+    idle_set_cursor.run_once([name, this] ()
+    {
+        wlr_xcursor_manager_set_cursor_image(xcursor, name.c_str(), cursor);
+    });
 }
 
 void wf::cursor_t::unhide_cursor()
@@ -175,6 +178,7 @@ void wf::cursor_t::unhide_cursor()
 
 void wf::cursor_t::hide_cursor()
 {
+    idle_set_cursor.disconnect();
     wlr_cursor_set_surface(cursor, NULL, 0, 0);
     this->hide_ref_counter++;
 }
