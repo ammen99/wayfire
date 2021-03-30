@@ -87,7 +87,7 @@ static int handle_config_updated(int fd, uint32_t mask, void *data)
         {
             // is file, probably the config file itself
             should_reload = true;
-        } else if (!strncmp(config_file.c_str(), event->name, event->len))
+        } else if (config_dir == event->name)
         {
             should_reload = true;
         }
