@@ -98,7 +98,7 @@ class dynamic_ini_config_t : public wf::config_backend_t
         config = wf::config::build_configuration(
             get_xml_dirs(), SYSCONFDIR "/wayfire/defaults.ini", config_file);
 
-        int inotify_fd = inotify_init1(IN_CLOEXEC);
+        int inotify_fd = inotify_init1(IN_CLOEXEC|IN_NONBLOCK);
         reload_config(inotify_fd);
 
         wl_event_loop_add_fd(wl_display_get_event_loop(display),
