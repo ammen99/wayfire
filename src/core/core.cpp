@@ -184,8 +184,6 @@ void wf::compositor_core_impl_t::init()
     compositor = wlr_compositor_create(display, renderer);
 
     protocols.data_device = wlr_data_device_manager_create(display);
-    protocols.gtk_primary_selection =
-        wlr_gtk_primary_selection_device_manager_create(display);
     protocols.primary_selection_v1 =
         wlr_primary_selection_v1_device_manager_create(display);
     protocols.data_control = wlr_data_control_manager_v1_create(display);

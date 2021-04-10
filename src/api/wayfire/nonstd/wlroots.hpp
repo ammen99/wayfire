@@ -32,7 +32,6 @@ extern "C"
     struct wlr_input_method_manager_v2;
     struct wlr_text_input_manager_v3;
     struct wlr_presentation;
-    struct wlr_gtk_primary_selection_device_manager;
     struct wlr_primary_selection_v1_device_manager;
 
     struct wlr_xdg_foreign_v1;

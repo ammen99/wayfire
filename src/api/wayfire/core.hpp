@@ -115,7 +115,6 @@ class compositor_core_t : public wf::object_base_t
         wlr_input_method_manager_v2 *input_method;
         wlr_text_input_manager_v3 *text_input;
         wlr_presentation *presentation;
-        wlr_gtk_primary_selection_device_manager *gtk_primary_selection;
         wlr_primary_selection_v1_device_manager *primary_selection_v1;
         wlr_viewporter *viewporter;
 
