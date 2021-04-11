@@ -117,9 +117,9 @@ dnf install wayfire
 ```
 
 ###### FreeBSD
-
+Install the latest release and recommended addons with
 ``` sh
-pkg install wayfire
+pkg install wayfire wayfire-plugins-extra wf-shell wcm
 ```
 
 ###### Gentoo
