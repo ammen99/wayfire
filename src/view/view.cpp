@@ -1239,6 +1239,11 @@ void wf::view_interface_t::take_snapshot()
     offscreen_buffer.cached_damage.clear();
 }
 
+const wf::framebuffer_t& wf::view_interface_t::get_snapshot()
+{
+    return view_impl->offscreen_buffer;
+}
+
 wf::view_interface_t::view_interface_t()
 {
     this->view_impl = std::make_unique<wf::view_interface_t::view_priv_impl>();

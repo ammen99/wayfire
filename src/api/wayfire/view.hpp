@@ -440,6 +440,11 @@ class view_interface_t : public surface_interface_t
     virtual void take_snapshot();
 
     /**
+     * Get current snapshot framebuffer taken by take_snapshot().
+     */
+    const wf::framebuffer_t& get_snapshot();
+
+    /**
      * View lifetime is managed by reference counting. To take a reference,
      * use take_ref(). Note that one reference is automatically made when the
      * view is created.
