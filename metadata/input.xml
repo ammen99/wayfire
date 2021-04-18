@@ -107,6 +107,7 @@
 				<min>0.0</min>
 			</option>
 		</group>
+		<!-- Touchpad -->
 		<group>
 			<_short>Touchpad</_short>
 			<_long>Configure the touchpad.</_long>
