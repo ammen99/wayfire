@@ -220,15 +220,19 @@
 			</option>
 		</group>
 		<!-- Cursor configuration -->
-		<option name="cursor_theme" type="string">
-			<_short>Cursor theme</_short>
-			<_long>Overrides the system default `XCursor` theme.</_long>
-			<default>default</default>
-		</option>
-		<option name="cursor_size" type="int">
-			<_short>Cursor size</_short>
-			<_long>Overrides the system default `XCursor` size.</_long>
-			<default>24</default>
-		</option>
+		<group>
+			<_short>Cursor</_short>
+			<_long>Configure the cursor.</_long>
+			<option name="cursor_theme" type="string">
+				<_short>Cursor theme</_short>
+				<_long>Overrides the system default `XCursor` theme.</_long>
+				<default>default</default>
+			</option>
+			<option name="cursor_size" type="int">
+				<_short>Cursor size</_short>
+				<_long>Overrides the system default `XCursor` size.</_long>
+				<default>24</default>
+			</option>
+		</group>
 	</plugin>
 </wayfire>
