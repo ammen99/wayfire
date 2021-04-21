@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:edge
     steps:
-    - run: apk --no-cache add git gcc g++ binutils pkgconf meson ninja musl-dev wayland-dev wayland-protocols libinput-dev libevdev-dev libxkbcommon-dev pixman-dev glm-dev libdrm-dev mesa-dev cairo-dev eudev-dev libxml2-dev libexecinfo-dev
+    - run: apk --no-cache add git gcc g++ binutils pkgconf meson ninja musl-dev wayland-dev wayland-protocols libinput-dev libevdev-dev libxkbcommon-dev pixman-dev glm-dev libdrm-dev mesa-dev cairo-dev eudev-dev libxml2-dev libexecinfo-dev libseat-dev
     - uses: actions/checkout@v1
     - run: git submodule sync --recursive && git submodule update --init --force --recursive
     - run: meson build
@@ -19,7 +19,7 @@ jobs:
     steps:
     - run: (pacman-key --keyserver hkp://keys.gnupg.net --recv-key EA50C866329648EE || pacman-key --keyserver hkp://pool.sks-keyservers.net --recv-key EA50C866329648EE || pacman-key --keyserver hkp://pgp.mit.edu --recv-key EA50C866329648EE) && echo "[andontie-aur]" >> /etc/pacman.conf && echo "Server = https://aur.andontie.net/\$arch" >> /etc/pacman.conf && echo "SigLevel = Never" >> /etc/pacman.conf
     - run: pacman --noconfirm --noprogressbar -Syyu
-    - run: pacman --noconfirm --noprogressbar -Sy git clang lld libc++ pkgconf meson ninja wayland wayland-protocols libinput libxkbcommon pixman glm libdrm libglvnd cairo
+    - run: pacman --noconfirm --noprogressbar -Sy git clang lld libc++ pkgconf meson ninja wayland wayland-protocols libinput libxkbcommon pixman glm libdrm libglvnd cairo seatd
     - uses: actions/checkout@v1
     - run: git submodule sync --recursive && git submodule update --init --force --recursive
     - run: env CC=clang CXX=clang++ CXXFLAGS="-stdlib=libc++" LDFLAGS="-fuse-ld=lld -stdlib=libc++" meson build
