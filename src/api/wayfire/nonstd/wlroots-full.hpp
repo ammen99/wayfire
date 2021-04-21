@@ -69,11 +69,9 @@ extern "C"
     #undef class
 #endif
 
-#if WLR_HAS_XDG_FOREIGN
-    #include <wlr/types/wlr_xdg_foreign_registry.h>
-    #include <wlr/types/wlr_xdg_foreign_v1.h>
-    #include <wlr/types/wlr_xdg_foreign_v2.h>
-#endif
+#include <wlr/types/wlr_xdg_foreign_registry.h>
+#include <wlr/types/wlr_xdg_foreign_v1.h>
+#include <wlr/types/wlr_xdg_foreign_v2.h>
 
 // Backends
 #include <wlr/config.h>
