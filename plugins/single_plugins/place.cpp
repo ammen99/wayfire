@@ -95,7 +95,7 @@ class wayfire_place_window : public wf::plugin_interface_t
         area.width = workarea.width - window.width;
         area.height = workarea.height - window.height;
 
-        if ((area.width < 0) || (area.height < 0))
+        if ((area.width <= 0) || (area.height <= 0))
         {
             center(view, workarea);
 
