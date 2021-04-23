@@ -49,6 +49,7 @@ class wayfire_expo : public wf::plugin_interface_t
     wf::option_wrapper_t<wf::color_t> background_color{"expo/background"};
     wf::option_wrapper_t<int> zoom_duration{"expo/duration"};
     wf::option_wrapper_t<int> delimiter_offset{"expo/offset"};
+    wf::option_wrapper_t<bool> keyboard_interaction{"expo/keyboard_interaction"};
     wf::geometry_animation_t zoom_animation{zoom_duration};
 
     wf::option_wrapper_t<bool> move_enable_snap_off{"move/enable_snap_off"};
@@ -146,7 +147,7 @@ class wayfire_expo : public wf::plugin_interface_t
         {
             if (state == WLR_KEY_PRESSED)
             {
-                if (!this->state.button_pressed)
+                if (should_handle_key())
                 {
                     handle_key_pressed(key);
                 }
@@ -337,10 +338,6 @@ class wayfire_expo : public wf::plugin_interface_t
         {
             output->rem_binding(&keyboard_select_cbs[i]);
         }
-
-        timer_delay.disconnect();
-        timer_rate.disconnect();
-        key_pressed = 0;
     }
 
     wf::geometry_t get_grid_geometry()
@@ -435,6 +432,15 @@ class wayfire_expo : public wf::plugin_interface_t
         update_target_workspace(to.x, to.y);
     }
 
+    /**
+     * Helper to determine if keyboard presses should be handled
+     */
+    bool should_handle_key()
+    {
+        return ((!zoom_animation.running() || state.zoom_in) &&
+            keyboard_interaction && !state.button_pressed);
+    }
+
     void handle_key_pressed(uint32_t key)
     {
         switch (key)
@@ -483,6 +489,12 @@ class wayfire_expo : public wf::plugin_interface_t
             {
                 timer_rate.set_timeout(1000 / rate, [=] ()
                 {
+                    if (!should_handle_key())
+                    {
+                        key_pressed = 0;
+                        return false; // disconnect if key events should no longer be handled
+                    }
+
                     handle_key_pressed(key);
                     return true; // repeat
                 });

@@ -24,6 +24,11 @@
 			<_long>Sets the delimiter offset (in pixels) between workspaces.</_long>
 			<default>10</default>
 		</option>
+		<option name="keyboard_interaction" type="bool">
+			<_short>Keyboard interaction</_short>
+			<_long>Allow the use of arrow keys to select a workspace, ESC to cancel and ENTER to accept.</_long>
+			<default>true</default>
+		</option>
 		<option name="workspace_bindings" type="dynamic-list">
 			<_short>Select workspace</_short>
 			<_long>When the binding is triggered while expo is active, the corresponding workspace will be focused and Expo will exit.</_long>
