@@ -32,6 +32,9 @@ class workspace_wall_t : public wf::signal_provider_t
     {
         this->viewport = get_wall_rectangle();
         streams = workspace_stream_pool_t::ensure_pool(output);
+
+        resize_colors();
+        output->connect_signal("workspace-grid-changed", &on_workspace_grid_changed);
     }
 
     ~workspace_wall_t()
@@ -118,7 +121,8 @@ class workspace_wall_t : public wf::signal_provider_t
             auto ws_matrix = calculate_workspace_matrix(ws);
             OpenGL::render_transformed_texture(
                 streams->get(ws).buffer.tex, workspace_geometry,
-                fb.get_orthographic_projection() * wall_matrix * ws_matrix);
+                fb.get_orthographic_projection() * wall_matrix * ws_matrix,
+                get_ws_color(ws));
         }
 
         OpenGL::render_end();
@@ -194,6 +198,15 @@ class workspace_wall_t : public wf::signal_provider_t
         };
     }
 
+    /**
+     * Get the color multiplier for a given workspace.
+     * This can be used to set to a desired color as well.
+     */
+    glm::vec4& get_ws_color(const wf::point_t& ws)
+    {
+        return render_colors.at(ws.x).at(ws.y);
+    }
+
   protected:
     wf::output_t *output;
 
@@ -202,6 +215,8 @@ class workspace_wall_t : public wf::signal_provider_t
 
     wf::geometry_t viewport = {0, 0, 0, 0};
     nonstd::observer_ptr<workspace_stream_pool_t> streams;
+
+    std::vector<std::vector<glm::vec4>> render_colors;
 
     /** Update or start visible streams */
     void update_streams()
@@ -280,6 +295,21 @@ class workspace_wall_t : public wf::signal_provider_t
     wf::render_hook_t on_render = [=] (const wf::framebuffer_t& target)
     {
         render_wall(target, this->output->get_relative_geometry());
+    };
+
+    void resize_colors()
+    {
+        auto size = this->output->workspace->get_workspace_grid_size();
+        render_colors.resize(size.width);
+        for (auto& v : render_colors)
+        {
+            v.resize(size.height, glm::vec4(1.f));
+        }
+    }
+
+    wf::signal_connection_t on_workspace_grid_changed = [=] (auto)
+    {
+        resize_colors();
     };
 };
 }

@@ -71,6 +71,7 @@ class wayfire_expo : public wf::plugin_interface_t
     } state;
 
     int target_vx, target_vy;
+    int initial_vx, initial_vy;
     std::unique_ptr<wf::workspace_wall_t> wall;
 
   public:
@@ -133,6 +134,14 @@ class wayfire_expo : public wf::plugin_interface_t
         grab_interface->callbacks.pointer.motion = [=] (int32_t x, int32_t y)
         {
             handle_input_move({x, y});
+        };
+
+        grab_interface->callbacks.keyboard.key = [=] (uint32_t key, uint32_t state)
+        {
+            if (state == WLR_KEY_PRESSED)
+            {
+                handle_key_pressed(key);
+            }
         };
 
         grab_interface->callbacks.touch.down =
@@ -251,14 +260,16 @@ class wayfire_expo : public wf::plugin_interface_t
         start_zoom(true);
 
         auto cws = output->workspace->get_current_workspace();
-        target_vx = cws.x;
-        target_vy = cws.y;
+        initial_vx = target_vx = cws.x;
+        initial_vy = target_vy = cws.y;
 
         for (size_t i = 0; i < keyboard_select_cbs.size(); i++)
         {
             output->add_activator(keyboard_select_options[i],
                 &keyboard_select_cbs[i]);
         }
+
+        highlight_active_workspace();
 
         return true;
     }
@@ -403,6 +414,85 @@ class wayfire_expo : public wf::plugin_interface_t
         update_target_workspace(to.x, to.y);
     }
 
+    void handle_key_pressed(uint32_t key)
+    {
+        switch (key)
+        {
+          case KEY_ENTER:
+            deactivate();
+            return;
+
+          case KEY_ESC:
+            target_vx = initial_vx;
+            target_vy = initial_vy;
+            highlight_active_workspace();
+            deactivate();
+            return;
+
+          case KEY_UP:
+            target_vy -= 1;
+            break;
+
+          case KEY_DOWN:
+            target_vy += 1;
+            break;
+
+          case KEY_RIGHT:
+            target_vx += 1;
+            break;
+
+          case KEY_LEFT:
+            target_vx -= 1;
+            break;
+
+          default:
+            return;
+        }
+
+        auto dim = output->workspace->get_workspace_grid_size();
+        if (target_vx >= dim.width)
+        {
+            target_vx = 0;
+        }
+
+        if (target_vx < 0)
+        {
+            target_vx = dim.width - 1;
+        }
+
+        if (target_vy >= dim.height)
+        {
+            target_vy = 0;
+        }
+
+        if (target_vy < 0)
+        {
+            target_vy = dim.height - 1;
+        }
+
+        highlight_active_workspace();
+        output->render->schedule_redraw();
+    }
+
+    void highlight_active_workspace()
+    {
+        /* shade all but the selected workspace */
+        auto dim = output->workspace->get_workspace_grid_size();
+        for (int x = 0; x < dim.width; x++)
+        {
+            for (int y = 0; y < dim.height; y++)
+            {
+                if ((x == target_vx) && (y == target_vy))
+                {
+                    wall->get_ws_color({x, y}) = glm::vec4(1.0f);
+                } else
+                {
+                    wall->get_ws_color({x, y}) = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f);
+                }
+            }
+        }
+    }
+
     wf::point_t move_started_ws = offscreen_point;
 
     /**
@@ -504,6 +594,8 @@ class wayfire_expo : public wf::plugin_interface_t
 
         target_vx = x / og.width;
         target_vy = y / og.height;
+        highlight_active_workspace();
+        output->render->schedule_redraw();
     }
 
     wf::signal_connection_t on_frame = {[=] (wf::signal_data_t*)
