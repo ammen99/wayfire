@@ -74,6 +74,12 @@ class wayfire_expo : public wf::plugin_interface_t
     int initial_vx, initial_vy;
     std::unique_ptr<wf::workspace_wall_t> wall;
 
+    wf::option_wrapper_t<int> delay{"input/kb_repeat_delay"};
+    wf::option_wrapper_t<int> rate{"input/kb_repeat_rate"};
+    wf::wl_timer timer_delay;
+    wf::wl_timer timer_rate;
+    uint32_t key_pressed = 0;
+
   public:
     void setup_workspace_bindings_from_config()
     {
@@ -140,7 +146,18 @@ class wayfire_expo : public wf::plugin_interface_t
         {
             if (state == WLR_KEY_PRESSED)
             {
-                handle_key_pressed(key);
+                if (!this->state.button_pressed)
+                {
+                    handle_key_pressed(key);
+                }
+            } else
+            {
+                if (key == key_pressed)
+                {
+                    timer_delay.disconnect();
+                    timer_rate.disconnect();
+                    key_pressed = 0;
+                }
             }
         };
 
@@ -320,6 +337,10 @@ class wayfire_expo : public wf::plugin_interface_t
         {
             output->rem_binding(&keyboard_select_cbs[i]);
         }
+
+        timer_delay.disconnect();
+        timer_rate.disconnect();
+        key_pressed = 0;
     }
 
     wf::geometry_t get_grid_geometry()
@@ -447,6 +468,29 @@ class wayfire_expo : public wf::plugin_interface_t
 
           default:
             return;
+        }
+
+        /* this part is only reached if one of the arrow keys is pressed */
+        if (key != key_pressed)
+        {
+            if (key_pressed)
+            {
+                timer_delay.disconnect();
+                timer_rate.disconnect();
+            }
+
+            timer_delay.set_timeout(delay, [=] ()
+            {
+                timer_rate.set_timeout(1000 / rate, [=] ()
+                {
+                    handle_key_pressed(key);
+                    return true; // repeat
+                });
+
+                return false; // no more repeat
+            });
+
+            key_pressed = key;
         }
 
         auto dim = output->workspace->get_workspace_grid_size();
@@ -622,6 +666,9 @@ class wayfire_expo : public wf::plugin_interface_t
         output->deactivate_plugin(grab_interface);
         grab_interface->ungrab();
         wall->stop_output_renderer(true);
+        timer_delay.disconnect();
+        timer_rate.disconnect();
+        key_pressed = 0;
     }
 
     void fini() override
