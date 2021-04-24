@@ -29,6 +29,19 @@
 			<_long>Allow the use of arrow keys to select a workspace, ESC to cancel and ENTER to accept.</_long>
 			<default>true</default>
 		</option>
+		<option name="inactive_brightness" type="double">
+			<_short>Brightness of inactive workspaces</_short>
+			<_long>Decrease the brightness of all workspaces except the currently selected one to this value.</_long>
+			<default>0.7</default>
+			<min>0.0</min>
+			<max>1.0</max>
+			<precision>0.01</precision>
+		</option>
+		<option name="transition_len" type="int">
+			<_short>Brightness transition duration</_short>
+			<_long>Duration of the transition of brightness when a new workspace is selected in milliseconds.</_long>
+			<default>200</default>
+		</option>
 		<option name="workspace_bindings" type="dynamic-list">
 			<_short>Select workspace</_short>
 			<_long>When the binding is triggered while expo is active, the corresponding workspace will be focused and Expo will exit.</_long>

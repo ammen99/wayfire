@@ -50,6 +50,8 @@ class wayfire_expo : public wf::plugin_interface_t
     wf::option_wrapper_t<int> zoom_duration{"expo/duration"};
     wf::option_wrapper_t<int> delimiter_offset{"expo/offset"};
     wf::option_wrapper_t<bool> keyboard_interaction{"expo/keyboard_interaction"};
+    wf::option_wrapper_t<double> inactive_brightness{"expo/inactive_brightness"};
+    wf::option_wrapper_t<int> transition_len{"expo/transition_len"};
     wf::geometry_animation_t zoom_animation{zoom_duration};
 
     wf::option_wrapper_t<bool> move_enable_snap_off{"move/enable_snap_off"};
@@ -80,6 +82,9 @@ class wayfire_expo : public wf::plugin_interface_t
     wf::wl_timer timer_delay;
     wf::wl_timer timer_rate;
     uint32_t key_pressed = 0;
+
+    /* fade animations for each workspace */
+    std::vector<std::vector<wf::animation::simple_animation_t>> ws_fade;
 
   public:
     void setup_workspace_bindings_from_config()
@@ -202,6 +207,9 @@ class wayfire_expo : public wf::plugin_interface_t
         drag_helper->connect_signal("focus-output", &on_drag_output_focus);
         drag_helper->connect_signal("snap-off", &on_drag_snap_off);
         drag_helper->connect_signal("done", &on_drag_done);
+
+        resize_ws_fade();
+        output->connect_signal("workspace-grid-changed", &on_workspace_grid_changed);
     }
 
     bool can_handle_drag()
@@ -443,6 +451,9 @@ class wayfire_expo : public wf::plugin_interface_t
 
     void handle_key_pressed(uint32_t key)
     {
+        int x = target_vx;
+        int y = target_vy;
+
         switch (key)
         {
           case KEY_ENTER:
@@ -452,7 +463,8 @@ class wayfire_expo : public wf::plugin_interface_t
           case KEY_ESC:
             target_vx = initial_vx;
             target_vy = initial_vy;
-            highlight_active_workspace();
+            shade_workspace(x, y, true);
+            shade_workspace(target_vx, target_vy, false);
             deactivate();
             return;
 
@@ -491,8 +503,9 @@ class wayfire_expo : public wf::plugin_interface_t
                 {
                     if (!should_handle_key())
                     {
+                        // disconnect if key events should no longer be handled
                         key_pressed = 0;
-                        return false; // disconnect if key events should no longer be handled
+                        return false;
                     }
 
                     handle_key_pressed(key);
@@ -526,13 +539,16 @@ class wayfire_expo : public wf::plugin_interface_t
             target_vy = dim.height - 1;
         }
 
-        highlight_active_workspace();
-        output->render->schedule_redraw();
+        shade_workspace(x, y, true);
+        shade_workspace(target_vx, target_vy, false);
+        // output->render->schedule_redraw();
     }
 
+    /**
+     * shade all but the selected workspace instantly (without animation)
+     */
     void highlight_active_workspace()
     {
-        /* shade all but the selected workspace */
         auto dim = output->workspace->get_workspace_grid_size();
         for (int x = 0; x < dim.width; x++)
         {
@@ -543,10 +559,33 @@ class wayfire_expo : public wf::plugin_interface_t
                     wall->get_ws_color({x, y}) = glm::vec4(1.0f);
                 } else
                 {
-                    wall->get_ws_color({x, y}) = glm::vec4(0.7f, 0.7f, 0.7f, 1.0f);
+                    wall->get_ws_color({x, y}) = glm::vec4(
+                        (float)inactive_brightness,
+                        (float)inactive_brightness,
+                        (float)inactive_brightness,
+                        1.0f);
                 }
             }
         }
+    }
+
+    /**
+     * start an animation for shading the given workspace
+     */
+    void shade_workspace(int x, int y, bool shaded)
+    {
+        double target = shaded ? inactive_brightness : 1.0;
+        auto& anim    = ws_fade.at(x).at(y);
+
+        if (anim.running())
+        {
+            anim.animate(target);
+        } else
+        {
+            anim.animate(shaded ? 1.0 : inactive_brightness, target);
+        }
+
+        output->render->schedule_redraw();
     }
 
     wf::point_t move_started_ws = offscreen_point;
@@ -648,10 +687,17 @@ class wayfire_expo : public wf::plugin_interface_t
             return;
         }
 
-        target_vx = x / og.width;
-        target_vy = y / og.height;
-        highlight_active_workspace();
-        output->render->schedule_redraw();
+        int tmpx = x / og.width;
+        int tmpy = y / og.height;
+        if ((tmpx != target_vx) || (tmpy != target_vy))
+        {
+            shade_workspace(target_vx, target_vy, true);
+            target_vx = tmpx;
+            target_vy = tmpy;
+            shade_workspace(target_vx, target_vy, false);
+        }
+
+        // output->render->schedule_redraw();
     }
 
     wf::signal_connection_t on_frame = {[=] (wf::signal_data_t*)
@@ -663,8 +709,49 @@ class wayfire_expo : public wf::plugin_interface_t
             } else if (!state.zoom_in)
             {
                 finalize_and_exit();
+                return;
+            }
+
+            auto size = this->output->workspace->get_workspace_grid_size();
+            for (int x = 0; x < size.width; x++)
+            {
+                for (int y = 0; y < size.height; y++)
+                {
+                    auto& anim = ws_fade.at(x).at(y);
+                    if (anim.running())
+                    {
+                        wall->get_ws_color({x, y}) = glm::vec4(
+                            anim, anim, anim, 1.0f);
+                        output->render->schedule_redraw();
+                    }
+                }
             }
         }
+    };
+
+    void resize_ws_fade()
+    {
+        auto size = this->output->workspace->get_workspace_grid_size();
+        ws_fade.resize(size.width);
+        for (auto& v : ws_fade)
+        {
+            size_t h = size.height;
+            if (v.size() > h)
+            {
+                v.resize(h);
+            } else
+            {
+                while (v.size() < h)
+                {
+                    v.emplace_back(transition_len);
+                }
+            }
+        }
+    }
+
+    wf::signal_connection_t on_workspace_grid_changed = [=] (auto)
+    {
+        resize_ws_fade();
     };
 
     void finalize_and_exit()
