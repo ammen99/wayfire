@@ -49,6 +49,12 @@ class hotspot_instance_t : public noncopyable_t
     /** Timer for hotspot activation */
     wf::wl_timer timer;
 
+    /**
+     * Only one event should be triggered once the cursor enters the hotspot area.
+     * This prevents another event being fired until the cursor has left the area.
+     */
+    bool armed = true;
+
     /** Timeout to activate hotspot */
     uint32_t timeout_ms;
 

@@ -5,11 +5,13 @@ void wf::hotspot_instance_t::process_input_motion(wf::point_t gc)
     if (!(hotspot_geometry[0] & gc) && !(hotspot_geometry[1] & gc))
     {
         timer.disconnect();
+        this->armed = true;
         return;
     }
 
-    if (!timer.is_connected())
+    if (!timer.is_connected() && this->armed)
     {
+        this->armed = false;
         timer.set_timeout(timeout_ms, [=] ()
         {
             callback(this->edges);
