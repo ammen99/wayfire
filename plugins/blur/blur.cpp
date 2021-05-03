@@ -98,12 +98,19 @@ class wf_blur_transformer : public wf::view_transformer_t
         wf::region_t opaque_region  = view->get_transformed_opaque_region();
         wf::region_t blurred_region = clip_damage ^ opaque_region;
 
-        provider()->pre_render(src_tex, src_box, blurred_region, target_fb);
-        wf::view_transformer_t::render_with_damage(src_tex, src_box, blurred_region,
-            target_fb);
+        if (!blurred_region.empty())
+        {
+            provider()->pre_render(src_tex, src_box, blurred_region, target_fb);
+            wf::view_transformer_t::render_with_damage(src_tex, src_box,
+                blurred_region, target_fb);
+        }
 
         /* Opaque non-blurred regions can be rendered directly without blending */
-        direct_render(src_tex, src_box, opaque_region & clip_damage, target_fb);
+        wf::region_t unblurred{opaque_region & clip_damage};
+        if (!unblurred.empty())
+        {
+            direct_render(src_tex, src_box, unblurred, target_fb);
+        }
     }
 
     void render_box(wf::texture_t src_tex, wlr_box src_box, wlr_box scissor_box,
