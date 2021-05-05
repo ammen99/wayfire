@@ -1164,7 +1164,7 @@ bool wf::view_interface_t::render_transformed(const wf::framebuffer_t& framebuff
         /* Regular case, just call the last transformer, but render directly
          * to the target framebuffer */
         final_transform->transform->render_with_damage(previous_texture, obox,
-            damage, framebuffer);
+            damage & framebuffer.geometry, framebuffer);
     }
 
     return true;

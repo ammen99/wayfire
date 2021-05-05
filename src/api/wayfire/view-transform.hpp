@@ -89,8 +89,8 @@ class view_transformer_t
      *
      * @param src_tex The texture of the view.
      * @param src_box The bounding box of the view in output-local coordinates.
-     * @param damage The region to repaint, clipped to the view's bounds.
-     *   It is in output-local coordinates.
+     * @param damage The region to repaint, clipped to the view's and
+     *   the framebuffer's bounds. It is in output-local coordinates.
      * @param target_fb The framebuffer to draw the view to. It's geometry
      *   is in output-local coordinates.
      *
