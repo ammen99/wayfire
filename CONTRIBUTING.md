@@ -34,6 +34,16 @@ If you want to work on a feature or a bug fix which does not have an open issue,
 
 In any case, feel free to ask questions if you do not understand a part of the code, or if you are unsure how a particular feature should be implemented.
 
+### Code Formatting
+
+Please use [`uncrustify`](https://github.com/uncrustify/uncrustify) (version `>=0.71`) to automatically format the code before committing:
+
+```sh
+$ git ls-files | grep "hpp$\|cpp$" | xargs uncrustify -c uncrustify.ini --no-backup
+```
+
+You can setup a [githook](https://git-scm.com/docs/githooks) to run this automatically before committing.
+
 ## Contacting the maintainer(s)
 
 The primary communication channel is via IRC (#wayfire at freenode.net).
