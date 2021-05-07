@@ -230,10 +230,14 @@ class output_layer_manager_t
     /** Precondition: view is in some sublayer */
     void bring_to_front(wayfire_view view)
     {
-        view->damage();
-
         auto sublayer = get_view_sublayer(view);
         assert(sublayer);
+
+        for (auto view : sublayer->views)
+        {
+            view->damage();
+        }
+
         if (sublayer->mode == SUBLAYER_FLOATING)
         {
             raise_to_front(sublayer->layer->floating, sublayer);
