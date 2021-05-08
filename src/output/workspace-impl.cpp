@@ -72,6 +72,15 @@ void remove_from(Haystack& haystack, Needle& n)
     haystack.erase(it, std::end(haystack));
 }
 
+/** Damage the entire view tree including the view itself. */
+void damage_views(wayfire_view view)
+{
+    for (auto view : view->enumerate_views(false))
+    {
+        view->damage();
+    }
+}
+
 struct layer_container_t;
 /**
  * Implementation of the sublayer struct.
@@ -170,7 +179,7 @@ class output_layer_manager_t
             return;
         }
 
-        view->damage();
+        damage_views(view);
 
         remove_from(sublayer->views, view);
         if (sublayer->is_single_view)
@@ -222,9 +231,9 @@ class output_layer_manager_t
     /** Add or move the view to the given layer */
     void add_view_to_layer(wayfire_view view, layer_t layer)
     {
-        view->damage();
+        damage_views(view);
         add_view_to_sublayer(view, create_sublayer(layer, SUBLAYER_FLOATING));
-        view->damage();
+        damage_views(view);
     }
 
     /** Precondition: view is in some sublayer */
@@ -235,7 +244,7 @@ class output_layer_manager_t
 
         for (auto view : sublayer->views)
         {
-            view->damage();
+            damage_views(view);
         }
 
         if (sublayer->mode == SUBLAYER_FLOATING)
@@ -260,7 +269,7 @@ class output_layer_manager_t
     /** Precondition: view and below are in the same layer */
     void restack_above(wayfire_view view, wayfire_view below)
     {
-        view->damage();
+        damage_views(view);
 
         auto view_sublayer  = get_view_sublayer(view);
         auto below_sublayer = get_view_sublayer(below);
@@ -286,7 +295,7 @@ class output_layer_manager_t
     /** Precondition: view and above are in the same layer */
     void restack_below(wayfire_view view, wayfire_view above)
     {
-        view->damage();
+        damage_views(view);
 
         auto view_sublayer  = get_view_sublayer(view);
         auto above_sublayer = get_view_sublayer(above);
