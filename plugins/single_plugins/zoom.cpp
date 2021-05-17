@@ -6,9 +6,16 @@
 
 class wayfire_zoom_screen : public wf::plugin_interface_t
 {
+    enum class interpolation_method_t
+    {
+        LINEAR  = 0,
+        NEAREST = 1,
+    };
+
     wf::option_wrapper_t<wf::keybinding_t> modifier{"zoom/modifier"};
     wf::option_wrapper_t<double> speed{"zoom/speed"};
     wf::option_wrapper_t<int> smoothing_duration{"zoom/smoothing_duration"};
+    wf::option_wrapper_t<int> interpolation_method{"zoom/interpolation_method"};
     wf::animation::simple_animation_t progression{smoothing_duration};
     bool hook_set = false;
 
@@ -87,11 +94,15 @@ class wayfire_zoom_screen : public wf::plugin_interface_t
         const float x1 = x * scale;
         const float y1 = y * scale;
 
+        const GLenum interpolation =
+            (interpolation_method ==
+                (int)interpolation_method_t::NEAREST) ? GL_NEAREST : GL_LINEAR;
+
         OpenGL::render_begin(source);
         GL_CALL(glBindFramebuffer(GL_READ_FRAMEBUFFER, source.fb));
         GL_CALL(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, destination.fb));
         GL_CALL(glBlitFramebuffer(x1, y1, x1 + tw, y1 + th, 0, 0, w, h,
-            GL_COLOR_BUFFER_BIT, GL_LINEAR));
+            GL_COLOR_BUFFER_BIT, interpolation));
         OpenGL::render_end();
 
         if (!progression.running() && (progression - 1 <= 0.01))

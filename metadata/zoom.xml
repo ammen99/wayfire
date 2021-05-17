@@ -20,5 +20,20 @@
 			<_long>Sets the smoothing duration in milliseconds.</_long>
 			<default>300</default>
 		</option>
+		<option name="interpolation_method" type="int">
+			<_short>Interpolation method</_short>
+			<_long>Sets the pixel interpolation method to use.</_long>
+			<default>0</default>
+			<min>0</min>
+			<max>1</max>
+			<desc>
+				<value>0</value>
+				<_name>Linear</_name>
+			</desc>
+			<desc>
+				<value>1</value>
+				<_name>Nearest</_name>
+			</desc>
+		</option>
 	</plugin>
 </wayfire>
