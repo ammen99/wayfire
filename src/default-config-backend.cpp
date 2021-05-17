@@ -50,8 +50,9 @@ static int handle_config_updated(int fd, uint32_t mask, void *data)
         return 0;
     }
 
-    auto cfg_file_basename =
-        config_file.substr(config_file.find_last_of('/'));
+    const auto last_slash = config_file.find_last_of('/');
+    const auto cfg_file_basename = (last_slash == std::string::npos) ?
+        config_file : config_file.substr(last_slash);
 
     for (char *ptr = buf;
          ptr < (buf + len);
