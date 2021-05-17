@@ -79,7 +79,11 @@ class wayfire_zoom_screen : public wf::plugin_interface_t
 
         const float scale = (progression - 1) / progression;
 
-        const float tw = w / progression, th = h / progression;
+        // The target width and height are truncated here so that `x1+tw` and
+        // `x1` round to GLint in tandem for glBlitFramebuffer(). This keeps the
+        // aspect ratio constant while panning around.
+        const GLint tw = w / progression, th = h / progression;
+
         const float x1 = x * scale;
         const float y1 = y * scale;
 
