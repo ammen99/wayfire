@@ -793,6 +793,10 @@ void wf::view_interface_t::set_decoration(surface_interface_t *frame)
     if (!frame)
     {
         damage();
+
+        // Take wm geometry as it was with the decoration.
+        const auto wm = get_wm_geometry();
+
         if (view_impl->decoration)
         {
             this->remove_subsurface(view_impl->decoration);
@@ -800,6 +804,14 @@ void wf::view_interface_t::set_decoration(surface_interface_t *frame)
 
         view_impl->decoration = nullptr;
         view_impl->frame = nullptr;
+
+        // Grow the tiled view to fill its old expanded geometry that included
+        // the decoration.
+        if (!fullscreen && this->tiled_edges && (wm != get_wm_geometry()))
+        {
+            set_geometry(wm);
+        }
+
         emit_signal("decoration-changed", nullptr);
 
         return;
