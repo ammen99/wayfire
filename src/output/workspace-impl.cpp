@@ -739,7 +739,16 @@ class output_viewport_manager_t
         auto views = get_views_on_workspace(get_current_workspace(), wf::WM_LAYERS);
         for (auto v : wf::reverse(views))
         {
-            update_focus_timestamp(v);
+            auto children = v->enumerate_views();
+            std::sort(children.begin(), children.end(),
+                [] (const auto& x, const auto& y)
+            {
+                return x->last_focus_timestamp < y->last_focus_timestamp;
+            });
+            for (auto& child : children)
+            {
+                update_focus_timestamp(child);
+            }
         }
 
         for (auto& v : fixed_views)
