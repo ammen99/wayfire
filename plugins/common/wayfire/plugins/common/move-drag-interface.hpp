@@ -660,6 +660,9 @@ inline void adjust_view_on_output(drag_done_signal *ev)
     target_ws.x = wf::clamp(target_ws.x, 0, gsize.width - 1);
     target_ws.y = wf::clamp(target_ws.y, 0, gsize.height - 1);
 
+    // view to focus at the end of drag
+    auto focus_view = ev->main_view;
+
     for (auto& v : ev->all_views)
     {
         if (!v.view->is_mapped())
@@ -684,6 +687,12 @@ inline void adjust_view_on_output(drag_done_signal *ev)
         {
             v.view->tile_request(v.view->tiled_edges, target_ws);
         }
+
+        // check focus timestamp and select the last focused view to (re)focus
+        if (v.view->last_focus_timestamp > focus_view->last_focus_timestamp)
+        {
+            focus_view = v.view;
+        }
     }
 
     // Ensure that every view is visible on parent's main workspace
@@ -692,7 +701,7 @@ inline void adjust_view_on_output(drag_done_signal *ev)
         ev->focused_output->workspace->move_to_workspace(v, target_ws);
     }
 
-    ev->focused_output->focus_view(parent, true);
+    ev->focused_output->focus_view(focus_view, true);
 }
 
 /**
