@@ -541,7 +541,6 @@ class wayfire_expo : public wf::plugin_interface_t
 
         shade_workspace(x, y, true);
         shade_workspace(target_vx, target_vy, false);
-        // output->render->schedule_redraw();
     }
 
     /**
@@ -696,8 +695,6 @@ class wayfire_expo : public wf::plugin_interface_t
             target_vy = tmpy;
             shade_workspace(target_vx, target_vy, false);
         }
-
-        // output->render->schedule_redraw();
     }
 
     wf::signal_connection_t on_frame = {[=] (wf::signal_data_t*)
@@ -752,6 +749,18 @@ class wayfire_expo : public wf::plugin_interface_t
     wf::signal_connection_t on_workspace_grid_changed = [=] (auto)
     {
         resize_ws_fade();
+
+        // check that the target and initial workspaces are still in the grid
+        auto size = this->output->workspace->get_workspace_grid_size();
+        initial_vx = std::min(initial_vx, size.width - 1);
+        initial_vy = std::min(initial_vy, size.height - 1);
+
+        if ((target_vx >= size.width) || (target_vy >= size.height))
+        {
+            target_vx = std::min(target_vx, size.width - 1);
+            target_vy = std::min(target_vy, size.height - 1);
+            highlight_active_workspace();
+        }
     };
 
     void finalize_and_exit()
