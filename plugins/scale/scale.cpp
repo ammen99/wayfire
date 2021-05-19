@@ -510,7 +510,6 @@ class wayfire_scale : public wf::plugin_interface_t
           case BTN_LEFT:
             // Focus the view under the mouse
             current_focus_view = view;
-            output->focus_view(view, false);
             fade_out_all_except(view);
             fade_in(get_top_parent(view));
             if (!interact)
@@ -520,6 +519,8 @@ class wayfire_scale : public wf::plugin_interface_t
                 deactivate();
                 select_view(view);
             }
+
+            output->focus_view(view, false);
 
             break;
 
@@ -645,14 +646,15 @@ class wayfire_scale : public wf::plugin_interface_t
           case KEY_ENTER:
             deactivate();
             select_view(current_focus_view);
+            output->focus_view(current_focus_view, true);
 
             return;
 
           case KEY_ESC:
             deactivate();
+            output->workspace->request_workspace(initial_workspace);
             output->focus_view(initial_focus_view, true);
             initial_focus_view = nullptr;
-            output->workspace->request_workspace(initial_workspace);
 
             return;
 
