@@ -15,31 +15,7 @@
 #include <wayfire/opengl.hpp>
 #include <wayfire/plugins/common/cairo-util.hpp>
 #include <wayfire/plugins/common/simple-texture.hpp>
-
-struct scale_key_repeat_t
-{
-    wf::option_wrapper_t<int> delay{"input/kb_repeat_delay"};
-    wf::option_wrapper_t<int> rate{"input/kb_repeat_rate"};
-
-    wf::wl_timer timer_delay;
-    wf::wl_timer timer_rate;
-
-    using callback_t = std::function<void (uint32_t)>;
-
-    scale_key_repeat_t(uint32_t key, callback_t handler)
-    {
-        timer_delay.set_timeout(delay, [=] ()
-        {
-            timer_rate.set_timeout(1000 / rate, [=] ()
-            {
-                handler(key);
-                return true; // repeat
-            });
-
-            return false; // no more repeat
-        });
-    }
-};
+#include <wayfire/plugins/common/key-repeat.hpp>
 
 class scale_title_filter;
 
@@ -197,14 +173,14 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         }
     };
 
-    std::map<uint32_t, std::unique_ptr<scale_key_repeat_t>> keys;
-    scale_key_repeat_t::callback_t handle_key_repeat = [=] (uint32_t raw_keycode)
+    std::map<uint32_t, std::unique_ptr<wf::key_repeat_t>> keys;
+    wf::key_repeat_t::callback_t handle_key_repeat = [=] (uint32_t raw_keycode)
     {
         auto seat     = wf::get_core().get_current_seat();
         auto keyboard = wlr_seat_get_keyboard(seat);
         if (!keyboard)
         {
-            return; /* should not happen */
+            return false; /* should not happen */
         }
 
         auto xkb_state = keyboard->xkb_state;
@@ -218,6 +194,8 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         {
             filter.add_key(xkb_state, keycode);
         }
+
+        return true;
     };
 
     void update_filter()
@@ -250,7 +228,7 @@ class scale_title_filter : public wf::singleton_plugin_t<scale_title_filter_text
         }
 
         keys[k->event->keycode] =
-            std::make_unique<scale_key_repeat_t>(k->event->keycode,
+            std::make_unique<wf::key_repeat_t>(k->event->keycode,
                 handle_key_repeat);
         handle_key_repeat(k->event->keycode);
     };
