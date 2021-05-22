@@ -37,7 +37,7 @@
 			<max>1.0</max>
 			<precision>0.01</precision>
 		</option>
-		<option name="transition_len" type="int">
+		<option name="transition_length" type="int">
 			<_short>Brightness transition duration</_short>
 			<_long>Duration of the transition of brightness when a new workspace is selected in milliseconds.</_long>
 			<default>200</default>
