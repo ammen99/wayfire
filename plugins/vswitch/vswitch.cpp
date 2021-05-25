@@ -54,7 +54,7 @@ class vswitch : public wf::plugin_interface_t
             [=] () { output->deactivate_plugin(grab_interface); });
 
         bindings = std::make_unique<wf::vswitch::control_bindings_t>(output);
-        bindings->setup([this] (wf::point_t delta, wayfire_view view)
+        bindings->setup([this] (wf::point_t delta, wayfire_view view, bool only_view)
         {
             // Do not switch workspace with sticky view, they are on all
             // workspaces anyway
@@ -68,6 +68,27 @@ class vswitch : public wf::plugin_interface_t
                 if (delta == wf::point_t{0, 0})
                 {
                     // Consume input event
+                    return true;
+                }
+
+                if (only_view)
+                {
+                    auto size = output->get_screen_size();
+
+                    for (auto& v : view->enumerate_views(false))
+                    {
+                        auto origin = wf::origin(v->get_wm_geometry());
+                        v->move(origin.x + delta.x * size.width,
+                            origin.y + delta.y * size.height);
+                    }
+
+                    view_change_viewport_signal data;
+                    data.view = view;
+                    data.from = output->workspace->get_current_workspace();
+                    data.to   = data.from + delta;
+                    output->emit_signal("view-change-viewport", &data);
+                    output->refocus();
+
                     return true;
                 }
 

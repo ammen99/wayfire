@@ -24,26 +24,74 @@
 			<_long>Switches to workspace down with the specified activator.</_long>
 			<default>&lt;super&gt; &lt;alt&gt; KEY_DOWN</default>
 		</option>
-		<option name="binding_win_left" type="activator">
+		<option name="with_win_left" type="activator">
 			<_short>Left with window</_short>
 			<_long>Switches to workspace left with the focused window with the specified activator.</_long>
 			<default>&lt;super&gt; &lt;alt&gt; &lt;shift&gt; KEY_LEFT</default>
 		</option>
-		<option name="binding_win_right" type="activator">
+		<option name="with_win_right" type="activator">
 			<_short>Right with window</_short>
 			<_long>Switches to workspace right with the focused window with the specified activator.</_long>
 			<default>&lt;super&gt; &lt;alt&gt; &lt;shift&gt; KEY_RIGHT</default>
 		</option>
-		<option name="binding_win_up" type="activator">
+		<option name="with_win_up" type="activator">
 			<_short>Up with window</_short>
 			<_long>Switches to workspace up with the focused window with the specified activator.</_long>
 			<default>&lt;super&gt; &lt;alt&gt; &lt;shift&gt; KEY_UP</default>
 		</option>
-		<option name="binding_win_down" type="activator">
+		<option name="with_win_down" type="activator">
 			<_short>Down with window</_short>
 			<_long>Switches to workspace down with the focused window with the specified activator.</_long>
-			<default>&lt;super&gt; &lt;alt&gt; &lt;shift&gt; KEY_DOWN</default>
+			<default></default>
 		</option>
+		<option name="send_win_left" type="activator">
+			<_short>Send window to the left</_short>
+			<_long>Send the focused window to the workspace on the left.</_long>
+			<default></default>
+		</option>
+		<option name="send_win_right" type="activator">
+			<_short>Send window to the right</_short>
+			<_long>Send the focused window to the workspace on the right.</_long>
+			<default></default>
+		</option>
+		<option name="send_win_up" type="activator">
+			<_short>Send window above</_short>
+			<_long>Send the focused window to the workspace above.</_long>
+			<default></default>
+		</option>
+		<option name="send_win_down" type="activator">
+			<_short>Send window below</_short>
+			<_long>Send the focused window to the workspace below.</_long>
+			<default></default>
+		</option>
+
+		<option name="workspace_bindings" type="dynamic-list">
+			<_short>Go-To-Workspace bindings</_short>
+			<_long>Go-To-Workspace bindings</_long>
+			<entry prefix="binding_" type="activator">
+				<_short>Binding for workspace N</_short>
+				<_long>Sets the binding to go to workspace N.</_long>
+			</entry>
+		</option>
+
+		<option name="workspace_bindings_win" type="dynamic-list">
+			<_short>Go-To-Workspace with window bindings</_short>
+			<_long>Go-To-Workspace with window bindings</_long>
+			<entry prefix="with_win_" type="activator">
+				<_short>Binding for workspace N</_short>
+				<_long>Sets the binding to go to workspace N with currently focused window.</_long>
+			</entry>
+		</option>
+
+		<option name="bindings_win" type="dynamic-list">
+			<_short>Go-To-Workspace with window bindings</_short>
+			<_long>Go-To-Workspace with window bindings</_long>
+			<entry prefix="send_win_" type="activator">
+				<_short>Move window to workspace N</_short>
+				<_long>Sets the binding to move focused window to workspace N.</_long>
+			</entry>
+		</option>
+
 		<option name="duration" type="int">
 			<_short>Duration</_short>
 			<_long>Sets the duration of the workspace switching animation in milliseconds.</_long>

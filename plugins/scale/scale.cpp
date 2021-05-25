@@ -156,7 +156,8 @@ class wayfire_scale : public wf::plugin_interface_t
     {
         workspace_bindings =
             std::make_unique<wf::vswitch::control_bindings_t>(output);
-        workspace_bindings->setup([&] (wf::point_t delta, wayfire_view view)
+        workspace_bindings->setup([&] (wf::point_t delta,
+                                       wayfire_view view, bool only_view)
         {
             if (!output->is_plugin_active(grab_interface->name))
             {
@@ -167,6 +168,12 @@ class wayfire_scale : public wf::plugin_interface_t
             {
                 // Consume input event
                 return true;
+            }
+
+            if (only_view)
+            {
+                // For now, scale does not let you move views between workspaces
+                return false;
             }
 
             auto ws = output->workspace->get_current_workspace() + delta;
