@@ -1061,7 +1061,8 @@ class output_layout_t::impl
 
     void add_output(wlr_output *output)
     {
-        LOGI("new output: ", output->name);
+        LOGI("new output: ", output->name,
+            " (\"", output->make, " ", output->model, " ", output->serial, "\")");
 
         auto lo = new output_layout_output_t(output);
         outputs[output] = std::unique_ptr<output_layout_output_t>(lo);
