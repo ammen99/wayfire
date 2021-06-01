@@ -174,14 +174,6 @@ static bool check_vt_switch(wlr_session *session, uint32_t key, uint32_t mods)
         return false;
     }
 
-    /* Somebody inhibited the output, most probably a lockscreen */
-    auto output_impl =
-        static_cast<wf::output_impl_t*>(wf::get_core().get_active_output());
-    if (output_impl->is_inhibited())
-    {
-        return false;
-    }
-
     int target_vt = key - KEY_F1 + 1;
     wlr_session_change_vt(session, target_vt);
 
