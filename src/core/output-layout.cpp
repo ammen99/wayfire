@@ -251,6 +251,7 @@ struct output_layout_output_t
 {
     wlr_output *handle;
     output_state_t current_state;
+    bool is_externally_managed = false;
 
     std::unique_ptr<wf::output_impl_t> output;
     wl_listener_wrapper on_destroy, on_mode;
@@ -260,6 +261,9 @@ struct output_layout_output_t
     wf::option_wrapper_t<wf::output_config::position_t> position_opt;
     wf::option_wrapper_t<double> scale_opt;
     wf::option_wrapper_t<std::string> transform_opt;
+
+    wf::option_wrapper_t<bool> use_ext_config{
+        "workarounds/use_external_output_configuration"};
 
     void initialize_config_options()
     {
@@ -373,14 +377,49 @@ struct output_layout_output_t
         return true;
     }
 
-    output_state_t load_state_from_config()
+    /**
+     * Determine whether the state in the config file should be ignored.
+     */
+    bool should_ignore_config_state()
     {
+        if (is_externally_managed && use_ext_config)
+        {
+            wf::output_config::mode_t mode = mode_opt;
+            if (mode.get_type() == output_config::MODE_MIRROR)
+            {
+                // Special case: output mirroring
+                // It is not supported directly supported by wlr-output-management
+                // Thus, if the config file says to mirror an output, we do use that
+                // information.
+                return false;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Load the state the output is configured with.
+     * This is typically the config file, but in case of daemons like kanshi this
+     * might be the external configuration.
+     */
+    output_state_t load_configured_state()
+    {
+        // Ensure custom modes from the config are enabled
+        // Also make sure to refresh them even if the output is externally
+        // managed.
+        refresh_custom_modes();
+
+        if (should_ignore_config_state())
+        {
+            // Current state is what was requested by the client.
+            return this->current_state;
+        }
+
         output_state_t state;
         state.position = position_opt;
-
-        /* Make sure we can use custom modes that are
-         * specified in the config */
-        refresh_custom_modes();
 
         wf::output_config::mode_t mode = mode_opt;
         wlr_output_mode tmp;
@@ -968,6 +1007,12 @@ class output_layout_t::impl
 
         if (apply_configuration(configuration, test_only))
         {
+            // Notify outputs that they have external configuration
+            for (auto& [wo, _] : configuration)
+            {
+                this->outputs[wo]->is_externally_managed = true;
+            }
+
             wlr_output_configuration_v1_send_succeeded(wlr_configuration);
         } else
         {
@@ -989,7 +1034,7 @@ class output_layout_t::impl
          * next reconfiguration. This is needed because if we are removing
          * an output, we might get into a situation where the last physical
          * output has already been removed but we are yet to add the noop one */
-        noop_output->apply_state(noop_output->load_state_from_config());
+        noop_output->apply_state(noop_output->load_configured_state());
         wlr_output_layout_add_auto(output_layout, noop_output->handle);
         timer_remove_noop.disconnect();
     }
@@ -1056,27 +1101,22 @@ class output_layout_t::impl
         return configuration;
     }
 
-    output_configuration_t last_config_configuration;
-
     /** Load config from file, test and apply */
     void reconfigure_from_config()
     {
-        /* Load from config file */
+        // Load desired configuration from config file
         output_configuration_t configuration;
-        for (auto& entry : this->outputs)
+        for (auto& [output, layout_output] : this->outputs)
         {
-            configuration[entry.first] = entry.second->load_state_from_config();
+            configuration[output] = layout_output->load_configured_state();
         }
 
-        if ((configuration == get_current_configuration()) ||
-            (configuration == last_config_configuration))
+        if (configuration != get_current_configuration())
         {
-            return;
-        }
-
-        if (test_configuration(configuration))
-        {
-            apply_configuration(configuration);
+            if (test_configuration(configuration))
+            {
+                apply_configuration(configuration);
+            }
         }
     }
 

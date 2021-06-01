@@ -31,5 +31,12 @@
       <_long>If true, allows Wayfire to dynamically recalculate its max_render_time, i.e allow render time higher than max_render_time.</_long>
       <default>false</default>
     </option>
+    <option name="use_external_output_configuration" type="bool">
+      <_short>Use external output configuration instead of Wayfire's own.</_short>
+      <_long>If true, Wayfire will not handle any configuration options for outputs in the config file once an
+      external daemon like https://github.com/emersion/kanshi sets the output configuration via the wlr-output-management protocol.
+      Exceptions are made for options not available via wlr-output-management, like output mirroring and custom modelines.</_long>
+      <default>false</default>
+    </option>
 	</plugin>
 </wayfire>
