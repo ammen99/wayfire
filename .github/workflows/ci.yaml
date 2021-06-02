@@ -23,6 +23,8 @@ jobs:
 
       # Build seatd from AUR
     - run: git clone https://aur.archlinux.org/seatd.git
+    - run: useradd makepkgtest
+    - run: (cd seatd && chown makepkgtest:root . && su makepkgtest -c "makepkg --printsrcinfo" > .SRCINFO)
     - uses: edlanglois/pkgbuild-action@v1
       id: makepkg
       with:
