@@ -242,12 +242,13 @@ class tile_plugin_t : public wf::plugin_interface_t
             return;
         }
 
+        // Deactivate plugin, so that others can react to the events
+        output->deactivate_plugin(grab_interface);
         if (!force_stop)
         {
             controller->input_released();
         }
 
-        output->deactivate_plugin(grab_interface);
         controller = get_default_controller();
     }
 
@@ -288,6 +289,11 @@ class tile_plugin_t : public wf::plugin_interface_t
     signal_callback_t on_view_unmapped = [=] (signal_data_t *data)
     {
         stop_controller(true);
+        auto node = wf::tile::view_node_t::get_node(get_signaled_view(data));
+        if (node)
+        {
+            detach_view(node);
+        }
     };
 
     signal_connection_t on_view_pre_moved_to_output = {[=] (signal_data_t *data)
@@ -443,11 +449,9 @@ class tile_plugin_t : public wf::plugin_interface_t
             return false;
         }
 
-        if (output->activate_plugin(grab_interface))
+        if (output->can_activate_plugin(grab_interface))
         {
             func(view);
-            output->deactivate_plugin(grab_interface);
-
             return true;
         }
 

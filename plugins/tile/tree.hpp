@@ -2,6 +2,7 @@
 #define WF_TILE_PLUGIN_TREE
 
 #include <wayfire/view.hpp>
+#include <wayfire/option-wrapper.hpp>
 
 namespace wf
 {
@@ -168,6 +169,14 @@ struct view_node_t : public tree_node_t
     struct scale_transformer_t;
     nonstd::observer_ptr<scale_transformer_t> transformer;
     signal_callback_t on_geometry_changed, on_decoration_changed;
+
+    wf::option_wrapper_t<int> animation_duration{"simple-tile/animation_duration"};
+
+    /**
+     * Check whether the crossfade animation should be enabled for the view
+     * currently.
+     */
+    bool needs_crossfade();
 
     wf::geometry_t calculate_target_geometry();
     void update_transformer();

@@ -6,6 +6,7 @@
 #include <wayfire/workspace-manager.hpp>
 #include <wayfire/view-transform.hpp>
 #include <algorithm>
+#include <wayfire/plugins/crossfade.hpp>
 
 namespace wf
 {
@@ -300,6 +301,24 @@ struct view_node_t::scale_transformer_t : public wf::view_2D
     }
 };
 
+/**
+ * A class for animating the view, emits a signal when the animation is over.
+ */
+class tile_view_animation_t : public wf::grid::grid_animation_t
+{
+  public:
+    using wf::grid::grid_animation_t::grid_animation_t;
+
+    ~tile_view_animation_t()
+    {
+        // The grid animation does this too, however, we want to remove the
+        // transformer so that we can enforce the correct geometry from the
+        // start.
+        view->pop_transformer("grid-crossfade");
+        view->emit_signal("simple-tile-adjust-transformer", nullptr);
+    }
+};
+
 view_node_t::view_node_t(wayfire_view view)
 {
     this->view = view;
@@ -312,6 +331,7 @@ view_node_t::view_node_t(wayfire_view view)
     };
     view->connect_signal("geometry-changed", &on_geometry_changed);
     view->connect_signal("decoration-changed", &on_decoration_changed);
+    view->connect_signal("simple-tile-adjust-transformer", &on_geometry_changed);
 }
 
 view_node_t::~view_node_t()
@@ -319,6 +339,7 @@ view_node_t::~view_node_t()
     view->pop_transformer(scale_transformer_name);
     view->disconnect_signal("geometry-changed", &on_geometry_changed);
     view->disconnect_signal("decoration-changed", &on_decoration_changed);
+    view->disconnect_signal("simple-tile-adjust-transformer", &on_geometry_changed);
     view->erase_data<view_node_custom_data_t>();
 }
 
@@ -375,6 +396,40 @@ wf::geometry_t view_node_t::calculate_target_geometry()
     return local_geometry;
 }
 
+bool view_node_t::needs_crossfade()
+{
+    if (animation_duration == 0)
+    {
+        return false;
+    }
+
+    if (view->has_data<wf::grid::grid_animation_t>())
+    {
+        return true;
+    }
+
+    if (view->get_output()->is_plugin_active("simple-tile"))
+    {
+        // Disable animations while controllers are active
+        return false;
+    }
+
+    return true;
+}
+
+static nonstd::observer_ptr<wf::grid::grid_animation_t> ensure_animation(
+    wayfire_view view, wf::option_sptr_t<int> duration)
+{
+    if (!view->has_data<wf::grid::grid_animation_t>())
+    {
+        const auto type = wf::grid::grid_animation_t::CROSSFADE;
+        view->store_data<wf::grid::grid_animation_t>(
+            std::make_unique<tile_view_animation_t>(view, type, duration));
+    }
+
+    return view->get_data<wf::grid::grid_animation_t>();
+}
+
 void view_node_t::set_geometry(wf::geometry_t geometry)
 {
     tree_node_t::set_geometry(geometry);
@@ -385,7 +440,25 @@ void view_node_t::set_geometry(wf::geometry_t geometry)
     }
 
     view->set_tiled(TILED_EDGES_ALL);
-    view->set_geometry(calculate_target_geometry());
+
+    auto target = calculate_target_geometry();
+    if (this->needs_crossfade() && (target != view->get_wm_geometry()))
+    {
+        if (view->get_transformer(scale_transformer_name))
+        {
+            view->pop_transformer(scale_transformer_name);
+        }
+
+        ensure_animation(view, animation_duration)
+        ->adjust_target_geometry(target, -1);
+        if (view->get_transformer(scale_transformer_name))
+        {
+            view->pop_transformer(scale_transformer_name);
+        }
+    } else
+    {
+        view->set_geometry(target);
+    }
 }
 
 void view_node_t::update_transformer()
@@ -393,6 +466,12 @@ void view_node_t::update_transformer()
     auto target_geometry = calculate_target_geometry();
     if ((target_geometry.width <= 0) || (target_geometry.height <= 0))
     {
+        return;
+    }
+
+    if (view->has_data<wf::grid::grid_animation_t>())
+    {
+        // Still animating
         return;
     }
 
