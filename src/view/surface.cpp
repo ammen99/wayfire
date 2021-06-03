@@ -327,7 +327,9 @@ void wf::wlr_surface_base_t::map(wlr_surface *surface)
 
     /* Handle subsurfaces which were created before this surface was mapped */
     wlr_subsurface *sub;
-    wl_list_for_each(sub, &surface->subsurfaces, parent_link)
+    wl_list_for_each(sub, &surface->subsurfaces_below, parent_link)
+    handle_new_subsurface(sub);
+    wl_list_for_each(sub, &surface->subsurfaces_above, parent_link)
     handle_new_subsurface(sub);
 
     emit_map_state_change(_as_si);
