@@ -18,7 +18,7 @@ wf::subsurface_implementation_t::subsurface_implementation_t(wlr_subsurface *_su
         on_unmap.disconnect();
         on_destroy.disconnect();
 
-        this->priv->parent_surface->remove_subsurface(this);
+        (void)this->priv->parent_surface->remove_subsurface(this);
     });
 
     on_map.connect(&sub->events.map);

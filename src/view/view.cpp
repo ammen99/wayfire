@@ -801,7 +801,7 @@ void wf::view_interface_t::set_decoration(surface_interface_t *frame)
 
         if (view_impl->decoration)
         {
-            this->remove_subsurface(view_impl->decoration);
+            (void)this->remove_subsurface(view_impl->decoration);
         }
 
         view_impl->decoration = nullptr;
@@ -828,7 +828,7 @@ void wf::view_interface_t::set_decoration(surface_interface_t *frame)
     damage();
     if (view_impl->decoration)
     {
-        this->remove_subsurface(view_impl->decoration);
+        (void)this->remove_subsurface(view_impl->decoration);
     }
 
     view_impl->decoration = frame;

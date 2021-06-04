@@ -73,13 +73,14 @@ class surface_interface_t : public wf::object_base_t
 
     /**
      * Remove the given subsurface from the surface tree.
-     * The subsurface and all of its subsurfaces will be destroyed.
      *
      * No-op if the subsurface does not exist.
      *
      * @param subsurface The subsurface to remove.
+     * @return The subsurface removed or nullptr.
      */
-    void remove_subsurface(nonstd::observer_ptr<surface_interface_t> subsurface);
+    std::unique_ptr<surface_interface_t> remove_subsurface(
+        nonstd::observer_ptr<surface_interface_t> subsurface);
 
     /**
      * @param surface_origin The coordinates of the top-left corner of the

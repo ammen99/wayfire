@@ -35,14 +35,22 @@ void wf::surface_interface_t::add_subsurface(
     this->emit_signal("subsurface-added", &ev);
 }
 
-void wf::surface_interface_t::remove_subsurface(
+std::unique_ptr<wf::surface_interface_t> wf::surface_interface_t::remove_subsurface(
     nonstd::observer_ptr<surface_interface_t> subsurface)
 {
     auto remove_from = [=] (auto& container)
     {
-        auto it = std::remove_if(container.begin(), container.end(),
+        auto it = std::find_if(container.begin(), container.end(),
             [=] (const auto& ptr) { return ptr.get() == subsurface.get(); });
-        container.erase(it, container.end());
+
+        std::unique_ptr<surface_interface_t> ret = nullptr;
+        if (it != container.end())
+        {
+            ret = std::move(*it);
+            container.erase(it);
+        }
+
+        return ret;
     };
 
     wf::subsurface_removed_signal ev;
@@ -50,8 +58,12 @@ void wf::surface_interface_t::remove_subsurface(
     ev.subsurface   = subsurface;
     this->emit_signal("subsurface-removed", &ev);
 
-    remove_from(priv->surface_children_above);
-    remove_from(priv->surface_children_below);
+    if (auto surf = remove_from(priv->surface_children_above))
+    {
+        return surf;
+    }
+
+    return remove_from(priv->surface_children_below);
 }
 
 wf::surface_interface_t::~surface_interface_t()
