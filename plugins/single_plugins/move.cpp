@@ -276,6 +276,7 @@ class wayfire_move : public wf::plugin_interface_t
 
     bool initiate(wayfire_view view)
     {
+        wayfire_view grabbed_view = view;
         view = get_target_view(view);
         if (!can_move_view(view))
         {
@@ -292,6 +293,12 @@ class wayfire_move : public wf::plugin_interface_t
             (view->fullscreen || view->tiled_edges);
         opts.snap_off_threshold = move_snap_off_threshold;
         opts.join_views = join_views;
+
+        if (join_views)
+        {
+            // ensure that the originally grabbed view will be focused
+            output->focus_view(grabbed_view);
+        }
 
         drag_helper->start_drag(view, get_global_input_coords(), opts);
         slot.slot_id = 0;
