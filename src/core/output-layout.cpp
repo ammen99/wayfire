@@ -1319,9 +1319,8 @@ class output_layout_t::impl
 
         bool turning_off_all_active =
             !active_outputs.empty() && count_remaining_enabled == 0;
-        bool is_noop_active = noop_output && noop_output->output;
 
-        if (turning_off_all_active && !is_shutting_down() && !is_noop_active)
+        if (turning_off_all_active && !is_shutting_down())
         {
             /* If we aren't shutting down, and we will turn off all the
              * currently enabled outputs, we'll need the noop output, as a
