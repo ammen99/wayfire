@@ -54,10 +54,7 @@ class view_interface_t::view_priv_impl
      */
     void update_windowed_geometry(wayfire_view self, wf::geometry_t geometry);
 
-    /* those two point to the same object. Two fields are used to avoid
-     * constant casting to and from types */
-    surface_interface_t *decoration = NULL;
-    wf::decorator_frame_t_t *frame  = NULL;
+    std::unique_ptr<wf::decorator_frame_t_t> frame = nullptr;
 
     uint32_t edges = 0;
     int in_continuous_move   = 0;

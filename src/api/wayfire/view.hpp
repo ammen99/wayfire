@@ -6,6 +6,7 @@
 
 #include "wayfire/surface.hpp"
 #include "wayfire/geometry.hpp"
+#include "wayfire/decorator.hpp"
 #include <wayfire/nonstd/wlroots.hpp>
 
 namespace wf
@@ -317,20 +318,18 @@ class view_interface_t : public surface_interface_t
     /**
      * Set the decoration surface for the view.
      *
-     * @param frame The surface to be set as a decoration. It must be subclass
-     * of both surface_interface_t and of wf::decorator_frame_t_t, and its parent
-     * surface must be this view.
+     * @param frame The surface to be set as a decoration.
      *
-     * The life-time of the decoration is managed by the view itself, so after
+     * The life-time of the decoration frame is managed by the view itself, so after
      * calling this function you probably want to drop any references that you
      * hold (excluding the default one)
      */
-    virtual void set_decoration(surface_interface_t *frame);
+    virtual void set_decoration(std::unique_ptr<decorator_frame_t_t> frame);
 
     /**
-     * Get the decoration surface for a view. May be nullptr.
+     * Get the decoration frame for a view. May be nullptr.
      */
-    virtual nonstd::observer_ptr<surface_interface_t> get_decoration();
+    virtual nonstd::observer_ptr<decorator_frame_t_t> get_decoration();
 
     /*
      *                        View transforms

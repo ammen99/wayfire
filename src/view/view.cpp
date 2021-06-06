@@ -5,7 +5,6 @@
 #include "wayfire/output.hpp"
 #include "wayfire/view.hpp"
 #include "wayfire/view-transform.hpp"
-#include "wayfire/decorator.hpp"
 #include "wayfire/workspace-manager.hpp"
 #include "wayfire/render-manager.hpp"
 #include "xdg-shell.hpp"
@@ -780,18 +779,14 @@ bool wf::view_interface_t::should_be_decorated()
     return false;
 }
 
-nonstd::observer_ptr<wf::surface_interface_t> wf::view_interface_t::get_decoration()
+nonstd::observer_ptr<wf::decorator_frame_t_t> wf::view_interface_t::get_decoration()
 {
-    return this->view_impl->decoration;
+    return this->view_impl->frame.get();
 }
 
-void wf::view_interface_t::set_decoration(surface_interface_t *frame)
+void wf::view_interface_t::set_decoration(
+    std::unique_ptr<wf::decorator_frame_t_t> frame)
 {
-    if (this->view_impl->decoration == frame)
-    {
-        return;
-    }
-
     if (!frame)
     {
         damage();
@@ -799,12 +794,7 @@ void wf::view_interface_t::set_decoration(surface_interface_t *frame)
         // Take wm geometry as it was with the decoration.
         const auto wm = get_wm_geometry();
 
-        if (view_impl->decoration)
-        {
-            (void)this->remove_subsurface(view_impl->decoration);
-        }
-
-        view_impl->decoration = nullptr;
+        // Drop the owned frame.
         view_impl->frame = nullptr;
 
         // Grow the tiled view to fill its old expanded geometry that included
@@ -815,25 +805,15 @@ void wf::view_interface_t::set_decoration(surface_interface_t *frame)
         }
 
         emit_signal("decoration-changed", nullptr);
-
         return;
     }
-
-    assert(frame->priv->parent_surface == this);
 
     // Take wm geometry as it was before adding the frame */
     auto wm = get_wm_geometry();
 
-    /* First, delete old decoration if any */
     damage();
-    if (view_impl->decoration)
-    {
-        (void)this->remove_subsurface(view_impl->decoration);
-    }
-
-    view_impl->decoration = frame;
-    view_impl->frame = dynamic_cast<wf::decorator_frame_t_t*>(frame);
-    assert(frame);
+    // Drop the old frame if any and assign the new one.
+    view_impl->frame = std::move(frame);
 
     /* Calculate the wm geometry of the view after adding the decoration.
      *

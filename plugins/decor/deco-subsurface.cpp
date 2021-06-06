@@ -20,14 +20,12 @@
 #include <cairo.h>
 
 class simple_decoration_surface : public wf::surface_interface_t,
-    public wf::compositor_surface_t, public wf::decorator_frame_t_t
+    public wf::compositor_surface_t
 {
     bool _mapped = true;
-    int current_thickness;
-    int current_titlebar;
 
     wayfire_view view;
-    wf::signal_callback_t title_set = [=] (wf::signal_data_t *data)
+    wf::signal_connection_t title_set = [=] (wf::signal_data_t *data)
     {
         if (get_signaled_view(data) == view)
         {
@@ -52,10 +50,6 @@ class simple_decoration_surface : public wf::surface_interface_t,
         }
     }
 
-    int width = 100, height = 100;
-
-    bool active = true; // when views are mapped, they are usually activated
-
     struct
     {
         wf::simple_texture_t tex;
@@ -66,22 +60,21 @@ class simple_decoration_surface : public wf::surface_interface_t,
     wf::decor::decoration_layout_t layout;
     wf::region_t cached_region;
 
+    wf::dimensions_t size;
+
   public:
+    int current_thickness;
+    int current_titlebar;
+
     simple_decoration_surface(wayfire_view view) :
         theme{},
         layout{theme, [=] (wlr_box box) {this->damage_surface_box(box); }}
     {
         this->view = view;
         view->connect_signal("title-changed", &title_set);
-        view->connect_signal("subsurface-removed", &on_subsurface_removed);
 
         // make sure to hide frame if the view is fullscreen
         update_decoration_size();
-    }
-
-    virtual ~simple_decoration_surface()
-    {
-        view->disconnect_signal("title-changed", &title_set);
     }
 
     /* wf::surface_interface_t implementation */
@@ -97,7 +90,7 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
     virtual wf::dimensions_t get_size() const final
     {
-        return {width, height};
+        return size;
     }
 
     void render_title(const wf::framebuffer_t& fb,
@@ -112,8 +105,8 @@ class simple_decoration_surface : public wf::surface_interface_t,
         const wlr_box& scissor)
     {
         /* Clear background */
-        wlr_box geometry{origin.x, origin.y, width, height};
-        theme.render_background(fb, geometry, scissor, active);
+        wlr_box geometry{origin.x, origin.y, size.width, size.height};
+        theme.render_background(fb, geometry, scissor, view->activated);
 
         /* Draw title & buttons */
         auto renderables = layout.get_renderable_areas();
@@ -227,60 +220,17 @@ class simple_decoration_surface : public wf::surface_interface_t,
         layout.handle_focus_lost();
     }
 
-    /* frame implementation */
-    virtual wf::geometry_t expand_wm_geometry(
-        wf::geometry_t contained_wm_geometry) override
-    {
-        contained_wm_geometry.x     -= current_thickness;
-        contained_wm_geometry.y     -= current_titlebar;
-        contained_wm_geometry.width += 2 * current_thickness;
-        contained_wm_geometry.height += current_thickness + current_titlebar;
-
-        return contained_wm_geometry;
-    }
-
-    virtual void calculate_resize_size(
-        int& target_width, int& target_height) override
-    {
-        target_width  -= 2 * current_thickness;
-        target_height -= current_thickness + current_titlebar;
-
-        target_width  = std::max(target_width, 1);
-        target_height = std::max(target_height, 1);
-    }
-
-    wf::signal_connection_t on_subsurface_removed = [&] (auto data)
-    {
-        auto ev = static_cast<wf::subsurface_removed_signal*>(data);
-        if (ev->subsurface.get() == this)
-        {
-            unmap();
-        }
-    };
-
     void unmap()
     {
         _mapped = false;
         wf::emit_map_state_change(this);
     }
 
-    virtual void notify_view_activated(bool active) override
-    {
-        if (this->active != active)
-        {
-            view->damage();
-        }
-
-        this->active = active;
-    }
-
-    virtual void notify_view_resized(wf::geometry_t view_geometry) override
+    void resize(wf::dimensions_t dims)
     {
         view->damage();
-        width  = view_geometry.width;
-        height = view_geometry.height;
-
-        layout.resize(width, height);
+        size = dims;
+        layout.resize(size.width, size.height);
         if (!view->fullscreen)
         {
             this->cached_region = layout.calculate_region();
@@ -288,9 +238,6 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
         view->damage();
     }
-
-    virtual void notify_view_tiled() override
-    {}
 
     void update_decoration_size()
     {
@@ -307,10 +254,83 @@ class simple_decoration_surface : public wf::surface_interface_t,
             this->cached_region = layout.calculate_region();
         }
     }
+};
+
+class simple_decorator_t : public wf::decorator_frame_t_t
+{
+    wayfire_view view;
+    nonstd::observer_ptr<simple_decoration_surface> deco;
+
+  public:
+    simple_decorator_t(wayfire_view view)
+    {
+        this->view = view;
+
+        auto sub = std::make_unique<simple_decoration_surface>(view);
+        deco = {sub};
+        view->add_subsurface(std::move(sub), true);
+        view->damage();
+        view->connect_signal("subsurface-removed", &on_subsurface_removed);
+    }
+
+    ~simple_decorator_t()
+    {
+        if (deco)
+        {
+            // subsurface_removed unmaps it
+            view->remove_subsurface(deco);
+        }
+    }
+
+    wf::signal_connection_t on_subsurface_removed = [&] (auto data)
+    {
+        auto ev = static_cast<wf::subsurface_removed_signal*>(data);
+        if (ev->subsurface.get() == deco.get())
+        {
+            deco->unmap();
+            deco = nullptr;
+        }
+    };
+
+    /* frame implementation */
+    virtual wf::geometry_t expand_wm_geometry(
+        wf::geometry_t contained_wm_geometry) override
+    {
+        contained_wm_geometry.x     -= deco->current_thickness;
+        contained_wm_geometry.y     -= deco->current_titlebar;
+        contained_wm_geometry.width += 2 * deco->current_thickness;
+        contained_wm_geometry.height +=
+            deco->current_thickness + deco->current_titlebar;
+
+        return contained_wm_geometry;
+    }
+
+    virtual void calculate_resize_size(
+        int& target_width, int& target_height) override
+    {
+        target_width  -= 2 * deco->current_thickness;
+        target_height -= deco->current_thickness + deco->current_titlebar;
+
+        target_width  = std::max(target_width, 1);
+        target_height = std::max(target_height, 1);
+    }
+
+    virtual void notify_view_activated(bool active) override
+    {
+        view->damage();
+    }
+
+    virtual void notify_view_resized(wf::geometry_t view_geometry) override
+    {
+        deco->resize(wf::dimensions(view_geometry));
+    }
+
+    virtual void notify_view_tiled() override
+    {}
 
     virtual void notify_view_fullscreen() override
     {
-        update_decoration_size();
+        deco->update_decoration_size();
 
         if (!view->fullscreen)
         {
@@ -321,23 +341,11 @@ class simple_decoration_surface : public wf::surface_interface_t,
 
 void init_view(wayfire_view view)
 {
-    auto surf = std::make_unique<simple_decoration_surface>(view);
-    auto ptr  = surf.get();
-
-    view->add_subsurface(std::move(surf), true);
-    view->set_decoration(ptr);
-    view->damage();
+    auto decor = std::make_unique<simple_decorator_t>(view);
+    view->set_decoration(std::move(decor));
 }
 
 void deinit_view(wayfire_view view)
 {
-    auto decor = dynamic_cast<simple_decoration_surface*>(
-        view->get_decoration().get());
-    if (!decor)
-    {
-        return;
-    }
-
-    decor->unmap();
     view->set_decoration(nullptr);
 }
