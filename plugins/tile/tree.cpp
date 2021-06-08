@@ -109,6 +109,8 @@ void split_node_t::recalculate_children(wf::geometry_t available)
         return (current / old_child_sum) * total_splittable;
     };
 
+    set_gaps(this->gaps);
+
     /* For each child, assign its percentage of the whole. */
     for (auto& child : this->children)
     {
@@ -122,8 +124,6 @@ void split_node_t::recalculate_children(wf::geometry_t available)
         int32_t child_size = child_end - child_start;
         child->set_geometry(get_child_geometry(child_start, child_size));
     }
-
-    set_gaps(this->gaps);
 }
 
 void split_node_t::add_child(std::unique_ptr<tree_node_t> child, int index)
@@ -146,20 +146,20 @@ void split_node_t::add_child(std::unique_ptr<tree_node_t> child, int index)
         size_new_child = calculate_splittable();
     }
 
-    /* Position of the new child doesn't matter because it will be immediately
-     * recalculated */
-    int pos_new_child = 0;
-
     if ((index == -1) || (index > num_children))
     {
         index = num_children;
     }
 
-    child->set_geometry(get_child_geometry(pos_new_child, size_new_child));
-
     /* Add child to the list */
     child->parent = {this};
+
+    // Set size of the child to make sure it gets properly recalculated later
+    child->geometry = get_child_geometry(0, size_new_child);
+
     this->children.emplace(this->children.begin() + index, std::move(child));
+
+    set_gaps(this->gaps);
 
     /* Recalculate geometry */
     recalculate_children(geometry);
@@ -351,7 +351,6 @@ void view_node_t::set_gaps(const gap_size_t& size)
         (this->gaps.right != size.right))
     {
         this->gaps = size;
-        this->set_geometry(this->geometry);
     }
 }
 

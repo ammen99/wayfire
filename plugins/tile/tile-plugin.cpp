@@ -132,6 +132,7 @@ class tile_plugin_t : public wf::plugin_interface_t
             for (auto& root : col)
             {
                 root->set_gaps(gaps);
+                root->set_geometry(root->geometry);
             }
         }
     };
