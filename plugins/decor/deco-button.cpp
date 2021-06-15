@@ -81,10 +81,10 @@ void button_t::render(const wf::framebuffer_t& fb, wf::geometry_t geometry,
 void button_t::update_texture()
 {
     /* We render a big predefined resolution here */
-    const int WIDTH  = 25;
-    const int HEIGHT = 16;
-    const int BORDER = 1;
-    const int SCALE  = 4;
+    const double WIDTH  = 16.0;
+    const double HEIGHT = 16.0;
+    const double BORDER = 1.0;
+    const double SCALE  = 2.0;
 
     decoration_theme_t::button_state_t state = {
         .width  = WIDTH * SCALE,

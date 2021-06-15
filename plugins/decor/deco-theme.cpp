@@ -72,91 +72,109 @@ cairo_surface_t*decoration_theme_t::render_text(std::string text,
     return surface;
 }
 
-static struct icon_cache_t : public noncopyable_t
-{
-    ~icon_cache_t()
-    {
-        for (auto& icon : cached_icons)
-        {
-            cairo_surface_destroy(icon.second);
-        }
-    }
-
-    std::map<wf::decor::button_type_t, cairo_surface_t*> cached_icons;
-    cairo_surface_t *load_icon(wf::decor::button_type_t type)
-    {
-        if (cached_icons.count(type) == 0)
-        {
-            std::string resource_path =
-                INSTALL_PREFIX "/share/wayfire/decoration/resources/";
-            switch (type)
-            {
-              case BUTTON_CLOSE:
-                resource_path += "close.png";
-                break;
-
-              case BUTTON_TOGGLE_MAXIMIZE:
-                resource_path += "maximize.png";
-                break;
-
-              case BUTTON_MINIMIZE:
-                resource_path += "minimize.png";
-                break;
-
-              default:
-                assert(false);
-            }
-
-            cached_icons[type] =
-                cairo_image_surface_create_from_png(resource_path.c_str());
-        }
-
-        return cached_icons[type];
-    }
-} cache;
-
 cairo_surface_t*decoration_theme_t::get_button_surface(button_type_t button,
     const button_state_t& state) const
 {
-    cairo_surface_t *button_icon    = cache.load_icon(button);
     cairo_surface_t *button_surface = cairo_image_surface_create(
         CAIRO_FORMAT_ARGB32, state.width, state.height);
+
     auto cr = cairo_create(button_surface);
+    cairo_set_antialias(cr, CAIRO_ANTIALIAS_BEST);
 
     /* Clear the button background */
-    cairo_rectangle(cr, 0, 0, state.width, state.height);
     cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
     cairo_set_source_rgba(cr, 0, 0, 0, 0);
-    cairo_fill(cr);
-
-    /* Render button itself */
-    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_rectangle(cr, 0, 0, state.width, state.height);
-
-    /* Border */
-    cairo_set_line_width(cr, state.border);
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
-    cairo_stroke_preserve(cr);
-
-    // log_info("theme render button with %d %.2f", state.pressed,
-    // state.hover_progress);
-    /* Background */
-    wf::color_t base_background = {0.5, 0.5, 0.5, 0.7};
-    wf::color_t hover_add_background = {0.2, 0.2, 0.2, 0.2};
-    cairo_set_source_rgba(cr,
-        base_background.r + hover_add_background.r * state.hover_progress,
-        base_background.g + hover_add_background.g * state.hover_progress,
-        base_background.b + hover_add_background.b * state.hover_progress,
-        base_background.a + hover_add_background.a * state.hover_progress);
-    cairo_fill_preserve(cr);
-
-    /* Icon */
-    cairo_scale(cr,
-        1.0 * state.width / cairo_image_surface_get_width(button_icon),
-        1.0 * state.height / cairo_image_surface_get_height(button_icon));
-    cairo_set_source_surface(cr, button_icon, 0, 0);
     cairo_fill(cr);
 
+    cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+
+    /** A gray that looks good on light and dark themes */
+    color_t base = { 0.60, 0.60, 0.63, 0.36 };
+
+    /**
+     * We just need the alpha component.
+     * r == g == b == 0.0 will be directly set
+     */
+    double  line = 0.27;
+    double hover = 0.27;
+
+    /** Coloured base on hover/press. Don't compare float to 0 */
+    if (fabs(state.hover_progress) > 1e-3) {
+        switch (button) {
+            case BUTTON_CLOSE:
+                base = { 255.0 / 255.0,  69.0 / 255.0, 58.0 / 255.0, 0.63 };
+                break;
+
+            case BUTTON_TOGGLE_MAXIMIZE:
+                base = {  55.0 / 255.0, 215.0 / 255.0, 75.0 / 255.0, 0.63 };
+                break;
+
+            case BUTTON_MINIMIZE:
+                base = { 255.0 / 255.0, 159.0 / 255.0, 10.0 / 255.0, 0.63 };
+                break;
+
+            default:
+                assert(false);
+        }
+
+        line *= 2.0;
+    }
+
+    /** Draw the base */
+    cairo_set_source_rgba(cr,
+        base.r + 0.0   * state.hover_progress,
+        base.g + 0.0   * state.hover_progress,
+        base.b + 0.0   * state.hover_progress,
+        base.a + hover * state.hover_progress
+   );
+    cairo_arc(cr, state.width / 2, state.height / 2, state.width / 2, 0, 2 * M_PI);
+    cairo_fill(cr);
+
+    /** Draw the border */
+    cairo_set_line_width(cr, state.border);
+    cairo_set_source_rgba(cr, 0.00, 0.00, 0.00, line);
+    // This renders great on my screen (110 dpi 1376x768 lcd screen)
+    // How this would appear on a Hi-DPI screen is questionable
+    double  r = state.width / 2 - 0.5 * state.border;
+    cairo_arc(cr, state.width / 2, state.height / 2, r, 0, 2 * M_PI);
+    cairo_stroke(cr);
+
+    /** Draw the icon  */
+    cairo_set_source_rgba(cr, 0.00, 0.00, 0.00, line / 2);
+    cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
+    switch (button) {
+        case BUTTON_CLOSE:
+            cairo_set_line_width(cr, 1.5 * state.border);
+            cairo_move_to(cr, 1.0 * state.width / 4.0, 1.0 * state.height / 4.0);
+            cairo_line_to(cr, 3.0 * state.width / 4.0, 3.0 * state.height / 4.0);   // '\' part of x
+            cairo_move_to(cr, 3.0 * state.width / 4.0, 1.0 * state.height / 4.0);
+            cairo_line_to(cr, 1.0 * state.width / 4.0, 3.0 * state.height / 4.0);   // '/' part of x
+            cairo_stroke(cr);
+            break;
+
+        case BUTTON_TOGGLE_MAXIMIZE:
+            cairo_set_line_width(cr, 1.5 * state.border);
+            cairo_rectangle(
+                cr,                                             // Context
+                state.width / 4.0, state.height / 4.0,          // (x, y)
+                state.width / 2.0, state.height / 2.0           // w x h
+            );
+            cairo_stroke(cr);
+            break;
+
+        case BUTTON_MINIMIZE:
+            cairo_set_line_width(cr, 1.75 * state.border);
+            cairo_move_to(cr, 1.0 * state.width / 4.0, state.height / 2.0);
+            cairo_line_to(cr, 3.0 * state.width / 4.0, state.height / 2.0);
+            cairo_stroke(cr);
+            break;
+
+        default:
+            assert(false);
+    }
+
+    cairo_fill(cr);
     cairo_destroy(cr);
 
     return button_surface;

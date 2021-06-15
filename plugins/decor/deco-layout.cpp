@@ -5,8 +5,7 @@
 #include <wayfire/nonstd/wlroots-full.hpp>
 #include <wayfire/util.hpp>
 
-#define BUTTON_ASPECT_RATIO (25.0 / 16.0)
-#define BUTTON_HEIGHT_PC 0.8
+#define BUTTON_HEIGHT_PC 0.7
 
 namespace wf
 {
@@ -59,7 +58,7 @@ decoration_layout_t::decoration_layout_t(const decoration_theme_t& th,
 
     titlebar_size(th.get_title_height()),
     border_size(th.get_border_size()),
-    button_width(titlebar_size * BUTTON_HEIGHT_PC * BUTTON_ASPECT_RATIO),
+    button_width(titlebar_size * BUTTON_HEIGHT_PC),
     button_height(titlebar_size * BUTTON_HEIGHT_PC),
     button_padding((titlebar_size - button_height) / 2),
     theme(th),

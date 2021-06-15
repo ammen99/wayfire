@@ -41,11 +41,11 @@ class decoration_theme_t
     struct button_state_t
     {
         /** Button width */
-        int width;
+        double width;
         /** Button height */
-        int height;
+        double height;
         /** Button outline size */
-        int border;
+        double border;
         /** Progress of button hover, in range [-1, 1].
          * Negative numbers are usually used for pressed state. */
         double hover_progress;
