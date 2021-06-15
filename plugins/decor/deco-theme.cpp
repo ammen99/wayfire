@@ -103,15 +103,15 @@ cairo_surface_t*decoration_theme_t::get_button_surface(button_type_t button,
     if (fabs(state.hover_progress) > 1e-3) {
         switch (button) {
             case BUTTON_CLOSE:
-                base = { 255.0 / 255.0,  69.0 / 255.0, 58.0 / 255.0, 0.63 };
+                base = { 242.0 / 255.0,  80.0 / 255.0, 86.0 / 255.0, 0.63 };
                 break;
 
             case BUTTON_TOGGLE_MAXIMIZE:
-                base = {  55.0 / 255.0, 215.0 / 255.0, 75.0 / 255.0, 0.63 };
+                base = {  57.0 / 255.0, 234.0 / 255.0, 73.0 / 255.0, 0.63 };
                 break;
 
             case BUTTON_MINIMIZE:
-                base = { 255.0 / 255.0, 159.0 / 255.0, 10.0 / 255.0, 0.63 };
+                base = { 250.0 / 255.0, 198.0 / 255.0, 54.0 / 255.0, 0.63 };
                 break;
 
             default:
