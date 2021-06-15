@@ -11,6 +11,8 @@ wayfire_sources = ['util.cpp',
                    'core/wm.cpp',
                    'core/view-access-interface.cpp',
 
+                   'core/transaction/transaction.cpp',
+
                    'core/seat/pointing-device.cpp',
                    'core/seat/input-manager.cpp',
                    'core/seat/input-method-relay.cpp',
