@@ -7,11 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:edge
     steps:
-    - run: apk --no-cache add git gcc g++ binutils pkgconf meson ninja musl-dev wayland-dev wayland-protocols libinput-dev libevdev-dev libxkbcommon-dev pixman-dev glm-dev libdrm-dev mesa-dev cairo-dev eudev-dev libxml2-dev libexecinfo-dev libseat-dev libxcb-dev xcb-util-wm-dev xwayland
+    - run: apk --no-cache add git gcc g++ binutils pkgconf meson ninja musl-dev wayland-dev wayland-protocols libinput-dev libevdev-dev libxkbcommon-dev pixman-dev glm-dev libdrm-dev mesa-dev cairo-dev eudev-dev libxml2-dev libexecinfo-dev libseat-dev libxcb-dev xcb-util-wm-dev xwayland doctest-dev
     - uses: actions/checkout@v1
     - run: git submodule sync --recursive && git submodule update --init --force --recursive
     - run: meson build
     - run: ninja -v -Cbuild
+    - run: ninja -v -Cbuild test
   test_glibc_llvm:
     name: "Test with clang/glibc/libc++/lld on Arch Linux"
     runs-on: ubuntu-latest
