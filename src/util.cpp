@@ -16,21 +16,6 @@ std::ostream& operator <<(std::ostream& stream, const wf::geometry_t& geometry)
     return stream;
 }
 
-std::ostream& operator <<(std::ostream& stream, const wf::point_t& point)
-{
-    stream << '(' << point.x << ',' << point.y << ')';
-
-    return stream;
-}
-
-std::ostream& operator <<(std::ostream& stream, const wf::pointf_t& pointf)
-{
-    stream << std::fixed << std::setprecision(4) <<
-        '(' << pointf.x << ',' << pointf.y << ')';
-
-    return stream;
-}
-
 wf::point_t wf::origin(const geometry_t& geometry)
 {
     return {geometry.x, geometry.y};
@@ -41,22 +26,22 @@ wf::dimensions_t wf::dimensions(const geometry_t& geometry)
     return {geometry.width, geometry.height};
 }
 
-bool operator ==(const wf::dimensions_t& a, const wf::dimensions_t& b)
+bool wf::operator ==(const wf::dimensions_t& a, const wf::dimensions_t& b)
 {
     return a.width == b.width && a.height == b.height;
 }
 
-bool operator !=(const wf::dimensions_t& a, const wf::dimensions_t& b)
+bool wf::operator !=(const wf::dimensions_t& a, const wf::dimensions_t& b)
 {
     return !(a == b);
 }
 
-bool operator ==(const wf::point_t& a, const wf::point_t& b)
+bool wf::operator ==(const wf::point_t& a, const wf::point_t& b)
 {
     return a.x == b.x && a.y == b.y;
 }
 
-bool operator !=(const wf::point_t& a, const wf::point_t& b)
+bool wf::operator !=(const wf::point_t& a, const wf::point_t& b)
 {
     return !(a == b);
 }
@@ -71,12 +56,12 @@ bool operator !=(const wf::geometry_t& a, const wf::geometry_t& b)
     return !(a == b);
 }
 
-wf::point_t operator +(const wf::point_t& a, const wf::point_t& b)
+wf::point_t wf::operator +(const wf::point_t& a, const wf::point_t& b)
 {
     return {a.x + b.x, a.y + b.y};
 }
 
-wf::point_t operator -(const wf::point_t& a, const wf::point_t& b)
+wf::point_t wf::operator -(const wf::point_t& a, const wf::point_t& b)
 {
     return {a.x - b.x, a.y - b.y};
 }
@@ -96,7 +81,7 @@ wf::geometry_t operator +(const wf::geometry_t & a, const wf::point_t& b)
     };
 }
 
-wf::point_t operator -(const wf::point_t& a)
+wf::point_t wf::operator -(const wf::point_t& a)
 {
     return {-a.x, -a.y};
 }
@@ -479,6 +464,21 @@ static int handle_timeout(void *data)
 
 namespace wf
 {
+std::ostream& operator <<(std::ostream& stream, const wf::point_t& point)
+{
+    stream << '(' << point.x << ',' << point.y << ')';
+
+    return stream;
+}
+
+std::ostream& operator <<(std::ostream& stream, const wf::pointf_t& pointf)
+{
+    stream << std::fixed << std::setprecision(4) <<
+        '(' << pointf.x << ',' << pointf.y << ')';
+
+    return stream;
+}
+
 wl_listener_wrapper::wl_listener_wrapper()
 {
     _wrap.self = this;
