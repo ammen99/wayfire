@@ -6,6 +6,7 @@
 #define HOVERED  1.0
 #define NORMAL   0.0
 #define PRESSED -0.7
+#define BUTTON_HEIGHT_PC 0.7
 
 namespace wf
 {
@@ -81,15 +82,10 @@ void button_t::render(const wf::framebuffer_t& fb, wf::geometry_t geometry,
 void button_t::update_texture()
 {
     /* We render a big predefined resolution here */
-    const double WIDTH  = 16.0;
-    const double HEIGHT = 16.0;
-    const double BORDER = 1.0;
-    const double SCALE  = 2.0;
-
     decoration_theme_t::button_state_t state = {
-        .width  = WIDTH * SCALE,
-        .height = HEIGHT * SCALE,
-        .border = BORDER * SCALE,
+        .width  = theme.get_title_height(),
+        .height = theme.get_title_height(),
+        .border = 1.0,
         .hover_progress = hover,
     };
 
