@@ -100,8 +100,10 @@ cairo_surface_t*decoration_theme_t::get_button_surface(button_type_t button,
     double hover = 0.27;
 
     /** Coloured base on hover/press. Don't compare float to 0 */
-    if (fabs(state.hover_progress) > 1e-3) {
-        switch (button) {
+    if (fabs(state.hover_progress) > 1e-3)
+    {
+        switch (button)
+        {
             case BUTTON_CLOSE:
                 base = { 242.0 / 255.0,  80.0 / 255.0, 86.0 / 255.0, 0.63 };
                 break;
@@ -128,7 +130,8 @@ cairo_surface_t*decoration_theme_t::get_button_surface(button_type_t button,
         base.b + 0.0   * state.hover_progress,
         base.a + hover * state.hover_progress
    );
-    cairo_arc(cr, state.width / 2, state.height / 2, state.width / 2, 0, 2 * M_PI);
+    cairo_arc(cr, state.width / 2, state.height / 2,
+        state.width / 2, 0, 2 * M_PI);
     cairo_fill(cr);
 
     /** Draw the border */
@@ -143,30 +146,37 @@ cairo_surface_t*decoration_theme_t::get_button_surface(button_type_t button,
     /** Draw the icon  */
     cairo_set_source_rgba(cr, 0.00, 0.00, 0.00, line / 2);
     cairo_set_antialias(cr, CAIRO_ANTIALIAS_NONE);
-    switch (button) {
+    switch (button)
+    {
         case BUTTON_CLOSE:
             cairo_set_line_width(cr, 1.5 * state.border);
-            cairo_move_to(cr, 1.0 * state.width / 4.0, 1.0 * state.height / 4.0);
-            cairo_line_to(cr, 3.0 * state.width / 4.0, 3.0 * state.height / 4.0);   // '\' part of x
-            cairo_move_to(cr, 3.0 * state.width / 4.0, 1.0 * state.height / 4.0);
-            cairo_line_to(cr, 1.0 * state.width / 4.0, 3.0 * state.height / 4.0);   // '/' part of x
+            cairo_move_to(cr, 1.0 * state.width / 4.0,
+                1.0 * state.height / 4.0);
+            cairo_line_to(cr, 3.0 * state.width / 4.0,
+                3.0 * state.height / 4.0);             // '\' part of x
+            cairo_move_to(cr, 3.0 * state.width / 4.0,
+                1.0 * state.height / 4.0);
+            cairo_line_to(cr, 1.0 * state.width / 4.0,
+                3.0 * state.height / 4.0);             // '/' part of x
             cairo_stroke(cr);
             break;
 
         case BUTTON_TOGGLE_MAXIMIZE:
             cairo_set_line_width(cr, 1.5 * state.border);
             cairo_rectangle(
-                cr,                                             // Context
-                state.width / 4.0, state.height / 4.0,          // (x, y)
-                state.width / 2.0, state.height / 2.0           // w x h
+                cr,                                          // Context
+                state.width / 4.0, state.height / 4.0,       // (x, y)
+                state.width / 2.0, state.height / 2.0        // w x h
             );
             cairo_stroke(cr);
             break;
 
         case BUTTON_MINIMIZE:
             cairo_set_line_width(cr, 1.75 * state.border);
-            cairo_move_to(cr, 1.0 * state.width / 4.0, state.height / 2.0);
-            cairo_line_to(cr, 3.0 * state.width / 4.0, state.height / 2.0);
+            cairo_move_to(cr, 1.0 * state.width / 4.0,
+                state.height / 2.0);
+            cairo_line_to(cr, 3.0 * state.width / 4.0,
+                state.height / 2.0);
             cairo_stroke(cr);
             break;
 

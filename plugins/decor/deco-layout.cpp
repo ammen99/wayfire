@@ -58,6 +58,11 @@ decoration_layout_t::decoration_layout_t(const decoration_theme_t& th,
 
     titlebar_size(th.get_title_height()),
     border_size(th.get_border_size()),
+    /**
+     * This is necessary. Otherwise, we will draw an
+     * overly huge button. 70% of the titlebar height
+     * is a decent size. (Equals 21 px by default)
+     */
     button_width(titlebar_size * BUTTON_HEIGHT_PC),
     button_height(titlebar_size * BUTTON_HEIGHT_PC),
     button_padding((titlebar_size - button_height) / 2),
