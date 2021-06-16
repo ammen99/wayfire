@@ -78,7 +78,7 @@ libwayfire_sta = static_library('libwayfire', wayfire_sources,
     cpp_args: debug_arguments,
     install: false)
 
-libwayfire = declare_dependency(link_with: libwayfire_sta,
+libwayfire = declare_dependency(link_whole: libwayfire_sta,
     include_directories: [wayfire_conf_inc, wayfire_api_inc],
     dependencies: wayfire_dependencies)
 
