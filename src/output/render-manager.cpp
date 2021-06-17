@@ -976,7 +976,7 @@ class wf::render_manager::impl
          * draws the scenegraph */
         render_output();
 
-        /* Part 3: finalize the scene: overlay effects and sw cursors */
+        /* Part 3: overlay effects */
         effects->run_effects(OUTPUT_EFFECT_OVERLAY);
 
         if (postprocessing->post_effects.size())
@@ -984,15 +984,7 @@ class wf::render_manager::impl
             swap_damage |= output_damage->get_wlr_damage_box();
         }
 
-        OpenGL::render_begin();
-        wlr_renderer_begin(wf::get_core().renderer,
-            output->handle->width, output->handle->height);
-        wlr_output_render_software_cursors(output->handle,
-            swap_damage.to_pixman());
-        wlr_renderer_end(wf::get_core().renderer);
-        OpenGL::render_end();
-
-        /* Part 4: postprocessing effects */
+        /* Part 4: finalize the scene: postprocessing effects */
         postprocessing->run_post_effects();
         if (output_inhibit_counter)
         {
@@ -1002,7 +994,18 @@ class wf::render_manager::impl
             OpenGL::render_end();
         }
 
-        /* Part 5: finalize frame: swap buffers, send frame_done, etc */
+        /* Part 5: render sw cursors
+         * We render software cursors after everything else
+         * for consistency with hardware cursor planes */
+        OpenGL::render_begin();
+        wlr_renderer_begin(wf::get_core().renderer,
+            output->handle->width, output->handle->height);
+        wlr_output_render_software_cursors(output->handle,
+            swap_damage.to_pixman());
+        wlr_renderer_end(wf::get_core().renderer);
+        OpenGL::render_end();
+
+        /* Part 6: finalize frame: swap buffers, send frame_done, etc */
         OpenGL::unbind_output(output);
         output_damage->swap_buffers(swap_damage);
         swap_damage.clear();
