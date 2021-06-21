@@ -105,7 +105,17 @@ class transaction_t
      * @param instr The instruction for the object.
      */
     virtual void add_instruction(const std::string& object,
-        instruction_uptr_t instr);
+        instruction_uptr_t instr) = 0;
+
+    /**
+     * Get a list of all objects which are influenced by this transaction.
+     */
+    virtual std::vector<std::string> get_objects() = 0;
+
+    /**
+     * Get a list of all views influenced by this transaction.
+     */
+    virtual std::vector<wayfire_view> get_views() = 0;
 
     virtual ~transaction_t() = default;
 };

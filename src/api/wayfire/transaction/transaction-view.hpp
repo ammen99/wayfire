@@ -12,11 +12,12 @@ namespace wf
  */
 struct view_state_t
 {
-    /** Indicates the view's tiled edges. */
-    uint32_t tiled_edges = 0;
-
-    /** Indicates whether the view is fullscreen. */
-    bool fullscreen = false;
+    /**
+     * Whether the view is mapped or not.
+     * A view is mapped when it has a buffer with valid contents to be
+     * displayed.
+     */
+    bool mapped = false;
 };
 
 namespace txn
@@ -37,16 +38,6 @@ class transaction_t;
 class view_transaction_t
 {
   public:
-    /**
-     * Add an instruction for setting the fullscreen state of a view.
-     */
-    virtual view_transaction_t& set_fullscreen(bool state) = 0;
-
-    /**
-     * Add an instruction for setting the tiled egdes of a view.
-     */
-    virtual view_transaction_t& set_tiled(uint32_t edges) = 0;
-
     /**
      * Schedule all batched instructions in the given transaction.
      */

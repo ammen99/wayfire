@@ -6,6 +6,19 @@ namespace wf
 {
 namespace txn
 {
+class instruction_t;
+struct _instruction_signal : public wf::signal_data_t
+{
+    nonstd::observer_ptr<instruction_t> instruction;
+};
+
+/**
+ * name: done
+ * on: instruction
+ * when: Emitted whenever the instruction is ready to be applied.
+ */
+using instruction_done_signal = _instruction_signal;
+
 /**
  * A single instruction which is part of a transaction.
  * The instruction can change one or more states in Wayfire.
@@ -16,12 +29,8 @@ namespace txn
  *
  * As soon as the transaction has been committed and it is ready to be applied,
  * it should emit the 'ready' signal.
- *
- * If at any point the instructions becomes impossible to carry out (e.g. view
- * is unmapped, output is removed and similar), it should emit the 'cancel'
- * signal.
  */
-class instruction_t : wf::signal_provider_t
+class instruction_t : public wf::signal_provider_t
 {
   public:
     /**

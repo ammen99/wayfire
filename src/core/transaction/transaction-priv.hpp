@@ -27,6 +27,9 @@ class transaction_manager_t::impl
     std::vector<transaction_iuptr_t> committed;
 };
 
+/**
+ * Emits done/cancel if an instruction does so.
+ */
 class transaction_impl_t : public transaction_t, public signal_provider_t
 {
   public:
@@ -45,7 +48,18 @@ class transaction_impl_t : public transaction_t, public signal_provider_t
      * Test whether instructions collide with each other (i.e have instructions
      * for the same objects).
      */
-    bool does_collide(const transaction_iuptr_t& other) const;
+    bool does_collide(const transaction_iuptr_t& other) const
+    {}
+
+    void add_instruction(const std::string& object,
+        instruction_uptr_t instr) override
+    {}
+
+    std::vector<std::string> get_objects() override
+    {}
+
+    std::vector<wayfire_view> get_views() override
+    {}
 
   private:
     std::map<std::string, std::vector<instruction_uptr_t>> instructions;
