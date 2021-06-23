@@ -4,6 +4,7 @@
 #include <wayfire/nonstd/noncopyable.hpp>
 #include <wayfire/view.hpp>
 #include <memory>
+#include <set>
 
 namespace wf
 {
@@ -104,18 +105,17 @@ class transaction_t
      * @param object The object identifier.
      * @param instr The instruction for the object.
      */
-    virtual void add_instruction(const std::string& object,
-        instruction_uptr_t instr) = 0;
+    virtual void add_instruction(instruction_uptr_t instr) = 0;
 
     /**
      * Get a list of all objects which are influenced by this transaction.
      */
-    virtual std::vector<std::string> get_objects() = 0;
+    virtual std::set<std::string> get_objects() const = 0;
 
     /**
      * Get a list of all views influenced by this transaction.
      */
-    virtual std::vector<wayfire_view> get_views() = 0;
+    virtual std::set<wayfire_view> get_views() const = 0;
 
     virtual ~transaction_t() = default;
 };

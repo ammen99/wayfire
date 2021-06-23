@@ -34,6 +34,11 @@ class instruction_t : public wf::signal_provider_t
 {
   public:
     /**
+     * @return The object this instruction is operating on.
+     */
+    virtual std::string get_object() = 0;
+
+    /**
      * The instruction has been marked as pending.
      * This is useful for objects like views which keep track of current
      * and pending state.

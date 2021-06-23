@@ -33,36 +33,33 @@ class transaction_manager_t::impl
 class transaction_impl_t : public transaction_t, public signal_provider_t
 {
   public:
+    /** Set all instructions as pending. */
+    void set_pending();
+
     /** Commit all instructions in the transaction. */
-    void commit()
-    {}
+    void commit();
+
+    /** Apply all instructions in the transaction. */
+    void apply();
 
     /**
      * Move instructions from the other transaction to this,
      * thereby destroying the other transaction.
      */
-    void merge(transaction_iuptr_t other)
-    {}
+    void merge(transaction_iuptr_t other);
 
     /**
      * Test whether instructions collide with each other (i.e have instructions
      * for the same objects).
      */
-    bool does_collide(const transaction_iuptr_t& other) const
-    {}
+    bool does_intersect(const transaction_impl_t& other) const;
 
-    void add_instruction(const std::string& object,
-        instruction_uptr_t instr) override
-    {}
-
-    std::vector<std::string> get_objects() override
-    {}
-
-    std::vector<wayfire_view> get_views() override
-    {}
+    void add_instruction(instruction_uptr_t instr) override;
+    std::set<std::string> get_objects() const override;
+    std::set<wayfire_view> get_views() const override;
 
   private:
-    std::map<std::string, std::vector<instruction_uptr_t>> instructions;
+    std::vector<instruction_uptr_t> instructions;
 };
 }
 }
