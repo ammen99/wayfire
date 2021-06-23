@@ -356,7 +356,6 @@ void wf::pointer_t::handle_pointer_button(wlr_event_pointer_button *ev,
     }
 
     send_button(ev, handled_in_binding);
-
     if (!handled_in_binding)
     {
         check_implicit_grab();
@@ -514,7 +513,7 @@ void wf::pointer_t::handle_pointer_motion_absolute(
     }
 
     // TODO: indirection via wf_cursor
-    wlr_cursor_warp_absolute(seat->cursor->cursor, ev->device, ev->x, ev->y);
+    wlr_cursor_warp_closest(seat->cursor->cursor, NULL, cx, cy);
     update_cursor_position(ev->time_msec);
 }
 
