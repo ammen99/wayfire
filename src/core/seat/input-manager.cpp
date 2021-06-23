@@ -81,6 +81,10 @@ void wf::input_manager_t::refresh_device_mappings()
         {
             LOGD("Mapping input ", dev->name, " to output ", wo->to_string(), ".");
             wlr_cursor_map_input_to_output(cursor, dev, wo->handle);
+        } else
+        {
+            LOGD("Mapping input ", dev->name, " to output null.");
+            wlr_cursor_map_input_to_output(cursor, dev, nullptr);
         }
     }
 }
