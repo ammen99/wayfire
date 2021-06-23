@@ -207,10 +207,20 @@ void wf::input_manager_t::ungrab_input()
             wf::get_core().get_active_output()->get_active_view());
     }
 
-    /* We must update cursor focus, however, if we update "too soon", the current
-     * pointer event (button press/release, maybe something else) will be sent to
-     * the client, which shouldn't happen (at the time of the event, there was
-     * still an active input grab) */
+    // We must update cursor focus, however, if we update "too soon", the current
+    // pointer event (button press/release, maybe something else) will be sent to
+    // the client, which shouldn't happen (at the time of the event, there was
+    // still an active input grab)
+
+    // In addition: if the idle_update_cursor was already connected (for ex.
+    // rapidly switching the focused output when all outputs are grabbed),
+    // we need to make sure that we enable focus on the lpointer as often as
+    // we have disabled it.
+    if (idle_update_cursor.is_connected())
+    {
+        wf::get_core_impl().seat->lpointer->set_enable_focus(true);
+    }
+
     idle_update_cursor.run_once([&] ()
     {
         auto& seat = wf::get_core_impl().seat;
