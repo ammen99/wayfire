@@ -30,12 +30,12 @@ class mock_instruction_t : public wf::txn::instruction_t
 
     void commit() override
     {
-        ++applied;
+        ++committed;
     }
 
     void apply() override
     {
-        ++committed;
+        ++applied;
     }
 
     void send_done()

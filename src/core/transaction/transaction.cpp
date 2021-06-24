@@ -8,16 +8,34 @@ namespace wf
 namespace txn
 {
 void transaction_impl_t::set_pending()
-{}
+{
+    for (auto& i : this->instructions)
+    {
+        i->set_pending();
+    }
+}
 
 void transaction_impl_t::commit()
-{}
+{
+    for (auto& i : this->instructions)
+    {
+        i->commit();
+    }
+}
 
 void transaction_impl_t::apply()
-{}
+{
+    for (auto& i : this->instructions)
+    {
+        i->apply();
+    }
+}
 
 void transaction_impl_t::merge(transaction_iuptr_t other)
-{}
+{
+    std::move(other->instructions.begin(), other->instructions.end(),
+        std::back_inserter(instructions));
+}
 
 bool transaction_impl_t::does_intersect(const transaction_impl_t& other) const
 {
