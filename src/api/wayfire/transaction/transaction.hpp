@@ -22,6 +22,9 @@ enum transaction_end_state_t
     TXN_CANCELLED,
     /**
      * Transaction has timed out because instruction took too long to commit.
+     *
+     * In this case, the transaction is ended and all instructions which can be
+     * applied are applied.
      */
     TXN_TIMED_OUT,
     /**
@@ -36,7 +39,7 @@ enum transaction_end_state_t
  * when: Whenever a transaction has been applied or cancelled.
  * argument: unused
  */
-struct done_signal_t
+struct done_signal_t : public wf::signal_data_t
 {
     /** The ID of the transaction. */
     uint64_t id;
