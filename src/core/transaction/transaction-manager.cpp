@@ -1,4 +1,5 @@
 #include "transaction-priv.hpp"
+#include <wayfire/debug.hpp>
 
 namespace wf
 {
@@ -28,6 +29,7 @@ class transaction_manager_t::impl
             emit_signal("pending", &ev);
         }
 
+        LOGC(TXN, "New transaction ", tx_impl->get_id());
         pending_idle.push_back(transaction_iuptr_t(tx_impl));
         // Schedule for running later
         idle_commit.run_once();
@@ -147,6 +149,7 @@ class transaction_manager_t::impl
 
     void do_commit(transaction_iuptr_t tx)
     {
+        LOGC(TXN, "Committing transaction ", tx->get_id());
         tx->commit();
         tx->connect_signal("done", &on_tx_done);
         committed.push_back(std::move(tx));
@@ -175,6 +178,11 @@ transaction_manager_t& get_fresh_transaction_manager()
 {
     auto& mgr = transaction_manager_t::get();
     mgr.priv = std::make_unique<transaction_manager_t::impl>();
+
+    // Enable logs for tests
+    wf::log::enabled_categories.set(
+        (size_t)wf::log::logging_category::TXN, 1);
+
     return mgr;
 }
 
