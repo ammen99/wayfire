@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="scale-decor">
+		<_short>Scale Decor</_short>
+		<_long>Add extra decoration to views shown by the scale plugin.</_long>
+		<category>Utility</category>
+	</plugin>
+</wayfire>

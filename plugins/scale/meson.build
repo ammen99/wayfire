@@ -13,4 +13,10 @@ shared_module('scale-title-filter', 'scale-title-filter.cpp',
         install: true,
         install_dir: conf_data.get('PLUGIN_PATH'))
 
+shared_module('scale-decor', 'scale-decor.cpp',
+        include_directories: all_include_dirs,
+        dependencies: all_deps,
+        install: true,
+        install_dir: conf_data.get('PLUGIN_PATH'))
+
 install_headers(['wayfire/plugins/scale-signal.hpp', 'wayfire/plugins/scale-transform.hpp'], subdir: 'wayfire/plugins')
