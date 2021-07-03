@@ -171,6 +171,9 @@ if doctest.found()
     subdir('test')
 endif
 
+install_data('wayfire.desktop', install_dir :
+    join_paths(get_option('prefix'), 'share/wayland-sessions'))
+
 summary = [
 	'',
 	'----------------',
