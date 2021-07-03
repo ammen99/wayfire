@@ -1101,6 +1101,7 @@ class workspace_manager::impl
 
     void add_view_to_layer(wayfire_view view, layer_t layer)
     {
+        assert(view->get_output() == output);
         bool first_add = layer_manager.get_view_layer(view) == 0;
         layer_manager.add_view_to_layer(view, layer);
         update_promoted_views();
@@ -1114,6 +1115,7 @@ class workspace_manager::impl
     void add_view_to_sublayer(wayfire_view view,
         nonstd::observer_ptr<sublayer_t> sublayer)
     {
+        assert(view->get_output() == output);
         bool first_add = layer_manager.get_view_layer(view) == 0;
         layer_manager.add_view_to_sublayer(view, sublayer);
         update_promoted_views();
@@ -1253,7 +1255,7 @@ void workspace_manager::destroy_sublayer(nonstd::observer_ptr<sublayer_t> sublay
 void workspace_manager::add_view_to_sublayer(wayfire_view view,
     nonstd::observer_ptr<sublayer_t> sublayer)
 {
-    return pimpl->layer_manager.add_view_to_sublayer(view, sublayer);
+    return pimpl->add_view_to_sublayer(view, sublayer);
 }
 
 void workspace_manager::move_to_workspace(wayfire_view view, wf::point_t ws)
