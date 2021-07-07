@@ -4,6 +4,7 @@
 #include "wayfire/output.hpp"
 #include "wayfire/core.hpp"
 #include <wayfire/workspace-manager.hpp>
+#include <wayfire/signal-definitions.hpp>
 #include <linux/input.h>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -70,6 +71,7 @@ class wf_wrot : public wf::plugin_interface_t
         }
 
         output->focus_view(current_view, true);
+        current_view->connect_signal("unmapped", &current_view_unmapped);
         grab_interface->grab();
 
         last_position = output->get_cursor_position();
@@ -93,6 +95,16 @@ class wf_wrot : public wf::plugin_interface_t
         }
 
         return true;
+    };
+
+    wf::signal_connection_t current_view_unmapped = [this] (wf::signal_data_t *data)
+    {
+        auto view = wf::get_signaled_view(data);
+        if (grab_interface->is_grabbed() && (current_view == view))
+        {
+            current_view = nullptr;
+            input_released();
+        }
     };
 
     void motion_2d(int x, int y)
@@ -187,6 +199,7 @@ class wf_wrot : public wf::plugin_interface_t
             }
 
             output->focus_view(current_view, true);
+            current_view->connect_signal("unmapped", &current_view_unmapped);
             grab_interface->grab();
 
             last_position = output->get_cursor_position();
@@ -235,6 +248,7 @@ class wf_wrot : public wf::plugin_interface_t
     {
         grab_interface->ungrab();
         output->deactivate_plugin(grab_interface);
+        current_view_unmapped.disconnect();
         if ((current_mode == mode::ROT_3D) && current_view)
         {
             auto tr = dynamic_cast<wf::view_3D*>(current_view->get_transformer(
