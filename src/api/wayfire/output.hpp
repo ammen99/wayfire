@@ -189,15 +189,15 @@ class output_t : public wf::object_base_t
     bool ensure_visible(wayfire_view view);
 
     /**
-     * Force refocus the topmost view in one of the layers marked in layers
-     * and which isn't skip_view.
+     * Force refocus the most recently focused view in one of the layers marked
+     * in layers and which isn't skip_view.
      *
      * The stacking order is not changed.
      */
     virtual void refocus(wayfire_view skip_view, uint32_t layers) = 0;
 
     /**
-     * Refocus the topmost focuseable view != skip_view, preferring regular
+     * Refocus the most recently focused view != skip_view, preferring regular
      * views. The stacking order is not changed.
      */
     void refocus(wayfire_view skip_view = nullptr);

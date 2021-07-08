@@ -773,25 +773,6 @@ class output_viewport_manager_t
             }
         }
 
-        // Update the last-focused order to be the same as the stacking order.
-        // This ensures we don't run into problems where a view on the old
-        // workspace is below a view on the current workspace, but gets focus
-        // because it has a newer timestamp from the old workspace.
-        auto views = get_views_on_workspace(get_current_workspace(), wf::WM_LAYERS);
-        for (auto v : wf::reverse(views))
-        {
-            auto children = v->enumerate_views();
-            std::sort(children.begin(), children.end(),
-                [] (const auto& x, const auto& y)
-            {
-                return x->last_focus_timestamp < y->last_focus_timestamp;
-            });
-            for (auto& child : children)
-            {
-                update_focus_timestamp(child);
-            }
-        }
-
         for (auto& v : fixed_views)
         {
             output->focus_view(v, true);

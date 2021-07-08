@@ -23,6 +23,8 @@ class output_impl_t : public output_t
         FOCUS_VIEW_RAISE        = (1 << 0),
         /* Close popups of non-focused views */
         FOCUS_VIEW_CLOSE_POPUPS = (1 << 1),
+        /* Inhibit updating the focus timestamp of the view */
+        FOCUS_VIEW_NOBUMP       = (1 << 2),
     };
 
     /**

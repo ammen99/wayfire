@@ -101,7 +101,7 @@ void wf::output_impl_t::refocus(wayfire_view skip_view, uint32_t layers)
         focus_view(nullptr, 0u);
     } else
     {
-        focus_view(*it, 0u);
+        focus_view(*it, (uint32_t)FOCUS_VIEW_NOBUMP);
     }
 }
 
@@ -343,7 +343,11 @@ void wf::output_impl_t::focus_view(wayfire_view v, uint32_t flags)
     if (v->get_keyboard_focus_surface() || interactive_view_from_view(v.get()))
     {
         make_view_visible(v);
-        update_focus_timestamp(v);
+        if (!(flags & FOCUS_VIEW_NOBUMP))
+        {
+            update_focus_timestamp(v);
+        }
+
         update_active_view(v, flags);
         data.view = v;
         emit_signal("view-focused", &data);
