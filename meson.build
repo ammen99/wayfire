@@ -87,13 +87,20 @@ else
   conf_data.set('DEFAULT_CONFIG_BACKEND', get_option('default_config_backend'))
 endif
 
+cpp = meson.get_compiler('cpp')
+
 # needed to dlopen() plugins
 # -E is for RTTI/dynamic_cast across plugins
-add_project_arguments(['-DWLR_USE_UNSTABLE'], language: ['cpp', 'c'])
 add_project_link_arguments(['-rdynamic', '-Wl,-E'], language: 'cpp')
 
+project_args = ['-DWLR_USE_UNSTABLE']
+# Needed for dlclose to actually free plugin memory
+if cpp.has_argument('-fno-gnu-unique')
+  project_args += '-fno-gnu-unique'
+endif
+add_project_arguments(project_args, language: ['cpp', 'c'])
+
 # Needed on some older compilers
-  cpp = meson.get_compiler('cpp')
 if cpp.has_link_argument('-lc++fs')
   add_project_link_arguments(['-lc++fs'], language: 'cpp')
 elif cpp.has_link_argument('-lc++experimental')
