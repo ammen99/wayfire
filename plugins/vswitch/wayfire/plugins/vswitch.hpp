@@ -430,7 +430,7 @@ class control_bindings_t : public noncopyable_t
     virtual wayfire_view get_target_view()
     {
         auto view = output->get_active_view();
-        while (view->parent)
+        while (view && view->parent)
         {
             view = view->parent;
         }
