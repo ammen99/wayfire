@@ -221,10 +221,17 @@ struct cairo_text_t
         return ret;
     }
 
+    cairo_text_t() = default;
+
     ~cairo_text_t()
     {
         cairo_free();
     }
+
+    cairo_text_t(const cairo_text_t &) = delete;
+    cairo_text_t(cairo_text_t &&) = default;
+    cairo_text_t& operator =(const cairo_text_t&) = delete;
+    cairo_text_t& operator =(cairo_text_t&&) = default;
 
     /**
      * Calculate the height of text rendered with a given font size.
