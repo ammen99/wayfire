@@ -27,12 +27,16 @@ class wf::signal_connection_t::impl
 
 wf::signal_connection_t::signal_connection_t()
 {
-    this->priv = std::make_unique<impl>();
+    this->priv = std::make_shared<impl>();
 }
 
 wf::signal_connection_t::~signal_connection_t()
 {
-    disconnect();
+    // In case we might have std::move()ed from this object.
+    if (priv)
+    {
+        disconnect();
+    }
 }
 
 void wf::signal_connection_t::set_callback(signal_callback_t callback)
