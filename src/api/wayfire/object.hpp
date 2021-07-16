@@ -58,14 +58,14 @@ class signal_connection_t
     void disconnect();
 
     class impl;
-    std::unique_ptr<impl> priv;
+    std::shared_ptr<impl> priv;
 
-  private:
-    /* Non-movable, non-copyable */
-    signal_connection_t(signal_connection_t&& other) = delete;
-    signal_connection_t& operator =(signal_connection_t&& other) = delete;
+    /* Non-copyable */
     signal_connection_t(const signal_connection_t& other) = delete;
     signal_connection_t& operator =(const signal_connection_t& other) = delete;
+
+    signal_connection_t(signal_connection_t&& other) = default;
+    signal_connection_t& operator =(signal_connection_t&& other) = default;
 };
 
 class signal_provider_t
