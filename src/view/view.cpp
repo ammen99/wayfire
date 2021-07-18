@@ -183,6 +183,11 @@ wayfire_view wf::view_interface_t::self()
     return wayfire_view(this);
 }
 
+const wf::view_state_t& wf::view_interface_t::state() const
+{
+    return this->view_impl->state;
+}
+
 /** Set the view's output. */
 void wf::view_interface_t::set_output(wf::output_t *new_output)
 {

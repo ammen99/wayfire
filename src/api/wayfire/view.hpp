@@ -9,6 +9,7 @@
 #include "wayfire/decorator.hpp"
 #include <wayfire/nonstd/wlroots.hpp>
 #include <wayfire/region.hpp>
+#include <wayfire/transaction/transaction-view.hpp>
 
 namespace wf
 {
@@ -91,6 +92,11 @@ class view_interface_t : public surface_interface_t
 
     /** Wrap the view into a nonstd::observer_ptr<> */
     wayfire_view self();
+
+    /**
+     * Get the view's state.
+     */
+    virtual const view_state_t& state() const;
 
     /**
      * Set the view's output.

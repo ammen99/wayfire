@@ -74,6 +74,8 @@ class view_interface_t::view_priv_impl
 
     wlr_box minimize_hint = {0, 0, 0, 0};
 
+    view_state_t state;
+
     /** The sublayer of the view. For workspace-manager. */
     nonstd::observer_ptr<sublayer_t> sublayer;
     /* Promoted to the fullscreen layer? For workspace-manager. */
