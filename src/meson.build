@@ -1,4 +1,6 @@
-wayfire_sources = ['util.cpp',
+wayfire_sources = ['geometry.cpp',
+                   'region.cpp',
+                   'debug.cpp',
 
                    'core/output-layout.cpp',
                    'core/matcher.cpp',
@@ -10,6 +12,9 @@ wayfire_sources = ['util.cpp',
                    'core/img.cpp',
                    'core/wm.cpp',
                    'core/view-access-interface.cpp',
+
+                   'core/transaction/transaction.cpp',
+                   'core/transaction/transaction-manager.cpp',
 
                    'core/seat/pointing-device.cpp',
                    'core/seat/input-manager.cpp',
@@ -25,6 +30,7 @@ wayfire_sources = ['util.cpp',
                    'core/seat/seat.cpp',
 
                    'view/surface.cpp',
+                   'view/surface-lock.cpp',
                    'view/subsurface.cpp',
                    'view/view.cpp',
                    'view/view-impl.cpp',
@@ -85,7 +91,7 @@ libwayfire = declare_dependency(link_whole: libwayfire_sta,
 tests_include_dirs = include_directories('.')
 
 # Generate main executable
-executable('wayfire', ['main.cpp'],
+executable('wayfire', ['util.cpp', 'main.cpp'],
     dependencies: libwayfire,
     install: true,
     cpp_args: debug_arguments)

@@ -634,6 +634,7 @@ void wf::compositor_core_impl_t::add_view(
 {
     auto v = view->self(); /* non-owning copy */
     views.push_back(std::move(view));
+    id_to_view[std::to_string(v->get_id())] = v;
 
     assert(active_output);
     if (!v->get_output())
@@ -753,7 +754,20 @@ void wf::compositor_core_impl_t::erase_view(wayfire_view v)
         [&v] (const auto& view) { return view.get() == v.get(); });
 
     v->deinitialize();
+
+    id_to_view.erase(std::to_string(v->get_id()));
     views.erase(it);
+}
+
+wayfire_view wf::compositor_core_impl_t::find_view(const std::string& id)
+{
+    auto it = id_to_view.find(id);
+    if (it != id_to_view.end())
+    {
+        return it->second;
+    }
+
+    return nullptr;
 }
 
 pid_t wf::compositor_core_impl_t::run(std::string command)
@@ -888,13 +902,6 @@ wf::compositor_core_impl_t::~compositor_core_impl_t()
     output_layout.reset();
 }
 
-wf::compositor_core_impl_t& wf::compositor_core_impl_t::get()
-{
-    static compositor_core_impl_t instance;
-
-    return instance;
-}
-
 wf::compositor_core_t& wf::compositor_core_t::get()
 {
     return wf::compositor_core_impl_t::get();
@@ -912,17 +919,3 @@ wf::compositor_core_impl_t& wf::get_core_impl()
 
 // TODO: move this to a better location
 wf_runtime_config runtime_config;
-
-// TODO: move this to a better location
-namespace wf
-{
-namespace _safe_list_detail
-{
-wl_event_loop *event_loop;
-void idle_cleanup_func(void *data)
-{
-    auto priv = reinterpret_cast<std::function<void()>*>(data);
-    (*priv)();
-}
-}
-}
