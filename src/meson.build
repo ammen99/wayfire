@@ -30,6 +30,7 @@ wayfire_sources = ['geometry.cpp',
                    'core/seat/seat.cpp',
 
                    'view/surface.cpp',
+                   'view/surface-lock.cpp',
                    'view/subsurface.cpp',
                    'view/view.cpp',
                    'view/view-impl.cpp',
